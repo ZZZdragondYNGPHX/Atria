@@ -31,16 +31,10 @@ const adapters = Object.freeze({
     'memory.compaction.candidates': read('memory-graph.openReadSession.compactionCandidates', { type: ident, depth: z.number().int().min(0).max(10).default(0) }),
     'memory.injection': read('memory-graph.getCurrentInjection'),
     'memory.recall.last': read('memory-graph.getLoadedRecallProjection'),
-    'agents.run.get': read('orchestrator.getRunObservation', { runId: ident.optional(), nodeId: ident.optional(), stepId: ident.optional() }),
-    'agents.checkpoints': read('orchestrator.listRuntimeCheckpoints'),
-    'agents.binding': read('orchestrator.getPresetBinding', { scope: z.enum(['global', 'character', 'chat', 'package']), subjectId: ident }),
-    'agents.tools': read('orchestrator.listExtensionTools'),
     'game.llm.status': read('game-runtime.getLlmRuntimeState (browser-loaded LLM routing, not committed Conversation or GenerationProjection)'),
     'game.presentation': read('game-runtime.getPresentationCapabilities'),
     'memory.schema.scope': { authority: 'memory-graph.getSchemaScopeInfo', input: empty,
         output: z.strictObject({ scope: z.enum(['character', 'global']), hasOverride: z.boolean(), hasAvatar: z.boolean() }) },
-    'agents.presets.list': { authority: 'orchestrator.listWorkspacePresets', input: empty,
-        output: z.array(z.strictObject({ id: name, name, mode: name })).max(200) },
     'game.loaded.identity': { authority: 'game-runtime.getPackageState (browser-loaded state)', input: empty,
         output: z.strictObject({ status: name, active: z.boolean(), sessionId: name.nullable(),
             packageVersionId: name.nullable(), packageContentHash: name.nullable(), entryPointId: name.nullable() }) },
@@ -117,13 +111,6 @@ export async function invokeBrowserAdapter(browser, action, input = {}) {
                     case 'memory.injection': return { value: await context.getCapabilityApi('memory-graph').getCurrentInjection(context) };
                     case 'memory.recall.last': return { value: await context.getCapabilityApi('memory-graph').getLoadedRecallProjection(context) };
                     case 'memory.recall': return { value: await context.getCapabilityApi('memory-graph').previewRecall(context, input.query) };
-                    case 'agents.run.get': return { value: await context.getCapabilityApi('orchestrator').getRunObservation(input) };
-                    case 'agents.checkpoints': return { value: await context.getCapabilityApi('orchestrator').listRuntimeCheckpoints() };
-                    case 'agents.binding': return { value: await context.getCapabilityApi('orchestrator').getPresetBinding(input.scope, input.subjectId) };
-                    case 'agents.tools': {
-                        const tools = await context.getCapabilityApi('orchestrator').listExtensionTools();
-                        return { value: tools.map(({ name, description }) => ({ name, description })) };
-                    }
                     case 'game.llm.status': return { value: await context.getCapabilityApi('game-runtime').getLlmRuntimeState() };
                     case 'game.presentation': return { value: await context.getCapabilityApi('game-runtime').getPresentationCapabilities() };
                     case 'memory.schema.scope': {
@@ -131,13 +118,6 @@ export async function invokeBrowserAdapter(browser, action, input = {}) {
                         if (typeof api?.getSchemaScopeInfo !== 'function') return { unavailable: true };
                         const value = await api.getSchemaScopeInfo(context);
                         return { value: { scope: value.scope, hasOverride: value.hasOverride, hasAvatar: value.hasAvatar } };
-                    }
-                    case 'agents.presets.list': {
-                        const api = context.getCapabilityApi('orchestrator');
-                        if (typeof api?.listWorkspacePresets !== 'function') return { unavailable: true };
-                        const rows = await api.listWorkspacePresets();
-                        if (!Array.isArray(rows) || rows.length > 200) return { invalid: true };
-                        return { value: rows.map(({ id, name, mode }) => ({ id, name, mode })) };
                     }
                     case 'game.loaded.identity': {
                         const api = context.getCapabilityApi('game-runtime');

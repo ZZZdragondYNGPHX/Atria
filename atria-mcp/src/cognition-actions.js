@@ -3,6 +3,7 @@ import { fingerprint } from './kernel.js';
 import { requestAuthority } from './read-authority.js';
 import { redact } from './policy.js';
 import { jsonTextFragment } from './json-fragment.js';
+import { planRefSchema } from './orchestration-actions.js';
 
 const base = '/api/native/generation';
 const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/), hash = z.string().regex(/^[a-f0-9]{64}$/), sequence = z.number().int().nonnegative();
@@ -30,8 +31,11 @@ const feedbackTarget = z.strictObject({ kind: z.enum(['evidence', 'project_task'
 const feedback = z.strictObject({ signal: z.enum(['correction', 'prefer', 'avoid']), dimension: z.enum(['behavior', 'style', 'correctness', 'workflow', 'general']), note: z.string().max(4096) });
 const evolutionTarget = z.discriminatedUnion('kind', [
     z.strictObject({ kind: z.literal('skill'), scope: z.union([z.strictObject({ kind: z.literal('project'), projectId: id }), z.strictObject({ kind: z.literal('character'), characterFile: segment })]), name: segment }),
-    z.strictObject({ kind: z.literal('workspace-prompt'), presetId: id, agentId: id, bindingSubject: segment }),
-    z.strictObject({ kind: z.literal('workspace-strategy'), presetId: id, field: z.literal('budgets.maxSteps'), bindingSubject: segment }),
+    z.strictObject({ kind: z.literal('plan-prompt'), bindingId: hash, expectedBindingVersion: sequence, planRef: planRefSchema,
+        nodeId: z.string().regex(/^onode_[a-f0-9]{32}$/), promptModuleRef: z.strictObject({ scope: z.literal('library'), resourceType: z.literal('core.prompt-module'), resourceId: id, revision: id }) }),
+    z.strictObject({ kind: z.literal('plan-strategy'), bindingId: hash, expectedBindingVersion: sequence, planRef: planRefSchema,
+        nodeId: z.string().regex(/^onode_[a-f0-9]{32}$/), fieldPath: z.enum(['reviewPolicy.maxRounds', 'routeRef',
+            ...['maxSteps', 'maxAttempts', 'maxReplans', 'maxReviews', 'maxDelegates', 'maxHandoffs', 'maxEdgeVisits', 'maxLoopIterations', 'deadlineMs'].map(field => 'limits.' + field)]) }),
     z.strictObject({ kind: z.literal('project-prompt'), presetId: id, runtimeRouteId: id, moduleRef: z.strictObject({ scope: z.literal('library'), resourceType: z.literal('core.prompt-module'), resourceId: id, revision: id }) }),
     z.strictObject({ kind: z.literal('project-strategy'), taskId: id, field: z.literal('maxRepairRounds') }),
 ]);
@@ -65,6 +69,12 @@ export function registerCognitionActions(registry, browser) {
 
     add('goal.snapshot', 'READ', { goalId: id }, '/goals/snapshot');
     add('goal.snapshots', 'READ', {}, '/goals/snapshots');
+    add('goal.context', 'READ', { scope: cognitionScope }, '/goals/context');
+    add('goal.associations', 'READ', { goalId: id, viewId: id }, '/goals/associations');
+    registry.register({ version: 1, id: 'cognition.quality.profiles', domain: 'cognition', title: 'Native quality profiles and source readiness', risk: 'READ',
+        authority: 'Native QUALITY_PROFILES / pilot source readiness', adapter: 'fixed-http', externalEffects: [], guards: [], approval: 'none',
+        availability: { available: true, reason: 'Original readiness registry; no model call' } }, z.strictObject({}), z.json(),
+    async () => bounded('cognition.quality.profiles', await request('GET', '/quality-profiles')));
     add('evidence.snapshot', 'READ', { evidenceId: hash }, '/evidence/snapshot');
     add('experience.observe', 'READ', scope, '/experience/observe');
     add('evolution.observe', 'READ', scope, '/evolution/observe');
@@ -303,5 +313,35 @@ export function registerCognitionActions(registry, browser) {
     for (const action of ['catalog', 'inspect', 'export']) add(`evolution.${action}`, 'INTERACT', scope, '/evolution/' + action,
         async i => { const r = await read('/evolution/observe', i); return { target: i, serverBootId: r.serverBootId, sourceFingerprint: fingerprint(r.data) }; },
         ['Native source/retention/publication reconciliation may persist or rollback; no new evaluation starts']);
+    add('goal.continuation.inspect', 'MUTATE', { goalId: id, expectedSequence: sequence }, '/goals/inspect', goalGuard,
+        ['Inspect and reconcile original Goal / Project Task; no model send'], i => ({ goalId: i.goalId }));
+    const consumerGuard = async i => {
+        const configuration = await request('GET', '/configuration');
+        if (!configuration.ok || !configuration.serverBootId) throw Error('Native consumer configuration unavailable');
+        let source = {};
+        if (i.sessionId) {
+            const r = await requestAuthority(browser, 'POST', '/api/native/session/observe', { sessionId: i.sessionId });
+            if (!r.ok || r.serverBootId !== configuration.serverBootId || i.revisionId && r.data.revision.revisionId !== i.revisionId) throw Error('Consumer Session revision conflict');
+            source = { sessionId: i.sessionId, revisionId: r.data.revision.revisionId, branchId: r.data.revision.branchId };
+        } else if (i.projectId) {
+            const r = await requestAuthority(browser, 'GET', `/api/native/studio/projects/${i.projectId}/agent/tasks/${i.taskId}/observation`);
+            if (!r.ok || r.serverBootId !== configuration.serverBootId || r.data.sequence !== i.expectedSequence) throw Error('Consumer Project Task sequence conflict');
+            source = { projectId: i.projectId, taskId: i.taskId, expectedSequence: r.data.sequence, executionFingerprint: r.data.executionFingerprint };
+        }
+        return { target: source, serverBootId: configuration.serverBootId, configurationFingerprint: fingerprint(configuration.data),
+            providerTargets: configuration.data.connections.map(c => ({ connectionProfileId: c.connectionProfileId, endpoint: c.endpoint })), requestHash: fingerprint(i) };
+    };
+    const requestDocument = z.record(z.string(), z.json());
+    for (const name of ['prediction', 'comparison']) {
+        add(name + '.prepare', 'INTERACT', { sessionId: id, revisionId: id, request: requestDocument }, '/' + name + '/prepare', consumerGuard,
+            ['Original bounded private candidate computation', 'Explicit original advisory model requests and compute accounting when declared', 'No adoption or Session publication']);
+        add(name + '.current', 'READ', name === 'prediction' ? { sessionId: id, artifact: requestDocument } : { sessionId: id, comparisonId: id }, '/' + name + '/current');
+    }
+    add('comparison.feedback', 'MUTATE', { sessionId: id, comparisonId: id, receiptId: id }, '/comparison/feedback', consumerGuard,
+        ['Record feedback only after verifying the original committed transaction Receipt; no candidate apply']);
+    add('comparison.project.prepare', 'INTERACT', { projectId: id, taskId: id, expectedSequence: sequence,
+        candidates: z.array(z.strictObject({ id, operations: z.array(requestDocument).min(1).max(32) })).min(1).max(8) }, '/project-comparison/prepare', consumerGuard,
+        ['Original temporary Workspace evaluation and restoration', 'Advisory comparison only; no formal commit']);
+    for (const action of ['current', 'outcome']) add('comparison.project.' + action, 'READ', { comparisonId: id }, '/project-comparison/' + action);
     return registry;
 }

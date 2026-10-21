@@ -122,15 +122,29 @@ export function registerExtensionActions(registry, browser, { request = requestA
         ['extension.enable', 'enable', 'MUTATE', ['untrusted-page-javascript-execution', 'dom-network-effects', 'not-sandboxed']],
         ['extension.disable', 'disable', 'MUTATE', ['disable-native-configuration', 'prior-external-effects-not-reverted']],
         ['extension.targets.update', 'targets', 'MUTATE', ['browser-execution-scope-change']],
-        ['extension.delete', 'delete', 'DESTRUCTIVE', ['native-extension-delete', 'prior-external-effects-not-reverted']],
+        ['extension.delete', 'delete', 'DESTRUCTIVE', ['move-extension-to-original-recovery', 'restore-remains-disabled', 'prior-external-effects-not-reverted']],
     ]) add(action, risk, { ...exact, ...(command === 'targets' ? { targets } : {}) }, async (input, context) => {
         const { id: extensionId, ...binding } = input;
         const response = await call('POST', `/plugins/${extensionId}/actions/${command}`, binding, context.before);
-        return { ok: true, data: response.data, activation: 'Native configuration confirmed; actual frontend epoch activation requires separate UI observation', receiptEvidence: { after: response.data } };
+        return { ok: true, data: response.data, activation: 'Native configuration confirmed; actual frontend epoch activation requires separate UI observation', receiptEvidence: {
+            after: response.data, ...(command === 'delete' ? { changed: [{ kind: 'extension', id: extensionId, lifecycle: 'trashed' }],
+                recovery: 'Inspect original Storage Center recovery. Restore preserves identity and keeps the Extension disabled; permanent purge requires separate authorization.' } : {}) } };
     }, exactGuard, effects);
     registry.register({ version: 1, id: 'hostplugin.active.inspect', domain: 'hostplugin', title: 'Inspect active Host Plugins', risk: 'READ',
         authority: 'Production HostPluginBoundary instance', adapter: 'fixed-http', externalEffects: [], guards: [], approval: 'none',
         availability: { available: false, reason: 'No active production HostPluginBoundary or operator lifecycle authority; source manifests cannot prove active code' } },
     z.strictObject({}), z.json(), async () => { throw new Error('UNSUPPORTED: Host Plugin runtime authority unavailable'); });
+    for (const [suffix, endpoint] of [['settings', '/settings'], ['illustration', '/official/illustration']]) {
+        add('extension.' + suffix + '.get', 'READ', {}, async i => page(await call('GET', endpoint), i));
+        add('extension.' + suffix + '.save', 'MUTATE', { expectedRevision: hash, value: z.record(z.string(), z.json()) }, async (i, c) => {
+            const r = await call('PUT', endpoint, i, c.before);
+            return { ok: true, data: r.data, activation: 'Configuration saved; browser epoch activation requires separate observation.' };
+        }, async i => {
+            const r = await call('GET', endpoint);
+            if (r.data.revision !== i.expectedRevision) throw Error('Extension settings revision conflict');
+            return { target: { settings: suffix }, serverBootId: r.serverBootId, expectedRevision: i.expectedRevision,
+                effects: 'Original settings CAS; Skill invocation off/on-demand/always and illustration automatic behavior follow this exact declared configuration.' };
+        }, ['persist-exact-extension-settings', 'explicitly-configured-invocation-and-director-behavior']);
+    }
     return registry;
 }

@@ -54,29 +54,60 @@ export function registerRuntimeActions(registry, browser) {
     });
     add('runtime.route.resolve', 'READ', z.strictObject({ routeRef, role: z.string().regex(/^role\.[a-z_]+$/), requirements: z.array(id).max(32).default([]) }),
         async i => bounded('runtime.route.resolve', await request('POST', '/routes/resolve', i)));
+    const runtimeRef = z.strictObject({ scope: z.enum(['library', 'project', 'package']), resourceType: ref.shape.resourceType,
+        resourceId: id, revision: id, projectId: id.optional(), packageId: id.optional(), packageVersionId: id.optional() });
+    add('runtime.resource.usedby', 'READ', runtimeRef, async i => bounded('runtime.resource.usedby', await request('POST', '/resources/used-by', i)));
+    const configurationGuard = async i => {
+        const r = await read('GET', '/configuration');
+        return { target: { ...(i.resourceId ? { resourceId: i.resourceId } : {}), ...(i.ref ? { ref: i.ref } : {}), ...(i.route ? { runtimeRouteId: i.route.runtimeRouteId } : {}) },
+            serverBootId: r.serverBootId, configurationFingerprint: fingerprint(r.data) };
+    };
+    add('runtime.api.preset.save', 'MUTATE', z.strictObject({ route: z.record(z.string(), z.json()), model: z.record(z.string(), z.json()), generation: z.record(z.string(), z.json()),
+        expected: z.strictObject({ route: digest, model: digest }) }), async (i, { before }) => bounded('runtime.api.preset.save', await request('PUT', '/api-presets', i, before)),
+    configurationGuard, ['Atomic original Model / Generation / Route publication; shared resources copied by original authority; does not send']);
+    add('runtime.resource.archive', 'MUTATE', z.strictObject({ ref: runtimeRef, archived: z.boolean() }),
+        async (i, { before }) => bounded('runtime.resource.archive', await request('POST', '/resources/archive', i, before)), configurationGuard, ['Change original Library archive state; exact ownership and references remain authoritative']);
+    for (const [kind, key] of [['connection', 'connections'], ['model', 'models'], ['route', 'routes']]) add(`runtime.${kind}.delete`, 'DESTRUCTIVE',
+        z.strictObject({ resourceId: id, expectedFingerprint: digest }), async (i, { before }) => bounded(`runtime.${kind}.delete`, await request('DELETE', `/configuration/${key}/${i.resourceId}`, {}, before)),
+        async i => {
+            const r = await read('GET', '/configuration'), item = r.data[key].find(value => value[kind === 'connection' ? 'connectionProfileId' : kind === 'model' ? 'modelProfileId' : 'runtimeRouteId'] === i.resourceId);
+            if (!item || fingerprint(item) !== i.expectedFingerprint) throw Error('Runtime resource fingerprint conflict');
+            return { target: { kind, resourceId: i.resourceId }, serverBootId: r.serverBootId, expectedFingerprint: i.expectedFingerprint };
+        }, ['Delete original player configuration only after native dependency protection']);
     add('runtime.resource.exact', 'READ', ref, async i => bounded('runtime.resource.exact', await request('POST', '/resources/exact', i)));
     for (const action of ['runtime.prompt.preview', 'runtime.context.preview']) add(action, 'READ', preview,
         async i => bounded(action, await request('POST', '/preview', i)));
-    add('runtime.connection.target.inspect', 'READ', z.strictObject({ connectionProfileId: id }),
-        async i => bounded('runtime.connection.target.inspect', await request('POST', '/connections/credential-target/inspect', i)));
-    const targetGuard = async i => {
-        const r = await read('POST', '/connections/credential-target/inspect', { connectionProfileId: i.connectionProfileId });
-        if (r.data.connectionFingerprint !== i.expectedFingerprint || r.data.targetFingerprint !== i.expectedTargetFingerprint
-            || i.expectedPermitFingerprint && r.data.permitFingerprint !== i.expectedPermitFingerprint) throw new Error('Credential target fingerprint conflict');
-        return { target: { connectionProfileId: i.connectionProfileId, credentialTarget: r.data.target }, serverBootId: r.serverBootId,
-            expectedFingerprint: i.expectedFingerprint, targetFingerprint: r.data.targetFingerprint, permitFingerprint: r.data.permitFingerprint, authorized: r.data.authorized };
-    };
-    add('runtime.connection.target.authorize', 'MUTATE', z.strictObject({ connectionProfileId: id, expectedFingerprint: digest,
-        expectedTargetFingerprint: digest, expectedPermitFingerprint: digest, allowLocal: z.boolean().optional() }),
-    async (i, { before }) => ({ ...bounded('runtime.connection.target.authorize', await request('POST', '/connections/credential-target/authorize', i, before)),
-        receiptEvidence: { recovery: 'Inspect the Native credential target permit. Authorization does not send a Provider request.' } }), targetGuard,
-    ['Persist an independently reviewed exact SecretRef to network target permit; no Provider send']);
-    add('runtime.connection.probe', 'INTERACT', z.strictObject({ connectionProfileId: id, expectedFingerprint: digest, expectedTargetFingerprint: digest }),
+    const sample = z.strictObject({ input: z.string().max(524288), persona: z.string().max(524288).optional(),
+        materials: z.array(z.string().max(524288)).max(100).optional(),
+        history: z.array(z.strictObject({ role: z.enum(['user', 'assistant']), content: z.string().max(524288) })).max(100).optional() });
+    const draftRequest = z.strictObject({ ...preview.shape, sample: sample.optional(), resourceProjectId: id.optional() })
+        .refine(i => i.sample ? !i.sessionId && !i.projectId && !i.messages?.length : exactSource(i), 'One exact author sample or Session/Project source required');
+    const drafts = z.array(z.strictObject({ ref: runtimeRef, expectedFingerprint: digest.nullable(), resource: z.record(z.string(), z.json()) })).max(32);
+    const previewRefs = preview.shape.previewRefs;
+    const draftPreview = z.strictObject({ request: draftRequest, drafts, baselineDrafts: drafts.optional(), baselineRefs: previewRefs, candidateRefs: previewRefs });
+    add('runtime.prompt.draft.preview', 'READ', draftPreview, async i => bounded('runtime.prompt.draft.preview', await request('POST', '/preview/draft', i)));
+    const trial = z.strictObject({ request: draftRequest, drafts: drafts.optional(), refs: previewRefs, limits: z.record(z.string(), z.json()), send: z.literal(true) })
+        .refine(i => Boolean(i.request.sample), 'Author trial requires an explicit sample');
+    add('runtime.authoring.observe', 'READ', z.strictObject({ requestId: id, role: preview.shape.role, sample }),
+        async i => bounded('runtime.authoring.observe', await request('POST', '/authoring/observe', i)));
+    add('runtime.authoring.try', 'INTERACT', trial, async (i, { before }) => bounded('runtime.authoring.try', await request('POST', '/authoring/try', i, before)), async i => {
+        const config = await read('GET', '/configuration');
+        const r = await read('POST', '/preview/draft', { request: i.request, drafts: i.drafts ?? [], ...(i.refs ? { candidateRefs: i.refs } : {}) });
+        if (r.serverBootId !== config.serverBootId || r.data.sent !== false) throw Error('Author trial source changed');
+        return { target: { requestId: i.request.requestId, sampleHash: fingerprint(i.request.sample), runtimeRouteId: i.request.routeRef.runtimeRouteId },
+            serverBootId: r.serverBootId, configurationFingerprint: fingerprint(config.data), previewIdentity: r.data.diff.identityFingerprint, limits: i.limits };
+    }, ['Explicit exact author sample Provider send with native compute limits; unpublished; no Session commit; observe original operation instead of resending']);
+    add('runtime.connection.probe', 'INTERACT', z.strictObject({ connectionProfileId: id, expectedFingerprint: digest }),
     async (i, { before }) => {
         const config = await read('GET', '/configuration'), connection = config.data.connections.find(c => c.connectionProfileId === i.connectionProfileId);
         if (config.serverBootId !== before.serverBootId || fingerprint(connection) !== i.expectedFingerprint) throw new Error('Connection changed before probe');
         return bounded('runtime.connection.probe', await request('POST', '/connections/probe', connection, before));
-    }, async i => { const guard = await targetGuard(i); if (!guard.authorized) throw new Error('Native credential target permit required before probe'); return guard; },
+    }, async i => {
+        const r = await read('GET', '/configuration'), connection = r.data.connections.find(c => c.connectionProfileId === i.connectionProfileId);
+        if (!connection || fingerprint(connection) !== i.expectedFingerprint) throw Error('Connection fingerprint conflict');
+        return { target: { connectionProfileId: i.connectionProfileId, endpoint: connection.endpoint, secretRef: connection.secretRef ?? null },
+            serverBootId: r.serverBootId, expectedFingerprint: i.expectedFingerprint };
+    },
     ['Provider network request with exact reviewed SecretRef/target; may incur cost; never automatically retried']);
     add('runtime.resource.revision.create', 'MUTATE', z.strictObject({ resourceType: z.enum(['core.prompt-module', 'core.prompt-program', 'core.generation-profile']), resource: z.record(id, z.json()), expectedCurrentRevision: id.nullable() }),
     async (i, { before }) => bounded('runtime.resource.revision.create', await request('POST', '/resources/revision', i, before)), async i => {
@@ -132,6 +163,14 @@ export function registerRuntimeActions(registry, browser) {
                 serverBootId: r.serverBootId, candidateFingerprint: i.expectedCandidateFingerprint, desiredRouteFingerprint: fingerprint(r.data.desiredRoute),
                 currentApplied: r.data.alreadyApplied };
         }, [`Independent reviewed Native Prompt Candidate ${action} with exact closure and Runtime Route CAS`]);
+    add('runtime.prompt.candidate.discard', 'DESTRUCTIVE', z.strictObject({ presetId: id, candidateId: digest, expectedCandidateFingerprint: digest }),
+        async (i, { before }) => bounded('runtime.prompt.candidate.discard', await request('POST', candidatePath(i, 'discard'), { candidateId: i.candidateId }, before)),
+        async i => {
+            const r = await read('POST', candidatePath(i, 'inspect'));
+            const candidate = r.data.candidates.find(item => item.candidateId === i.candidateId);
+            if (!candidate || fingerprint(candidate) !== i.expectedCandidateFingerprint) throw Error('Prompt candidate fingerprint conflict');
+            return { target: { presetId: i.presetId, candidateId: i.candidateId }, serverBootId: r.serverBootId, candidateFingerprint: i.expectedCandidateFingerprint };
+        }, ['Delete unused candidate revisions under original Runtime Route and Plan reference protection']);
     const { previewRefs: _previewRefs, ...executeFields } = preview.shape;
     const executeSchema = z.strictObject(executeFields).refine(exactSource, 'One exact Session or Project revision required');
     add('runtime.generation.start', 'INTERACT', executeSchema,
@@ -141,14 +180,12 @@ export function registerRuntimeActions(registry, browser) {
             if (!snapshot || !r.data.preview) throw new Error('Native pure generation preview unavailable');
             const config = await read('GET', '/configuration'), connection = config.data.connections.find(c => c.connectionProfileId === snapshot.connectionProfileId);
             if (!connection || config.serverBootId !== r.serverBootId) throw new Error('Native generation configuration changed');
-            const permit = await read('POST', '/connections/credential-target/inspect', { connectionProfileId: connection.connectionProfileId });
-            if (!permit.data.authorized || permit.serverBootId !== r.serverBootId) throw new Error('Exact Native Provider destination permit required');
             const { createdAt: _time, ...stableSnapshot } = snapshot;
             return { target: { source: snapshot.contextPlan.source, runtimeRouteId: snapshot.runtimeRouteId, connectionProfileId: snapshot.connectionProfileId,
-                credentialTarget: permit.data.target }, serverBootId: r.serverBootId, snapshotFingerprint: fingerprint(stableSnapshot),
+                endpoint: connection.endpoint, secretRef: connection.secretRef ?? null }, serverBootId: r.serverBootId, snapshotFingerprint: fingerprint(stableSnapshot),
                 configurationFingerprint: fingerprint({ routes: config.data.routes, models: config.data.models, connections: config.data.connections }),
-                permitFingerprint: permit.data.permitFingerprint, economics: snapshot.diagnostics.executionPlan?.economics ?? null };
-        }, ['Explicit paid Native Provider execution with independent credential target approval; Native budget/usage settlement; no implicit Session commit; unknown responses are never resent']);
+                economics: snapshot.diagnostics.executionPlan?.economics ?? null };
+        }, ['Explicit paid Native Provider execution to the exact original connection destination; Native budget/usage settlement; no implicit Session commit; unknown responses are never resent']);
     for (const action of ['status', 'usage']) add(`runtime.generation.${action}`, 'READ', z.strictObject({ operationId: id }), async i => {
         const r = await request('GET', `/operations/${i.operationId}`);
         if (r.ok && action === 'usage') r.data = { operationId: i.operationId, state: r.data.status, usage: r.data.observation?.usage ?? null,

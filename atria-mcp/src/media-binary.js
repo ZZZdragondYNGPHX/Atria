@@ -70,9 +70,9 @@ export function registerMediaBinaryActions(registry, browser, { call, sessionIde
     const capture = (action, kind, shape, guard = sessionIdentity) => add(action, 'MUTATE', shape, guard, async (input, context) => {
         const request = { kind, clientInstanceId, ...Object.fromEntries(Object.entries(input).filter(([key]) => key !== 'expectedRevisionId')) };
         const response = await call('POST', root + '/visual/binary/describe', request, context.before ?? {}), stage = descriptor.parse(response.data);
-        const expectedPurpose = { image: 'media-image', thumbnail: 'media-thumbnail', mask: 'mask-raster', audio: 'speech-audio' }[kind];
+        const expectedPurpose = { image: 'media-image', thumbnail: 'media-thumbnail', 'authoring-image': 'media-image', 'authoring-thumbnail': 'media-thumbnail', mask: 'mask-raster', audio: 'speech-audio' }[kind];
         if (stage.ref.clientInstanceId !== clientInstanceId || stage.ref.serverBootId !== context.before.serverBootId || stage.ref.purpose !== expectedPurpose
-            || Object.entries(input).some(([key, value]) => ['sessionId', 'branchId', 'imageVersionId', 'draftId', 'operationId'].includes(key) && stage.sourceScope[key] !== value)
+            || Object.entries(input).some(([key, value]) => ['sessionId', 'branchId', 'imageVersionId', 'draftId', 'operationId', 'contentHash'].includes(key) && stage.sourceScope[key] !== value)
             || kind === 'mask' && stage.ref.sourceRevision !== input.expectedRevision) throw new Error('Native media descriptor scope mismatch.');
         const binding = { owner: stage.owner, clientInstanceId, purpose: stage.ref.purpose,
             sourceAuthority: kind === 'mask' ? 'native.mask' : 'native.asset', sourceScope: { ...stage.sourceScope, serverBootId: stage.ref.serverBootId },
@@ -91,6 +91,15 @@ export function registerMediaBinaryActions(registry, browser, { call, sessionIde
     });
     capture('media.image.capture', 'image', image);
     capture('media.thumbnail.capture', 'thumbnail', image);
+    const authoringImage = { operationId: id, imageVersionId: id, contentHash: digest };
+    const authoringGuard = async i => {
+        const response = await call('GET', root + `/illustration-images/${i.operationId}/observation`), value = response.data;
+        if (value.operation.anchor.kind !== 'authoring' || value.operation.status !== 'completed' || value.image?.imageVersionId !== i.imageVersionId
+            || value.image.ref.contentHash !== i.contentHash) throw Error('Exact published authoring image required');
+        return { target: { operationId: i.operationId, imageVersionId: i.imageVersionId }, serverBootId: response.serverBootId, revision: value.revision, contentHash: i.contentHash };
+    };
+    capture('media.authoring.image.capture', 'authoring-image', authoringImage, authoringGuard);
+    capture('media.authoring.thumbnail.capture', 'authoring-thumbnail', authoringImage, authoringGuard);
     capture('media.mask.raster.capture', 'mask', { ...source, draftId: id, expectedRevision: digest });
     capture('speech.audio.capture', 'audio', { operationId: id, expectedRevisionId: id }, async input => {
         const response = await call('POST', root + '/speech/observe', { operationId: input.operationId });

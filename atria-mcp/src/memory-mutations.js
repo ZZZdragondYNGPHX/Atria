@@ -91,9 +91,10 @@ export function registerMemoryMutations(registry, browser) {
         const committed = redact(await bridge(browser, action, i.operation, { graphHash: i.graphHash, target: i.target }));
         if (await current() !== before.serverBootId || browser.documentGeneration !== before.documentGeneration) throw new Error('Browser changed during Memory execution; inspect authority');
         const value = committed.value;
-        return { ok: value?.ok !== false && !value?.error, value, receiptEvidence: { after: value,
-            deleted: action.endsWith('.delete') ? [{ kind: action, ...i.operation }] : [],
-            created: !action.endsWith('.delete') && (value?.id || value?.rollupNodeId) ? [{ kind: 'memory-node', id: value.id ?? value.rollupNodeId }] : [],
+        const ok = value?.ok !== false && !value?.error;
+        return { ok, value, receiptEvidence: { after: value,
+            deleted: ok && action.endsWith('.delete') ? [{ kind: action, ...i.operation }] : [],
+            created: ok && !action.endsWith('.delete') && (value?.id || value?.rollupNodeId) ? [{ kind: 'memory-node', id: value.id ?? value.rollupNodeId }] : [],
             provenance: { documentGeneration: before.documentGeneration, memoryTarget: before.target, observedAfterTarget: committed.afterTarget,
                 experienceEvidence: 'Memory source/branch guard; no Frontend Host Bridge handle or exact Experience Epoch claim' } } };
     }, async i => {

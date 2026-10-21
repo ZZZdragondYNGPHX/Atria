@@ -1,10 +1,16 @@
 {
   "name": "@atria-dev/mcp",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Local MCP bridge for Atria contracts, source-aware API discovery and real browser previews",
   "type": "module",
   "private": true,
   "license": "AGPL-3.0-only",
+  "files": [
+    "src/",
+    "scripts/check.js",
+    "examples/",
+    "README.md"
+  ],
   "engines": {
     "node": ">=22"
   },
@@ -13,10 +19,7 @@
   },
   "scripts": {
     "start": "node src/cli.js",
-    "check": "node scripts/check.js",
-    "test": "node --test test/*.test.js",
-    "test:integration": "node --test test/integration.test.js",
-    "test:atria": "node scripts/verify-atria.js"
+    "check": "node scripts/check.js"
   },
   "dependencies": {
     "@modelcontextprotocol/client": "2.3.1",

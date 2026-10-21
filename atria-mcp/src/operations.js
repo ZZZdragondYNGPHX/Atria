@@ -8,7 +8,7 @@ import { z } from 'zod';
 const exec = promisify(execFile);
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const uuid = z.string().uuid();
-const states = ['queued', 'awaiting_approval', 'ready', 'running', 'reconciling', 'completed', 'failed', 'cancelled', 'stale', 'unknown'];
+const states = ['queued', 'awaiting_approval', 'waiting_native_approval', 'ready', 'running', 'reconciling', 'completed', 'failed', 'cancelled', 'stale', 'unknown'];
 const terminal = new Set(['completed', 'failed', 'cancelled', 'stale', 'unknown']);
 const retired = new Set(['completed', 'failed', 'cancelled', 'stale']);
 const contains = (root, path) => { const rel = relative(root, path); return !rel || (!rel.startsWith('..') && !isAbsolute(rel)); };
@@ -17,6 +17,13 @@ const recordSchema = z.strictObject({ version: z.literal(1), operationId: uuid, 
     inputHash: z.string().regex(/^[a-f0-9]{64}$/), targetHash: z.string().regex(/^[a-f0-9]{64}$/).optional(), serverBootId: z.string().regex(/^[A-Za-z0-9_.:-]{1,256}$/).optional(),
     state: z.enum(states), dispatched: z.boolean(), cancelRequested: z.boolean(), createdAt: z.number(), updatedAt: z.number(),
     receiptId: uuid.optional(), productOperationId: z.string().regex(/^[A-Za-z0-9_.:-]{1,256}$/).optional(),
+    productOperationKind: z.enum(['generation', 'image', 'speech', 'storage']).optional(),
+    hostBootId: z.string().regex(/^[A-Za-z0-9_.:-]{1,256}$/).optional(),
+    commandId: z.string().regex(/^ocmd_[a-f0-9]{32}$/).optional(),
+    runId: z.string().regex(/^orun_[a-f0-9]{32}$/).optional(),
+    effectId: z.string().regex(/^oeffect_[a-f0-9]{32}$/).optional(),
+    approvalId: z.string().regex(/^oapproval_[a-f0-9]{32}$/).optional(),
+    domainTarget: z.strictObject({ projectId: z.string().regex(/^project_[a-f0-9]{32}$/), taskId: z.string().regex(/^[A-Za-z0-9_.:-]{1,256}$/) }).optional(),
     reconciliation: z.enum(['not-dispatched', 'owning-authority-required', 'native-response-observed']).optional() });
 
 // No input/output bodies, credentials, mutable business state or reusable approvals are stored.
@@ -121,7 +128,9 @@ export class Operations {
         const controller = new AbortController(), operationId = randomUUID();
         const onAbort = () => controller.abort(signal.reason);
         signal?.addEventListener('abort', onAbort, { once: true }); if (signal?.aborted) onAbort();
-        this.active.set(operationId, { controller, cleanup: () => signal?.removeEventListener('abort', onAbort) });
+        let finish;
+        const finished = new Promise(resolve => { finish = resolve; });
+        this.active.set(operationId, { controller, finished, finish, cleanup: () => signal?.removeEventListener('abort', onAbort) });
         const record = { version: 1, operationId, instanceId: this.instanceId, ownerHash: this.journal?.ownerHash ?? digest(this.instanceId),
             action, risk, inputHash, state: 'queued', dispatched: false, cancelRequested: false, createdAt: this.now(), updatedAt: this.now() };
         try { await this.journal?.put(record); this.records.set(operationId, record); } catch (error) { this.release(operationId); throw error; }
@@ -131,7 +140,13 @@ export class Operations {
         const record = recordSchema.parse({ ...this.records.get(id), ...patch, updatedAt: this.now() });
         await this.journal?.put(record); this.records.set(id, record); return structuredClone(record);
     }
-    get(id) { const item = this.records.get(id); if (!item) throw Error('Unknown owned operation'); return structuredClone(item); }
+    get(id) { const item = this.records.get(id); if (!item) throw Error('Unknown owned operation'); return { ...structuredClone(item), ...(this.active.get(id)?.notice ? { notice: structuredClone(this.active.get(id).notice) } : {}) }; }
+    publish(id, notice) {
+        const active = this.active.get(id);
+        if (!active) throw Error('Operation is not active in this instance');
+        // Ephemeral short-lived Review navigation is deliberately never journaled.
+        active.notice = structuredClone(notice);
+    }
     list({ offset = 0, limit = 30 } = {}) {
         const rows = [...this.records.values()].sort((a, b) => b.createdAt - a.createdAt);
         return { total: rows.length, operations: rows.slice(offset, offset + limit).map(item => structuredClone(item)) };
@@ -143,8 +158,13 @@ export class Operations {
         await this.update(id, { cancelRequested: true });
         return { ...this.get(id), cancellation: record.dispatched ? 'requested-remote-result-unconfirmed' : 'requested-before-dispatch' };
     }
-    release(id) { const active = this.active.get(id); active?.cleanup(); this.active.delete(id); }
-    async close() { for (const id of this.active.keys()) await this.cancel(id); await this.journal?.close(); }
+    release(id) { const active = this.active.get(id); active?.cleanup(); active?.finish(); this.active.delete(id); }
+    async close() {
+        const pending = [...this.active.values()].map(active => active.finished);
+        for (const id of this.active.keys()) await this.cancel(id);
+        await Promise.allSettled(pending);
+        await this.journal?.close();
+    }
 }
 
 export function registerOperationActions(registry, operations, scheduler, { observeProduct = null } = {}) {
@@ -155,7 +175,7 @@ export function registerOperationActions(registry, operations, scheduler, { obse
     registry.register(descriptor('operation.get', 'READ'), z.strictObject({ operationId: uuid }), z.json(), i => operations.get(i.operationId));
     registry.register(descriptor('operation.reconcile', 'READ'), z.strictObject({ operationId: uuid }), z.json(), async i => {
         const record = operations.get(i.operationId);
-        const native = record.productOperationId && observeProduct ? await observeProduct(record) : null;
+        const native = (record.productOperationId || record.runId || record.commandId) && observeProduct ? await observeProduct(record) : null;
         return { operation: record, native, automaticReplay: false,
             recovery: 'Native results own business completion; this read neither retries nor resumes effects.' };
     });

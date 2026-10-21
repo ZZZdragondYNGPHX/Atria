@@ -1,4 +1,4 @@
-# Atria MCP 0.3.0
+# Atria MCP 0.4.0
 
 独立 stdio 开发工具，位于 `plugin:atria-mcp/`。提供广泛观察与显式批准的产品操作。默认 READ；
 
@@ -47,6 +47,7 @@ node /absolute/path/to/plugin-worktree/atria-mcp/src/cli.js --repo /absolute/pat
 | `atri_read` | READ semantic executor |
 | `atri_interact` | INTERACT executor，可信批准的 evaluation / Preview / simulation / generation stop |
 | `atri_mutate` | MUTATE executor，可信批准的非破坏性语义操作 |
+| `atri_destructive` | 一次性可信批准的永久清除或破坏性语义操作 |
 
 Registry 覆盖 Session/Chat、Build/Studio、Library、Work/Package、Memory、Agents、Settings、Connections/Models/Routes、Diagnostics 和 browser-owned game projections。用 `atri_capabilities` 按 domain/query 搜索，再取精确 action schema；executor risk 必须完全匹配。Policy Ceiling 固定 action-ID 快照，不给未来 action 自动授权。
 
@@ -58,22 +59,45 @@ Registry 覆盖 Session/Chat、Build/Studio、Library、Work/Package、Memory、
 {"version":1,"actionIds":["build.frontend.evaluate","build.change.apply","build.preview.close"]}
 ```
 
-客户端必须实际协商可信审批：2025-06-18 / 2025-11-25 使用 **form elicitation**，2026-07-28 使用 **MRTR**；请求经过官方 SDK 适配，并绑定单次 HMAC continuation。工具参数中的布尔值不算审批。不支持该通道时保持写入关闭，不依据客户端名称推断审批能力。仅客户端返回 `accept` 且用户勾选授权才 mint Lease。实际 Codex 0.162.1 的 app-server 连接协商为 2025-06-18；
+客户端必须实际协商可信审批：2025-06-18 / 2025-11-25 使用 **form elicitation**，2026-07-28 使用 **MRTR**；请求经过官方 SDK 适配，并绑定单次 HMAC continuation。工具参数中的布尔值不算审批。不支持该通道时保持写入关闭，不依据客户端名称推断审批能力。仅客户端返回 `accept` 且用户勾选授权才 mint Lease；实际协议与能力以 `atri_status` 的本次协商结果为准。
 
-Lease 绑定当前 MCP instance、精确 action、规范化输入、目标和 `serverBootId`，用户可选择 1–20 次，五分钟失效；默认为一次。调用方只可回传 opaque `leaseId`，不能写 grants、scope 或 expiry。没有跨 action/domain 的宽泛授权；重启清空 Lease/Receipt。产品需报告 `mutationGuards: 1`；
+Lease 绑定当前 MCP instance、精确 action、规范化输入和完整 authority guard（包括目标与适用的 server / Host fence），用户可选择 1–20 次，五分钟失效；默认为一次。调用方只可回传 opaque `leaseId`，不能写 grants、scope 或 expiry。没有跨 action/domain 的宽泛授权；重启清空 Lease/Receipt。产品需报告 `mutationGuards: 1`。
 
 - Build：`build.change.prepare/inspect` 为 READ。`build.change.apply` 必须携带同实例有效 evaluation receipt；支持正式 `frontend.patch`、受限 source fallback 与 resource attach/fork/update。`build.preview.create/close` 和 `build.simulate` 使用现有 Studio authority；simulation 为隔离 recorded/mock runner。
 - Session：`session.rename`、`session.save/quick`、`session.restore` 与 `chat.branch.switch/rename/archive` 复用原生存档和分支权威。Restore 从精确 SavePoint 创建新 Branch，原历史完整保留；分支元数据及 `session.save.policy.update` 同时钉住 HEAD 与原生 metadata fingerprint，防止同一 HEAD 上的并发覆盖。六个原 Native Router 不支持的 fork/retry、restart/remove-from-active、regenerate/reenter 动作已退役，不提供旧楼层物理改写旁路。
 - `chat.send` 要求调用方预先生成稳定 `commitId` 和 `invocationId`。无法确认的输入保持 `unknown`。Generation 响应丢失保留已提交输入和 `generation.unknown`。返回 operationId 后通过 `generation.status/stop` 查询/停止；admitted 不代表生成完成，Stop 不回滚已提交消息，不自动重发收费请求。GenerationProjection 不属于 committed Timeline。
 - `runtime.context.preview` 复用原生 Context Compiler。
-- Archive：`session.archive.export/capture` → `inspect/preflight` → 独立批准 `import`，使用专用 `session-archive` Binary Asset purpose 和 `.atriasave` 原格式。读取开发文件仍受 RepositoryAccessPolicy 限制；普通工具结果只含元数据；Archive 不可当作 Package 安装。加密归档可做依赖预检，但 MCP 没有可信密码解锁 Port，必须使用原生 UI，不接受模型可见明文密码。
+- Archive：`session.archive.export/capture` → `inspect/preflight` → 独立批准 `import`，使用专用 `session-archive` Binary Asset purpose 和 `.atriasave` 原格式。专用 password SecretRef 只在产品内解析；不接受密码明文。预检包括依赖、已有 Session、原生 resume 条件，最终仍验证完整 payload；`cancel` 只清临时 staging，不撤销已导入的数据。
 - Project Agent：`agent.project.generation.preflight/start/status/cancel` 复用 Goal Continuation 的同一 Studio runner 与 Native Generation Host；Task 原预算记录实际 usage，取消不代表退款；固定 route 必须禁用自动 retry/fallback。模型只产生提案并停在 Review，正式 Commit 仍需独立审批。
 - Settings：仅明确列出的普通 UI scalar settings，现有值 test + replace，不开放根替换或 Agent/Memory/credentials 配置路径。
 - 仅 opaque Secret refs，无凭据值。
 - Library：World/Knowledge 新 immutable revision；Work start 要求 exact PackageVersion/EntryPoint。
 - Memory：先 `memory.mutation.inspect` 获得 loaded graph fingerprint/target，再批准 create/edit/relation upsert/compact。无任意方法/JS/batch dispatch；缺少 loaded scope 拒绝执行。该证据属于 Memory source/branch，不证明 Frontend Epoch exactness。
 
-源/runtime 不一致可被明确审阅，Receipt 保留独立身份而不冒充匹配。结果包含 ephemeral Receipt：`succeeded`、`rejected` 或 `indeterminate`。最后一种表示超时、输出或传输错误可能发生在写入之后，必须先观察产品，不能自动重试。支持 one-shot DESTRUCTIVE、独立 Package review/install、Project Agent Review/Commit 和受限 Agent delegation。通用浏览器 click/fill/press/select 仍拒绝，避免绕过语义风险。
+源/runtime 不一致可被明确审阅，Receipt 保留独立身份而不冒充匹配。结果包含 ephemeral Receipt：`succeeded`、`rejected` 或 `indeterminate`。最后一种表示超时、输出或传输错误可能发生在写入之后，必须先观察产品，不能自动重试。支持 one-shot DESTRUCTIVE、独立 Package review/install、直接 Project Agent Review/Commit 和 Native V3 工作流。通用浏览器 click/fill/press/select 仍拒绝，避免绕过语义风险。
+
+## 当前 Native V3 与领域工作流
+
+仅支持当前产品合同；旧 browser Orchestrator delegated-node、workspace evolution target、credential-target permit 和 orch-preset scope 已退役。旧 action 在 Policy Ceiling 加载时明确拒绝，不提供猜测式别名。
+
+| 能力 | 固定入口及结果边界 |
+| --- | --- |
+| Plan / Binding | `orchestration.plan.*`、`dependency.inspect`、`binding.*`；精确 draft CAS、validation digest、immutable planRef；发布和绑定均不执行 |
+| Run / Effect | `orchestration.run.*`、`tool.*`；cancel/recover/reconcile 分开；恢复不重发，cursor 按原生 resync；正文遵守原 audience 权威 |
+| 原域执行 | `orchestration.rp.source.bind/preflight/start`、`orchestration.session.send` 与 `agent.project.generation.*`；显式 V3 Session 无 Binding 拒绝，普通 `chat.send` 保留无绑定原始执行 |
+| 原生正式提交 | `orchestration.project.commit.preflight/commit/observe` 与 `.resume`；当前仅支持原生允许的单个 project.save 文本变更；任意直接 Workspace Apply 仍是独立入口 |
+| Runtime / Prompt | `runtime.api.preset.save` 原子发布；`runtime.prompt.draft.preview` 零发送；`runtime.authoring.try/observe` 收费但 unpublished；沿原 operation 查询/取消，候选 discard 保留引用保护 |
+| World / 认知 | `build.preview.world` 为初始化前合成视角；`session.cognition.*` 区分玩家披露和原作者 inspection；`session.hypothetical.*` 受控本地计算且不发布 |
+| Memory / 学习 | Graph 与声明 Lifecycle App Command 分开；acquired 内容和 received 版本不可伪造；`plan-prompt/plan-strategy` 目标钉住 Binding 与 Plan；prediction/comparison 为 advisory，保留 abstain/not_measurable |
+| Storage | `storage.snapshot/detail` → 每种 action 的 `.preview` → `.execute` → `task/tasks/stop`；preview 持久化；trash 保留 30 天，restore 同 identity 且暂停外部效果，purge 可在保留期内永久清除；repair 也可能继续 purge |
+| 作者图像 | `media.authoring.prepare/start/gallery/archive`；仅 raw txt2img；原 image job 观察/恢复/取消；`media.authoring.image/thumbnail.capture` 绑定 owner、operation、imageVersion、hash 和 boot |
+| Skills / Extensions | bundled preflight/import；embed pack/capture → preflight → extract/cancel，完整文件使用独立用途 staging，逐项结果保留 partial；Native invocation 范围与资产 scope 分开；Extension settings/official illustration 使用原 revision CAS |
+
+原生 `requiresApproval` 决定是否需要真人 Review。MCP 授权、技术 preflight/hash、模型图 review 与独立 Review Origin 的真人决定不互相替代。`serverBootId` 标识 HTTP 进程，`hostBootId` 是 Native writer fence；Run epoch/stateVersion/graphRevision 继续由原生检查。
+
+一次 `orchestration.project.commit` 授权覆盖已披露的准备和一次精确 dispatch。建议带 `background:true`，再用 `operation.get` 获取当次短期 Review 链接，在 Atria Host 设备上的独立浏览器页面完成原账户认证。等待时释放 mutation lane 和目标锁；原生批准后，在同一 MCP 实例、五分钟以内及业务绑定未变化时自动续接。过期、重启、拒绝或源变化不能续接；未知 dispatch 只观察。`.resume` 仅允许原生 controls 明确支持的 ready / unclaimed Effect，并重新走原生 Review。V3 拒绝不会切换为直接 Commit。
+
+Journal 只保存 owner 与 input/target 摘要、command/Run/Effect/approval/operation/Receipt 关联；不保存业务正文、短期 Review URL、认证材料或可复用授权。`orchestration.command.get` 仅查询原 owner 可见的受控结果元数据，不重放命令。
 
 例如 `atri_read(action="build.frontend.inspect", input={projectId,baseRevision})` 复用正式 Source Graph；`chat.read` 读取不可变 Timeline；`build.preview.get` 读取已有 Preview，绝不创建 Preview。`atri_diagnose_snapshot` 合并独立诊断读取，逐项保留 unavailable/HTTP permission status 和各自 boot/time；不是原子快照。
 
@@ -126,8 +150,4 @@ SDK 依赖精确固定 2.3.1，支持两代 stdio 协议。可选 Tasks 扩展�
 
 `confirm` 字段、`--allow-writes`、`ATRIA_ALLOW_WRITES` 已删除，旧输入拒绝。通用 API 不接受 method/body，不允许 POST/PUT/PATCH/DELETE。真实产品写操作只能经过语义执行器与可信授权；不能通过点击绕过。
 
-# 未安装 bundled Chromium 时可选本机浏览器
-# 可选：独立 fresh dataRoot 产品观察 smoke
-$env:ATRIA_REPO = '<product-checkout>'
-# 可选，要求干净的独立 checkout：临时追加 package.json 换行后恢复，启动后源码变化
-# 可选：另一干净产品 checkout，不同 revision
+`npm run check` 只检查交付 JavaScript 的语法，不依赖本地测试目录。原 smoke / UI / client 验证脚本迁入本地忽略的 `test/`，不再发布引用未交付测试的 npm scripts。实际领域、后端、浏览器和客户端验证的范围及限制以本任务 Record 为准；测试实现和专用资产按仓库规则仅在本地保存。

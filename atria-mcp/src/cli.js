@@ -21,7 +21,7 @@ async function stop() {
 try {
     const config = loadConfig();
     if (config.help) process.stdout.write(HELP);
-    else if (config.version) process.stdout.write('0.3.0\n');
+    else if (config.version) process.stdout.write('0.4.0\n');
     else {
         process.once('SIGINT', () => { void stop().finally(() => process.exit(0)); });
         process.once('SIGTERM', () => { void stop().finally(() => process.exit(0)); });

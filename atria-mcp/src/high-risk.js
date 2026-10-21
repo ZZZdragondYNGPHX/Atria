@@ -161,7 +161,7 @@ export function registerHighRiskActions(registry, browser, repository, artifacts
         const before = await guard(i);
         return { ...before, ...(cleanup ? { ownership: ownership(i, c, kind, i[key], before.serverBootId, before.baseRevision ?? before.expectedRevisionId) } : {}) };
     }, async (i, { before }) => result(await call('DELETE', path(i), body(i), before), {
-        deleted: [{ kind, id: i[key] }], recovery: 'Physical deletion; no automatic undo or retry.' }));
+        changed: [{ kind, id: i[key], lifecycle: 'trashed' }], recovery: 'Inspect the original Storage Center recovery/task receipt. Eligible content is retained for 30 days; restore uses the original identity and dependency checks. Never automatically retry unknown deletion.' }));
 
     add('work.delete', 'DESTRUCTIVE', { packageId: id, baseVersionId: id }, async i => {
         const r = await read('GET', `${product}/works/${i.packageId}`);
@@ -170,7 +170,9 @@ export function registerHighRiskActions(registry, browser, repository, artifacts
         if (r.data.package.currentVersionId !== i.baseVersionId) throw new Error('Work version conflict.');
         if (!Array.isArray(sessions.data) || sessions.data.length) throw new Error('Work has dependent Sessions; resolve each through explicit Session authority.');
         return { target: { packageId: i.packageId }, serverBootId: r.serverBootId, baseVersionId: i.baseVersionId, dependentSessions: [] };
-    }, async (i, { before }) => result(await call('DELETE', `${product}/works/${i.packageId}`, { baseVersionId: i.baseVersionId }, before), { deleted: [{ kind: 'work', id: i.packageId }] }));
+    }, async (i, { before }) => result(await call('DELETE', `${product}/works/${i.packageId}`, { baseVersionId: i.baseVersionId }, before), {
+        changed: [{ kind: 'work', id: i.packageId, lifecycle: 'trashed' }],
+        recovery: 'Original Storage Center recovery retains eligible Work content for 30 days. Inspect dependencies and recovery identity before restore or separate permanent purge.' }));
 
     add('library.revision.delete', 'DESTRUCTIVE', { ref }, async i => {
         const r = await read('POST', `${studio}/resources/delete-safety`, i.ref);

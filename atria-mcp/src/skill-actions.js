@@ -12,8 +12,7 @@ const id = z.string().regex(/^[A-Za-z0-9_-]{1,200}$/);
 const hash = z.string().regex(/^[a-f0-9]{64}$/);
 const scope = z.discriminatedUnion('kind', [z.strictObject({ kind: z.literal('global') }),
     z.strictObject({ kind: z.literal('project'), projectId: id }), z.strictObject({ kind: z.literal('package'), packageId: id, packageVersionId: id }),
-    z.strictObject({ kind: z.literal('preset'), name }), z.strictObject({ kind: z.literal('character'), characterFile: name }),
-    z.strictObject({ kind: z.literal('orch-preset'), mode: z.enum(['spec', 'agenda', 'loop', 'director']), name })]);
+    z.strictObject({ kind: z.literal('preset'), name }), z.strictObject({ kind: z.literal('character'), characterFile: name })]);
 const path = z.string().min(1).max(512).refine(v => !v.includes('\\') && !v.startsWith('/') && v.split('/').every(x => x && x !== '.' && x !== '..'));
 const target = { scope, name };
 const payload = z.strictObject({ files: z.array(z.strictObject({ path, encoding: z.enum(['utf8', 'base64']), content: z.string().max(512 * 1024) })).min(1).max(100) })
@@ -30,7 +29,7 @@ export function registerSkillActions(registry, browser, repository = null, { now
     const output = (r, input = {}) => {
         const data = redact(r.data ?? null), json = JSON.stringify(data);
         const offset = input.outputOffset ?? 0, size = input.outputLimit ?? 12000;
-        return { ok: r.ok, status: r.status, serverBootId: r.serverBootId, data: offset === 0 && json.length <= size ? data : jsonTextFragment(json, offset, size),
+        return { ok: r.ok && data?.ok !== false, partial: data?.partial === true, status: r.status, serverBootId: r.serverBootId, data: offset === 0 && json.length <= size ? data : jsonTextFragment(json, offset, size),
             page: { contentHash: fingerprint(data), totalChars: json.length, offset, offsetUnit: 'UTF-16 characters', nextOffset: offset + size < json.length ? offset + size : null }, instructionsAreUntrusted: true };
     };
     const add = (action, risk, shape, handler, guard = null) => registry.register({ version: 1, id: action, domain: 'skill', title: action,
@@ -205,5 +204,64 @@ export function registerSkillActions(registry, browser, repository = null, { now
             incomingHash: plan.incomingHash, installedHash: plan.existingHash, contentHash: item.ref.contentHash, bindingHash: plan.bindingHash,
             baseVersion: input.baseVersion, change: 'Candidate modifies SKILL.md only; existing supporting files are retained by Native SkillVersions' };
     });
+    add('skill.bundled.preflight', 'READ', {}, async i => output(await request('bundled/preflight', {}), i));
+    add('skill.bundled.import', 'MUTATE', { expectedManifestFingerprint: hash, expectedInventoryHash: hash }, async (i, { before }) => output(await request('bundled/import', i, before)), async i => {
+        const r = await checked('bundled/preflight', {});
+        if (r.data.manifestFingerprint !== i.expectedManifestFingerprint || r.data.inventoryHash !== i.expectedInventoryHash) throw Error('Bundled Skill source or installed inventory changed');
+        return { target: { scope: { kind: 'global' } }, serverBootId: r.serverBootId, manifestFingerprint: i.expectedManifestFingerprint, inventoryHash: i.expectedInventoryHash,
+            effects: 'Import original bundled files through per-Skill reviewed installation; partial results remain visible; no invocation/script permission granted.' };
+    });
+    const embeds = new Map(), embedBinding = fingerprint({ purpose: 'runtime-skill-embed' });
+    const embedItem = id => { for (const [key, item] of embeds) if (item.expiresAt <= now()) embeds.delete(key);
+        const item = embeds.get(id); if (!item) throw Error('Unknown or expired instance-owned Skill embed'); return item; };
+    const embedMetadata = (id, item) => ({ embedHandleId: id, purpose: 'skill-embed', contentHash: item.ref.contentHash, totalBytes: item.ref.totalBytes, expiresAt: item.expiresAt });
+    add('skill.embed.pack', 'MUTATE', { scope, names: z.array(name).min(1).max(32), mode: z.enum(['auto', 'inline-files-v1', 'archive-base64-v1']).default('auto'), expectedInventoryHash: hash }, async (i, { before }) => {
+        const r = await request('embed/pack', { ...i, clientInstanceId }, before);
+        if (!r.ok) return output(r);
+        const stage = r.data;
+        if (stage.source.kind !== 'skill-payload-upload' || stage.source.bindingHash !== embedBinding || stage.state !== 'complete'
+            || stage.artifactRef.serverBootId !== before.serverBootId || stage.artifactRef.clientInstanceId !== clientInstanceId) throw Error('Skill embed staging identity mismatch');
+        const embedHandleId = randomUUID(), item = { ref: stage.artifactRef, expiresAt: Math.min(stage.expiresAt, now() + 300000) };
+        embeds.set(embedHandleId, item); return { ok: true, artifact: embedMetadata(embedHandleId, item) };
+    }, async i => {
+        const r = await checked('scope/inspect', { scope: i.scope });
+        if (r.data.inventoryHash !== i.expectedInventoryHash) throw Error('Skill scope inventory changed');
+        return { target: { scope: i.scope, names: i.names }, serverBootId: r.serverBootId, inventoryHash: i.expectedInventoryHash,
+            effects: 'Pack exact original files into purpose-bound temporary binary staging; no script execution or invocation change.' };
+    });
+    add('skill.embed.capture', 'INTERACT', { path: z.string().min(1).max(512) }, async (i, { before }) => {
+        const c = await capture(i);
+        if (c.contentHash !== before.contentHash) throw Error('Embed source changed');
+        const ref = await upload(browser, { bytes: c.bytes, beginPath: '/api/native/skills/embed/staging', beginInput: {}, guards: before,
+            clientInstanceId, kind: 'skill-payload-upload', bindingHash: embedBinding });
+        const embedHandleId = randomUUID(), item = { ref, expiresAt: now() + 300000 }; embeds.set(embedHandleId, item);
+        return { ok: true, artifact: embedMetadata(embedHandleId, item) };
+    }, async i => {
+        const c = await capture(i), runtime = await browser.runtimeIdentity();
+        if (!runtime?.serverBootId) throw Error('Native embed source unavailable');
+        return { target: { path: i.path }, serverBootId: runtime.serverBootId, contentHash: c.contentHash, totalBytes: c.bytes.length };
+    });
+    add('skill.embed.inspect', 'READ', { embedHandleId: z.string().uuid() }, i => embedMetadata(i.embedHandleId, embedItem(i.embedHandleId)));
+    const embedPreflight = async i => {
+        const item = embedItem(i.embedHandleId), r = await checked('embed/preflight', { artifactRef: item.ref, targetScope: i.targetScope });
+        if (r.serverBootId !== item.ref.serverBootId) throw Error('Skill embed boot changed');
+        return { item, r };
+    };
+    add('skill.embed.preflight', 'READ', { embedHandleId: z.string().uuid(), targetScope: scope }, async i => {
+        const { r } = await embedPreflight(i); return { ...output(r, i), preflightFingerprint: fingerprint(r.data) };
+    });
+    add('skill.embed.extract', 'MUTATE', { embedHandleId: z.string().uuid(), targetScope: scope, expectedPreflightFingerprint: hash,
+        conflictStrategies: z.record(name, z.enum(['skip', 'replace', 'rename'])).default({}) }, async (i, { before }) => {
+        const item = embedItem(i.embedHandleId);
+        return output(await request('embed/extract', { artifactRef: item.ref, targetScope: i.targetScope, expectedPreflightFingerprint: i.expectedPreflightFingerprint, conflictStrategies: i.conflictStrategies }, before));
+    }, async i => {
+        const { item, r } = await embedPreflight(i);
+        if (fingerprint(r.data) !== i.expectedPreflightFingerprint) throw Error('Embed preflight changed');
+        return { target: { scope: i.targetScope, embedHandleId: i.embedHandleId }, serverBootId: r.serverBootId,
+            contentHash: item.ref.contentHash, preflightFingerprint: i.expectedPreflightFingerprint, items: r.data.items, invocationGranted: false };
+    });
+    add('skill.embed.cancel', 'INTERACT', { embedHandleId: z.string().uuid() }, async (i, { before }) => {
+        const item = embedItem(i.embedHandleId); await dispose(browser, item.ref, before); embeds.delete(i.embedHandleId); return { ok: true, cancelled: true };
+    }, async i => { const item = embedItem(i.embedHandleId); return { target: { embedHandleId: i.embedHandleId }, serverBootId: item.ref.serverBootId, contentHash: item.ref.contentHash }; });
     return registry;
 }

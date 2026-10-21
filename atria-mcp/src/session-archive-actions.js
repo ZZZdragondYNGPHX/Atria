@@ -96,6 +96,15 @@ export function registerSessionArchiveActions(registry, browser, repository, { n
         return { ok: true, artifact, receiptEvidence: { after: artifact } };
     }, ['approved-development-artifact-read', 'temporary-native-binary-staging']);
     add('inspect', 'READ', { binaryHandleId: z.string().uuid() }, null, async input => metadata(item(input.binaryHandleId)));
+    add('cancel', 'INTERACT', { binaryHandleId: z.string().uuid() }, async input => {
+        const value = item(input.binaryHandleId);
+        return { target: { artifactId: value.nativeRef.artifactId }, serverBootId: value.nativeRef.serverBootId, contentHash: value.contentHash };
+    }, async (input, { before }) => {
+        const value = item(input.binaryHandleId);
+        const response = await call('DELETE', '/artifacts/' + value.nativeRef.artifactId, { artifactRef: value.nativeRef }, before);
+        if (response.ok) { binary.cancel(value.handleId, { binding: value.binding }); items.delete(value.handleId); }
+        return { ...redact(response), recovery: 'Cancels temporary archive material only; already imported Session data remains owned by its original authority.' };
+    }, ['remove-only-owned-temporary-archive-staging']);
     const preflight = async input => { const value = item(input.binaryHandleId); const result = await read('POST', '/save-archives/preflight', { artifactRef: value.nativeRef });
         if (result.serverBootId !== value.nativeRef.serverBootId) throw new Error('Session Archive boot changed.'); return { result, value }; };
     add('preflight', 'READ', { binaryHandleId: z.string().uuid() }, null, async input => {
@@ -104,7 +113,7 @@ export function registerSessionArchiveActions(registry, browser, repository, { n
     add('import', 'MUTATE', { binaryHandleId: z.string().uuid(), expectedPreflightFingerprint: digest, passwordSecretRef: passwordSecretRef.optional() }, async input => {
         if ((await browser.runtimeIdentity())?.mutationGuards !== 1) throw new Error('Product mutation guards unavailable.');
         const { result, value } = await preflight(input);
-        if (fingerprint(result.data) !== input.expectedPreflightFingerprint || result.data.preflight.dependency.status !== 'ready') throw new Error('Session Archive dependency or target changed.');
+        if (fingerprint(result.data) !== input.expectedPreflightFingerprint || result.data.preflight.dependency.status !== 'ready' || result.data.importability.status === 'blocked') throw new Error('Session Archive dependency or target changed.');
         if (result.data.preflight.protection.requiresPassword && !input.passwordSecretRef) throw new Error('Encrypted Session Archive requires a dedicated Native password SecretRef.');
         if (!result.data.preflight.protection.requiresPassword && input.passwordSecretRef) throw new Error('Unencrypted Session Archive does not accept a password SecretRef.');
         return { target: { sessionId: result.data.preflight.root.sessionId }, serverBootId: result.serverBootId, contentHash: value.contentHash,

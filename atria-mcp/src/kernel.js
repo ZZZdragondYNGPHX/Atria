@@ -5,6 +5,21 @@ import { LaneScheduler } from './scheduler.js';
 import { Operations } from './operations.js';
 export const RISKS = Object.freeze(['READ', 'INTERACT', 'MUTATE', 'DESTRUCTIVE']);
 export const PUBLIC_TOOLS = Object.freeze(['atri_status', 'atri_capabilities', 'atri_reference', 'atri_repo', 'atri_git', 'atri_artifact', 'atri_api', 'atri_diagnose_snapshot', 'atri_browser_open', 'atri_browser_observe', 'atri_browser_screenshot', 'atri_browser_interact', 'atri_browser_diagnostics', 'atri_browser_close', 'atri_read', 'atri_interact', 'atri_mutate', 'atri_destructive']);
+export const RETIRED_ACTIONS = Object.freeze({
+    'agent.delegation.inspect': 'Use orchestration.plan and orchestration.binding with original domain preflight.',
+    'agent.run.start': 'Use explicit Native Session/RP/Project generation; browser delegated nodes are retired.',
+    'agents.run.get': 'Use orchestration.run.observe.',
+    'agents.checkpoints': 'Use orchestration.run.details.',
+    'agents.binding': 'Use orchestration.binding.get.',
+    'agents.tools': 'Use orchestration.dependency.inspect for exact Native Tool dependencies.',
+    'agents.presets.list': 'Use orchestration.plan.list.',
+    'agents.presets.persisted': 'Use orchestration.plan.list.',
+    'agents.bindings.persisted': 'Use orchestration.binding.get.',
+    'runtime.connection.target.inspect': 'Credential destinations are checked by the original connection authority.',
+    'runtime.connection.target.authorize': 'Credential destinations are checked by the original connection authority.',
+});
+const controlActions = new Set(['operation.cancel', 'generation.stop', 'runtime.generation.stop', 'agent.project.generation.cancel',
+    'orchestration.run.cancel', 'orchestration.run.recover', 'orchestration.run.reconcile', 'storage.stop', 'media.image.cancel', 'speech.cancel']);
 const descriptorSchema = z.strictObject({
     version: z.literal(1), id: z.string().regex(/^[a-z][a-z0-9]*(?:\.[a-z][a-z0-9]*)+$/),
     domain: z.string().min(1), title: z.string().min(1), risk: z.enum(RISKS),
@@ -23,7 +38,7 @@ export class ActionRegistry {
         this.#actions.set(parsed.id, { detail: structuredClone(detail), inputSchema, outputSchema, handler, guard, reviewInput });
         return this;
     }
-    get(id) { const item = this.#actions.get(id); if (!item) throw new Error('Unknown semantic action.'); return { ...item, detail: structuredClone(item.detail) }; }
+    get(id) { const item = this.#actions.get(id); if (!item) throw new Error(RETIRED_ACTIONS[id] ? 'Retired semantic action: ' + id + '. ' + RETIRED_ACTIONS[id] : 'Unknown semantic action: ' + id); return { ...item, detail: structuredClone(item.detail) }; }
     discover({ action, query = '', domain, risk, offset = 0, limit = 50 } = {}) {
         if (action) return this.get(action).detail;
         const words = query.toLowerCase().split(/\s+/).filter(Boolean);
@@ -82,10 +97,15 @@ export class RiskExecutor {
             try {
                 const result = await this.#execute(risk, args, { ...context, signal: op.signal, operationId: op.operationId,
                     onReady: () => admitted({ operationId: op.operationId, state: 'ready' }) });
-                const nativeId = result.result?.data?.operationId ?? result.result?.receiptEvidence?.after?.generation?.operationId;
+                const nativeId = result.result?.data?.operationId ?? result.result?.receiptEvidence?.after?.generation?.operationId
+                    ?? (args.action.startsWith('storage.') && args.action.endsWith('.execute') ? result.result?.data?.id : null);
                 const productOperationId = typeof nativeId === 'string' && /^[A-Za-z0-9_.:-]{1,256}$/.test(nativeId) ? nativeId : null;
-                const state = result.receipt?.status === 'succeeded' ? (productOperationId ? 'reconciling' : 'completed') : result.receipt?.status === 'indeterminate' ? 'unknown' : 'failed';
-                await this.operations.update(op.operationId, { state, receiptId: result.receipt?.receiptId, ...(productOperationId ? { productOperationId } : {}), reconciliation: state === 'unknown' ? 'owning-authority-required' : 'native-response-observed' });
+                const productOperationKind = args.action.startsWith('storage.') ? 'storage' : args.action.startsWith('speech.') ? 'speech'
+                    : /^imgjob_/.test(nativeId ?? '') ? 'image' : 'generation';
+                const nativeRun = this.operations.get(op.operationId).runId;
+                const nativeStatus = result.result?.data?.status ?? result.result?.data?.outcome?.status;
+                const state = result.receipt?.status === 'succeeded' ? (productOperationId || nativeRun && nativeStatus !== 'completed' ? 'reconciling' : 'completed') : result.receipt?.status === 'indeterminate' ? 'unknown' : 'failed';
+                await this.operations.update(op.operationId, { state, receiptId: result.receipt?.receiptId, ...(productOperationId ? { productOperationId, productOperationKind } : {}), reconciliation: state === 'unknown' ? 'owning-authority-required' : 'native-response-observed' });
                 return { ...result, operationId: op.operationId };
             } catch (error) {
                 const record = this.operations.get(op.operationId);
@@ -115,27 +135,22 @@ export class RiskExecutor {
         if (!item.guard || !d.guards.length) throw new Error('Missing authority guards.');
         const startedAt = new Date(this.now()).toISOString();
         const executionReceiptId = randomUUID();
-        if (action === 'agent.run.start') for (const op of parsed.operations) {
-            const child = this.registry.get(op.action);
-            if (!this.ceiling.allows(op.action) || child.detail.risk !== 'MUTATE') throw new Error('Delegated action exceeds Policy Ceiling');
-            child.inputSchema.parse(op.input);
-        }
         const before = await item.guard(parsed, { receipts: this.receipts });
         const provenance = await this.provenance();
         if (context.operationId) await this.operations.update(context.operationId, { targetHash: fingerprint(before.target),
             ...(before.serverBootId ? { serverBootId: before.serverBootId } : {}), state: 'awaiting_approval' });
         if (JSON.stringify(redact({ before, provenance })).length > 12000) throw new Error('Guard evidence exceeds receipt bound; narrow target.');
-        const binding = fingerprint({ action, risk, input: parsed, target: before.target, serverBootId: before.serverBootId });
+        const binding = fingerprint({ action, risk, input: parsed, before });
         let lease = leaseId && this.#leases.get(leaseId);
         const valid = value => value && value.binding === binding && value.instanceId === this.receipts.instanceId
             && value.expiresAt > this.now() && value.remaining > 0;
         if (leaseId && !valid(lease)) throw new Error('Invalid, expired, exhausted or mismatched Capability Lease.');
         if (!lease) {
-            if (!this.approve && !context.delegated) throw new Error('Trusted client approval unavailable; no operation executed.');
+            if (!this.approve) throw new Error('Trusted client approval unavailable; no operation executed.');
             const reviewInput = item.reviewInput ? { projection: z.json().parse(item.reviewInput(parsed)), inputFingerprint: fingerprint(parsed),
                 note: 'Registered bounded input summary; authorization still binds the complete normalized input. Inspect domain source pages before independent formal approval.' } : parsed;
             if (item.reviewInput && JSON.stringify(reviewInput).length > 12000) throw new Error('Registered review summary exceeds bound.');
-            const decision = context.delegated ? { action: 'accept', content: { authorize: true, uses: 1 } } : await this.approve(redact({ action, risk, authority: d.authority, externalEffects: d.externalEffects,
+            const decision = await this.approve(redact({ action, risk, authority: d.authority, externalEffects: d.externalEffects,
                 input: reviewInput, before, provenance, binding, scope: 'Exact action, normalized input, target and server boot only' }), context);
             if (decision?.action !== 'accept' || decision.content?.authorize !== true) throw new Error('User approval declined or cancelled.');
             const uses = decision.content?.uses ?? 1;
@@ -150,11 +165,11 @@ export class RiskExecutor {
         if (context.operationId) await this.operations.update(context.operationId, { state: 'ready' });
         context.onReady?.();
         const target = before.target ?? {};
-        const scope = ['sessionId', 'projectId', 'packageId', 'previewId', 'operationId'].filter(key => target[key] !== undefined);
+        const scope = ['sessionId', 'projectId', 'packageId', 'previewId', 'operationId', 'planId', 'runId', 'controlId', 'artifactId', 'bindingId'].filter(key => target[key] !== undefined);
         const keys = scope.length ? scope.map(key => key + ':' + fingerprint(target[key])) : ['authority:' + d.authority];
         if (d.adapter === 'fixed-browser') keys.push('browser:page');
-        const lane = d.adapter === 'local-control' ? 'control' : d.adapter === 'fixed-browser' ? 'browser' : 'mutation';
-        return this.scheduler.run(lane, keys, async heldKeys => {
+        const lane = d.adapter === 'local-control' || controlActions.has(action) ? 'control' : d.adapter === 'fixed-browser' ? 'browser' : 'mutation';
+        return this.scheduler.run(lane, keys, async (_heldKeys, { suspend }) => {
         const checked = await item.guard(parsed, { receipts: this.receipts });
         if (fingerprint(before) !== fingerprint(checked)) throw new Error('Authority changed after approval; review again.');
         if (fingerprint(provenance) !== fingerprint(await this.provenance())) throw new Error('Provenance changed after approval; review again.');
@@ -164,23 +179,15 @@ export class RiskExecutor {
         if (context.operationId) await this.operations.update(context.operationId, { state: 'running', dispatched: true });
         let result = null, error = null, status = 'succeeded';
         const childReceiptIds = [];
-        let childRunning = false;
         try {
-            const used = new Set();
-            const executeChild = async (index, attribution) => {
-                const op = action === 'agent.run.start' && parsed.operations?.[index];
-                if (childRunning || !op || used.has(index) || lease.expiresAt <= this.now()) throw new Error('Delegated operation absent, spent or expired');
-                if (!['READ', 'MUTATE'].includes(this.registry.get(op.action).detail.risk) || op.action.startsWith('agent.')) throw new Error('Delegation cannot escalate risk or nest agents');
-                used.add(index);
-                childRunning = true;
-                try {
-                    const childResult = await this.#execute(this.registry.get(op.action).detail.risk, { action: op.action, input: op.input },
-                        { signal: context.signal, heldKeys, delegated: { ...attribution, parentReceiptId: executionReceiptId } });
-                    if (childResult.receipt) childReceiptIds.push(childResult.receipt.receiptId);
-                    return childResult;
-                } finally { childRunning = false; }
+            const assertContinuation = () => {
+                context.signal?.throwIfAborted();
+                if (lease.instanceId !== this.receipts.instanceId || lease.expiresAt <= this.now()) throw Error('Workflow authorization expired; inspect Native state and obtain fresh authorization.');
             };
-            result = redact(item.outputSchema.parse(await item.handler(parsed, { before: checked, receipts: this.receipts, signal: context.signal, executeChild, executionReceiptId, operationId: context.operationId })));
+            result = redact(item.outputSchema.parse(await item.handler(parsed, { before: checked, receipts: this.receipts, signal: context.signal,
+                executionReceiptId, operationId: context.operationId, suspend, assertContinuation, authorizationExpiresAt: lease.expiresAt,
+                track: patch => this.operations.update(context.operationId, patch),
+                publish: notice => this.operations.publish(context.operationId, notice) })));
             if (result?.ok === false) status = result?.partial === true ? 'indeterminate' : 'rejected';
         } catch (cause) { status = 'indeterminate'; error = redact(cause.message); }
         // Never automatically retry an uncertain operation. Output/schema/transport failures can follow a committed write.

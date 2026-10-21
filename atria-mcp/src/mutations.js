@@ -111,11 +111,11 @@ export function registerMutationActions(registry, browser) {
         const guard = await sessionGuard(i), response = await read('POST', generation + '/turn/controlled/preflight', i), view = response.data;
         if (response.serverBootId !== guard.serverBootId || view.source?.sessionId !== i.sessionId || view.source.revisionId !== i.expectedRevisionId
             || view.source.branchId !== guard.identity.branchId) throw new Error('Controlled Turn source changed.');
-        if (!view.configuration?.credentialTargets?.length || view.configuration.credentialTargets.some(target => !target.authorized)) throw new Error('Independent Native credential destination approval required.');
         return { ...guard, turnReview: { turnInputFingerprint: view.turnInputFingerprint, configurationFingerprint: view.configurationFingerprint, requestFingerprint: view.requestFingerprint },
             generation: { selectedRouteIds: view.configuration.selectedRouteIds, routes: Object.values(view.configuration.routes), models: Object.values(view.configuration.models),
-                providerTargets: view.configuration.credentialTargets.map(target => ({ connectionProfileId: target.connectionProfileId, target: target.target,
-                    permitFingerprint: target.permitFingerprint })), generationBudget: view.configuration.generationBudget,
+                planBinding: view.configuration.orchestrationBinding ?? null,
+                providerTargets: Object.values(view.configuration.connections).map(connection => ({ connectionProfileId: connection.connectionProfileId,
+                    endpoint: connection.endpoint, secretRef: connection.secretRef ?? null })), generationBudget: view.configuration.generationBudget,
                 turnContractFingerprint: fingerprint(view.configuration.taskRuntime), turn: view.configuration.taskRuntime.turn,
                 automaticResend: view.automaticResend, backgroundModel: view.backgroundModel, backgroundSimulation: view.backgroundSimulation } };
     };
@@ -159,6 +159,14 @@ export function registerMutationActions(registry, browser) {
         const uncertain = !response.ok || response.serverBootId !== before.serverBootId;
         return { ...output(response, { ...evidence, after: { input: committed, generation: { status: uncertain ? 'unconfirmed' : 'admitted', invocationId: i.invocationId, result: response.data } } }), ok: !uncertain, partial: uncertain };
     }, ['generation', 'provider-network', 'mayIncurCost']);
+    const turn = registry.get('chat.send');
+    const { inputSchema: _inputSchema, outputSchema: _outputSchema, ...turnDescriptor } = turn.detail;
+    registry.register({ ...turnDescriptor, id: 'orchestration.session.send', domain: 'orchestration', title: 'Explicit bound Native V3 Session turn' },
+        turn.inputSchema, turn.outputSchema, turn.handler, async (i, c) => {
+            const before = await turn.guard(i, c);
+            if (!before.generation.planBinding) throw Error('Explicit Native V3 turn requires an exact current Session Plan binding');
+            return before;
+        });
     add('generation.stop', 'INTERACT', 'Native task scheduler cancellation', { operationId: id }, async i => {
         const r = await read('GET', generation + '/operations/' + i.operationId);
         return { target: { operationId: i.operationId }, serverBootId: r.serverBootId, operation: r.data };

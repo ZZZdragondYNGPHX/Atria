@@ -38,7 +38,8 @@ const equalSets = (a, b) => a.length === new Set(a).size && fingerprint([...a].s
 export function registerMediaActions(registry, browser, { request = requestAuthority } = {}) {
     const call = async (method, path, input = {}, guards = {}) => {
         const response = await request(browser, method, path, input, guards);
-        if (!response.ok || !response.serverBootId) throw new Error('Native media authority unavailable: ' + response.status);
+        if (!response.ok || !response.serverBootId) throw new Error('Native media authority unavailable: ' + response.status
+            + (/^native_[a-z_]+$/.test(response.data?.error ?? '') ? ' ' + response.data.error : ''));
         return response;
     };
     const sessionIdentity = async input => {
@@ -84,6 +85,15 @@ export function registerMediaActions(registry, browser, { request = requestAutho
         if (scope.serverBootId !== response.serverBootId) throw new Error('Media server boot changed.');
         return { ...scope, target: { ...scope.target, prepareId: input.prepareId }, preparationRevision: prepared.revision,
             expectedHead: prepared.expectedHead, connection: prepared.connection, targetFingerprint: prepared.targetFingerprint,
+            requestHash: prepared.requestHash, cost: prepared.cost, externalAssetIds: prepared.externalAssetIds };
+    };
+    const authoringPreparedGuard = async input => {
+        const r = await call('POST', generation + '/illustration-images/prepared/observe', { prepareId: input.prepareId }), prepared = r.data;
+        if (prepared.source.kind !== 'authoring' || prepared.expired || prepared.revision !== input.expectedPreparationRevision
+            || prepared.targetFingerprint !== input.approval.targetFingerprint || prepared.requestHash !== input.approval.requestHash
+            || !equalSets(input.approval.externalAssetIds, prepared.externalAssetIds) || !equalSets(input.approval.omittedPreferred, prepared.omittedPreferred)) throw Error('Exact authoring preparation and approval required');
+        return { target: { prepareId: input.prepareId, authoringId: prepared.source.authoringId }, serverBootId: r.serverBootId,
+            preparationRevision: prepared.revision, connection: prepared.connection, targetFingerprint: prepared.targetFingerprint,
             requestHash: prepared.requestHash, cost: prepared.cost, externalAssetIds: prepared.externalAssetIds };
     };
     const shotGuard = async input => {
@@ -135,6 +145,29 @@ export function registerMediaActions(registry, browser, { request = requestAutho
         }, risk === 'READ' ? null : guard);
     };
     add('media.configuration.read', 'READ', {}, '/visual/configuration', { method: 'GET' });
+    const libraryRef = type => z.strictObject({ scope: z.literal('library'), resourceType: z.literal(type), resourceId: id, revision: id });
+    add('media.authoring.prepare', 'MUTATE', { title: z.string().max(256).optional(), prompt: z.string().min(1).max(65536), negativePrompt: z.string().max(65536).optional(),
+        imageTargetRef: libraryRef('core.image-target'), imageRenderingRef: libraryRef('core.image-rendering').optional(), omittedPreferred: z.array(z.string().max(128)).max(64).default([]) },
+    '/authoring/images/prepare', { body: i => i, guard: async i => {
+        const target = await call('POST', generation + '/resources/exact', i.imageTargetRef);
+        const config = await call('GET', generation + '/configuration'), visual = await configGuard();
+        if (config.serverBootId !== target.serverBootId || visual.serverBootId !== target.serverBootId) throw Error('Authoring image Host changed');
+        const snapshot = target.data.snapshot ?? target.data.resource ?? target.data;
+        const connection = config.data.connections.find(c => c.connectionProfileId === snapshot.connectionProfileId);
+        if (!connection) throw Error('Authoring image connection unavailable');
+        return { target: { imageTargetRef: i.imageTargetRef, imageRenderingRef: i.imageRenderingRef ?? null }, serverBootId: target.serverBootId,
+            connectionFingerprint: fingerprint(connection), endpoint: connection.endpoint, secretRef: connection.secretRef ?? null, visualConfigurationHash: visual.configurationHash };
+    }, effects: ['persist-authoring-raw-txt2img-preparation', 'provider-capability-network', 'no-Session-creation'] });
+    add('media.authoring.start', 'MUTATE', { prepareId: id, expectedPreparationRevision: digest, approval }, '/illustration-images',
+        { guard: authoringPreparedGuard, effects: ['explicit-authoring-txt2img-provider-network', 'mayIncurCost', 'native-authoring-image-job'] });
+    add('media.authoring.gallery', 'READ', { archived: z.boolean().default(false), offset: z.number().int().nonnegative().default(0), limit: z.number().int().min(1).max(100).default(30), expectedFingerprint: digest.nullable().default(null) },
+        '/authoring/images/page', { body: i => i });
+    add('media.authoring.archive', 'MUTATE', { operationId: id, archived: z.boolean(), expectedJobRevision: digest }, '/authoring/images/archive',
+        { guard: async i => {
+            const r = await call('GET', generation + `/illustration-images/${i.operationId}/observation`);
+            if (r.data.operation.anchor.kind !== 'authoring' || r.data.revision !== i.expectedJobRevision) throw Error('Authoring image revision conflict');
+            return { target: { operationId: i.operationId }, serverBootId: r.serverBootId, revision: r.data.revision, imageHash: r.data.image?.ref?.contentHash ?? null };
+        }, effects: ['change-authoring-gallery-archive-state', 'does-not-delete-image'] });
     add('media.target.describe', 'INTERACT', targetPins, '/visual/targets/describe', { guard: networkGuard, effects: ['provider-network', 'secret-ref-use', 'mayIncurCost'] });
     add('media.image.prepare', 'MUTATE', { ...pinned, annotationId: id, expectedHead: nullableHash, ...targetPins, imageRenderingId: id.optional(), operation: z.enum(['txt2img', 'regenerate']).default('txt2img'), omittedPreferred: z.array(z.string().max(128)).max(64).default([]) }, '/illustration-images/prepare', { guard: pinnedNetwork, effects: ['native-prepared-intent', 'provider-capability-network', 'secret-ref-use'] });
     add('media.image.prepared', 'READ', { prepareId: id }, '/illustration-images/prepared/observe');

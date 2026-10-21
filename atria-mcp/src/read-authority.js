@@ -54,6 +54,9 @@ add('build.preflight', 'Native Studio preflight', { ...project, baseRevision: id
 add('build.frontend.inspect', 'Native Frontend v3 Source Graph / diagnostics', { ...project, baseRevision: id, ownerId: id.default('package'), drafts: z.array(z.strictObject({ path: text.min(1), content: z.string().max(32000) })).max(16).default([]) }, 'POST', i => p(i) + '/frontend/inspect', { body: ({ projectId: _, ...body }) => body });
 add('build.preview.list', 'Native Studio Preview', { projectId: id.optional() }, 'GET', `${studio}/previews`);
 add('build.preview.get', 'Native Studio compiled Preview UI / runtime identity', { previewId: id }, 'GET', i => `${studio}/previews/${i.previewId}/ui`, { query: noParams });
+add('build.preview.world', 'Native detached starting World / perspective / law coverage before initialization actions', {
+    previewId: id, audience: z.string().min(1).max(128).default('narrator'), search: z.string().max(128).default(''),
+}, 'GET', i => `${studio}/previews/${i.previewId}/world`, { query: ({ previewId: _, ...query }) => query });
 add('library.list', 'Native Library', filter, 'GET', `${studio}/library/resources`);
 add('library.search', 'Native Library', { ...filter, search: text.min(1) }, 'GET', `${studio}/library/resources`);
 add('library.get', 'Native Library root / immutable revision inventory', { resourceType: ref.shape.resourceType, resourceId: id }, 'GET', `${studio}/library/resources`, { query: i => ({ resourceType: i.resourceType }), project: (data, i) => data.find(row => row.resourceId === i.resourceId) ?? null });
@@ -83,8 +86,6 @@ add('generation.retrieval', 'Native Retrieval configuration', {}, 'GET', `${gene
 add('connection.secrets', 'Native opaque Secret reference inventory (never values)', {}, 'GET', `${generation}/secrets`, { project: rows => rows.map(({ secretId, label }) => ({ secretId, label })) });
 // Credential-bearing discovery is registered as trusted INTERACT in runtime-actions.
 for (const operation of ['catalog', 'get', 'search']) add('settings.' + operation, 'SettingsRepo scoped observation', { path: operation === 'get' ? text.min(1) : text.default(''), query: text.default(''), offset: z.number().int().min(0).max(100000).default(0), limit }, 'POST', '/api/settings/observe', { body: i => ({ ...i, operation }) });
-add('agents.presets.persisted', 'SettingsRepo persisted Orchestrator preset library (browser defaults may differ)', {}, 'POST', '/api/settings/observe', { body: () => ({ operation: 'get', path: 'atri_capabilities/orchestrator/agentWorkspace/presets' }) });
-add('agents.bindings.persisted', 'SettingsRepo persisted Orchestrator bindings', {}, 'POST', '/api/settings/observe', { body: () => ({ operation: 'get', path: 'atri_capabilities/orchestrator/agentWorkspace/bindings' }) });
 for (const [action, suffix] of [['modules', 'modules'], ['ownership', 'ownership'], ['provenance', 'provenance'], ['runtime', 'runtime-identity']]) add('diagnostics.' + action, 'Atria Diagnostics', {}, 'GET', '/api/diagnostics/' + suffix);
 add('diagnostics.logs', 'Atria Diagnostics admin log query', { limit, level: text.optional(), module: text.optional(), text: text.optional(), startTime: z.number().optional(), endTime: z.number().optional(), sinceId: z.number().int().min(0).optional(), correlation: text.optional() }, 'POST', '/api/diagnostics/logs/query');
 add('diagnostics.incidents', 'Atria Diagnostics user/admin incidents', { limit, status: text.optional() }, 'POST', '/api/diagnostics/incidents/list');
@@ -129,6 +130,7 @@ export async function requestAuthority(browser, method, path, input = {}, guards
         } finally { await csrf.dispose(); }
     } else for (const [key, value] of Object.entries(input)) if (value !== undefined) url.searchParams.set(key, String(value));
     if (guards.serverBootId) headers['x-atria-expected-server-boot-id'] = guards.serverBootId;
+    if (guards.hostBootId) headers['x-atria-host-boot-id'] = guards.hostBootId;
     if (guards.expectedFingerprint) headers['if-match'] = guards.expectedFingerprint;
     const response = await browser.context.request.fetch(url.href, { method, headers, ...(method !== 'GET' ? { data: input } : {}), maxRedirects: 0, timeout: browser.config.timeout });
     try {
@@ -140,7 +142,8 @@ export async function requestAuthority(browser, method, path, input = {}, guards
         if (!(response.headers()['content-type'] ?? '').includes('json')) return { ...result, ok: false, data: { error: 'Authority unavailable or authentication required' } };
         const bytes = await response.body();
         if (bytes.length > browser.config.maxResponseBytes) throw new Error('Authority response exceeds bound; narrow the scope.');
-        return { ...result, data: JSON.parse(bytes.toString('utf8')) };
+        return { ...result, data: JSON.parse(bytes.toString('utf8')),
+            ...(response.headers()['x-atria-validation-digest'] ? { validationDigest: response.headers()['x-atria-validation-digest'] } : {}) };
     } finally { await response.dispose(); }
 }
 

@@ -7,7 +7,9 @@ args = [
   "--url", "http://127.0.0.1:8000"
 ]
 startup_timeout_sec = 30
-tool_timeout_sec = 90
+tool_timeout_sec = 360
+# Native Review can wait within the five-minute MCP authorization window.
+# Prefer background=true and operation.get for the short-lived Review link.
 # Default READ. To enable exact actions add --policy <absolute JSON path>.
 # Writes also require trusted client form elicitation; unsupported clients stay READ.
 # Add --headed to sign in manually in the isolated browser window.

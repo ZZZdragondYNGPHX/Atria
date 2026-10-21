@@ -40,7 +40,7 @@ export function loadConfig(argv = process.argv.slice(2), env = process.env) {
     };
 }
 
-export const HELP = `Atria MCP 0.3.0 — local stdio server (Node.js >=22)
+export const HELP = `Atria MCP 0.4.0 — local stdio server (Node.js >=22)
 
   node src/cli.js --repo <Atria product worktree> [options]
 
