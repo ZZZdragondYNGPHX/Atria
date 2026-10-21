@@ -54,6 +54,12 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
         const el = node('button', text, parent); el.type = 'button'; el.className = 'atri-library-button';
         el.addEventListener('click', async () => { if (el.disabled) return; el.disabled = true; try { await callback(); } catch (e) { fail(e); } finally { el.disabled = false; } }); return el;
     };
+    const detail = () => {
+        main().replaceChildren(); const root = node('section'); root.className = 'atri-prompt-preset';
+        const nav = node('div', undefined, root); nav.className = 'atri-prompt-actions';
+        button(nav, 'Back to presets', () => { if (confirmAtriaDraftLeave(doc, body)) return list(); }).classList.add('atri-library-detail-close');
+        return { root, nav };
+    };
     const field = (parent, label, value = '') => { const wrap = node('label', label, parent); wrap.className = 'atri-library-field'; const el = node('input', undefined, wrap); el.value = value; el.setAttribute('aria-label', tl(label)); return el; };
     const select = (parent, label, values, value) => { const wrap = node('label', label, parent); wrap.className = 'atri-library-field'; const el = node('select', undefined, wrap); el.setAttribute('aria-label', tl(label)); for (const [id, title] of values) { const opt = node('option', undefined, el); opt.textContent = title; opt.value = id; } el.value = value || ''; return el; };
     const save = async next => {
@@ -74,19 +80,25 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
         } catch (error) {
             if (!receipt) throw error;
             if (disposed || token !== sequence) return;
-            main().replaceChildren();
-            node('p', 'Saved. The view could not be refreshed.').setAttribute('role', 'status');
-            literal('p', error.message, main()).setAttribute('role', 'alert');
-            button(main(), 'Try again', refresh);
+            const { root } = detail();
+            node('p', 'Saved. The view could not be refreshed.', root).setAttribute('role', 'status');
+            literal('p', error.message, root).setAttribute('role', 'alert');
+            button(root, 'Try again', refresh);
         }
     };
     const markSelected = () => { for (const row of pane?.querySelectorAll('[data-atri-preset-id]') || []) row.setAttribute('aria-current', String(row.dataset.atriPresetId === preset?.presetId)); };
     const open = async id => {
         const token = ++sequence; closeMenu(); categoryFilter = 'all'; listPosition = null; lastReceipt = null; adoptionRefs = [];
         if (!pane?.isConnected || !pane.childElementCount) void renderPresetList();
-        main().replaceChildren(); node('p', 'Loading exact resources…');
-        const value = await runtimeRequest('/presets/' + id); if (disposed || token !== sequence) return;
-        preset = value; section = null; renderDetail(); markSelected();
+        const { root } = detail();
+        const loading = node('p', 'Loading exact resources…', root); loading.setAttribute('role', 'status');
+        try {
+            const value = await runtimeRequest('/presets/' + id); if (disposed || token !== sequence) return;
+            preset = value; section = null; renderDetail(); markSelected();
+        } catch (error) {
+            if (disposed || token !== sequence) return;
+            loading.remove(); throw error;
+        }
     };
     const create = async (value, importing = false) => { const result = await runtimeRequest('/presets', { method: 'POST', body: { preset: value, importing } }); await open(result.presetId); };
     const exportPreset = value => {
@@ -248,9 +260,7 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
     function renderDetail() {
         if (disposed) return;
         closeMenu();
-        main().replaceChildren(); const root = node('section'); root.className = 'atri-prompt-preset'; root.dataset.atriPromptPreset = preset.presetId;
-        const nav = node('div', undefined, root); nav.className = 'atri-prompt-actions';
-        button(nav, 'Back to presets', () => { if (confirmAtriaDraftLeave(doc, body)) return list(); }).classList.add('atri-library-detail-close');
+        const { root, nav } = detail(); root.dataset.atriPromptPreset = preset.presetId;
         if (section) button(nav, 'Back to preset', () => { if (confirmAtriaDraftLeave(doc, body)) { section = null; renderDetail(); } });
         literal('h2', preset.entries.find(e => idOf(e) === preset.programId && (!preset.programRevision || e.resource.revision === preset.programRevision)).resource.displayName, root);
         root.dataset.atriPresetRevision = preset.revision;
