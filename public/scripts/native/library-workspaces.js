@@ -400,6 +400,7 @@ async function resourceDetail(doc, root, route, host, browseState = {}) {
     const resource = knowledge ? detail.knowledgeBase : detail.world;
     const hero = heading(doc, root, resource.displayName, tl(knowledge ? 'Knowledge available to your stories.' : 'A shared setting for your stories.'), true);
     hero.dataset[knowledge ? 'atriaKnowledgeDetail' : 'atriaWorldDetail'] = id;
+    host.nameDetail?.(child, resource.displayName);
     action(doc, hero, 'Close details', () => host.openLibrarySection(knowledge ? 'knowledge' : 'worlds')).classList.add('atri-library-detail-close');
     if (target) {
         const entry = detail.entries.find(item => item.knowledgeEntryId === target.entryId);
@@ -477,7 +478,7 @@ async function resourceList(doc, root, knowledge, host, browseState, selectedId,
     const toolbar = el(doc, 'div', 'atri-library-pane-toolbar', undefined, root);
     const search = field(doc, toolbar, 'Search resources', browseState.query || '', 'search');
     search.placeholder = tl(knowledge ? 'Search Knowledge Bases' : 'Search Worlds');
-    const form = el(doc, 'form', 'atri-library-create', undefined, root); form.hidden = true;
+    const form = el(doc, 'form', 'atri-library-create', undefined, root); form.hidden = true; form.dataset.atriaOwnsEscape = 'true';
     const newButton = action(doc, toolbar, knowledge ? 'New Knowledge Base' : 'New World', () => {
         form.hidden = false; newButton.setAttribute('aria-expanded', 'true'); name.focus();
     }, { primary: true });

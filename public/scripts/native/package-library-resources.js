@@ -5,6 +5,7 @@ import { renderResourceReferenceRows } from './resource-reference-rows.js';
 import { el, action, disclosure, heading, feedback, worldParameterSummary } from './library-ui.js';
 import { translateShellText as tl, formatShellText as fmt } from '../atria-shell/localization.js';
 import { createAtriaIcon } from '../atria-shell/icons.js';
+import { formatPackageOriginalChild } from '../atria-shell/library-route-ids.js';
 import { mountKnowledgeEntryBrowser } from './knowledge-entry-browser.js';
 import { nativeProductClient } from './product-client.js';
 import { mountLibraryRevisionEditor } from './library-revision-editor.js';
@@ -80,11 +81,13 @@ function copyToLibrary(doc, parent, reviewRoot, ref, host, displayName) {
 
 export async function mountPackageLibraryOriginal({ document: doc, root, ref, host }) {
     const knowledge = ref.resourceType === 'core.knowledge';
+    const routeChild = formatPackageOriginalChild(ref);
     const detail = knowledge ? await nativeProductClient.getPackageKnowledge(ref.packageId, ref.resourceId) : await client.getPackageLibraryResource(ref);
     const { snapshot, origin } = detail;
     if (knowledge) ref = { ...ref, packageVersionId: detail.packageVersionId, revision: snapshot.revision.knowledgeRevisionId };
     const resource = knowledge ? snapshot.knowledgeBase : snapshot.world;
     root.dataset.atriaPackageOriginal = ref.resourceId;
+    host.nameDetail?.(routeChild, resource.displayName);
     const hero = heading(doc, root, resource.displayName, [origin?.displayName, origin?.version].filter(Boolean).join(' · ') || tl('Installed Work'), true);
     action(doc, hero, 'Close details', () => host.openLibrarySection?.(knowledge ? 'knowledge' : 'worlds')).classList.add('atri-library-detail-close');
     // Status 09 (history · original): why it is read-only and the single way to change it.

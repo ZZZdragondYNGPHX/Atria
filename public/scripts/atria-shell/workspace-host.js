@@ -417,6 +417,8 @@ export function createAtriaWorkspaceHost({
     async function activate(route, reason = 'workspace-route') {
         if (disposed) return;
         const descriptor = routeDescriptor(route);
+        // A deep-linked section only carries its ID as a label; name it from the descriptor.
+        if (route?.child && route.child.kind !== 'detail' && route.child.label === route.child.id && descriptor?.title) shell.setDetailTitle?.(route.child.id, translateShellText(descriptor.title));
         const token = ++sequence;
         if (matchesRepairOrigin(route) && runtimeRepair.holding) {
             await disposeActive();
@@ -808,6 +810,8 @@ export function createAtriaWorkspaceHost({
             contextActionNodes = nodes.filter(Boolean);
             shell.slots.contextBar?.append(...contextActionNodes);
         },
+        // Names a deep-linked detail page once its workspace knows the real title.
+        nameDetail: (childId, text) => shell.setDetailTitle?.(childId, text),
         closeActive,
         refreshActive,
         refreshForResourceChange,

@@ -302,6 +302,8 @@ export function createAtriaAppShell({
         ariaLabel: tl('Host recovery'),
     });
     recovery.dataset.atriaShellLayer = 'recovery';
+    // A label needs a role to be announced (aria-label is not allowed on a plain div).
+    recovery.setAttribute('role', 'region');
 
     // Compact context sheet.
     const sheet = createAtriaPrimitive(documentRef, 'Sheet', {
@@ -458,6 +460,10 @@ export function createAtriaAppShell({
         return childId.startsWith('utility.') ? childId.slice('utility.'.length).split(':')[0] : null;
     }
 
+    // A deep-linked detail only knows its ID until its workspace has loaded; the
+    // workspace then names it here without changing the route (no remount).
+    const detailTitles = new Map();
+
     function updateDomainPresentation(route = navigationAuthority.getRoute()) {
         const utilityId = activeUtilityId(route);
         for (const [domainId, buttons] of navButtons.entries()) {
@@ -480,7 +486,7 @@ export function createAtriaAppShell({
         const domainLabel = tl(domain?.label || route.domain);
         const utility = ATRIA_GLOBAL_UTILITIES.find(item => item.id === utilityId);
         const childLabel = route.child
-            ? route.child.kind === 'detail' ? route.child.label === route.child.id && route.domain === 'build' ? tl('Project') : String(route.child.label || route.child.id) : tl(route.child.label || route.breadcrumb.at(-1) || route.child.id)
+            ? route.child.kind === 'detail' ? route.child.label === route.child.id ? detailTitles.get(route.child.id) || (route.domain === 'build' ? tl('Project') : tl(domain?.label || route.domain)) : String(route.child.label || route.child.id) : route.child.label === route.child.id && detailTitles.has(route.child.id) ? detailTitles.get(route.child.id) : tl(route.child.label || route.breadcrumb.at(-1) || route.child.id)
             : '';
         let titleText = domainLabel;
         let back = null;
@@ -1150,6 +1156,8 @@ export function createAtriaAppShell({
         }
         // Native modal frames own their Escape before the inspector or routes.
         if (documentRef.querySelector('dialog[open]')) return;
+        // So do in-page popovers and inline forms that close themselves on Escape.
+        if (event.target?.closest?.('[data-atria-owns-escape]')) return;
         const playMore = root.querySelector('.atria-play-more[open], .atria-game-recovery-panel[open]');
         if (playMore) {
             playMore.open = false;
@@ -1298,6 +1306,11 @@ export function createAtriaAppShell({
         navigateChild: (child, options) => navigationAuthority.navigateChild(child, options),
         getActiveDomain: () => navigationAuthority.getRoute().domain,
         getRoute: () => navigationAuthority.getRoute(),
+        setDetailTitle(childId, text) {
+            if (!childId || !text) return;
+            detailTitles.set(String(childId), String(text));
+            if (navigationAuthority.getRoute().child?.id === String(childId)) updateDomainPresentation();
+        },
         setBreadcrumb(parts) {
             navigationAuthority.setBreadcrumb(
                 Array.isArray(parts)

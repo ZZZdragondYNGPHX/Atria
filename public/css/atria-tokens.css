@@ -62,7 +62,7 @@
     --atri-text-on-accent: #fffaf0;
     --atri-text-on-ink: #f7efe0;
     --atri-text-secondary: #574f45;
-    --atri-text-tertiary: #7f7668;
+    --atri-text-tertiary: #6b6254;
     --atri-text-quaternary: #a39a8b;
     --atri-accent: #94672b;
     --atri-accent-hover: #7a521c;
@@ -75,7 +75,7 @@
     --atri-success-soft: #e4ece4;
     --atri-warning: #935509;
     --atri-warning-soft: #f1e6d6;
-    --atri-danger: #bf4430;
+    --atri-danger: #b33824;
     --atri-danger-soft: #f4e2da;
     --atri-scrim: rgb(40 32 20 / .32);
     --atri-cover-ink: #fff;
@@ -87,7 +87,7 @@
     --atri-info-soft: #e9ebf0;
     --atri-committed: #226f4e;
     --atri-committed-soft: #e4ece4;
-    --atri-history: #866548;
+    --atri-history: #7e5d40;
     --atri-history-soft: #efe8de;
     --atri-unknown: #6a5bb0;
     --atri-unknown-soft: #ebe7ef;

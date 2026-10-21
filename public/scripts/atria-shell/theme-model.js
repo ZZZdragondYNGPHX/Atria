@@ -30,9 +30,12 @@ export function createPalette({ appearance, canvas, surface, text, secondary, ac
     // Ledger tones keep one meaning each and stay legible on every surface:
     // info = draft/selection, committed = recorded fact, history = read-only
     // past, unknown = unverified/blocked. They are never success decoration.
+    // A tone is checked against every ground it sits on: the surface, the canvas, the
+    // raised fill and its own soft tint (badges, banners), not just the brightest one.
     const legible = color => {
         let result = color;
-        for (let i = 0; i < 20 && contrastRatio(result, surface) < 4.5; i++) result = mixColor(result, text, .15);
+        const grounds = value => [surface, canvas, mixColor(surface, text, .09), mixColor(surface, value, .12)];
+        for (let i = 0; i < 20 && grounds(result).some(ground => contrastRatio(result, ground) < 4.5); i++) result = mixColor(result, text, .15);
         return result;
     };
     const tone = (light, night) => legible(dark ? night : light);
@@ -68,7 +71,7 @@ function builtin(id, name, appearance, canvas, surface, text, secondary, accent,
 export const BUILTIN_THEMES = Object.freeze([
     // 昼 Folio: rice-paper ground, ink text, gold recedes to ochre.
     builtin('folio', 'Folio', 'light', '#f5f1e8', '#fffdf8', '#1f1a14', '#574f45', '#94672b', {
-        'surface-2': '#f8f5ee', 'surface-3': '#ece6da', 'text-tertiary': '#7f7668', 'text-quaternary': '#a39a8b',
+        'surface-2': '#f8f5ee', 'surface-3': '#ece6da', 'text-tertiary': '#6b6254', 'text-quaternary': '#a39a8b',
         'fill-hover': '#ece6da', 'fill-pressed': '#e3dccd', ink: '#1f1a14', 'ink-hover': '#2a241c', 'ink-pressed': '#1b1712', 'text-on-ink': '#f7efe0',
     }),
     // 夜 Nocturne (default night): ink ground, warm ivory text, gold is the only warm light.

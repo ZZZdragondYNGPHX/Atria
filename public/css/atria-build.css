@@ -38,8 +38,9 @@
 .atri-studio-project-management > summary { display: grid; place-items: center; width: 32px; height: 32px; border-radius: var(--r-md); color: var(--text-3); cursor: pointer; list-style: none; }
 .atri-studio-project-management > summary::-webkit-details-marker { display: none; }
 .atri-studio-project-management > summary:hover { background: var(--surface-hover); color: var(--text-1); }
-.atri-studio-project-management[open] { flex: 0 0 100%; display: grid; justify-items: end; }
-.atri-studio-project-management[open] > .atri-project-lifecycle { justify-self: stretch; }
+.atri-studio-project-row { position: relative; }
+/* The card actions open as a small popover under the trigger; the trigger never moves. */
+.atri-studio-project-management[open] > .atri-project-lifecycle { position: absolute; left: 8px; right: 8px; top: calc(100% - 10px); z-index: 3; margin: 0; padding: 12px; border: 1px solid var(--line-2); border-radius: var(--r-lg); background: var(--surface-raised); box-shadow: var(--shadow-2, var(--shadow-1)); cursor: default; }
 @media (prefers-reduced-motion: reduce) { .atri-studio-project-row { transition: none; } }
 /* Danger zone (N5): separated from the form above. */
 .atri-studio-danger-zone { display: grid; gap: 6px; margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--line-2); }

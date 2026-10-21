@@ -512,7 +512,7 @@
 .atria-seal[data-seal="draft"]::before { background: transparent; border: 1.4px solid currentColor; border-radius: 50%; }
 .atria-seal[data-seal="history"] { --c: var(--tone-umber); --b: color-mix(in srgb, var(--tone-umber) 45%, transparent); background: var(--hatch), var(--soft-umber); }
 .atria-seal[data-seal="origin"] { --c: var(--text-2); --b: var(--line-strong); --bg: var(--surface-raised); }
-.atria-seal[data-seal="pinned"] { --c: var(--tone-lumen); --b: color-mix(in srgb, var(--tone-lumen) 45%, transparent); --bg: var(--soft-lumen); }
+.atria-seal[data-seal="pinned"] { --c: var(--atri-accent-text); --b: color-mix(in srgb, var(--tone-lumen) 45%, transparent); --bg: var(--soft-lumen); }
 .atria-seal[data-seal="stale"] { --c: var(--tone-amber); --b: color-mix(in srgb, var(--tone-amber) 50%, transparent); --bg: var(--soft-amber); }
 .atria-seal[data-seal="missing"] { --c: var(--tone-vermilion); --b: color-mix(in srgb, var(--tone-vermilion) 55%, transparent); border-style: dashed; }
 .atria-seal[data-seal="unknown"] { --c: var(--tone-dai); --b: color-mix(in srgb, var(--tone-dai) 55%, transparent); border-style: dotted; border-width: 1.5px; --bg: var(--soft-dai); }

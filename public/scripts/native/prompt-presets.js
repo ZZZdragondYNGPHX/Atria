@@ -149,7 +149,7 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
         trigger.append(createAtriaIcon(doc, 'more', { size: 20 }));
         trigger.addEventListener('click', () => {
             const wasOpen = trigger.getAttribute('aria-expanded') === 'true'; closeMenu(); if (wasOpen) return;
-            const popup = node('div', undefined, body); popup.className = 'atri-preset-menu'; popup.setAttribute('role', 'menu'); popup.setAttribute('aria-label', tl(label));
+            const popup = node('div', undefined, body); popup.className = 'atri-preset-menu'; popup.dataset.atriaOwnsEscape = 'true'; popup.setAttribute('role', 'menu'); popup.setAttribute('aria-label', tl(label));
             popup.id = createStudioNativeId('menu'); trigger.setAttribute('aria-controls', popup.id);
             trigger.setAttribute('aria-expanded', 'true');
             const close = (focus = false) => {

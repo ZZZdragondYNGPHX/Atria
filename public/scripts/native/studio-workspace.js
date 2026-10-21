@@ -245,10 +245,17 @@ function projectListCard(documentRef, record, host, onDeleted) {
     info.append(title, meta);
     const footer = documentRef.createElement('div'); footer.className = 'atri-studio-project-row__footer';
     footer.append(button(documentRef, 'Open Project', open, { primary: true }));
-    const management = documentRef.createElement('details'); management.className = 'atri-studio-project-management';
+    const management = documentRef.createElement('details'); management.className = 'atri-studio-project-management'; management.dataset.atriaOwnsEscape = 'true';
     const manage = documentRef.createElement('summary'); manage.className = 'atri-studio-project-management__trigger'; manage.setAttribute('aria-label', t('Project actions')); manage.title = t('Project actions');
     manage.append(createAtriaIcon(documentRef, 'more', { size: 18 }));
     management.append(manage); footer.append(management);
+    // Like any popover: Escape or a press outside closes it (and Escape returns focus to the trigger).
+    const outside = event => { if (!management.contains(event.target)) management.open = false; };
+    management.addEventListener('toggle', () => {
+        if (management.open) documentRef.addEventListener('pointerdown', outside, true);
+        else documentRef.removeEventListener('pointerdown', outside, true);
+    });
+    management.addEventListener('keydown', event => { if (event.key === 'Escape' && management.open) { event.preventDefault(); event.stopPropagation(); management.open = false; manage.focus(); } });
     row.append(info, footer);
     mountProjectDeletion({ document: documentRef, root: management, project, revision: record.revision?.revision, onDeleted: () => onDeleted(project.projectId) });
     return row;
@@ -265,7 +272,7 @@ async function renderProjectList(documentRef, root, host) {
     const toolbar = documentRef.createElement('div'); toolbar.className = 'atri-studio-project-toolbar';
     const search = textInput(documentRef, '', 'Search projects'); search.type = 'search'; search.placeholder = t('Search projects');
     const searchField = field(documentRef, 'Search projects', search); searchField.classList.add('atri-studio-project-search');
-    const creation = documentRef.createElement('form'); creation.className = 'atri-studio-project-create'; creation.hidden = true;
+    const creation = documentRef.createElement('form'); creation.className = 'atri-studio-project-create'; creation.hidden = true; creation.dataset.atriaOwnsEscape = 'true';
     const name = textInput(documentRef, '', 'Project name'); name.required = true; name.maxLength = 160;
     name.addEventListener('input', () => name.setCustomValidity(''));
     const newButton = button(documentRef, 'New Project', () => { creation.hidden = false; newButton.setAttribute('aria-expanded', 'true'); name.focus(); }, { primary: true });
@@ -628,6 +635,7 @@ async function mountProjectStudio(documentRef, root, projectId, host, initialTas
     const environment = createAtriaShellEnvironment(shell);
     // Project Agent opens on request (the AI button) or when a task link points at it (blueprint §6.3).
     state.aiOpen = Boolean(initialTaskId);
+    host.nameDetail?.('project:' + projectId, state.source.project.displayName);
     if (initialTaskId) state.mobileView = 'ai';
     let inspectorSequence = 0;
 
@@ -723,6 +731,7 @@ async function mountProjectStudio(documentRef, root, projectId, host, initialTas
         if (state.disposed) return;
         state.source = clone(detail.source);
         state.files = detail.files || [];
+        host.nameDetail?.('project:' + projectId, state.source.project.displayName);
         state.revision = detail.revision;
         state.resources = resources || [];
         state.graph = graph;

@@ -302,7 +302,7 @@ export function createMemoryWorkspace({ getContext }) {
                 off.className = 'workspace-memory-off';
                 el('strong', 'Memory is off', off);
                 el('p', 'Replies do not recall stored memories, and new conversation is not recorded.', off);
-                button(off, 'Turn on Memory', () => setControl('enabled', true)).className = 'workspace-memory-off__action';
+                button(off, 'Turn on Memory', () => setControl('enabled', true));
             }
             const controls = railSection('Switches');
             controls.classList.add('workspace-memory-control-grid');
