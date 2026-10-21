@@ -18,6 +18,7 @@ import {
 } from './library-runtime-workspaces.js';
 import { formatShellText, translateShellText } from './localization.js';
 import { createProductSearchIndex } from './product-search.js';
+import { formatKnowledgeEntryChild, formatPackageOriginalChild } from './library-route-ids.js';
 import { installAtriaWorkspaceLeaveGuard, confirmAtriaDraftLeave } from './workspace-leave-guard.js';
 
 function createLocalizedStatePanel(documentRef, kind, options = {}) {
@@ -620,7 +621,7 @@ export function createAtriaWorkspaceHost({
     }
 
     function openKnowledgeEntry(knowledgeBaseId, revisionId, entryId, label) {
-        return openLibraryDetail('knowledge:entry:' + encodeURIComponent(JSON.stringify({ knowledgeBaseId, revisionId, entryId })), label, 'detail', 'workspace-knowledge-entry');
+        return openLibraryDetail(formatKnowledgeEntryChild({ knowledgeBaseId, revisionId, entryId }), label, 'detail', 'workspace-knowledge-entry');
     }
 
     function openSkill(scope, name) {
@@ -633,7 +634,7 @@ export function createAtriaWorkspaceHost({
 
     function openLibraryResource(ref, label = '') {
         if (ref?.scope === 'package' && ['core.world', 'core.knowledge'].includes(ref.resourceType) && ref.resourceId && ref.revision && ref.packageId && ref.packageVersionId) {
-            return openLibraryDetail((ref.resourceType === 'core.world' ? 'world' : 'knowledge') + ':package:' + encodeURIComponent(JSON.stringify(ref)), label || ref.resourceId, 'detail', 'workspace-library-package-original');
+            return openLibraryDetail(formatPackageOriginalChild(ref), label || ref.resourceId, 'detail', 'workspace-library-package-original');
         }
         const sections = { 'core.prompt-program': 'prompt-programs', 'core.prompt-module': 'prompt-modules', 'core.generation-profile': 'generation-profiles' };
         const section = sections[ref?.resourceType];

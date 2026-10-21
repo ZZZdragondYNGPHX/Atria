@@ -74,8 +74,8 @@ export function mountResourceBundleImport({ document: doc, root, host, onReload 
 }
 
 /** Copy through the existing exact dependency bundle/import authority. */
-export function resourceLibraryCopy(doc, parent, ref, host) {
-    return action(doc, parent, 'Create editable copy', async () => {
+export function resourceLibraryCopy(doc, parent, ref, host, label = 'Create editable copy') {
+    return action(doc, parent, label, async () => {
         const bundle = await client.exportResourceBundle(ref);
         const plan = await client.preflightResourceBundle(bundle);
         if (!plan.canImport) throw new Error(tl('The fork destination conflicts with existing content. Review the fork again to choose fresh identities.'));

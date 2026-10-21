@@ -91,19 +91,28 @@ export async function referenceRemediation(doc, parent, error, host) {
     await renderReferenceRemediation({ document: doc, root: parent, error, host });
 }
 
+// The World's setting: its baseline values as readable rows. A new revision never moves
+// stories that already use an exact revision, so the note says where changes land.
 export function worldParameterSummary(doc, root, revision) {
-    if (!revision) return;
-    const section = el(doc, 'section', 'atri-library-section', undefined, root);
-    el(doc, 'h3', '', tl('World baseline'), section);
-    const list = el(doc, 'dl', 'atri-knowledge-parameters', undefined, section);
-    const visit = (value, path) => {
-        if (value && typeof value === 'object' && Object.keys(value).length) {
-            for (const [key, child] of Object.entries(value)) visit(child, path ? path + ' / ' + key : key);
-        } else {
-            el(doc, 'dt', '', path || '—', list);
-            el(doc, 'dd', '', value !== null && typeof value === 'object' ? JSON.stringify(value) : String(value ?? '—'), list);
-        }
-    };
-    visit(revision.baseline || {}, '');
-    disclosure(doc, section, 'World schema', revision.schema || {});
+    const section = el(doc, 'section', 'atri-library-section atri-world-setting', undefined, root);
+    section.dataset.atriaWorldSetting = 'true';
+    el(doc, 'h3', '', tl('Setting'), section);
+    const baseline = revision?.baseline || {};
+    if (!Object.keys(baseline).length) {
+        el(doc, 'p', 'atri-library-meta', tl(revision ? 'No settings in this revision yet.' : 'No revision yet. Create the first revision to describe this World.'), section);
+    } else {
+        const list = el(doc, 'dl', 'atri-knowledge-parameters', undefined, section);
+        const visit = (value, path) => {
+            if (value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length) {
+                for (const [key, child] of Object.entries(value)) visit(child, path ? path + ' / ' + key : key);
+            } else {
+                el(doc, 'dt', '', path, list);
+                el(doc, 'dd', '', value !== null && typeof value === 'object' ? JSON.stringify(value) : String(value ?? '—'), list);
+            }
+        };
+        visit(baseline, '');
+    }
+    if (revision?.schema && Object.keys(revision.schema).length) disclosure(doc, section, 'World schema', revision.schema);
+    if (revision) el(doc, 'p', 'atri-library-meta', tl('A new revision becomes this World’s current version. Stories, Projects and bindings that already use it keep their exact revision.'), section);
+    return section;
 }

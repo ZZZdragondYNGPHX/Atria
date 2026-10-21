@@ -1144,6 +1144,8 @@ export const SHELL_TEXT_KEYS = Object.freeze({
     'Edit profile': 'atria.product.edit.profile',
     'No profiles yet. Create one to get started.': 'atria.product.no.profiles.yet.create.one.to.get.started',
     'Stage ${0}': 'atria.product.stageIndex',
+    // The legacy World Info screen owns the plain key (“World Book”); Native Worlds use their own.
+    'New World': 'atria.product.newWorld',
     'Stage ID ${0}': 'atria.product.stageIdIndex',
     'Module for stage ${0}': 'atria.product.stageModuleIndex',
     'Send on Enter': 'atria.product.sendOnEnter',

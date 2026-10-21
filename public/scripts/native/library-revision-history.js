@@ -44,6 +44,7 @@ export function mountLibraryRevisionHistory({ document: doc, root, detail, knowl
     const section = el(doc, 'section', 'atri-library-section', undefined, root);
     section.dataset[knowledge ? 'atriaKnowledgeRevisionHistory' : 'atriaWorldRevisionHistory'] = 'true';
     el(doc, 'h3', '', tl('Revision history'), section);
+    if (!detail.revisions?.length) el(doc, 'p', 'atri-library-meta', tl('No revisions yet.'), section);
     const workspace = el(doc, 'section', 'atri-library-section', undefined, section);
     workspace.hidden = true;
     for (const revision of [...detail.revisions].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))) {
