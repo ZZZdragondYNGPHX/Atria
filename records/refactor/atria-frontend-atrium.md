@@ -31,3 +31,11 @@
 - 源码 `6cd7d352`（WIP，已推送）。已完成：提示词列表「新建提示词」打开模板选择（空白／通用骨架／角色扮演／文学创作／Agent 任务），新建或导入后立即出现在列表并选中；预设详情改为「大纲 + 编辑器」：左侧按存储顺序列出 Stage、文本块与只读上下文锚点，以及生成参数、Regex、模块库；右侧沿用原 `mountPromptEditor`，默认打开第一个文本块；「添加文本块」「添加 Stage」就地创建、保存并聚焦正文；每个视图只有一个返回（大纲→「全部提示词」，工具视图→「返回大纲」）。正文输入框高度修正（原选择器优先级不足）。浏览器实测：模板新建、添加文本块、输入并保存修订、切换 Stage／生成参数／模块库均正常。
 - 未完成／下一步：① 本地测试 `tests/atria-shell/prompt-preset-receipt.test.js` 失败——它依赖已移除的四张分区卡片，需按新大纲更新（其余 8 个提示词相关套件通过）；② 手机宽度未验证大纲布局；③ 新文案（Prompts、New prompt、模板说明、Prompt outline、Add text block、Add stage、Context: ${0}、Back to outline、All prompts、Not in this preset、New text block、Inherits stages…）尚未补简体中文；④ Program 编辑器仍显示 Stage ID 输入与「选择精确模块」下拉（专家路径保留，可考虑收进折叠）；⑤ 未做 Record 外的蓝图更新。之后按蓝图 §9 进入第 4 期（世界与知识）。
 - 本机测试服务器（端口 8123）与模拟服务可直接停止；测试数据新增了一个「Roleplay / narrative」预设（含「New text block」），属本工作树本地数据。
+
+## 2026-10-20 — 体验重构第 3 期：完成
+
+- 源码 `db4e9286`（接 `6cd7d352`）。交接中的未完成项已处理：① 本地测试 `prompt-preset-receipt` 按新大纲更新（无文本块时大纲直接打开 Program 编辑器；返回改为「全部提示词」）；② 手机宽度实测；③ 新文案补齐简体中文；④ Program 编辑器中 Stage ID 与「选择精确模块」收进每个 Stage 的「高级」折叠，Stage 摘要、模块行、上下文锚点只显示名称（修订号移到悬停提示，来源种类显示为「事实／历史…」）。大纲不再显示 Stage ID，选中 Stage 时上下文锚点不再一并高亮。
+- 浏览器实测发现并修复两处手机问题：(a) 预设行的「导出／删除」悬停才出现，触屏点击时按钮出现并移到指尖下，点卡片实际触发了**导出**（删除就在旁边）——改为常驻的「预设操作」溢出菜单；(b) 紧凑布局只认书库标题，选中预设后详情不显示——选择器加入提示词详情。窄屏大纲堆叠在编辑器上方，选中大纲条目后自动滚到对应编辑器。
+- Stage 显示名未做：Program 契约 `assertProgramStage` 只允许 `stageId/targets/moduleRefs/entries/condition/consumes/contextConsumers`，加显示名需后端契约改动，留作后续决定。Inspector（条件／Token／修订）与「预览 ▾」分段视图（蓝图 §6.4）未在本期实现。
+- 验证：1440×900 与 390×844 截图（`.playwright-mcp/p3-*.png`）；手机上 列表 → 预设 → 大纲 → 文本块正文 全程可用。`atria-shell` 85 套件 83 通过，余下 `localization`／`product-localization-coverage` 与改动前基线相同（失败内容不涉及本期文案）。
+- 下一步：蓝图 §9 第 4 期（世界与知识，W1–W6）。
