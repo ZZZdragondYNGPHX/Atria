@@ -46,7 +46,7 @@ Atria 的精确 Revision 与分支恢复可作为技术基础，证据见 [resea
 
 ## 后续依赖
 
-成长、存档和活动基础方向已经确认。本轮具体范围与负载候选见 [content-and-runtime.md](content-and-runtime.md)，美术见 [presentation.md](presentation.md)，整体实施基线见 [production-plan.md](production-plan.md)。以下新增细则均为拟定，正式制作仍需用户启动。
+成长、存档和活动基础方向已经确认。具体范围与负载候选见 [content-and-runtime.md](content-and-runtime.md)，美术见 [presentation.md](presentation.md)，整体实施基线见 [production-plan.md](production-plan.md)。以下细则作为拟定默认方案；正式制作已授权，按 [execution-split.md](execution-split.md) 分工推进。
 
 ## D4 成长与资源默认方案
 

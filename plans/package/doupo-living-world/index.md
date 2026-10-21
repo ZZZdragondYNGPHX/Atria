@@ -2,7 +2,7 @@
 
 - Task ID: `package/doupo-living-world`
 - Primary Workspace: `package`；本 Bundle 位于 `docs`；必要的产品修补使用独立产品任务。
-- Status: Draft v0.8 — 已确认先深后广及动态 NPC/人口上限/事件平衡方向，继续整体讨论；尚未获正式制作授权。
+- Status: v0.9 — 正式制作已获授权；前后端分工与接续材料已整理，后端开发和前端原型将在各自新对话推进。
 - Updated: 2026-10-20
 - Source baseline: `main@f9a8a83827c8b3662c44e67e95c9ed84118baadd`；实施前重新核对实际 Git。
 - Record: [累计记录](../../../records/package/doupo-living-world.md)
@@ -17,12 +17,12 @@
 
 ## 当前状态
 
-- 已从交接恢复并核实最新 `origin/docs` 包含 `5e215cbe`；v0.7 完整制作稿基础上，v0.8 新增 D23 先做深生活与长期后果再扩大陆域、D24 动态 NPC/人口上限/事件平衡的确认，具体人口规则与验证安排已展开。
+- 已从交接恢复并核实 `origin/docs` 包含 `5e215cbe`；v0.8 的先深后广与动态人口方向保持，v0.9 新增 D25 正式启动、D26 前后端分工与新对话安排。
 - 已完成第一轮源码能力与一手外部材料调查，见 [research.md](research.md)。尚未进行目标游戏负载压测、真实模型质量验证或实际制作。
 - 新 Bundle 只根据当前对话建立，不从历史草案导入“已确认”条目；不恢复已有工作树中被删除的其它方案文件。
-- 后续每轮先将用户新确认的取舍和受影响的候选方案更新到本 Bundle，再继续讨论。版本变化写在本入口，已确认决定统一写入 decisions。
-- 正式制作等待讨论形成明确基线和用户启动指令；一般工程选择不另设逐阶段审批。
-- 当前没有本任务游戏源码、`.atria` 成品或产品修补。本版是可整体检查的拟定制作稿；完成文档不代表正式开工。
+- 后续先将用户新确认的取舍和受影响的候选方案更新到本 Bundle，再推进对应工作。版本变化写在本入口，已确认决定统一写入 decisions。
+- 开工授权已经具备，不重复申请。按用户最新安排，本轮只做分工准备；BE 新对话连续开发后端，FE 新对话并行迭代设计，后端完成后由用户选择前端集成执行者。
+- 当前没有本任务游戏源码、`.atria` 成品或产品修补。共用契约 C0 是语义基线，真实字段与绑定由后端核实实现后补齐；文档准备完成不等于后端或游戏已完成。
 
 ## 模块路由
 
@@ -30,6 +30,10 @@
 | --- | --- | --- |
 | [decisions.md](decisions.md) | 当前对话已确认的跨模块决定 | 用户明确指令 |
 | [production-plan.md](production-plan.md) | D4 整体制作范围、贯通样本、数据职责、框架验证与实施顺序 | decisions；按主题链接领域模块 |
+| [execution-split.md](execution-split.md) | BE/FE 分工、文件边界、并行推进与后续集成 | decisions、production-plan |
+| [backend-task.md](backend-task.md) | 后端完整任务、完成条件、交付与新对话启动提示 | execution-split、frontend-contract、research |
+| [frontend-ai-brief.md](frontend-ai-brief.md) | 给前端 AI 的关键内容、三项设计交付与新对话启动提示 | execution-split、frontend-contract、presentation |
+| [frontend-contract.md](frontend-contract.md) | F01–F12 能力覆盖、数据/操作/状态语义与后续真实接口映射 | decisions、领域规则、实际实现 |
 | [experience.md](experience.md) | RPG 交互、文字输入、首个贯通体验候选 | decisions、world-simulation |
 | [world-simulation.md](world-simulation.md) | NPC 自主生活、动态人口与事件平衡、时间推进、历史改写和时代演化 | decisions、research |
 | [player-and-combat.md](player-and-combat.md) | 自创角色开局、个人原著知识、出身内容与战斗细则 | decisions、experience、world-simulation |
@@ -47,8 +51,11 @@
 | D1 首轮调查 | 已完成初步能力调查与产品方向澄清 | index → research |
 | D2 世界自主性与时间 | 已确认基础方向；动作耗时与长时中断细节后续按需展开 | index → decisions → world-simulation |
 | D3 成长、战斗与内容 | 基础方向与首个活动优先级已定；具体数值、背景和内容后续按依赖展开 | index → decisions；按需读取 progression-and-consequences、player-and-combat 或 world-simulation |
-| D4 制作基线 | 当前；v0.8 加入动态人口与扩展方向，讨论拟定细节并等待正式启动 | index → decisions → content-and-runtime → production-plan；本轮人口主题读 world-simulation，规则/成长按需读 player-and-combat、progression-and-consequences，UI 读 presentation，技术证据读 research；恢复时加 Record |
-| Implementation | 尚未授权启动；拟定 P0–P5 连续执行，先验证身份与读档再扩充内容 | 授权后 index → decisions → production-plan → research；再按实施主题加载领域模块和 Record |
+| D4 制作基线 | 已形成 v0.8 默认基线；正式制作已授权，具体数值与视觉细节仍保留拟定状态 | index → decisions → production-plan；按主题加载领域模块 |
+| Implementation 准备 | 当前；v0.9 已拆分任务，提炼共用语义与两份新对话资料 | index → decisions → execution-split → frontend-contract → Record |
+| BE 后端实施 | 授权已具备；新对话按 BE0–BE6 连续执行，先身份/恢复再扩充完整规则与内容 | index → decisions → execution-split → backend-task → frontend-contract → research → Record；按阶段加载领域模块 |
+| FE 界面迭代 | 与 BE 并行的离线原型和设计；当前无真实界面产物 | index → frontend-ai-brief → execution-split → frontend-contract → presentation；确认边界读 decisions，内容按需 |
+| 前端集成与整包交付 | BE 完成后由用户选择执行者；保留 P4 表现与 P5 发布验收 | index → execution-split → frontend-contract 的实际映射 → 选定的前端三项产物 → Record |
 
 ## 实质设计变化
 
@@ -61,5 +68,6 @@
 
 - 2026-10-20，第八轮 v0.7：从 `docs@5e215cbef` 恢复，按 D4 路由汇总完整拟定制作稿。新增首批场所/人物编制与出身建议、日常关系和家庭全流程、探索竞争、时间与代际、成长和读档细则、桌面 UI/美术、数据职责与 V1–V6/P0–P5 验证实施顺序。上述细节供整体讨论，未新增产品确认项、未正式制作。按用户追加要求，仅同步本机 main 至最新远端；其它任务改动保留。
 - 2026-10-20，第九轮 v0.8：用户认可先做深三地生活与长期后果再扩大陆域，并补充动态生成 NPC、设置面向未来世界扩展的上限、通过事件平衡人口，记录为 D23–D24。世界模块提出计数口径、生成来源、事件调节、并发名额与恢复的候选细则，制作稿与负载安排同步加入人口验证；具体上限与阈值未冻结，仍未正式制作。
+- 2026-10-20，第十轮 v0.9：确认正式开工；随后按新要求先拆分后端开发、前端设计迭代和后续前端集成。新增分工、后端任务、前端 AI 委托、共用契约四份模块，以前端审计的三项设计交付和覆盖映射方法提炼关键内容，不复制其平台范围/视觉。当前只完成文档准备，开发将在新对话进行；集成执行者由用户在后端完成后选择。
 
 仓库职责与执行生命周期遵循 [Repository Governance](../../../README.md)。

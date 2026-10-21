@@ -1,6 +1,6 @@
 # 首批内容与运行目标
 
-状态：Draft v0.8 制作展开；动态 NPC 生成、可扩展人口上限与事件平衡方向以 [D24](decisions.md#d24--动态-npc人口上限与事件平衡) 为准，以下具体编制、数值与规则仍为拟定。决定只以 [decisions.md](decisions.md) 为准，整体范围与实施顺序见 [制作稿](production-plan.md)；尚未正式启动制作。
+状态：v0.8 内容默认方案沿用于 v0.9 实施；动态 NPC 生成、可扩展人口上限与事件平衡方向以 [D24](decisions.md#d24--动态-npc人口上限与事件平衡) 为准，以下具体编制、数值与规则仍为拟定。正式制作已授权，当前分工见 [execution-split.md](execution-split.md)；决定归 [decisions.md](decisions.md)，整体范围与实施顺序归 [制作稿](production-plan.md)。
 
 ## 当前用途
 
