@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "status": "awaiting-user-style-approval",
+  "generator": "Built-in image_gen",
+  "assets": [
+    {
+      "id": "wutan-herbal",
+      "file": "wutan-herbal.png",
+      "use": "Environment style reference; not collision-aligned playable scene.",
+      "prompt": "Use case: stylized-concept. Asset type: production game art for a Chinese cultivation RPG, suitable for Doupo Living World. Unified style: sophisticated hand-painted gouache with restrained ink contours, readable materials and atmospheric depth, muted jade/teal, warm stone/ivory, antique gold, sparing ember vermilion. No modern objects, no text, no UI, no borders, no watermark, no copied anime/film character designs. Environment camera is fixed elevated orthographic three-quarter top-down, NOT a cinematic eye-level illustration; play space clearly readable, roofs kept to edges, generous walkable ground, scenery not falsely claiming exact gameplay collision alignment. Wide landscape image. Primary request: Wutan city herbal shop interior. An original modest timber and stone apothecary with weathered herb drawers along the rear wall, bundles of drying plants, mortar and pestle and small ceramic medicine jars on a low counter at the far right, a little brass lamp. Floor plan is open square stone tiles, two visible connected walkways and a small entrance at the lower left, no people. Window light soft and warm, everyday livelihood, quiet detail, main walkable floor kept clear, no lettering on jars or drawers. This is one distinct environment backdrop."
+    },
+    {
+      "id": "su-wanhe",
+      "file": "su-wanhe.png",
+      "use": "Original NPC Su Wanhe, age 23; portrait style reference, opaque background.",
+      "prompt": "Use case: stylized-concept. Asset type: a single dialogue half-body portrait reference for a Chinese cultivation RPG, original NPC Su Wanhe, age 23, an adult herbal shop assistant who is caring for her injured father and has independent judgment. Create ONE refined hand-painted character portrait, waist-up with both hands visible and a little margin above the hair. Same aesthetic as an earthy Chinese herbal shop: restrained ink contours, opaque gouache and fine painterly texture, muted jade teal, ivory, weathered warm browns and a tiny antique brass accent. Human facial proportions, expressive but understated, clearly adult, attentive eyes, composed and capable with a slight guarded warmth. Dark hair loosely pinned into a practical low bun with a plain wooden hairpin, a few natural flyaways. Wear plain layered ivory and faded teal hanfu work clothes with rolled practical sleeves and a warm-gray apron, subtle herb stains; no royal costume, no jewelry beyond a tiny plain pin, no armor. She holds a folded unmarked linen herb packet in one hand, other hand naturally rests by it. Three-quarter pose toward the viewer's left, eye line engaging the player, hands anatomically clean. Background is simple softly mottled warm stone/ivory paper with ample breathing room, no scenery, opaque background for a style approval plate. Painterly and crafted, not glossy 3D, not anime doll, no sexualization, no photo texture. Portrait aspect ratio around 3:4. No lettering, no title, no UI frame, no logos, no watermark."
+    }
+  ]
+}
