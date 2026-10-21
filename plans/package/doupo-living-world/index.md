@@ -2,8 +2,8 @@
 
 - Task ID: `package/doupo-living-world`
 - Primary Workspace: `package`；本 Bundle 位于 `docs`；必要的产品修补使用独立产品任务。
-- Status: v0.9 — 正式制作已获授权；前后端分工与接续材料已整理，后端开发和前端原型将在各自新对话推进。
-- Updated: 2026-10-20
+- Status: v0.10 — BE 已有可构建、可载入的阶段源码；按用户换设备要求保存 checkpoint，后端尚未完成。
+- Updated: 2026-10-21
 - Source baseline: `main@f9a8a83827c8b3662c44e67e95c9ed84118baadd`；实施前重新核对实际 Git。
 - Record: [累计记录](../../../records/package/doupo-living-world.md)
 
@@ -18,11 +18,11 @@
 ## 当前状态
 
 - 已从交接恢复并核实 `origin/docs` 包含 `5e215cbe`；v0.8 的先深后广与动态人口方向保持，v0.9 新增 D25 正式启动、D26 前后端分工与新对话安排。
-- 已完成第一轮源码能力与一手外部材料调查，见 [research.md](research.md)。尚未进行目标游戏负载压测、真实模型质量验证或实际制作。
+- 已开始原生包后端实施与隔离 Native Session 验证；实际结果、失败样本及未完成项见 [Record](../../../records/package/doupo-living-world.md)。真实模型验收与长期负载尚未完成。
 - 新 Bundle 只根据当前对话建立，不从历史草案导入“已确认”条目；不恢复已有工作树中被删除的其它方案文件。
 - 后续先将用户新确认的取舍和受影响的候选方案更新到本 Bundle，再推进对应工作。版本变化写在本入口，已确认决定统一写入 decisions。
-- 开工授权已经具备，不重复申请。按用户最新安排，本轮只做分工准备；BE 新对话连续开发后端，FE 新对话并行迭代设计，后端完成后由用户选择前端集成执行者。
-- 当前没有本任务游戏源码、`.atria` 成品或产品修补。共用契约 C0 是语义基线，真实字段与绑定由后端核实实现后补齐；文档准备完成不等于后端或游戏已完成。
+- 开工授权已经具备，不重复申请。BE 继续后端，FE 在隔离工作树并行设计，后端完成后由用户选择前端集成执行者。当前中断仅因用户要求推送并换设备。
+- 包源已进入 package；原生接纳扩展在独立 `feat/doupo-native-authority`，尚未集成 main。没有正式 `.atria` 发布件或正式前端。共用契约保留 C0 语义并新增 C1 实施映射草稿；仍需后续验证后收敛。
 
 ## 模块路由
 
@@ -52,8 +52,8 @@
 | D2 世界自主性与时间 | 已确认基础方向；动作耗时与长时中断细节后续按需展开 | index → decisions → world-simulation |
 | D3 成长、战斗与内容 | 基础方向与首个活动优先级已定；具体数值、背景和内容后续按依赖展开 | index → decisions；按需读取 progression-and-consequences、player-and-combat 或 world-simulation |
 | D4 制作基线 | 已形成 v0.8 默认基线；正式制作已授权，具体数值与视觉细节仍保留拟定状态 | index → decisions → production-plan；按主题加载领域模块 |
-| Implementation 准备 | 当前；v0.9 已拆分任务，提炼共用语义与两份新对话资料 | index → decisions → execution-split → frontend-contract → Record |
-| BE 后端实施 | 授权已具备；新对话按 BE0–BE6 连续执行，先身份/恢复再扩充完整规则与内容 | index → decisions → execution-split → backend-task → frontend-contract → research → Record；按阶段加载领域模块 |
+| Implementation 准备 | 已完成；v0.9 已拆分任务，提炼共用语义与两份新对话资料 | index → decisions → execution-split → frontend-contract → Record |
+| BE 后端实施 | 当前；已保存 v0.10 checkpoint，继续 BE0–BE6 验证与修正，不把阶段源码当成完成 | index → decisions → execution-split → backend-task → frontend-contract → research → Record；按阶段加载领域模块 |
 | FE 界面迭代 | 与 BE 并行的离线原型和设计；当前无真实界面产物 | index → frontend-ai-brief → execution-split → frontend-contract → presentation；确认边界读 decisions，内容按需 |
 | 前端集成与整包交付 | BE 完成后由用户选择执行者；保留 P4 表现与 P5 发布验收 | index → execution-split → frontend-contract 的实际映射 → 选定的前端三项产物 → Record |
 
@@ -71,3 +71,5 @@
 - 2026-10-20，第十轮 v0.9：确认正式开工；随后按新要求先拆分后端开发、前端设计迭代和后续前端集成。新增分工、后端任务、前端 AI 委托、共用契约四份模块，以前端审计的三项设计交付和覆盖映射方法提炼关键内容，不复制其平台范围/视觉。当前只完成文档准备，开发将在新对话进行；集成执行者由用户在后端完成后选择。
 
 仓库职责与执行生命周期遵循 [Repository Governance](../../../README.md)。
+
+- 2026-10-21，v0.10：开始原生后端实现，建立四类出身、三地场所、人物/关系/家庭规则与构建器；为实际接纳阻碍建立独立源码任务。用户要求推送换设备，本 checkpoint 保存未完成实现与准确验证边界。停用 GGchan，API 验收放到全部本地实现与验证之后。

@@ -1,13 +1,13 @@
 # 斗破苍穹开放沙盒世界 — Record
 
 - Task ID: `package/doupo-living-world`
-- Primary Workspace: `package`；本轮实际修改仅在 `docs`。
-- Status: v0.9 正式制作已授权；前后端任务与新对话资料已准备，当前尚无产品实现。
+- Primary Workspace: `package`；BE 在 package 实施，必要原生接纳补充使用独立源码任务。
+- Status: v0.10 BE 阶段实现已保存；按用户要求推送换设备，完整后端尚未完成。
 - Plan: [方案入口](../../plans/package/doupo-living-world/index.md)
 
 ## 当前结果
 
-完成首轮源码与外部资料调查、连续多轮讨论、v0.7 完整制作稿、v0.8 动态人口补充，以及 v0.9 前后端分工和接续材料。当前 Bundle 有 14 个 Markdown 文件；已确认决定为 D01–D26，正式开工已确认，具体内容数量、人口口径、阈值等未批准细节仍标为拟定。用户要求新对话分别做后端开发和前端 AI 原型迭代，后端完成后再选择前端集成者；本轮未开始产品实现。
+已从 v0.9 准备进入 BE 实施。package 现有可构建、可安装的原生后端源，独立源码分支保存必要的接纳扩展。四类出身、十二场所、二十四名初始 NPC，以及生活/成长/关系/家庭等规则已有阶段代码；只有下文实测项目可算通过。完整恢复、跨年负载、人口并发、真实模型和正式 Bridge 接线仍未完成。用户要求推送换设备；正式前端仍由另一对话设计，后端完成后才由用户选择集成者。
 
 ## 阶段 D1–D4 — 调研、讨论与交接整理
 
@@ -124,6 +124,57 @@
 - 前端设计新对话：index/frontend-ai-brief/execution-split/frontend-contract/presentation，按需读取 decisions 和内容模块；在隔离工作区或外部环境交付三项设计资料，勿同时改 Plan/Record/共用契约。
 - 后端完成后交付实际接口、版本与验证结果，再由用户选择前端集成者；开工许可不再重复请求，阶段不另加审批。
 
-## 当前交付状态
+## v0.9 交付状态（历史）
 
 游戏项目尚未完成。当前交付为 v0.9 制作基线、前后端分工、C0 共用语义、两份可独立使用的任务委托及新对话接续资料；尚无本任务游戏源码、设计 HTML 或 `.atria` 构建。
+
+## 阶段 BE0/BE1 — 运行基线与原生接纳（实施中）
+
+- Date: 2026-10-21。
+- 起点：package `2dd7fb3ed`，docs `0f83dda33`，main `f9a8a83827c8b3662c44e67e95c9ed84118baadd`；main/package 干净。docs 的其它任务 HTML 改动保留。
+- 已消费本任务 HANDOFF，按 BE 路由读取 D01–D26、分工、领域模块与原有 Record；没有读取 doupo-open-world 历史确认。
+- 当前本地没有 8000 端口运行实例；MCP 源码/实例关联为 UNVERIFIABLE，未拿它证明运行。验证改用隔离的 Native SessionCore/PackageInstaller 与临时 FsEngine，验证源码固定为本任务源码工作树。
+- 新建独立源码任务 `feat/doupo-native-authority`，起点为上述 main；main 没有合入 package。原基线上有界集合 read grant 的声明被拒绝：`Transaction read grant: unknown field collection`。正在补充原 privateReads 的有界字段投影、同 scope 和预算计费；不建立平行人物或存档服务。
+- 作者源已经开始建立于 `package:doupo-living-world/source/`，包含四类出身、十二场所、二十四名初始 NPC 的候选实施编制；构建版本暂为 `0.1.0-be.1`。这些是实施默认值，不新增用户冻结决定。
+- 开局切点采用本轮家族测试当日晚间、来客会面之前；重新读取官方译本第 1–3 章，核实测试结果、父子/族长关系与古戒已持有。精确距离、绝对年份、未核实的年龄/境界不写为小说定值；原创场景、人物与规则在资产内标明。
+- 已生成第一份可构造的 Native 容器；正式安装、规则、动态关系、完整恢复、真实模型及长期负载仍在验证，尚不能称 BE 完成。测试实现与临时运行数据仅本地保留。
+- 后续：安装与身份初始化 → V1/V2/V7 → BE2–BE4 全规则修正 → V6 真实模型 → V3/V4 长期负载 → 共用契约与集成交付；不增加阶段审批或独立审查。
+
+## 阶段 BE — 换设备 checkpoint v0.10
+
+- Date: 2026-10-21；用户明确要求保存、推送远端并换设备接续。此处为中断 checkpoint，**不是 BE 完成**。
+- Package HEAD：`b424c2a030a9774ad5b90cb438a5d9cd23fb50f7`，分支 `package`。版本 `0.1.0-be.1`，Package ID `pkg_723cdd67122beffdac73f3dfe5c9f64e`，PackageVersion ID `pkgv_788177e6d50cb9680ed2089857ace7c9`。
+- Source HEAD：`6e44cf85969fff3038eec5a16957b0919ff17521`，分支 `feat/doupo-native-authority`；[独立源码任务](../../plans/feat/doupo-native-authority.md)及其 [Record](../feat/doupo-native-authority.md)。仍未合入 main；main 保持起点且干净。
+- docs 本轮起点 `0f83dda338b292b48f6c90c6fe659a31aa0e4666`；本 checkpoint 文档提交以 `git log -1 --format=%H -- HANDOFF.md` 定位，远端事实以实际 push/refs 核验为准。
+
+### 已保存实现
+
+- 包源、声明构建器与闭合 schema；角色创建、地图/地点/网格路径、原生身份绑定、有限库存与报价、探索竞争、修炼与炼药、分段交锋、个人经历和非对称评价、真实需求/约定、婚姻共同物资、预留出生、动态 Subject、迁入与 NPC 生活/家庭规则。详见 C1 契约草稿，不把代码存在等同全部验收通过。
+- 有界 private collection grants、按原记录哈希校验旧评价、computed 数组元素引用、真实 computation anchor、可缩减的 invariantContext/invariantReads、Subject 关系 target 接纳。没有增加原执行预算，没有建立平行身份/存档/关系存储。
+- 接入既有 Native History checkpoint，以复用归档重放隔离并避免把长期回执无限塞在活动状态；没有为测试结果更换 Domain 或删除活跃关系。最新长时回归仍待重跑。
+- 正式前端、Canvas 与美术未制作；没有改动 `design-reference/`。`releases/` 只有目录说明，没有上传 `.atria` 验证件或发布件。
+
+### 实际验证及其边界
+
+- 当前提交前再次构建成功，临时容器 47,724 bytes；加密容器带随机盐/nonce，不以归档逐字节相同判断可复现。没有将临时容器作为发布件提交。
+- 当前包源在隔离 FsEngine 中通过安装、新局 24 个 Subject 绑定、创建角色、个人投影和十日推进（17 次后续片段）；该 smoke 的承诺参数已因新增真实 needs 规则而被正确拒绝，它不再作为正向履约样本。规则验证旁白是固定本地文本，不是模型质量证据。
+- 较早的实际家庭样本已通过购买/失效报价、正向承诺履行、照护、婚约/婚姻、家庭分配、怀孕预留、出生与新生儿真实 Subject/个人 view；到读回旧存档后，测试辅助函数在访问不存在的未来孩子时发生 `undefined.state`，所以**完整恢复断言没有跑完**。辅助函数已本地修正，尚未完成整条重跑；不能写成 V2 通过。
+- 原 appraisal 接纳函数对同一真实非 manifest Subject 返回 `appraisal_target_denied`；修改后接纳，未知 Subject 仍拒绝。这个对比验证目标接纳边界，不是一次真实模型交付。
+- 新增集合/哈希/筛选计费/scope/越权 invariant 等本地样本 **14 项通过**；原有核心回归分批通过 185 项，另补齐本地 harness 后 computation Session/appraisal 的 17 项通过。它们不是最终完整回归：模拟候选仍有一项旧 work count 的 8/9 预期差异，未修改 main 上也复现；最新 invariantReads 补充后尚未全量重跑此前套件。测试实现、日志与临时数据未提交。
+- 早期长测曾在 Lifecycle 256 条回执上限失败；已接入现有 History checkpoint，最新版本只完成十日 smoke，仍须跨越原失败点及跨年重跑。另已观察到 invariant 复制大状态造成 128 KiB 消息超限，缩减上下文后短样本通过；更大人口尚未测定。
+- API 连接尝试均在有效模型响应前失败（socket/transport 错误），没有真实模型判断、工具选择、Token 使用或质量通过结果。用户随后明确停用 GGchan，并要求暂不调用 API、留到最后；这两条指令继续生效。本地没有仍在运行的模型调用或本任务测试进程。
+
+### 接续优先事项
+
+1. 从远端三条分支恢复本 checkpoint，核实 Git 并保护其它工作；本地测试资产不会随设备迁移，按 Record 重建必要样本。先重跑当前包安装与家庭/完整世界恢复，补迟到任务和分支来源隔离。
+2. 在现有 Bridge 真实接线中，typed transaction 走 NativeGenerationHost 并生成旁白；不能让每个内部 continue 都调用模型。先调查、复用或必要补齐现有确定性权威提交路径，再进行 API 验收；这项尚未实现。
+3. 完成历史人物可见查询：当前 computation 只读 alive 人物，死者记录仍在 Native Domain/Revision，但玩家历史查询入口尚未补齐；同时验证远方死亡、家庭状态和私有评价不泄露。
+4. 跨月/跨年/世代、来源增长、现有人口/预留计数、并发接纳、全局与地区阈值、原住民死亡和迁徙等 V3/V4/V7。96 人上限是未经负载确认的实施默认值，不能按模板声明上限推断容量。
+5. 补齐复合动作部分成功、自动存档边界、旅行/战斗风险、取消、结果保留、NPC 关系家庭与全部出身的回归；必要时修正规则，不能以“已有代码”宣称 BE2–BE4 完成。
+6. 本地工作与必要修补完成后再做 V6。**不再使用 GGchan，也不自动使用旧连接/旧额度**；按当时可用且明确的配置验证真实意图、个人判断和叙事。最后完成源码任务集成、包版本/构建与前端接线清单，再由用户选择集成者。
+
+当前共用契约已补 C1 实际字段/事务草稿；不是正式前端 binding 或最终冻结协议。阶段不增加审批，不引入独立审查，不重新询问 D01–D26，不从 doupo-open-world 导入确认。
+
+### 其它任务保护
+
+docs 的 `plans/architecture/atria-frontend-audit/design-proposal/atria-visual-direction.html` 仍是原有未提交改动（67 行新增、35 行删除），没有纳入本任务提交。另已存在 FE 的隔离工作树/分支 `feat/doupo-living-world-design-reference`，本对话不编辑、提交或推送它；不触碰其它源码任务。
