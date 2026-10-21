@@ -16,9 +16,9 @@ import { randomUUID } from 'node:crypto';
 import { processPackageText } from '../processing-runtime.js';
 import { prepareKnowledgeAdoption } from '../knowledge-authority.js';
 import { captureTaskProduction } from '../task-artifact-authority.js';
-import { hasAuthorityTransactions, authorityCatalog, authoritySelection, resolverRequest, authorityValue, authorityFailure, authoritySelectionCache, authorityTurnProof } from '../authority-turn.js';
+import { hasAuthorityTransactions, authorityCatalog, authoritySelection, resolverRequest, authorityValue, authorityFailure, authoritySelectionCache, authorityTurnProof, authorityPlayerEntry } from '../authority-turn.js';
 import { buildAuthorityObservation } from '../authority-transaction.js';
-import { createNativeId, isNativeId } from '../identity.js';
+import { isNativeId } from '../identity.js';
 import { prepareNarrativeSkills, runNarrativeSkillLoop, completeNarrativeSkillTools, isNarrativeSkillInvocation } from '../skill-invocation.js';
 import { publicSessionTaskMessages, sessionTaskRoundCount, completeSessionTaskHistory } from '../../../public/shared/native-session-task-history.js';
 import { GenerationService } from '../model-prompt-runtime/generation-service.js';
@@ -496,16 +496,7 @@ export class NativeGenerationHost {
         if (typed) {
             await originalCatalog();
             const selection = authoritySelection(catalog, typed);
-            const content = JSON.stringify({ verb: catalog.find(item => item.id === selection.transactionId).verb, input: selection.input });
-            player = structuredClone(this.sessionCore._newEntry(base, { role: 'user', content,
-                metadata: { atri_authority_input: selection } }));
-            // Input and invocation key do not influence the mechanical RNG.
-            const stable = hashNativeDocument({ sessionId: base.session.sessionId, branchId: base.revision.branchId,
-                revisionId: base.revision.revisionId, transactionId: selection.transactionId });
-            const messageId = createNativeId('message', () => stable.slice(0, 32));
-            const variantId = createNativeId('variant', () => stable.slice(32));
-            Object.assign(player.entry, { messageId, variantIds: [variantId], activeVariantId: variantId });
-            Object.assign(player.variant, { messageId, variantId });
+            player = authorityPlayerEntry(this.sessionCore, base, selection, catalog);
         } else if (base.timeline.at(-1)?.role !== 'user'
             || (input.userInput !== undefined && input.userInput !== base.timeline.at(-1).content)) fail('native_authority_player_anchor_required');
         const key = handle + ':' + base.session.sessionId + ':' + base.revision.branchId + ':' + base.revision.revisionId;

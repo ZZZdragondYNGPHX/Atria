@@ -12,7 +12,7 @@ import { RUN_NAMESPACE, assertRunState } from '../../public/shared/native-run-co
 import { nativeTaskScheduler } from './task-scheduler.js';
 import { requestSessionMaintenance } from './session-maintenance.js';
 import { prepareLifetimes, validateLifetimes } from './lifetime-authority.js';
-import { hasAuthorityTransactions, prepareAuthorityTurn, authorityTurnProof, authorityActionRequest, authorityFailure, authorityCatalog, authoritySelection } from './authority-turn.js';
+import { hasAuthorityTransactions, prepareAuthorityTurn, authorityTurnProof, authorityActionRequest, authorityFailure, authorityCatalog, authoritySelection, authorityPlayerEntry } from './authority-turn.js';
 import { prepareAuthorityPublications, createAuthorityPublicationBudget } from './authority-transaction.js';
 import { resolveNativeRuntimePackage } from './runtime-descriptor.js';
 import { bridgeValue } from '../../public/shared/native-frontend-bridge.js';
@@ -706,6 +706,42 @@ export class SessionCore {
         if (selection.transactionId === base.manifest.runtime?.experienceContract?.storyStart?.transactionId) throw runFailure('native_story_start_only');
         const installed = await this._openPackage(handle, base.session.packageId, base.session.packageVersionId, base.session.entryPointId);
         return prepareAuthorityTurn(this, handle, base, installed, selection, player);
+    }
+
+    async applyAuthorityAction(handle, sessionId, { transactionId, input, invocationId }, { expectedRevisionId } = {}) {
+        if (!expectedRevisionId || typeof invocationId !== 'string' || !/^[a-zA-Z0-9._:-]{1,128}$/.test(invocationId)) throw new TypeError('Authority action anchor and invocation required');
+        return this._sessions.withRunLock(handle, sessionId, async () => {
+            const base = await this.load(handle, sessionId);
+            await this.runs.assert(handle, sessionId, 'write');
+            const installed = await this._openPackage(handle, base.session.packageId, base.session.packageVersionId, base.session.entryPointId);
+            const catalog = await authorityCatalog(base, installed);
+            const selection = authoritySelection(catalog, { transactionId, input });
+            if (transactionId === base.manifest.runtime?.experienceContract?.storyStart?.transactionId) throw runFailure('native_story_start_only');
+            const requestHash = hashNativeDocument(selection);
+            const previous = actionReceipts(base).find(item => item.idempotencyKey === 'authority:' + invocationId);
+            if (previous) {
+                if (previous.branchId !== base.revision.branchId || previous.baseRevisionId !== expectedRevisionId
+                    || previous.requestHash !== requestHash) throw authorityFailure('native_authority_invocation_conflict');
+                return base;
+            }
+            if (base.revision.revisionId !== expectedRevisionId) throw new ConflictError('native_session_head_conflict', { sessionId });
+            if (retiredInvocation(base.states.atri_lifecycle?.history, invocationId)
+                || retiredInvocation(base.states.atri_lifecycle?.history, 'authority:' + invocationId)) throw authorityFailure('native_authority_invocation_expired');
+            const player = authorityPlayerEntry(this, base, selection, catalog);
+            const { prepared } = await this.prepareAuthorityTurn(handle, base, selection, player);
+            const candidate = prepared.candidate;
+            const runPolicy = base.manifest.runtime.experienceContract.runPolicy;
+            let states = candidate.states;
+            if (states[RUN_NAMESPACE] && runPolicy?.deathTransactions.includes(selection.transactionId) && prepared.outcome === runPolicy.deathOutcome) {
+                states = { ...states, [RUN_NAMESPACE]: { ...states[RUN_NAMESPACE], status: 'dead' } };
+            }
+            const spoken = (prepared.speeches ?? []).map((draft, index) => this._newEntry(candidate, draft, candidate.timeline.length + index));
+            return this._publish(handle, base, { states, timeline: [...candidate.timeline, ...spoken.map(item => item.entry)],
+                entries: [player.entry, ...spoken.map(item => item.entry)], variants: [player.variant, ...spoken.map(item => item.variant)], authorityPrepared: true,
+                actionRequest: { ...authorityActionRequest(prepared, selection, invocationId, expectedRevisionId, player), requestHash },
+                taskRecord: { kind: 'turn', invocationId, fingerprint: requestHash, requestHash, provenance: [], anchorRevisionId: expectedRevisionId,
+                    branchId: base.revision.branchId, outcomes: [], status: 'applied', authorityReceipt: { kind: 'authority', authorityId: prepared.identity, inputHash: prepared.inputHash } } });
+        });
     }
 
     async finalizeTurn(handle, sessionId, { envelope: raw, invocationId, requestHash = null, provenance = [], authorityProof = null, knowledgeProof = null }, { expectedRevisionId, effectPolicy } = {}) {

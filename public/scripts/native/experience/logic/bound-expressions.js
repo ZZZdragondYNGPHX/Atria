@@ -122,17 +122,28 @@ export function recordSelector(value, context) {
     if (typeof value === 'string') taskId(value);
 }
 export function reads(raw, lifecycle, args) {
+    const previous = new Map();
     return list(raw, LIMITS.readGrants, grant => {
         fields(grant, ['id', 'domainId', 'recordId', 'collection', 'fields'], 'Transaction read grant');
         taskId(grant.id);
         const domain = reference(lifecycle?.domains, grant.domainId, 'read domain');
         if (grant.collection !== undefined) {
-            fields(grant.collection, ['maxItems', 'where', 'recordHash'], 'Transaction collection read');
+            fields(grant.collection, ['maxItems', 'where', 'recordHash', 'ids', 'match'], 'Transaction collection read');
+            if (grant.collection.match !== undefined && (!['all', 'any'].includes(grant.collection.match) || !grant.collection.ids || !grant.collection.where)) throw new TypeError('Collection match requires identities and predicate');
             if (grant.collection.recordHash !== undefined && typeof grant.collection.recordHash !== 'boolean') throw new TypeError('Invalid collection record hash policy');
             integer(grant.collection.maxItems, 1, 256, 'collection records');
             if (grant.recordId !== undefined) throw new TypeError('Collection read cannot select a record');
         } else recordSelector(grant.recordId, args ? { args } : {});
         const schema = objectSchema(domain.recordSchema);
+        if (grant.collection?.ids !== undefined) {
+            const selector = grant.collection.ids;
+            fields(selector, ['read', 'field'], 'Transaction collection identities');
+            taskId(selector.read);
+            const prior = previous.get(selector.read), parts = fieldPath(selector.field, true);
+            if (!prior || !prior.fields.some(field => selector.field === field || selector.field.startsWith(field + '.'))) throw new TypeError('Collection identities outside prior private grant');
+            const selected = schemaAt(prior.schema, parts);
+            if (selected.type !== 'array' || selected.items.type !== 'string' || selected.maxItems > 256) throw new TypeError('Collection identities require a bounded string array');
+        }
         if (grant.collection?.where) {
             fields(grant.collection.where, ['field', 'equals'], 'Transaction collection predicate');
             const selected = schemaAt(schema, fieldPath(grant.collection.where.field));
@@ -154,13 +165,17 @@ export function reads(raw, lifecycle, args) {
                     target = target.properties[key];
                 }
             }
-            return { ...grant, fields: ['records'], schema: { type: 'object', additionalProperties: false,
+            const compiled = { ...grant, fields: ['records'], schema: { type: 'object', additionalProperties: false,
                 properties: { records: { type: 'array', maxItems: grant.collection.maxItems, items: {
                     type: 'object', additionalProperties: false, required: ['id', 'value'],
                     properties: { id: idSchema, value: selected, ...(grant.collection.recordHash ? { hash: { type: 'string', minLength: 64, maxLength: 64 } } : {}) },
                 } } }, required: ['records'] } };
+            previous.set(grant.id, compiled);
+            return compiled;
         }
-        return { ...grant, schema };
+        const compiled = { ...grant, schema };
+        previous.set(grant.id, compiled);
+        return compiled;
     }, 'read grants');
 }
 export function readContext(grants) { return Object.fromEntries(grants.map(grant => [grant.id, grant])); }

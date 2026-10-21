@@ -173,8 +173,13 @@ export function privateReads(candidate, contract, grants, args, budget) {
         let selected;
         if (grant.collection) {
             const where = grant.collection.where;
-            const matching = where ? records.filter(record => where.field.split('.').reduce((value, key) => value?.[key], record.value)
-                === template(where.equals, { args })) : records;
+            const selector = grant.collection.ids;
+            const ids = selector ? new Set(selector.field.split('.').reduce((value, key) => value?.[key], result[selector.read])) : null;
+            const matching = records.filter(record => {
+                const byId = !ids || ids.has(record.id);
+                const byField = !where || where.field.split('.').reduce((value, key) => value?.[key], record.value) === template(where.equals, { args });
+                return grant.collection.match === 'any' ? byId || byField : byId && byField;
+            });
             if (matching.length > grant.collection.maxItems) throw new TypeError('Private collection read limit');
             selected = { records: [...matching].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
                 .map(record => ({ id: record.id, value: select(record), ...(grant.collection.recordHash ? { hash: hashNativeDocument(record.value) } : {}) })) };

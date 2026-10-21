@@ -167,6 +167,17 @@ export class FrontendBridgeService {
         }
         const invocationId = 'fb:' + hash(canonicalJson({ epoch: state.epoch, binding: binding.id, key: request.idempotencyKey }));
         if (binding.kind === 'action' && binding.target.transactionId && request.method === 'action.invoke') {
+            // A typed action may publish its declared rules without scheduling
+            // a resolver or narrator. The binding is part of the installed,
+            // compiled contract; callers cannot choose an execution mode.
+            if (binding.target.execution === 'deterministic') {
+                const actionId = 'fb-at:' + hash(canonicalJson({ sessionId: state.sessionId, binding: binding.id, key: request.idempotencyKey }));
+                const snapshot = await services.core.applyAuthorityAction(state.owner, state.sessionId,
+                    { transactionId: binding.target.transactionId, input: mapped, invocationId: actionId },
+                    { expectedRevisionId: request.revision });
+                await this.current(services, state);
+                return receipt({ revision: snapshot.revision.revisionId, data: {} });
+            }
             const host = services.generationHost ?? await services.getGenerationHost?.();
             if (!host) throw bridgeFailure('bridge_operation_unavailable');
             const tasks = base.manifest.runtime.experienceContract.taskRuntime.tasks;

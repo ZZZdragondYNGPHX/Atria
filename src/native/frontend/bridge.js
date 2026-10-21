@@ -69,7 +69,8 @@ export function compileBridge(source = { version: 1, bindings: [] }, experienceC
             }
             targetInput = binding.collection ? binding.inputSchema : EMPTY;
         } else if (binding.kind === 'action' && binding.target.transactionId !== undefined) {
-            fields(binding.target, ['transactionId'], 'Transaction target');
+            fields(binding.target, ['transactionId', 'execution'], 'Transaction target');
+            if (binding.target.execution !== undefined && binding.target.execution !== 'deterministic') throw new TypeError('Unknown Transaction execution');
             taskId(binding.target.transactionId);
             if (!experienceContract.authorityRuntime || experienceContract.taskRuntime?.turn?.policy !== 'authority-first') throw new TypeError('Transaction Turn authority required');
             targetContract = transactionCatalogue().find(item => item.id === binding.target.transactionId);

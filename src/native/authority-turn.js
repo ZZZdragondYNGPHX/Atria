@@ -5,6 +5,7 @@ import { assertTaskValue } from '../../public/shared/native-task-contract.js';
 import { compileDataSchema } from '../../public/shared/native-data-schema.js';
 import { hashNativeDocument } from './repositories/common.js';
 import { immutable } from './model-prompt-runtime/execution-utils.js';
+import { createNativeId } from './identity.js';
 
 // HTTP hosts are short-lived. Share retry pins across Host/SessionCore instances
 // for the same storage engine, not across users or independent databases. These
@@ -32,6 +33,19 @@ export function authoritySelection(catalog, raw, { resolver = false } = {}) {
     const declared = catalog.find(item => item.id === value.transactionId && (!resolver || item.intent.expose));
     if (!declared) throw authorityFailure('native_authority_selection_denied');
     return immutable({ transactionId: declared.id, input: assertTaskValue(value.input, compileDataSchema(declared.inputSchema)) });
+}
+// Typed and narrated submissions share the same mechanical anchor. Retrying a
+// failed preparation at an unchanged head cannot obtain a different RNG draw.
+export function authorityPlayerEntry(core, base, selection, catalog) {
+    const content = JSON.stringify({ verb: catalog.find(item => item.id === selection.transactionId).verb, input: selection.input });
+    const player = structuredClone(core._newEntry(base, { role: 'user', content, metadata: { atri_authority_input: selection } }));
+    const stable = hashNativeDocument({ sessionId: base.session.sessionId, branchId: base.revision.branchId,
+        revisionId: base.revision.revisionId, transactionId: selection.transactionId });
+    const messageId = createNativeId('message', () => stable.slice(0, 32));
+    const variantId = createNativeId('variant', () => stable.slice(32));
+    Object.assign(player.entry, { messageId, variantIds: [variantId], activeVariantId: variantId });
+    Object.assign(player.variant, { messageId, variantId });
+    return player;
 }
 export function resolverRequest(catalog, observation, userInput) {
     const exposed = catalog.filter(item => item.intent.expose);

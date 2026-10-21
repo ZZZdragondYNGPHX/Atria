@@ -111,6 +111,15 @@ Bindings have `id`, `kind`, `target`, `inputSchema` and `outputSchema`:
   existing typed Application command through `SessionCore`; commands are void,
   so the successful public data payload is `{}`. The result is an actual Bridge
   Receipt, not a full authority snapshot. Read projections carry state changes.
+- **Authority Action**: `kind: "action"`, targeting `{transactionId}` from the
+  installed Game Logic. The default uses the Generation Host's typed turn and
+  narration. Authors may declare `{transactionId, execution: "deterministic"}`
+  for rules-only steps such as continuation; callers cannot change this mode.
+  This uses the same SessionCore authority preparation, scopes, CAS, SavePoint,
+  history and receipts without requesting resolver/narrator generation. The
+  input is the transaction schema (or safe mapping); public output is `{}`.
+  Retries retain the same idempotency key and original revision. Reopen the
+  Bridge after restoration; old epochs and branch anchors remain invalid.
 - **Operation**: `kind: "operation"`, targeting `{taskId, variantId}`. The variant
   may be omitted only for a single-variant Task. Public output is exactly that
   variant's typed `outputSchema`; input is the Task schema or a safe mapped schema.
