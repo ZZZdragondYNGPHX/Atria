@@ -450,4 +450,6 @@ be.4归档：`doupo-living-world/releases/doupo-living-world-0.1.0-be.4.atria`�
 
 归档：doupo-living-world/releases/doupo-living-world-0.1.0-be.5.atria，53,573,496 bytes；SHA-256 `7ff4893102ad3f1454e41c0b1bce6ad41a9e1fe89050486daa5e8b38477dccee`；PackageVersion `pkgv_f4689fb14b84ad461205963afe926b57`。be.3/be.4归档保留原样。W5聚合/长期宿主、D33完整玩家战斗、正式前端/浏览器及动画仍未完成，不由本次池与后端交付扩大结论。
 
-提交范围仅本轮包源码、池素材、归档与相应文档；其它素材任务的D35、Record批量制作段及未提交素材目录均保留，不混入本提交。包实现已提交为394a9efaad5ca1e61b69a1eb8b2b97740e1a91b8，并快进合入长期package；main保持4470cffb9f688d7e889eb94b42b1cb85966318c1。远端同步身份按实际refs核对。
+提交范围仅本轮包源码、池素材、归档与相应文档；其它素材任务的D35、Record批量制作段及未提交素材目录均保留，不混入本提交。包实现已提交为394a9efaad5ca1e61b69a1eb8b2b97740e1a91b8，并快进合入长期package；main保持4470cffb9f688d7e889eb94b42b1cb85966318c1。9份相关文档117处相对文件/标题链接与目标暂存差异空白检查通过。
+
+远端同步核验：两次完整HTTPS上传因连接重置失败，refs未变；改为临时分支先上传媒体对象，再原子更新package/docs并删除传输分支，推送成功。ls-remote确认package为394a9efaad5ca1e61b69a1eb8b2b97740e1a91b8、首轮docs为3e352af60f348467a17047c5ce84ea150b3e89f2、main仍4470cffb9f688d7e889eb94b42b1cb85966318c1，临时分支不存在；本条同步补记随后随docs提交保存。GitHub仅提示51.09MiB归档超过推荐50MiB大小，未拒绝文件；没有改为外置缺失载荷或覆盖历史归档。
