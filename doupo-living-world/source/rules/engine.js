@@ -223,7 +223,7 @@ function run(input){
    if(!capable(t,'communicate'))return false;
    if(args.detail==='acknowledge'){
     if(!t.decision)return reject('reply_pending','对方还没有可接纳的回应。');
-    const spoken=t.decision;touch(args.target);event(p,t.actor,'conversation',t.name+'说：'+spoken,t.name,'direct_message');
+    const spoken=t.decision;touch(args.target);event(p,t.actor,'conversation',t.name+'说：'+spoken,t.name,'direct_message');event(t,p.actor,'said',spoken,t.name,'direct_message');
     if(t.choice!=='refuse'&&w.time-t.lastSocial>=7*DAY){appraisal(t,p,'affinity',2,t.name+'愿意继续与你了解彼此。');t.lastSocial=w.time;}
     t.decision='';t.choice='';say('npc_replied',spoken);return true;
    }
@@ -400,7 +400,7 @@ function run(input){
   if(kind==='buy'||kind==='sell'){
    const quote=w.stocks.find(s=>s.place===p.place&&s.item===args.item),n=args.qty;
    if(!quote||!price(args.item)||!n){reject('trade_unavailable','此处没有该物品的有效报价。');done();return;}
-   if(String(quote.quote)!==args.detail){reject('quote_changed','报价已变化，请重新查看后提交。');done();return;}
+   if(String(quote.quote)!==args.detail){reject('quote_changed','提交的报价标识与当前记录不匹配，本次没有交易；请按当前报价重试。');done();return;}
    const cost=price(args.item)*n,paid=kind==='sell'?Math.floor(cost*0.6):cost;
    if(kind==='buy'&&(quote.qty<n||p.gold<cost)||kind==='sell'&&(qty(p,args.item)<n||quote.gold<paid)){reject('insufficient_resources','货物、金币或商家可付款额度不足。');done();return;}
    touch('player');if(kind==='buy'){p.gold-=cost;quote.gold+=cost;quote.qty-=n;add(p,args.item,n);}else{p.gold+=paid;quote.gold-=paid;quote.qty+=n;add(p,args.item,-n);}quote.quote++;const trade=(kind==='buy'?'购入':'售出')+n+'份'+args.item+'，'+(kind==='buy'?'支付':'收到')+paid+'枚金币。';history('trade',['player'],trade);say('traded',trade);timed(10);done();return;

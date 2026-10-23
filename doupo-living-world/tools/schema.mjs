@@ -42,7 +42,7 @@ export const world=O({created:B,origin:S(),background:S(),time:I(),serial:I(),pr
  op:O({kind:S(),target:S(),end:I(),detail:S(),stopped:B}),combat:O({enemy:S(),round:I(),guard:B}),
  agenda:O({actor:S(),record:S(),due:I()}),nextMarket:I(),nextImmigration:I(),known:A(S(),24),history:A(O({at:I(),kind:S(),refs:A(S(),8),text:S(256)}),128)});
 export const visiblePerson=O({key:S(),actor:S(),sex:S(16,['male','female']),name:S(48),role:S(),place:S(),x:I(0,19),y:I(0,13),alive:B,activity:S(),contact:B,status:S(),needItem:S(),needQty:I(),reply:S(2048),signs:A(S(128),12),observedAt:I(),carrying:S()});
-export const view=O({created:B,time:I(),place:S(),x:I(0,19),y:I(0,13),name:S(48),rank:I(1,39),hp:I(0,1000),qi:I(0,1000),injury:I(0,100),gold:I(0,1000000000),alive:B,age:I(0,10000),inventory,skills,
+export const view=O({created:B,time:I(),place:S(),placeName:S(128),x:I(0,19),y:I(0,13),name:S(48),sex:S(16,['male','female']),rank:I(1,39),hp:I(0,1000),qi:I(0,1000),injury:I(0,100),gold:I(0,1000000000),alive:B,age:I(0,10000),inventory,skills,
  condition:conditionView,gear,control,social,goals:goal,messages:A(messageView,8),workshops:A(O({id:S(),place:S(),status:S(),output:I()}),4),events:causeReference,
  quotes:A(O({item:S(),qty:I(),price:I(),quote:I()}),16),people:A(visiblePerson,12),peoplePage:I(0,100),peoplePages:I(1,100),peopleTotal:I(),known:A(S(),24),cluesPage:I(0,100),cluesPages:I(1,100),clues:A(O({id:S(),kind:S(),text:S(2048),source:S(128),at:I()}),64),
  family:A(O({id:S(),a:S(),b:S(),home:S(),gold:I(),food:I(),status:S(),children:A(S(),24)}),4),
