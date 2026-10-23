@@ -1,1 +1,9 @@
-{"name":"doupo-living-world","version":"0.1.0-be.5","type":"module","private":true,"scripts":{"build":"node tools/build.mjs"}}
+{
+  "name": "doupo-living-world",
+  "version": "0.1.0-fe.2",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "node tools/build.mjs"
+  }
+}

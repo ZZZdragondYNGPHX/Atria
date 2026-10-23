@@ -1,0 +1,60 @@
+<main node-id="doupo-root" bind:class="component.sceneClass">
+ <header node-id="scene-header" class="scene-header">
+  <div node-id="scene-heading"><p node-id="scene-time" class="scene-time" bind:text="component.sceneTime" /><h1 node-id="scene-title" bind:text="component.sceneTitle" /></div>
+  <p node-id="scene-stats" class="scene-stats" bind:text="component.sceneStats" />
+  <div node-id="header-actions" class="button-row"><button node-id="nav-settings" aria-label="打开游戏菜单">菜单</button></div>
+ </header>
+ <section node-id="creation" class="creation" if="component.sceneCreation" aria-label="创建角色">
+  <img node-id="creation-image" class="creation-image" asset="wutan-overview" alt="国风手绘的乌坦城街巷总览" />
+  <div node-id="creation-sheet" class="creation-sheet">
+   <h2 node-id="creation-title">入世</h2>
+   <label node-id="create-name-label" for="doupo-name">姓名</label><input node-id="create-name" id="doupo-name" bind:value="component.createName" autocomplete="off" placeholder="写下角色的姓名" />
+   <div node-id="creation-options" class="creation-options">
+    <div node-id="background-field"><label node-id="background-label" for="doupo-background">出身</label><select node-id="create-background" id="doupo-background" bind:value="component.createBackground"><option node-id="background-clan" value="clan">小族旁支</option><option node-id="background-apprentice" value="apprentice">药铺学徒</option><option node-id="background-mercenary" value="mercenary">佣兵后辈</option><option node-id="background-wanderer" value="wanderer">落脚散修</option></select></div>
+    <div node-id="origin-field"><label node-id="origin-label" for="doupo-origin">来处</label><select node-id="create-origin" id="doupo-origin" bind:value="component.createOrigin"><option node-id="origin-native" value="native">本土人</option><option node-id="origin-transmigrator" value="transmigrator">保留原著记忆的穿越者</option></select></div>
+    <div node-id="sex-field"><label node-id="sex-label" for="doupo-sex">性别</label><select node-id="create-sex" id="doupo-sex" bind:value="component.createSex"><option node-id="sex-female" value="female">女</option><option node-id="sex-male" value="male">男</option></select></div>
+   </div>
+   <p node-id="creation-summary" class="creation-summary" bind:text="component.sceneCreationSummary" />
+   <div node-id="creation-actions" class="button-row"><button node-id="create-submit" class="primary" bind:disabled="component.busy">以此身份入世</button></div>
+  </div>
+ </section>
+ <section node-id="playing" class="playing" if="component.sceneCreated">
+  <div node-id="scene-toolbar" class="scene-toolbar"><button node-id="back-scene" if="component.sceneFacility" bind:text="component.sceneBackLabel" /><p node-id="scene-position" bind:text="component.scenePosition" /><button node-id="toggle-movement" if="component.sceneFacility">行走</button></div>
+  <div node-id="world-layout" class="world-layout">
+   <aside node-id="scene-sidebar" class="scene-sidebar">
+    <section node-id="facility-list" if="component.sceneOverview"><div node-id="facility-events" tabindex="-1"><div node-id="facility-row" class="facility-row" each="component.sceneFacilities" item-key="id"><button node-id="facility-select" bind:data-value="item.id" bind:disabled="item.disabled"><strong node-id="facility-label" bind:text="item.label" /><span node-id="facility-meta" bind:text="item.meta" /></button></div></div></section>
+    <section node-id="nearby-list" if="component.sceneFacility"><h2 node-id="nearby-title">人物</h2><div node-id="sidebar-filter" class="button-row"><button node-id="nearby-filter">附近</button><button node-id="known-filter">旧档案</button></div><p node-id="nearby-empty" if="component.scenePeopleEmpty" class="muted">本页暂无在场人物。</p>
+     <div node-id="people-events" tabindex="-1"><div node-id="person-row" each="component.scenePeople" item-key="id" bind:class="item.className"><button node-id="person-select" bind:data-value="item.id"><img node-id="person-thumbnail" if="item.hasImage" bind:media="item.image" alt="人物头像" /><span node-id="person-row-copy"><strong node-id="person-row-name" bind:text="item.label" /><span node-id="person-row-meta" bind:text="item.meta" /></span></button></div></div>
+     <p node-id="people-page-label" class="muted" bind:text="component.scenePeoplePage" /><div node-id="people-pagination" class="button-row"><button node-id="people-previous" if="component.scenePeoplePrevious">上一页</button><button node-id="people-next" if="component.scenePeopleNext">下一页</button></div>
+     <h3 node-id="objects-title">场所中的事物</h3><div node-id="objects-events" tabindex="-1"><div node-id="scene-object" class="scene-object" each="component.sceneObjects" item-key="id"><button node-id="object-select" bind:data-value="item.id"><strong node-id="object-name" bind:text="item.label" /><span node-id="object-meta" bind:text="item.meta" /></button></div></div>
+    </section>
+   </aside>
+   <section node-id="scene-canvas" class="scene-canvas" aria-label="场所与人物">
+    <div node-id="scene-art" bind:class="component.sceneArtClass">
+     <img node-id="scene-background" class="scene-background" if="component.sceneHasImage" bind:media="component.sceneImage" alt="当前地区或场所的手绘景色；实际对象见旁边列表" />
+     <p node-id="scene-fallback" class="scene-fallback" if="component.sceneImageMissing">场景图暂不可用</p>
+     <div node-id="hotspot-events" class="hotspots" if="component.sceneOverview"><button node-id="facility-hotspot" each="component.sceneHotspots" item-key="id" bind:class="item.className" bind:data-value="item.id" bind:disabled="item.disabled" bind:text="item.label" /></div>
+     <div node-id="field-overlay" class="field-overlay" if="component.sceneFacility">
+      <div node-id="ground-events" class="ground-grid" aria-label="可点击地面，20 列 14 行；键盘移动可使用下方坐标输入"><button node-id="ground-cell" each="component.sceneCells" item-key="id" bind:class="item.className" bind:data-value="item.id" bind:aria-label="item.label" bind:disabled="item.disabled" tabindex="-1" /></div>
+      <div node-id="markers-events" class="map-markers"><button node-id="marker-person" each="component.sceneMarkers" item-key="id" bind:class="item.className" bind:data-value="item.id" bind:disabled="item.disabled" bind:aria-label="item.label" bind:title="item.meta"><img node-id="marker-chibi" if="item.hasImage" bind:media="item.image" alt="" /><span node-id="marker-name" bind:text="item.label" /></button></div>
+      <span node-id="player-marker" bind:class="component.scenePlayerClass"><img node-id="player-chibi" if="component.scenePlayerHasImage" bind:media="component.scenePlayerImage" alt="你的Q版形象" /><span node-id="player-name">你</span></span>
+     </div>
+    </div>
+    <p node-id="marker-overflow" class="marker-overflow" bind:text="component.sceneMarkerNote" />
+    <p node-id="scene-image-note" class="scene-image-note" bind:text="component.sceneImageNote" />
+    <section node-id="person-detail" class="person-detail" if="component.scenePerson" bind:aria-label="component.scenePersonName">
+     <div node-id="person-art" class="person-art"><img node-id="selected-portrait" if="component.scenePersonHasImage" bind:media="component.scenePersonImage" alt="所选人物的半身像" /><p node-id="portrait-fallback" class="portrait-fallback" bind:text="component.scenePersonFallback" /></div>
+     <div node-id="person-copy" class="person-copy"><h2 node-id="person-name" bind:text="component.scenePersonName" /><p node-id="person-meta" class="person-meta" bind:text="component.scenePersonMeta" /><p node-id="person-distance" class="distance" bind:text="component.scenePersonDistance" /><div node-id="person-actions" class="button-row"><button node-id="person-approach" bind:disabled="component.scenePersonUnavailable">接近</button><button node-id="person-talk" class="primary" bind:disabled="component.scenePersonUnavailable">交谈</button><button node-id="nav-combat" bind:disabled="component.scenePersonUnavailable">交锋</button><button node-id="person-relations">相处与约定</button></div><p node-id="person-reply-text" class="person-reply" bind:text="component.scenePersonReply" /><button node-id="person-reply" if="component.sceneCanReadReply" bind:disabled="component.busy">听取回应</button></div>
+    </section>
+   </section>
+  </div>
+  <div node-id="movement-tools" class="movement-tools" if="component.sceneTools"><button node-id="toggle-grid" bind:text="component.sceneGridLabel" /><label node-id="move-x-label" for="doupo-x">横坐标</label><input node-id="move-x" id="doupo-x" type="text" inputmode="numeric" bind:value="component.sceneMoveX" /><label node-id="move-y-label" for="doupo-y">纵坐标</label><input node-id="move-y" id="doupo-y" type="text" inputmode="numeric" bind:value="component.sceneMoveY" /><button node-id="move-to" bind:disabled="component.busy">移动到此处</button><span node-id="grid-help" class="muted">范围 0–19 / 0–13；金色标记为你的实际位置。</span></div>
+  <section node-id="operation-strip" class="operation-strip" if="component.sceneOperation" aria-label="正在进行的行动"><p node-id="operation-description" bind:text="component.sceneOperationText" /><div node-id="operation-actions" class="button-row"><button node-id="operation-continue" class="primary" bind:disabled="component.busy">继续行动</button><button node-id="operation-cancel" bind:disabled="component.busy">停止后续行动</button></div></section>
+  <section node-id="death-notice" class="death-notice" if="component.sceneDead"><h2 node-id="death-title">此身已逝</h2><p node-id="death-copy">可以打开存档，恢复对应时点的整个世界；角色、家庭、人物与历史一同恢复。</p></section>
+  <section node-id="scene-reading" class="scene-reading" aria-label="最近的行动结果"><span node-id="result-meta" class="gold" bind:text="component.sceneResultMeta" /><p node-id="result-text" bind:text="component.sceneResult" /><div node-id="committed-narration" class="committed-narration" if="component.sceneHasNarration" bind:prose="component.narration" /></section>
+  <section node-id="composer" class="composer" aria-label="自由文字行动"><div node-id="composer-heading" class="composer-heading"><label node-id="draft-label" for="doupo-draft">自由行动</label><span node-id="draft-target-label" bind:text="component.sceneTargetLabel" /><button node-id="draft-retarget">改为当前对象</button></div><div node-id="composer-fields" class="composer-fields"><textarea node-id="draft" id="doupo-draft" bind:value="component.draft" rows="2" placeholder="写下想说的话或打算…… Ctrl / ⌘ + Enter 提交" /><button node-id="submit-draft" class="primary" bind:disabled="component.submitDisabled">付诸行动</button></div></section>
+  <nav node-id="game-nav" class="game-nav" aria-label="游戏功能"><button node-id="nav-character">人物</button><button node-id="nav-inventory">行囊</button><button node-id="nav-map">山河</button><button node-id="nav-clues">见闻</button></nav>
+ </section>
+ <aside node-id="connection-status" class="connection-status" if="component.showStatus" aria-live="polite"><span node-id="status-notice" bind:text="component.notice" /><strong node-id="status-error" class="error" bind:text="component.error" /><span node-id="busy-label" if="component.busy">正在处理，请等待结果；可以继续编辑草稿。</span><div node-id="status-actions" class="button-row"><button node-id="refresh-screen">核对当前结果</button><button node-id="resolve-pending" if="component.unresolved">核对原提交</button><button node-id="stop-generation" if="component.busy">停止生成</button></div></aside>
+ <!-- PANELS -->
+</main>

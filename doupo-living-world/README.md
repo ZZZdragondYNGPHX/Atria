@@ -1,9 +1,9 @@
-# 斗破苍穹·众生行 — Native 后端
+# 斗破苍穹·众生行 — 原生游戏界面与世界规则
 
-Task ID：`package/doupo-living-world`。`0.1.0-be.5` 是世界自主运转深化后的后端验证构建，包含身体/伤势、真实活动与补给、器物损耗和维修、NPC成长/后台冲突、个人图谱/消息及因果事件查询。已包含人物/姓名/外观/功法/物品的统一池及20组配对图片；正式前端由后续集成负责；`design-reference/` 由另一个对话维护。设定来源见 [SOURCES](source/content/SOURCES.md)。当前实际接口为 `docs:plans/package/doupo-living-world/frontend-contract.md` 的 C4，实施证据归同一 Record。
+Task ID：`package/doupo-living-world`。`0.1.0-fe.2` 是基于be.5/C4的正式原生前端集成构建，包含身体/伤势、真实活动与补给、器物损耗和维修、NPC成长/后台冲突、个人图谱/消息及因果事件查询。已包含人物/姓名/外观/功法/物品的统一池及20组配对图片；正式前端入口与层级见[实施说明](frontend/IMPLEMENTATION.md)；`design-reference/` 由另一个对话维护。设定来源见 [SOURCES](source/content/SOURCES.md)。当前实际接口为 `docs:plans/package/doupo-living-world/frontend-contract.md` 的 C4，实施证据归同一 Record。
 
 ```sh
-node tools/build.mjs --core /path/to/Atria --out releases/doupo-living-world-0.1.0-be.5.atria
+node tools/build.mjs --core /path/to/Atria --out releases/doupo-living-world-0.1.0-fe.2.atria
 ```
 
 需要 Atria `main@4470cffb9f688d7e889eb94b42b1cb85966318c1`：保留既有 Native Authority/Subject/Information/Bridge 扩展，并支持有界计算输出组合、显式 invariant 读取预算和计算输入组合预算。单值、总读取、CPU、堆和 effects 限额继续生效。归档使用随机盐/nonce，重建核对明文与版本；`--out` 独占创建，不覆盖历史版本。
@@ -38,10 +38,12 @@ NPC 使用真实 Subject 的个人 view，规划由规则根据自身人格、�
 
 首批三地区十二场所、24名作者NPC与4名池生成初始居民，人口上限96（含出生预留）。本轮证据包括60日不同分批的人物结果一致、420日纯规则演化、真实 Native 的治疗/冲突/维修/控制/事件查询与完整恢复，以及96名NPC成熟数据的早期推进和74人同场分页。它们不证明96人跨月完整宿主性能、无限历史、全部候选社会策略或最终界面已完成。
 
-边界：伤处8、器物4、当前个人图谱16、目标/动机各6、热信件16、热冲突4；个人信息grant128、关系grant256、家庭48、约定64、Domain4096条/1MiB、History4096项/2MiB。重要因果保留有界稀疏前后变化及来源，常规生活不为每次进食创建独立事实记录。容量超限拒绝；未承诺无限世代。继承仍为简化直接转移；完整玩家战斗按D33后续实施。多尺度聚合与96人长期宿主成本仍需深化，正式UI/Canvas/Controller、浏览器交互和动画不在本归档内。测试、fixture、日志、缓存和机器配置不提交。
+边界：伤处8、器物4、当前个人图谱16、目标/动机各6、热信件16、热冲突4；个人信息grant128、关系grant256、家庭48、约定64、Domain4096条/1MiB、History4096项/2MiB。重要因果保留有界稀疏前后变化及来源，常规生活不为每次进食创建独立事实记录。容量超限拒绝；未承诺无限世代。继承仍为简化直接转移；完整玩家战斗按D33后续实施。多尺度聚合与96人长期宿主成本仍需深化，本版包含正式AUI/Controller与图像场景交互；静态Q版不含行走动画，浏览器验证口径见实施说明。测试、fixture、日志、缓存和机器配置不提交。
 
 统一内容入口为`source/pools/index.js`，数据集中于`source/pools/`；通用资格筛选、权重及重复控制在`source/rules/pools.js`。开局、迁入和出生保存实际抽取结果，存档恢复不重新抽取。新增池必须注册并通过构建校验，不能在事件或界面中维护另一套随机表。`integration/pools.json`供作者校验；玩家只读取合法公开投影。
 
 地图使用独立`markers`（最多12项）及`chibiAsset`，主角使用自身`appearance`；人物列表每页12项，翻页不改变地图标记。旧档案不是实时位置。`media/pools/`包含8位重要角色与12种普通NPC的配对图片，见该目录README及来源清单；时期缺图明确返回未就绪。
 
-功法池10个可执行条目及1个储备条目，物品池15项；`arts`只显示本人已学/持有秘籍。`practice`的item为已学条目ID，`learn`的item为秘籍物品ID，效果由规则结算。创建后通过`continue`完成零耗时的`initialize`流程。
+功法池10个可执行条目及1个储备条目，物品池15项；`arts`只显示本人已学/持有秘籍。`practice`的item为已学条目ID，`learn`的item为秘籍物品ID，效果由规则结算。界面创建后自动通过`continue`完成零耗时的`initialize/appraise/refresh`流程。
+
+主界面仅保留人物、行囊、山河、见闻四入口；菜单提供存档/恢复和宿主操作。地图重要人物使用独立markers，普通人物主要在列表，选择不自动接近。Native安装图片采用前端交付字节，原图provenance与交付hash分开记录。

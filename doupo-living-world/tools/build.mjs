@@ -8,6 +8,7 @@ import {blankInfo,blankRelation} from '../source/rules/engine.js';
 import {packPerson,packWorld,MIND_FIELDS} from '../source/rules/records.js';
 import {PLAYER,CAST,PERIOD,KINDS,ITEMS} from '../source/content/catalog.js';
 import {S,I,B,O,A,person,world,info,view,action,cause} from './schema.mjs';
+import {frontend} from './frontend.mjs';
 import {bridgeSource} from './interfaces.mjs';
 import {POOLS} from '../source/pools/index.js';
 import {assetId} from '../source/rules/appearance.js';
@@ -131,6 +132,15 @@ export async function compile(core){
  const resolver=modelResources('doupo.resolve','你是斗破沙盒的行动解释器，只把玩家原话映射为一个公开工具调用，不写旁白、不执行规则、不产生状态补丁。依据 observation 中玩家可见的地点、人物 key、报价和当前 operation 选择工具与参数；不要猜隐藏信息。普通行动选 doupo.act，长期或危险重大行动选 doupo.choice，多步要求选 doupo.plan。组合最多四步，未明确对象或不能执行的越界要求用 clarify，text 写简短澄清。交易 detail 必须逐字复制intent.quotes对应item的actionDetail字符串；unitPrice是单价，availableQty是库存，均不能填入detail。例如item=herb、unitPrice=8、actionDetail="1"时，detail必须填"1"，不能填"8"。创建角色时 target 为出身、detail 为 native/transmigrator、item 为 male/female、text 为姓名。对话保留玩家原文；不要把想取得物品、婚姻或功法解释成已经成功。只调用一个工具，不额外输出文字。');
  manifest.runtime.modelPrompt={schemaVersion:1,roles:[{role:'role.intent_resolver',requiredCapabilities:['generation.tools'],promptProgramRef:resolver.exact('core.prompt-program',resolver.pp),generationProfileRef:resolver.exact('core.generation-profile',resolver.gp)}]};
  manifest.assets=assets;manifest.worlds[0].revision.assetIds=assets.map(a=>a.assetId);
+ await frontend({core,load,files,manifest,contract,logic});
+ // Install the same delivery bytes used by the native UI, keeping stable
+ // pooled identities. Original art and provenance stay in the author sources.
+ for(const asset of manifest.assets){
+  const bytes=files.get('frontend/assets/'+asset.assetId+'.webp');
+  asset.contentHash=createHash('sha256').update(bytes).digest('hex');asset.size=bytes.length;
+  assetPayloads.set(asset.assetId,bytes);
+ }
+ files.set('integration/pools.json',Buffer.from(JSON.stringify({schemaVersion:1,pools:POOLS,assets:manifest.assets})));
  return {native,manifest,files,logic,contract,output,assetPayloads};
 }
 if(process.argv[1]===fileURLToPath(import.meta.url)){

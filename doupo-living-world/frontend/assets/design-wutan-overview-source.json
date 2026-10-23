@@ -1,0 +1,56 @@
+{
+  "asset": "wutan-overview.png",
+  "purpose": "原创离线前端设计总览新图；仅用于原型视觉演示，不是真实地图、权威地点布局、碰撞或寻路数据。",
+  "created_date": "2026-10-22",
+  "generation": {
+    "mode": "built-in image_gen",
+    "tool": "image_gen.imagegen",
+    "use_case": "stylized-concept",
+    "prompt": "Use case: stylized-concept\nAsset type: original offline game prototype world-location artwork, landscape 16:9\nPrimary request: Create an original bird's-eye oblique overview of Wutan City, a modest inhabited Chinese fantasy trading town. Match the provided reference's finely hand-painted 2D illustration, natural warm sunlight, muted grey-black clay roof tiles, aged wooden beams, stone paving, cream and desaturated teal cloth awnings. Reference image is STYLE AND MATERIALS ONLY, not a composition to copy.\nComposition: a clear close aerial view containing most of the town within a walled district. Five independently recognizable accessible landmarks separated by winding stone streets: a herb shop with small medicinal herb drying trays and green awnings; a bustling market street recognizable by rows of cream and teal awnings and goods (no visible people required); a two-storey inn with a modest courtyard; a large but restrained clan residence with inner courtyard; and a stone gatehouse opening onto a road. Distribute these locations legibly across the scene with unobstructed architectural silhouettes so a web prototype can place small location hotspots over each. Buildings large enough to read as places, not tiny abstract rooftops. The town should feel ordinary, lived-in, human-scale and materially coherent, with some trees and small courtyards, distant hills only at the top edge.\nStyle: detailed original Chinese hand-painted 2D game environment, painterly texture and fine architectural detail, warm serene daylight, coherent oblique top-down perspective, all five landmarks in one complete composition.\nConstraints: 16:9 wide image, no text, no writing, no signage glyphs, no UI, no labels, no HUD, no watermark, no borders, no portraits, no magical effects, no giant imperial palace, no photorealism, no cartoon simplification, no isometric grid. This is illustrative design art, not a real map.",
+    "transparent_background": false,
+    "iterations": 1
+  },
+  "reference": {
+    "role": "style and material reference only",
+    "path": "package/doupo-living-world/media/v1/images/scene/scene-wutan-market.webp"
+  },
+  "source_output_id": "generated_images/01a16453-858e-7050-99e9-0785e79c22fb/exec-58c84911-756b-4540-b817-07786c51a9a1.png",
+  "width": 1672,
+  "height": 941,
+  "bytes": 4317205,
+  "sha256": "50073BC39A4AEDD85703C49885F55270115DFA7E0557BAD840D8DFEE44668CD9",
+  "hotspot_coordinate_system": "percent of full source image, x from left and y from top; suggestions only; CSS object-fit cropping requires remapping",
+  "suggested_hotspots": [
+    {
+      "id": "herb-shop",
+      "label": "药铺",
+      "x": 28,
+      "y": 64
+    },
+    {
+      "id": "market",
+      "label": "坊市",
+      "x": 57,
+      "y": 51
+    },
+    {
+      "id": "inn",
+      "label": "客栈",
+      "x": 28,
+      "y": 28
+    },
+    {
+      "id": "clan-residence",
+      "label": "族宅",
+      "x": 73,
+      "y": 22
+    },
+    {
+      "id": "city-gate",
+      "label": "城门",
+      "x": 81,
+      "y": 64
+    }
+  ],
+  "visual_check": "Generated image inspected: coherent oblique town view, warm painted style matching supplied market materials, five readable architectural areas, no UI or readable typography, no portraits. Approximate 16:9 output (1672 × 941)."
+}
