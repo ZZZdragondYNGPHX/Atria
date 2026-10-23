@@ -1,6 +1,7 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 
 import AdmZip from 'adm-zip';
+import { PACKAGE_LIMITS } from '../../public/shared/native-package-limits.js';
 import { validateFrontendResources } from './experience-validation.js';
 
 import {
@@ -14,11 +15,11 @@ export const ATRIA_PACKAGE_CONTAINER_VERSION = 2;
 export const ATRIA_PACKAGE_CONTAINER_MAGIC = Buffer.from('ATRIA2\0\0', 'binary');
 
 export const ATRIA_PACKAGE_CONTAINER_LIMITS = Object.freeze({
-    maxContainerBytes: 128 * 1024 * 1024,
+    maxContainerBytes: PACKAGE_LIMITS.archiveBytes,
     maxHeaderBytes: 64 * 1024,
-    maxEntries: 4096,
+    maxEntries: PACKAGE_LIMITS.entries,
     maxFileBytes: 32 * 1024 * 1024,
-    maxTotalUncompressedBytes: 256 * 1024 * 1024,
+    maxTotalUncompressedBytes: PACKAGE_LIMITS.uncompressedBytes,
     maxCompressionRatio: 200,
     maxPathLength: 512,
     maxSegmentLength: 255,

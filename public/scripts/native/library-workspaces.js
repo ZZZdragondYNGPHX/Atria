@@ -1,3 +1,4 @@
+import { PACKAGE_LIMITS } from '../../shared/native-package-limits.js';
 import { formatAtriaDate } from '../atria-shell/components.js';
 import { createAtriaIcon } from '../atria-shell/icons.js';
 import { ensureTaskBindings } from './task-binding-ui.js';
@@ -59,8 +60,8 @@ function importSurface(doc, parent, kind, host) {
         const current = () => token === sequence && root.isConnected;
         result.replaceChildren(); state(doc, result, 'loading', 'Checking file', 'Reading metadata…');
         try {
-            if (file.size > (isPackage ? 128 : 64) * 1024 * 1024) throw new Error(tl('The file exceeds the supported size.'));
-            const data = arrayBufferToBase64(await file.arrayBuffer());
+            if (file.size > (isPackage ? PACKAGE_LIMITS.archiveBytes : 64 * 1024 * 1024)) throw new Error(tl('The file exceeds the supported size.'));
+            const data = isPackage ? file : arrayBufferToBase64(await file.arrayBuffer());
             const inspect = async () => {
                 const preflight = await (isPackage ? client.preflightPackage(data) : client.preflightSave(data));
                 if (!current()) return;

@@ -11,11 +11,11 @@ export async function createMediaResolver({ resources, window, fetchImage = glob
         if (disposed) throw new Error('media_disposed');
         if (ref.kind === 'exact') {
             if (!resources.refs.get('asset:' + ref.id)?.mediaType.startsWith(type + '/')) throw new TypeError('media_type_mismatch');
-            return { url: await resources.asset('asset:' + ref.id), status: 'available', reasonCode: 'media_exact' };
+            return { ...await resources.acquireAsset('asset:' + ref.id), status: 'available', reasonCode: 'media_exact' };
         }
         const entry = (ref.kind === 'host' ? issued : entries).get(ref.id);
         if (!entry || type !== 'image') throw new TypeError('media_ref_unknown');
-        const fallback = async reasonCode => ({ url: await resources.asset('asset:' + entry.fallback), status: enabled ? 'unavailable' : 'denied', reasonCode });
+        const fallback = async reasonCode => ({ ...await resources.acquireAsset('asset:' + entry.fallback), status: enabled ? 'unavailable' : 'denied', reasonCode });
         if (!enabled) return fallback('media_permission_denied');
         const key = ref.kind + ':' + ref.id + (entry.cache === 'none' ? ':' + (++sequence) : '');
         const acquire = async record => {
@@ -24,6 +24,7 @@ export async function createMediaResolver({ resources, window, fetchImage = glob
                 const result = await record.promise; let released = false;
                 return { ...result, release() {
                     if (released) return; released = true; --record.users;
+                    if (!record.users) result.release?.();
                     if (!record.users && entry.cache === 'none') { cache.delete(key); if (record.url) { window.URL.revokeObjectURL(record.url); urls.delete(record.url); } }
                 } };
             } catch (error) { --record.users; throw error; }
@@ -67,7 +68,7 @@ export async function createMediaResolver({ resources, window, fetchImage = glob
         fallback(input) {
             const ref = assertMediaRef(input), entry = (ref.kind === 'host' ? issued : entries).get(ref.id);
             if (!entry) throw new TypeError('media_ref_unknown');
-            return resources.asset('asset:' + entry.fallback);
+            return resources.acquireAsset('asset:' + entry.fallback);
         },
         reset() { clear(); issued.clear(); changed(); },
         issue(entry) {

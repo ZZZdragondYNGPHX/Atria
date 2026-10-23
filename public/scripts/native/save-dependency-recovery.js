@@ -1,4 +1,5 @@
-import { nativeProductClient as client, arrayBufferToBase64 } from './product-client.js';
+import { nativeProductClient as client } from './product-client.js';
+import { PACKAGE_LIMITS } from '../../shared/native-package-limits.js';
 import { permissionRow } from './package-permissions.js';
 import { el, action, disclosure, field, feedback } from './library-ui.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
@@ -32,8 +33,8 @@ export function mountSaveDependencyRecovery({ document: doc, root, preflight, sa
     picker.addEventListener('change', async () => {
         const token = ++sequence, file = picker.files?.[0]; review.replaceChildren(); if (!file) return;
         try {
-            if (file.size > 128 * 1024 * 1024) throw new Error(tl('The Work file exceeds the supported size.'));
-            const data = arrayBufferToBase64(await file.arrayBuffer()), candidate = await client.preflightPackage(data);
+            if (file.size > PACKAGE_LIMITS.archiveBytes) throw new Error(tl('The Work file exceeds the supported size.'));
+            const data = file, candidate = await client.preflightPackage(data);
             if (token !== sequence || !isCurrent()) return;
             if (!matchesSavePackage(required, candidate)) {
                 feedback(doc, review, tl('This file is not the exact Work required by the save. Nothing was installed.'), true); return;

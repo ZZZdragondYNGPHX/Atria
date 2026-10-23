@@ -16,6 +16,13 @@ import { createFrameScheduler, createPresentationEnvironment, createNodeHandle, 
 const SVG = new Set('svg g path rect circle ellipse line polyline polygon text tspan defs linearGradient radialGradient stop clipPath mask title desc use'.split(' '));
 const clone = value => structuredClone(value);
 
+function imageHidden(node) {
+    for (let current = node; current; current = current.getRootNode().host) {
+        if (current.closest('[hidden]')) return true;
+    }
+    return false;
+}
+
 // Only Host code calls this API. Packages supply validated IR and typed values,
 // never callbacks, executable source, selectors, DOM objects or service objects.
 export async function mountNativeFrontend(options) {
@@ -363,9 +370,10 @@ export async function mountNativeFrontend(options) {
                 node.dataset.mediaStatus = 'unavailable'; node.dataset.mediaReason = 'media_decode_failed';
                 if (!definition.asset && value.status === 'available') {
                     const ref = definition.media ?? evaluate(definition.bindings.media, context(instance, item));
-                    void media.fallback(ref).then(url => {
-                        if (!currentImage(value)) return;
-                        imageState = { ...value, url, status: 'unavailable', reasonCode: 'media_decode_failed' }; node.src = url;
+                    void media.fallback(ref).then(result => {
+                        if (!currentImage(value)) { result.release?.(); return; }
+                        mediaRelease?.(); mediaRelease = result.release;
+                        imageState = { ...value, url: result.url, status: 'unavailable', reasonCode: 'media_decode_failed' }; node.src = result.url;
                     }).catch(instance.failBoundary ?? diagnostic);
                 } else if (definition.boundary === 'required') (instance.failBoundary ?? diagnostic)(new Error('media_decode_failed'));
             };
@@ -450,7 +458,7 @@ export async function mountNativeFrontend(options) {
                 else node.setAttribute(sink, String(value ?? ''));
             }
             if (definition.message) node.textContent = localization.text(definition.message, Object.fromEntries(Object.entries(definition.messageArgs ?? {}).map(([key, expr]) => [key, evaluate(expr, ctx)])));
-            const mediaRef = definition.asset ? { kind: 'exact', id: definition.asset } : definition.media ?? (definition.bindings?.media ? evaluate(definition.bindings.media, ctx) : null);
+            const mediaRef = definition.tag === 'img' && imageHidden(node) ? null : definition.asset ? { kind: 'exact', id: definition.asset } : definition.media ?? (definition.bindings?.media ? evaluate(definition.bindings.media, ctx) : null);
             if (mediaRef) {
                 const key = media.epoch + ':' + JSON.stringify(mediaRef);
                 if (key !== mediaKey) {

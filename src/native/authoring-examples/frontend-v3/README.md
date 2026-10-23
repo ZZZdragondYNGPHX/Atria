@@ -341,8 +341,10 @@ The native image loading hint remains advisory; remote resolution is bounded.
 The resolver keeps at most 64 remote entries (2 MiB each), eight in-flight loads
 and a 15-second deadline per candidate. It shares pending/session-cache loads,
 evicts released entries, and revokes `cache:"none"` entries on release. Disabled/disposed/recovered Experiences abort requests and revoke
-remote object URLs. Exact media retains the existing 2 MiB/resource and 32 MiB
-graph budgets. Large catalogs can have 10000 identities within the graph budget.
+remote object URLs. Exact media uses separate library and resident-cache budgets;
+see [Native media and Work capacity](../../../../docs/development/native-media-capacity.md)
+for limits, lease lifetimes and import paths. Large remote catalogs can have
+10000 identities within the structural graph budget.
 
 Only Host code may issue opaque HostIssuedMediaRefs (`runtime.issueMedia`) within
 the disclosed origins, with a catalog-backed fallback. Issued references expire

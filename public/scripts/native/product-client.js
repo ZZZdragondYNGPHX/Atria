@@ -1,5 +1,6 @@
 import { createNativeProductError } from './product-errors.js';
 import { notifyCurrentStorageChange } from './storage-change-events.js';
+import { PACKAGE_LIMITS } from '../../shared/native-package-limits.js';
 
 function requestHeaders() {
     const headers = globalThis.Atria?.getContext?.()?.getRequestHeaders?.() || {};
@@ -9,11 +10,12 @@ function requestHeaders() {
     };
 }
 
-async function request(path, { method = 'GET', body = undefined } = {}) {
+async function request(path, { method = 'GET', body = undefined, binary = undefined } = {}) {
+    if (binary !== undefined && (!(binary instanceof Blob) || !binary.size || binary.size > PACKAGE_LIMITS.archiveBytes)) throw new TypeError('Package archive is empty or oversized');
     const response = await fetch('/api/native/product/' + String(path || '').replace(/^\/+/, ''), {
         method,
-        headers: requestHeaders(),
-        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+        headers: { ...requestHeaders(), ...(binary === undefined ? {} : { 'Content-Type': 'application/octet-stream', 'X-Atria-Package-Options': encodeURIComponent(JSON.stringify(body || {})) }) },
+        ...(binary === undefined ? (body === undefined ? {} : { body: JSON.stringify(body) }) : { body: binary }),
     });
     let payload = null;
     try {
@@ -73,11 +75,12 @@ export const nativeProductClient = Object.freeze({
 
     preflightPackage: data => request('packages/preflight', {
         method: 'POST',
-        body: { data },
+        binary: data,
     }),
     installPackage: (data, grantedPermissions = [], baseVersionId = undefined, requiredPackage = undefined) => request('packages/install', {
         method: 'POST',
-        body: { data, grantedPermissions, ...(requiredPackage ? { requiredPackage } : {}), ...(baseVersionId === undefined ? {} : { baseVersionId }) },
+        binary: data,
+        body: { grantedPermissions, ...(requiredPackage ? { requiredPackage } : {}), ...(baseVersionId === undefined ? {} : { baseVersionId }) },
     }),
 
     listWorlds: () => request('worlds'),

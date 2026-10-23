@@ -4,7 +4,7 @@ import { assertMediaCatalog } from '../../../public/shared/native-frontend-media
 import { assertLocalization } from '../../../public/shared/native-frontend-localization.js';
 import { frontendDiagnostics } from './diagnostics.js';
 import { compileController } from './script-compiler.js';
-import { assertFrontendExperience, assertFrontendSourceIndex, FRONTEND_LIMITS, resourcePath } from '../../../public/shared/native-frontend-contract.js';
+import { assertFrontendExperience, assertFrontendSourceIndex, FRONTEND_LIMITS, frontendResourceBytes, resourcePath } from '../../../public/shared/native-frontend-contract.js';
 import { parseAui } from './aui-parser.js';
 import { parseA2uiComponent } from './a2ui-adapter.js';
 import { canonicalJson, compileBridge, hash } from './bridge.js';
@@ -14,13 +14,14 @@ import { validateFrontendGraph, componentDependencies } from './graph.js';
 export function compileFrontend({ source, files, mode, namespace = 'package', experienceContract = {}, transactions = [] }) {
     resourcePath(source); resourcePath(namespace);
     const consumed = new Set();
-    let sourceBytes = 0;
-    const read = path => {
+    const sourceBytes = { asset: 0, structure: 0 }, counted = new Set();
+    const read = (path, kind = 'structure') => {
         resourcePath(path);
         const bytes = files.get(path);
-        if (!bytes || bytes.length > FRONTEND_LIMITS.bytes) throw new TypeError('Missing or oversized Frontend source: ' + path);
-        if (!consumed.has(path)) sourceBytes += bytes.length;
-        if (sourceBytes > FRONTEND_LIMITS.totalBytes) throw new TypeError('Frontend Source Graph exceeds byte budget');
+        if (!bytes || bytes.length > frontendResourceBytes(kind)) throw new TypeError('Missing or oversized Frontend source: ' + path);
+        if (!counted.has(kind + ':' + path)) sourceBytes[kind] += bytes.length;
+        if (sourceBytes.asset > FRONTEND_LIMITS.assetTotalBytes || sourceBytes.structure > FRONTEND_LIMITS.totalBytes) throw new TypeError('Frontend Source Graph exceeds byte budget');
+        counted.add(kind + ':' + path);
         consumed.add(path);
         return Buffer.from(bytes);
     };
@@ -60,7 +61,7 @@ export function compileFrontend({ source, files, mode, namespace = 'package', ex
     const bridge = atSource(index.bridge ? resolve(index.bridge) : source, () => compileBridge(index.bridge ? JSON.parse(readText(resolve(index.bridge))) : undefined, experienceContract, transactions));
     emit('bridge', 'bridge', bridge);
     if (index.bridge) provenance.push({ kind: 'bridge', id: 'bridge', file: resolve(index.bridge), start: 0, end: readText(resolve(index.bridge)).length });
-    for (const asset of index.assets) emit('asset:' + asset.id, 'asset', read(resolve(asset.source)), [], asset.mediaType);
+    for (const asset of index.assets) emit('asset:' + asset.id, 'asset', read(resolve(asset.source), 'asset'), [], asset.mediaType);
     if (index.media) {
         const catalog = atSource(resolve(index.media), () => assertMediaCatalog(JSON.parse(readText(resolve(index.media))), new Map(resources.map(ref => [ref.id, ref]))));
         emit('media', 'media', catalog, catalog.entries.map(entry => 'asset:' + entry.fallback));

@@ -2,7 +2,7 @@ import { parseA2uiComponent } from '../../../public/shared/native-a2ui.js';
 import { ASSET_TYPES, assertMediaCatalog } from '../../../public/shared/native-frontend-media.js';
 import { validateScriptArtifact } from './script-compiler.js';
 import { assertLocalization } from '../../../public/shared/native-frontend-localization.js';
-import { fields, identifier, list, resourcePath, FRONTEND_LIMITS } from '../../../public/shared/native-frontend-contract.js';
+import { fields, identifier, list, resourcePath, FRONTEND_LIMITS, frontendResourceBytes, assertFrontendResourceBudget } from '../../../public/shared/native-frontend-contract.js';
 import { assertNode } from './aui-parser.js';
 import { canonicalJson, hash, validateCompiledBridge } from './bridge.js';
 import { validateCompiledStyle } from './styles.js';
@@ -91,9 +91,9 @@ export function componentDependencies(ir, bridge) {
 // Hashes alone do not establish that an artifact is safe IR.
 export function validateFrontendGraph({ entry, files, mode, experienceContract = {}, transactions = [] }) {
     resourcePath(entry);
-    const read = path => {
+    const read = (path, kind = 'structure') => {
         const bytes = files.get(path);
-        if (!bytes || bytes.length > FRONTEND_LIMITS.bytes) throw new TypeError('Missing or oversized compiled Frontend resource: ' + path);
+        if (!bytes || bytes.length > frontendResourceBytes(kind)) throw new TypeError('Missing or oversized compiled Frontend resource: ' + path);
         return Buffer.from(bytes);
     };
     const json = path => JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(read(path)));
@@ -101,20 +101,18 @@ export function validateFrontendGraph({ entry, files, mode, experienceContract =
     fields(index, ['format', 'version', 'primaryView', 'resources', 'globalStyles']);
     if (index.format !== 'atria-frontend-index' || index.version !== 3) throw new TypeError('Runtime requires compiled Frontend Index');
     const prefix = entry.slice(0, entry.lastIndexOf('/') + 1) + 'resources/';
-    let totalBytes = 0;
+    assertFrontendResourceBudget(index.resources);
     const resources = list(index.resources, ref => {
         fields(ref, ['id', 'kind', 'path', 'contentHash', 'size', 'mediaType', 'dependencies']);
         if (!['view', 'component', 'bridge', 'style', 'asset', 'provenance', 'media', 'localization', 'diagnostics', 'script'].includes(ref.kind)) throw new TypeError('Invalid Frontend resource kind');
         if (['bridge', 'provenance', 'media', 'localization', 'diagnostics'].includes(ref.kind) ? ref.id !== ref.kind : typeof ref.id !== 'string' || !ref.id.startsWith(ref.kind + ':')) throw new TypeError('Invalid resource identity');
         if (!['bridge', 'provenance', 'media', 'localization', 'diagnostics'].includes(ref.kind)) identifier(ref.id.slice(ref.kind.length + 1));
         if (!/^[a-f0-9]{64}$/.test(ref.contentHash) || ref.path !== prefix + ref.contentHash + (ref.mediaType === 'application/json' ? '.json' : '.bin')) throw new TypeError('Invalid exact resource path');
-        const bytes = read(ref.path);
-        totalBytes += bytes.length;
-        if (totalBytes > FRONTEND_LIMITS.totalBytes) throw new TypeError('Compiled Frontend graph exceeds byte budget');
+        const bytes = read(ref.path, ref.kind);
         if (bytes.length !== ref.size || hash(bytes) !== ref.contentHash) throw new TypeError('Frontend resource integrity mismatch');
         list(ref.dependencies, id => { if (typeof id !== 'string') throw new TypeError('Invalid dependency'); return id; }, id => id);
         return ref;
-    });
+    }, ref => ref.id, FRONTEND_LIMITS.resources + FRONTEND_LIMITS.assets);
     const refs = new Map(resources.map(ref => [ref.id, ref]));
     list(index.globalStyles ?? [], id => { if (refs.get(id)?.kind !== 'style') throw new TypeError('Unknown global style'); return id; }, id => id);
     const bridgeRef = refs.get('bridge');
@@ -163,7 +161,7 @@ export function validateFrontendGraph({ entry, files, mode, experienceContract =
                 fields(source, ['file', 'contentHash']); resourcePath(source.file);
                 if (!/^[a-f0-9]{64}$/.test(source.contentHash)) throw new TypeError('Invalid source digest');
                 return source;
-            }, source => source.file);
+            }, source => source.file, FRONTEND_LIMITS.resources + FRONTEND_LIMITS.assets);
             for (const span of ir.spans) {
                 fields(span, ['kind', 'id', 'componentId', 'file', 'start', 'end']);
                 if (!sources.some(source => source.file === span.file) || !Number.isSafeInteger(span.start) || !Number.isSafeInteger(span.end) || span.start < 0 || span.end < span.start) throw new TypeError('Invalid source span');

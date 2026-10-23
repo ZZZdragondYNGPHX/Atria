@@ -1,4 +1,5 @@
 import { getQuickJS } from 'quickjs-emscripten';
+import { createHash } from 'node:crypto';
 import { compileController } from './frontend/script-compiler.js';
 import { SCRIPT_LIMITS } from '../../public/shared/native-frontend-script.js';
 import { assertJsonDeclaration } from '../../public/shared/native-values.js';
@@ -21,7 +22,9 @@ export function compilePackageComputation(source, files) {
 
 function pinnedArtifact(installed, source) {
     // Include all source bytes in the key: imports cannot follow mutable latest.
-    const key = hashNativeDocument({ source, files: [...installed.sourceFiles].map(([path, bytes]) => [path, hashNativeDocument(bytes.toString('utf8'))]).sort() });
+    // Hash binary resources directly; decoding a large media library as text
+    // creates needless strings and loses byte identity for invalid UTF-8.
+    const key = hashNativeDocument({ source, files: [...installed.sourceFiles].map(([path, bytes]) => [path, createHash('sha256').update(bytes).digest('hex')]).sort() });
     if (!artifacts.has(key)) {
         const artifact = compilePackageComputation(source, installed.sourceFiles);
         if (artifacts.size >= 8) artifacts.delete(artifacts.keys().next().value);
@@ -40,14 +43,24 @@ export async function runPackageComputation(installed, source, method, input) {
     const runtime = engine.newRuntime();
     runtime.setMemoryLimit(SCRIPT_LIMITS.heap); runtime.setMaxStackSize(SCRIPT_LIMITS.stack);
     const vm = runtime.newContext();
-    const deadline = Date.now() + SCRIPT_LIMITS.cpuMs;
+    // Server transactions freeze larger bounded read sets than UI controllers.
+    const deadline = Date.now() + AUTHORITY_EXECUTION_LIMITS.computationWallMs;
     runtime.setInterruptHandler(() => Date.now() > deadline);
     try {
         // No host bridge is installed. Module factories, loader, checks and JSON
         // serialization all execute in the bounded guest heap, never Node eval.
         const result = vm.evalCode(`(() => {
             const modules = Object.create(null), cache = Object.create(null);
-            const freeze = value => { if (value && typeof value === 'object') { Object.values(value).forEach(freeze); Object.freeze(value); } return value; };
+            const freeze = value => {
+                if (value && typeof value === 'object') {
+                    for (const key of Object.keys(value)) {
+                        const child = value[key];
+                        if (child && typeof child === 'object') freeze(child);
+                    }
+                    Object.freeze(value);
+                }
+                return value;
+            };
             for (const proto of [Function.prototype, Object.getPrototypeOf(async function(){}), Object.getPrototypeOf(function*(){}), Object.getPrototypeOf(async function*(){})])
                 Object.defineProperty(proto, 'constructor', { value: undefined, configurable: false, writable: false });
             for (const key of ['eval', 'Function', 'Date', 'WebAssembly', 'SharedArrayBuffer', 'Atomics'])

@@ -27,7 +27,10 @@ function digest(bytes) {
     return createHash('sha256').update(bytes).digest('hex');
 }
 
-const PARSED_ARCHIVE_BYTES = 32 * 1024 * 1024;
+// A full-resolution Work can exceed the former 32 MiB memoization budget.
+// Bound the server-side parsed cache independently from browser media, while
+// retaining owner-blob verification and copy isolation on every open.
+const PARSED_ARCHIVE_BYTES = 256 * 1024 * 1024;
 const PARSED_ARCHIVE_ENTRIES = 8;
 
 // A returned Buffer's whole backing store belongs to that caller. Small

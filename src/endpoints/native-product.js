@@ -21,8 +21,20 @@ import { NativeSaveSystem } from '../native/save-system.js';
 import { SessionCore } from '../native/session-core.js';
 import { nativeMcpArtifacts, artifactRefFromQuery } from '../native/mcp-artifacts.js';
 import { mountNativeSessionArchives } from './native-session-archives.js';
+import { PACKAGE_LIMITS } from '../../public/shared/native-package-limits.js';
 
 const MAX_ARCHIVE_BYTES = 128 * 1024 * 1024;
+const packageBinary = express.raw({ type: 'application/octet-stream', limit: PACKAGE_LIMITS.archiveBytes, inflate: false });
+
+function packageOptions(req) {
+    if (!Buffer.isBuffer(req.body)) return req.body;
+    const header = req.get('X-Atria-Package-Options') || '';
+    if (header.length > 8192) throw new TypeError('Package options exceed budget');
+    let options;
+    try { options = header ? JSON.parse(decodeURIComponent(header)) : {}; } catch { throw new TypeError('Invalid Package options'); }
+    if (!options || Array.isArray(options) || typeof options !== 'object' || Object.keys(options).some(key => !['grantedPermissions', 'baseVersionId', 'requiredPackage'].includes(key))) throw new TypeError('Invalid Package options');
+    return options;
+}
 
 function decodeArchive(value) {
     if (typeof value !== 'string' || !value || !/^[A-Za-z0-9+/]*={0,2}$/.test(value)) {
@@ -184,6 +196,10 @@ export function createNativeProductRouter(getServices = services, artifacts = na
         res.json(artifacts.cancel(handle, req.body.artifactRef));
     }));
     const withArchive = (handle, body, consume) => {
+        if (Buffer.isBuffer(body)) {
+            if (!body.length || body.length > PACKAGE_LIMITS.archiveBytes) throw new TypeError('Package archive is empty or oversized');
+            return consume(body);
+        }
         if (body?.artifactRef) {
             if (body.data !== undefined) throw new TypeError('Choose one archive source');
             if (!['development-upload', 'studio-project', 'installed-package'].includes(artifacts.inspect(handle, body.artifactRef).source.kind)) throw new TypeError('Package artifact purpose required');
@@ -191,7 +207,7 @@ export function createNativeProductRouter(getServices = services, artifacts = na
         }
         return consume(decodeArchive(body?.data));
     };
-    router.post('/packages/preflight', route(async (req, res, { product }, handle) => {
+    router.post('/packages/preflight', packageBinary, route(async (req, res, { product }, handle) => {
         res.json(await withArchive(handle, req.body, archive => product.preflightPackageUpdate(handle, archive)));
     }));
     router.post('/packages/export-artifact', route(async (req, res, { product }, handle) => {
@@ -200,12 +216,13 @@ export function createNativeProductRouter(getServices = services, artifacts = na
         const opened = await product.exportPackageArchive(handle, packageId, packageVersionId, expectedContentHash);
         res.set('Cache-Control', 'private, no-store').json(artifacts.capturePackage(handle, clientInstanceId, packageId, packageVersionId, expectedContentHash, opened.archive));
     }));
-    router.post('/packages/install', route(async (req, res, { product }, handle) => {
-        if (req.body?.artifactRef && !Object.hasOwn(req.body, 'baseVersionId')) throw new TypeError('Staged install requires exact baseVersionId');
+    router.post('/packages/install', packageBinary, route(async (req, res, { product }, handle) => {
+        const options = packageOptions(req);
+        if (options?.artifactRef && !Object.hasOwn(options, 'baseVersionId')) throw new TypeError('Staged install requires exact baseVersionId');
         res.json(await withArchive(handle, req.body, archive => product.installPackage(handle, archive, {
-            grantedPermissions: req.body?.grantedPermissions || [],
-            ...(req.body?.requiredPackage ? { requiredPackage: req.body.requiredPackage } : {}),
-            ...(Object.hasOwn(req.body || {}, 'baseVersionId') ? { baseVersionId: req.body.baseVersionId } : {}),
+            grantedPermissions: options?.grantedPermissions || [],
+            ...(options?.requiredPackage ? { requiredPackage: options.requiredPackage } : {}),
+            ...(Object.hasOwn(options || {}, 'baseVersionId') ? { baseVersionId: options.baseVersionId } : {}),
         })));
     }));
     router.post('/community/install', route(async (req, res, { product }, handle) => {
