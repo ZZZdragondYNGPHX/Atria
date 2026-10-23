@@ -14,6 +14,8 @@
 
 成长和战斗条件沿用 [player-and-combat.md](player-and-combat.md) 与 [progression-and-consequences.md](progression-and-consequences.md)。社会行动与玩家动作进入同一规则；不得为 NPC 另造可绕过条件的快捷通道。
 
+v0.15中NPC自主修炼和NPC/NPC后台冲突的唯一详细规则归 [npc-progression-conflict.md](npc-progression-conflict.md)，功法/装备/道具及分类损耗实际参与结果。这里负责为何修炼、何时求战/退让与战后改策；角色能力和资源语义一致不要求本轮制作完整玩家战斗，后者按D33未来单独实施。
+
 ## 本轮源码调查揭示的起点
 
 | 已有能力 | 尚未形成的闭环 |

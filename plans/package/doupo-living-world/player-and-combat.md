@@ -2,6 +2,8 @@
 
 状态：具体出身与交锋规则保留候选；v0.14 补充全角色社会语义与主动遭遇/受控状态的玩家边界。跨模块决定只以 [decisions.md](decisions.md) 为准，新机制不作为 be.2 已实现声明。
 
+v0.15范围更新：按D33，完整玩家与NPC战斗机制后续独立实施；本文件的玩家战术、主动遭遇回应与受控状态保留未来设计，不作为当前世界后端的新增玩家战斗交付要求。当前NPC自主修炼、NPC/NPC后台冲突及能力/装备/道具损耗归 [npc-progression-conflict.md](npc-progression-conflict.md)。既有be.2玩家交锋代码保留，D12高层方向继续有效。
+
 ## 当前阅读范围
 
 开局年代、出身选择、战斗节奏与主角认知来源的基础方向已定；本模块保存具体内容的候选展开。画面与移动见 [presentation.md](presentation.md)，已定成长、死亡与存档的展开见 [progression-and-consequences.md](progression-and-consequences.md)。地域、修为数值、具体丹药功法、资产数量和工期尚未冻结。

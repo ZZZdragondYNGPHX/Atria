@@ -2,7 +2,7 @@
 
 - Task ID: `package/doupo-living-world`
 - Primary Workspace: `package`；本 Bundle 位于 `docs`；必要的产品修补使用独立产品任务。
-- Status: v0.14 — 世界整体运转、连续因果和全角色关系图谱的讨论基线已具备开工条件；从 be.2/C2 继续实施 W0–W5，新机制尚未实现。
+- Status: v0.15 — 补充NPC自主修炼、基于功法/装备/道具及损耗的后台冲突；完整玩家战斗后续独立实施。从be.2/C2继续W0–W5，新机制尚未实现。
 - Updated: 2026-10-22
 - Source baseline: 已核对远端 `main@a9a914c66141daaf7ab9ae26119a506444d73698` 与 package `914c624c950dec06c181960d32b2d7f337c31abf`（规则交付提交 `38007d02d`）；实施前重新核对实际 Git，本地旧 main 不代表远端现状。
 - Record: [累计记录](../../../records/package/doupo-living-world.md)
@@ -17,7 +17,8 @@
 
 ## 当前状态
 
-- v0.14 已补齐方案与讨论，当前没有必须在开工前由用户再决定的关键事项；可在新对话按既有 D25 授权继续后端实施。人格参数、规划算法、周期细目和容量按默认候选实现并验证校准，不把未逐项冻结解释为等待新审批。
+- v0.15 接入 D32 的NPC自主修炼/后台冲突/物品损耗和 D33 的完整玩家战斗延后；当前仍可在新对话按既有 D25 授权继续实施。人格、规划、战斗策略/数值、周期与容量按默认候选实现并验证校准，不把未逐项冻结解释为等待新审批。
+- 代码核对：NPC已有按日积累经验和阈值升阶，尚无自主功法/闭关/突破准备闭环；没有NPC/NPC战斗，现有玩家交锋的NPC反击为简化公式。库存数量会消耗，但没有装备实例/穿戴/耐久/充能/维修。详细证据见research及新增领域模块。
 - D30 确认连续逻辑链、复合动机和途中机会性改策，D31 确认包含玩家的个人关系图谱；感知/相遇、个人认知/关系和多主体后续反应已有设计依赖。示例是可产生不同结果的能力样本，不能改成预写必达的剧情链。
 - v0.13 已确认 D28 的主动社会行为与 D29 的世界整体运转优先，既有 NPC 能动性、世界系统和时间/精度/人口规则继续生效。
 - 上轮完整调用链调查发现：be.2 已有规则生活、滚动 30 日结算与两类专用旅行；结构化人格/长期目标/通用 NPC 行动执行尚缺，返程和自主补粮等循环有断点。详细证据见 research 与 Record，不将已有后端交付等同于本轮世界目标已达成。
@@ -29,7 +30,7 @@
 
 ## 新对话开工入口
 
-按 [backend-task.md 的启动提示](backend-task.md#可复制到后端新对话) 进入实施。先核实实际 Git/源码/包基线，从 W0/W1 开始补齐全角色图谱、事件来源、感知与真实活动，再贯通无玩家世界循环和持续因果；不要机械重做已交付 BE0–BE6，也不先扩写更多候选文档代替实现。必要自查、代码验证和真实模型证据按当前任务执行，正式前端/美术按既有分工处理。
+按 [backend-task.md 的启动提示](backend-task.md#可复制到后端新对话) 进入实施。先核实实际 Git/源码/包基线，从 W0/W1 补齐全角色图谱、事件来源、感知与真实活动，再贯通无玩家世界循环、NPC自主修炼/后台冲突和持续因果。完整玩家战斗按D33后续独立实施，不机械重做BE0–BE6，也不先扩写更多候选文档代替实现。必要自查、代码验证和真实模型证据按当前任务执行，正式前端/美术按既有分工处理。
 
 ## 模块路由
 
@@ -44,6 +45,7 @@
 | [experience.md](experience.md) | RPG 交互、文字输入、首个贯通体验候选 | decisions、world-simulation |
 | [world-simulation.md](world-simulation.md) | 世界自主运转定义、活动与时间、信息/精度/人口、历史一致性 | decisions、research；领域细则按需读下两模块 |
 | [npc-agency.md](npc-agency.md) | 人格、持续目标、计划执行、NPC 主动社会行为与联合行动 | decisions、world-simulation、world-systems |
+| [npc-progression-conflict.md](npc-progression-conflict.md) | NPC修炼/突破、后台冲突、功法装备道具与分类损耗、未来玩家战斗边界 | decisions、npc-agency、world-simulation、progression-and-consequences |
 | [social-graphs.md](social-graphs.md) | 全角色个人社交圈、关系事实/所知/评价、图谱访问与连续经历 | decisions、npc-agency、world-simulation |
 | [world-systems.md](world-systems.md) | 资源生态、生计与商路、家庭组织和地区事件的耦合循环 | decisions、world-simulation、npc-agency |
 | [player-and-combat.md](player-and-combat.md) | 自创角色开局、个人原著知识、出身内容与战斗细则 | decisions、experience、world-simulation |
@@ -64,7 +66,7 @@
 | D4 制作基线 | 已形成 v0.8 默认基线；正式制作已授权，具体数值与视觉细节仍保留拟定状态 | index → decisions → production-plan；按主题加载领域模块 |
 | Implementation 准备 | 已完成；v0.9 已拆分任务，提炼共用语义与两份新对话资料 | index → decisions → execution-split → frontend-contract → Record |
 | BE 后端实施 | 首批后端0.1.0-be.2与C2已交付；后续容量扩展按实测边界继续 | index → decisions → execution-split → backend-task → frontend-contract → research → Record；按阶段加载领域模块 |
-| 世界自主运转深化 | 当前可进入实施；v0.14接入连续因果与全角色社交圈，按W0–W5打通自主闭环 | index → decisions 的 D28–D31 → world-simulation → npc-agency/social-graphs/world-systems → production-plan/backend-task；事实核对读取 research/Record |
+| 世界自主运转深化 | 当前可进入实施；v0.15覆盖连续因果、社交圈及NPC自主成长/后台冲突，按W0–W5推进 | index → decisions 的 D28–D33 → world-simulation → npc-agency/social-graphs/npc-progression-conflict/world-systems → production-plan/backend-task；事实核对读取 research/Record |
 | FE 界面迭代 | 离线原型和设计；实际进展归对应设计任务 | index → frontend-ai-brief → execution-split → frontend-contract → presentation；确认边界读 decisions，内容按需 |
 | 前端集成与整包交付 | BE 完成后由用户选择执行者；保留 P4 表现与 P5 发布验收 | index → execution-split → frontend-contract 的实际映射 → 选定的前端三项产物 → Record |
 
@@ -92,3 +94,5 @@
 - 2026-10-22，v0.13：核实 be.2 与远端 main 的真实能力，将世界整体运转设为首要目标；确认人物主动求助/邀约/竞争/结盟/隐瞒/利用均来自自身目标与经历。展开人格和目标执行、地区资源与组织循环、月度复盘与月内事件、模拟精度和无玩家参与样本；具体机制保留候选，本轮只更新方案。
 
 - 2026-10-22，v0.14：确认复杂连续因果、复合动机、机会性改策及包含玩家的个人关系图谱。展开相遇/观察/知情链、长期未解决动机、多人反应和相互干预；以报复牵动亲属、携丹访友途中被劫为候选贯通样本，结果不预写；新增社会图谱模块，保留玩家控制、既有时间与世界权威。
+
+- 2026-10-22，v0.15：补查NPC被动成长、现有玩家交锋与物品模型，确认NPC自主修炼和NPC/NPC后台冲突需深化，功法/装备/道具及分类消耗/损耗进入判定；完整玩家战斗按新指令留待后续大修改。本轮只更新方案与准确能力说明，未修改代码。
