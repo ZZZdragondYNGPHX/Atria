@@ -1,6 +1,6 @@
-# 前后端共用契约 — C0 语义与 C2 实际接口
+# 前后端共用契约 — C0 语义与 C3 实际接口
 
-状态：C0 语义继续生效；C2 记录 0.1.0-be.2 的实际后端接口与证据边界。正式前端待集成。
+状态：C0语义继续生效；当前实际接口为末节C3（0.1.0-be.3）。C2保留为be.2历史接口；下文候选设计不自动变为已实现能力。正式前端待集成。
 
 v0.15范围：NPC自主成长、NPC/NPC后台战斗与功法/装备/道具损耗属当前新增世界规则，实际字段待实现后更新。完整玩家战斗按D33未来独立实施；下述F07既有接口和v0.14候选玩家战斗/约束表现保留原适用范围，不据此要求本轮新建完整玩家战斗机制或界面，也不将后台NPC冲突伪装为当前C2已支持。
 
@@ -8,7 +8,7 @@ v0.15范围：NPC自主成长、NPC/NPC后台战斗与功法/装备/道具损耗
 
 ## 能力与界面覆盖表
 
-F01–F12 是本项目协作编号，涵盖首批范围。前端表现文档逐项映射；每项可有多个页面，不要求每项独占一屏。实际实施状态见末节 C2 映射；框架底座或规则代码存在不等于对应玩法已完整验证。
+F01–F12 是本项目协作编号，涵盖首批范围。前端表现文档逐项映射；每项可有多个页面，不要求每项独占一屏。实际实施状态见末节 C3 映射；框架底座或规则代码存在不等于对应玩法已完整验证。
 
 | ID | 能力 | 玩家视角所需数据 | 操作意图与结果语义 |
 | --- | --- | --- | --- |
@@ -182,3 +182,54 @@ operation.kind 非空时继续或停止；appraise 是以本人经历形成评�
 规则读 live 人物，历史人物记录仍留 Domain/Revision；玩家从本人已获知的观察档案查询。96人同场景脚本沙箱8页通过，峰值公开JSON约5KiB。50年纯规则样本不是完整宿主50年运行；真实宿主已验证400日614次提交及家庭约一年流程。
 
 本版人口96（预留计入），同次只处理一个到期NPC，再结算后续时点，保证分段预算。现有明确容量：个人信息grant128条、关系grant256条、家庭48、约定64，Domain4096条，History4096项/2MiB；超限拒绝，不静默截断。上述证据不承诺无限世代/历史容量；扩容需追加负载和持久数据设计。正式 AUI/Controller/Canvas、美术、焦点/IME/移动端/浏览器与完整交互延迟验收仍归集成阶段。
+
+## C3 — 2026-10-22 世界运行后端接口
+
+版本 `0.1.0-be.4`，Package ID继续为 `pkg_723cdd67122beffdac73f3dfe5c9f64e`，PackageVersion ID为 `pkgv_6790d42cc8fafc47da183f423c5052e0`；需要Atria main `4470cffb9f688d7e889eb94b42b1cb85966318c1`。构建与来源身份见Record。本节替代C2的当前实现映射；C0语义仍生效，旧候选和历史验证不自动迁移为新版本证据。
+
+### 载入和真实读取
+
+唯一声明继续是package的 `tools/build.mjs`、`tools/schema.mjs` 和 `tools/interfaces.mjs`。容器提供 `integration/bridge.json` 与 `integration/screen.schema.json`。安装/授予generation → Session创建 → experience.ready → bind0/1/2 → act创建。使用新局，未提供be.2存档迁移。
+
+`screen` binding读取dw_public，数组main.value含 `screen` 和 `intent` 两个JSON字符串。前端解码screen；intent是同一公开信息的8KiB以内意图摘要，供authority.intentObservation使用。intent.quotes的unitPrice为单价、availableQty为库存、actionDetail为必须复制到交易detail的版本令牌；不能把价格当令牌。公开screen.quotes保留原price/qty/quote字段。摘要可能删去补充列表，truncated=true不表示世界事实被删除。玩家/narrator继续使用完整公开screen；任何人都不因本接口取得他人的Domain或个人view。
+
+人物Domain内部改为 `{actor,alive,state:{body,mind,health}}`；mind只保存traits/goals/motives/social，health为安全的本人身体认识。三批读取有界body，单独读取下一相关人物的mind；更新body和mind各自保留另一组。此布局不是给前端的读取入口。NPC任务只获得该Subject的self/personal/relationships；self包含本人sex，接纳后的已说回应也进入该人的个人经历；未处置骨折的本人诊断为unknown，他人只有可见症状，不能把原始伤因、真实动机、藏货或远方位置公开。
+
+### 新增字段、动作和错误
+
+| 位置 | 实际语义 |
+| --- | --- |
+| screen.sex / placeName | 主角性别及权威地点名称，旁白不得按姓名猜性别或改称其它场所 |
+| screen.condition | 本人missing、wounds及派生capabilities；每项能力含available/reason，普通药物不恢复缺肢或未处置骨折 |
+| screen.gear | 本人器物id/type/slot/equipped/durability/charges，维修保留原id，期间不生效 |
+| screen.control | 本人实际受控的holder/since/until/source；限制由规则派生，不靠叙事生效 |
+| screen.social / goals | 本人当前关系认识/持续目标；认识含来源、时点和known/reported/doubted/refuted，不是全世界图谱 |
+| people.signs/activity/carrying/observedAt | 合法可见症状、当前活动、主动显露的携带物与观察时点；人物仍12条一页，last_known不是实时状态 |
+| screen.messages | 最近8条本人已寄出或实际收到的信件摘要；寄出不暴露远方送达/失败真相，event指向可读的本人事实 |
+| screen.workshops | 本地组织id/place/status/output；不公开全体组织的私有资金或成员目标 |
+| screen.events | 最近16个已知事件id/at/summary；目录滚动不删除dw_causes中的重要来源 |
+
+新增 `condition` / `profile` deterministic bindings输入{}，不推进时间。result.text是可读摘要，结构化详情从上述screen字段读取。旧绑定与输入语义按C2保留，但screen使用本版schema。
+
+新增普通动作仍走doupo.act的完整输入：treat（target本人player或近处病人、detail伤处id；可接诊医者、药草2、金币12）、equip（target自有器物id，detail=remove卸下）、repair（target受损器物id，工匠/药草1/金币6，活动180分钟）、message（target本人已知联系、text正文，邮资1及实际传递时间）、release（自己实际控制且在身边的人）。失败包括condition_unavailable/condition_interrupted、treatment_conditions/treatment_unavailable、equipment_unavailable、repair_unavailable、message_unavailable、release_unavailable。quote_changed只表示提交的报价标识与当前记录不一致，未证明价格真的变化，交易不扣费/不耗时；模型须重新复制当前令牌。准入/CAS/权限错误仍由Native拒绝，不转换成假成功。
+
+### 事件详情与连续来源
+
+`event` deterministic binding对应 `doupo.event`，输入 `{target:"event-…",page:0}`（page整数0–100，越过实际尾页时钳制）。target来自events.id、本人messages.event或合法本人来源的cause:后部分。成功result.code=event_read，result.text解码为 `{id,at,updated,page,pages,details}`，每页最多6段、每段256字符。不推进时钟，只更新dw_public；未知与私有统一unknown_event，不透露是否存在。
+
+重要来源进入同一Native Session的dw_causes Domain，记录mode=delta、参与者、稀疏before/after、facts和按事实过滤的publicDetails；未变化字段不是完整快照，不能按全量人物状态解释。private fact不会因同一根事件有某个公开事实而自动公开。身体/物品/控制/消息来源引用实际事件id，query不返回私有原始before/after。例行补给和劳动保留在真实状态、当前活动及Native历史中，不为每次进食制造独立因果记录。
+
+### 能力映射和真实边界
+
+| 覆盖 | 本版已接入后端 | 仍需区分的边界 |
+| --- | --- | --- |
+| F02/F04/F09 | 网格遮挡/意识限制、实际路段旅行、显露物触发机会改策、观察/跟随、生态采集/返程/交货 | 路途中感知为同一路段抽象；没有全大陆、全量调查或正式地图交互 |
+| F05/F06/F07 | 统一身体能力、指定处置/持续恢复、NPC学习/修炼/突破、装备/充能/损耗/维修、分段NPC冲突与有限受控/释放 | 原有简化玩家交锋保留，完整玩家战斗仍按D33后续实施 |
+| F03/F08/F11 | 人格/目标/动机、个人图谱、实际求援信件、重要消息中断活动、公开交往形成第三者认识、亲属回应/救援、组织投入/工资/继任 | 当前是有界规则规划与模型回应，不声称任意欺骗身份、任意同盟谈判、无限图谱或完整遗产运输 |
+| F10/F12 | 身体/器物/控制/活动/来源随SavePoint恢复，分支评价锚点重绑，迟到/取消任务拒绝，Bridge并发/幂等与旧epoch拒绝 | 正式界面缓存、焦点、IME、等待与恢复流程待集成 |
+
+本轮世界负载证据主要来自be.3默认规则，be.4另验证新增表达上下文/交易令牌及模型接线：60日分批推进的人物状态一致；420日纯规则样本；真实Native的治疗、维修、控制、冲突、事件隐私/零耗时及恢复；96名NPC成熟数据的74人同场分页、早期推进/同刻追赶和97主体恢复。具体计数、失败修正、模型服务结果见Record，不能由这些样本推导96人跨月完整宿主或无限历史已通过。
+
+当前预算：人口96（含预留），伤处8/器物4，个人当前图谱16、目标6/动机6，热消息16/冲突4/运输8；body每批33/32/32，选中认知最多8，单次输出body6/mind4/信息6/评价2/原因2及固定世界发布。个人信息grant128、关系grant256、家庭48、约定64、Domain4096条/1MiB、History4096项/2MiB。超限拒绝；不静默删活人/未解决动机或扩充所有全局限额。计算输出允许有界字段组合，计算输入使用既有Authority总值上限；普通schema、单值64KiB、读取256KiB、CPU40ms、堆8MiB及effects约束仍生效。
+
+W0–W4默认机制已有代表性后端贯通；W5的稳定活动聚合、多尺度成本、96人长期完整宿主和候选社会行为的更广覆盖继续深化。正式AUI/Canvas/Controller、美术和浏览器端到端仍待选定集成者，不能标为玩家界面完成。

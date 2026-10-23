@@ -1,6 +1,6 @@
-# BE — 后端开发任务 v0.16
+# BE — 后端开发任务 v0.17
 
-状态：已具备在后端新对话继续实施的条件，D25授权保持。以v0.16为当前默认方案，从0.1.0-be.2/C2按W0–W5深化世界运转、连续因果、全角色图谱、NPC自主修炼及依据功法/装备/道具与分类损耗的NPC后台战斗，并逐项贯通功能完整路径；完整玩家战斗按D33留待后续大修改。具体算法/数值/容量在实现验证中校准，新增机制尚未实现；正式前端执行者未定，沿旧分工交付真实接口，阶段不另加审批或独立审查。
+状态：be.4/C3已保存默认世界机制与代表性后端证据，按W5继续多尺度/长期成本和剩余行为覆盖；完整玩家战斗按D33后续实施，正式前端仍待集成。阶段不是审批，实际完成程度与服务限制见同一Record。
 
 ## 最小读取路线
 
@@ -77,17 +77,17 @@ V13增加NPC自主成长和后台冲突/物品损耗。先补角色能力/功法
 
 逐项区分“BE完成”和“集成完成”：前者要求真实状态、合法 effect、动作条件/AI 使用、视角读口、保存分支和代表性验证均已交付；后者另需实际玩家界面接线及操作闭环。没有最终界面可交付 BE 完成，但不能标为玩家功能已集成；规则存在但合法角色详情读不到或失败原因无法消费时，也不能标为 BE 完成。
 
-当前拆分不要求后端制作最终视觉，也不删减家庭和长期演化。be.2 是已交付基线；后续按 W0–W5 深化，不能将最小可运行骨架、循环次数或无异常退出代替世界自主性。新增能力进入真实构建后再修订 C2 或后续契约版本。
+当前拆分不要求后端制作最终视觉。be.4/C3是当前后端基线；W0–W4有默认规则与代表性证据，W5成本/聚合及更广行为覆盖继续深化，不能把循环次数或无异常退出代替世界自主性。
 
 ## 可复制到后端新对话
 
 ```text
 继续 Atria《斗破苍穹》开放沙盒，Task ID：package/doupo-living-world，执行 BE 后端开发。
-D25 正式制作授权保持有效，已具备开工条件；以 v0.16 为当前默认实施方案，直接推进后端。已确认方向不重复询问；具体算法、数值和容量按实现与验证校准，不将全部候选细节视为冻结要求，不另立审批阶段。
+D25 正式制作授权保持有效，已具备开工条件；以 v0.17/be.4/C3 为当前实际基线，直接推进后端。已确认方向不重复询问；具体算法、数值和容量按实现与验证校准，不将全部候选细节视为冻结要求，不另立审批阶段。
 
-先核实 docs、package、Atria 源码的真实 Git/工作树与未提交内容，保护其它任务，不按历史 HEAD 强制回退。先读 docs:plans/package/doupo-living-world/index.md，按路由读取 decisions.md、implementation-readiness.md、world-simulation.md、npc-agency.md、social-graphs.md、character-condition.md、npc-progression-conflict.md、world-systems.md、production-plan.md、backend-task.md、research.md、execution-split.md，以及同目录 frontend-contract.md 的当前 C2 和 docs:records/package/doupo-living-world.md。不要从旧 doupo-open-world 草案恢复确认。
+先核实 docs、package、Atria 源码的真实 Git/工作树与未提交内容，保护其它任务，不按历史 HEAD 强制回退。先读 docs:plans/package/doupo-living-world/index.md，按路由读取 decisions.md、implementation-readiness.md、world-simulation.md、npc-agency.md、social-graphs.md、character-condition.md、npc-progression-conflict.md、world-systems.md、production-plan.md、backend-task.md、research.md、execution-split.md，以及同目录 frontend-contract.md 的当前 C3 和 docs:records/package/doupo-living-world.md。不要从旧 doupo-open-world 草案恢复确认。
 
-从已有 be.2/C2 接续制作稿 W0–W5：当前从 W0 的真实状态/schema、合法写入和 effect 依赖展开，核对实际断点和恢复边界，按后续动作需要补承载，再接 W1 活动/补给/旅行与感知。随后贯通无玩家接任务的世界循环、持续目标、主动社会行为、可中断长链和全角色个人图谱，验证地区后果与多尺度成本。不要从 BE0 机械重做已完成工作，也不要继续无目的追加方案、只演示两条固定剧本或经济数字变化；玩家不参与时其他人物仍应按自身所知和目标行动，玩家选择由本人控制。
+从be.4/C3及Record的实际结果接续W5：完善稳定活动聚合、依赖唤醒、96人跨月真实宿主与长期增长成本，并覆盖剩余社会行为候选；修正实际出现的状态/作用/视角或恢复断点，不机械重做已有W0–W4默认切片。不要从 BE0 机械重做已完成工作，也不要继续无目的追加方案、只演示两条固定剧本或经济数字变化；玩家不参与时其他人物仍应按自身所知和目标行动，玩家选择由本人控制。
 
 每项功能贯通状态/schema、合法写入/条件/事件、动作有效性与 AI 选择、按视角读口/角色详情和失败原因、保存/分支、代表性验证。身体伤势（骨折/缺失/功能约束等）、物品实例、约束状态、图谱/个人知识、NPC 活动和组织生产都须有实际规则承载；缺失先补承载再解锁叙事结果。不因没有正式 UI 就删功能，也不因 plan 写了名字就算完成；交付真实可消费接口和最小读取验证，不用直接读全量 Domain 代替合法视角读口。
 
