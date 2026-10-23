@@ -1,0 +1,1197 @@
+{
+  "schemaVersion": 1,
+  "encoding": "New PNGs encoded to lossless WebP with RGBA preserved. Existing approved WebP portraits copied byte-for-byte.",
+  "assets": [
+    {
+      "id": "npc-adult-male-broad:portrait",
+      "file": "media/pools/ordinary/npc-adult-male-broad-portrait.webp",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 1204976,
+      "sha256": "48069a348a684e69bd3d0a2d091db7e3b9408137baaa8f40bcb4cb718b54be90",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        254
+      ],
+      "visibleBounds": [
+        229,
+        3,
+        846,
+        1514
+      ],
+      "qa": "paired identity, full figure, age cohort and alpha visually inspected; static pose only",
+      "steps": [
+        {
+          "mode": "generate",
+          "generator": "image_gen built-in",
+          "prompt": "Use case: stylized-concept. ONE original full-body dialogue standing portrait for a reusable NPC appearance pool in a Chinese cultivation RPG. Refined painterly gouache realism, restrained ink contours, tactile cloth, warm muted mineral colors, coherent with the approved Doupo Living World art. Genuine transparent background, no scene or backdrop, no text, labels, UI, watermark, floor plane, halo, elaborate effects or duplicated figure. Full body and both shoes/hands comfortably inside frame, natural readable three-quarter stance, modest period-appropriate fully covered clothes. No film/anime/celebrity likeness. Individual anatomy, age and build must be credible. Do NOT reuse the face of a pretty young woman for every subject. Male working adult age 28–38, broad square face, wide flat nose, heavy straight brows, small alert eyes, sun-darkened skin, thick neck and sturdy laborer's build. Short practical tied dark hair, faded russet sleeveless outer work vest over long cream sleeves, patched dark trousers, straw-soled shoes, one hand carrying a modest coiled rope. Calm grounded stance. This must be an ordinary porter/craftsman, not a handsome aristocrat.",
+          "referenceImages": [],
+          "sourceSha256": "3921509a7f6ea8469b8cb423eff9a4246f33258a1a6dab5270092e58ffbe14f1"
+        },
+        {
+          "mode": "edit",
+          "generator": "image_gen built-in",
+          "prompt": "Edit this existing character asset only to remove the large cloudy/gradient background halo. Preserve the exact person, face, hair, clothing, objects, proportions, pose, painterly style and all character pixels as closely as possible. Output genuine transparent alpha everywhere outside the character silhouette; no gradient, glow, haze, vignette, checkerboard, floor or lettering. Preserve fine hair edges. The person must remain complete including shoes. This is background removal, do not redesign or beautify the character.",
+          "referenceImages": [
+            {
+              "sha256": "3921509a7f6ea8469b8cb423eff9a4246f33258a1a6dab5270092e58ffbe14f1"
+            }
+          ],
+          "sourceSha256": "c93279c2dc118d4d5f22d1671eba5653a1dd19d66d1c0e6aabcbda96bf4c6338"
+        }
+      ]
+    },
+    {
+      "id": "npc-adult-female-angular:portrait",
+      "file": "media/pools/ordinary/npc-adult-female-angular-portrait.webp",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 1085128,
+      "sha256": "c788e471c441a5b571a213afa7d92b1d7e85afa891d96300cbe87162ff4252ba",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        254
+      ],
+      "visibleBounds": [
+        262,
+        6,
+        789,
+        1529
+      ],
+      "qa": "paired identity, full figure, age cohort and alpha visually inspected; static pose only",
+      "steps": [
+        {
+          "mode": "generate",
+          "generator": "image_gen built-in",
+          "prompt": "Use case: stylized-concept. ONE original full-body dialogue standing portrait for a reusable NPC appearance pool in a Chinese cultivation RPG. Refined painterly gouache realism, restrained ink contours, tactile cloth, warm muted mineral colors, coherent with the approved Doupo Living World art. Genuine transparent background, no scene or backdrop, no text, labels, UI, watermark, floor plane, halo, elaborate effects or duplicated figure. Full body and both shoes/hands comfortably inside frame, natural readable three-quarter stance, modest period-appropriate fully covered clothes. No film/anime/celebrity likeness. Individual anatomy, age and build must be credible. Do NOT reuse the face of a pretty young woman for every subject. Female working adult age 23–35, long angular face, high cheekbones, long narrow dark eyes, straight broad nose, warm tan skin, a small old notch through left eyebrow, athletic shoulders. Low tightly braided dark hair, weathered indigo wrap robe, ochre sash, narrow travel satchel, one relaxed hand at belt. Practical self-possessed expression, no makeup, no exposed cleavage, distinctly NOT Su Wanhe's soft rounder face.",
+          "referenceImages": [],
+          "sourceSha256": "33cebf61fa17f1d7c243c903c21e88ff2ebf24e5e617e9556b4e3d33a3806316"
+        },
+        {
+          "mode": "edit",
+          "generator": "image_gen built-in",
+          "prompt": "Edit this existing character asset only to remove the large cloudy/gradient background halo. Preserve the exact person, face, hair, clothing, objects, proportions, pose, painterly style and all character pixels as closely as possible. Output genuine transparent alpha everywhere outside the character silhouette; no gradient, glow, haze, vignette, checkerboard, floor or lettering. Preserve fine hair edges. The person must remain complete including shoes. This is background removal, do not redesign or beautify the character.",
+          "referenceImages": [
+            {
+              "sha256": "33cebf61fa17f1d7c243c903c21e88ff2ebf24e5e617e9556b4e3d33a3806316"
+            }
+          ],
+          "sourceSha256": "df2bebc694f605387e5d31e09e470e5f0312988612e5d1cbdf815fe4dafd3ba7"
+        }
+      ]
+    },
+    {
+      "id": "npc-elder-male-lean:portrait",
+      "file": "media/pools/ordinary/npc-elder-male-lean-portrait.webp",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 1218080,
+      "sha256": "9a3a398bca7119d8dcdc691490f882fe81159dcadcb986446a15280042704aa2",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        254
+      ],
+      "visibleBounds": [
+        233,
+        14,
+        834,
+        1523
+      ],
+      "qa": "paired identity, full figure, age cohort and alpha visually inspected; static pose only",
+      "steps": [
+        {
+          "mode": "generate",
+          "generator": "image_gen built-in",
+          "prompt": "Use case: stylized-concept. ONE original full-body dialogue standing portrait for a reusable NPC appearance pool in a Chinese cultivation RPG. Refined painterly gouache realism, restrained ink contours, tactile cloth, warm muted mineral colors, coherent with the approved Doupo Living World art. Genuine transparent background, no scene or backdrop, no text, labels, UI, watermark, floor plane, halo, elaborate effects or duplicated figure. Full body and both shoes/hands comfortably inside frame, natural readable three-quarter stance, modest period-appropriate fully covered clothes. No film/anime/celebrity likeness. Individual anatomy, age and build must be credible. Do NOT reuse the face of a pretty young woman for every subject. Elderly Chinese man age 63–78, long narrow weathered face, hooked nose, hooded thoughtful eyes, deep forehead/crow's-feet wrinkles, sparse white moustache and short pointed beard, thin slightly stooped build. Grey topknot under plain cloth headwrap, olive-brown loose tunic with cream underlayer, simple wooden walking staff, narrow cloth shoes. Wry asymmetrical gentle smile. Clearly elderly, not a young face with white hair.",
+          "referenceImages": [],
+          "sourceSha256": "fa44adc52d59dfd52f95e7389a3d0ca2dc225cb9ce380fbaa054c374399affc5"
+        },
+        {
+          "mode": "edit",
+          "generator": "image_gen built-in",
+          "prompt": "Edit this existing character asset only to remove the large cloudy/gradient background halo. Preserve the exact person, face, hair, clothing, objects, proportions, pose, painterly style and all character pixels as closely as possible. Output genuine transparent alpha everywhere outside the character silhouette; no gradient, glow, haze, vignette, checkerboard, floor or lettering. Preserve fine hair edges. The person must remain complete including shoes. This is background removal, do not redesign or beautify the character.",
+          "referenceImages": [
+            {
+              "sha256": "fa44adc52d59dfd52f95e7389a3d0ca2dc225cb9ce380fbaa054c374399affc5"
+            }
+          ],
+          "sourceSha256": "cccb6acbf219b4b939612f38b3ae56c8346f17397c2c3f1decfaa49a983a7202"
+        }
+      ]
+    },
+    {
+      "id": "npc-elder-female-round:portrait",
+      "file": "media/pools/ordinary/npc-elder-female-round-portrait.webp",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 1348644,
+      "sha256": "2464a44cf3a692e87c9bcc7fc4481afe7c04c45fbdb4fb2c9ba4b1b1ddcfb8f8",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        254
+      ],
+      "visibleBounds": [
+        193,
+        9,
+        844,
+        1526
+      ],
+      "qa": "paired identity, full figure, age cohort and alpha visually inspected; static pose only",
+      "steps": [
+        {
+          "mode": "generate",
+          "generator": "image_gen built-in",
+          "prompt": "Use case: stylized-concept. ONE original full-body dialogue standing portrait for a reusable NPC appearance pool in a Chinese cultivation RPG. Refined painterly gouache realism, restrained ink contours, tactile cloth, warm muted mineral colors, coherent with the approved Doupo Living World art. Genuine transparent background, no scene or backdrop, no text, labels, UI, watermark, floor plane, halo, elaborate effects or duplicated figure. Full body and both shoes/hands comfortably inside frame, natural readable three-quarter stance, modest period-appropriate fully covered clothes. No film/anime/celebrity likeness. Individual anatomy, age and build must be credible. Do NOT reuse the face of a pretty young woman for every subject. Elderly Chinese woman age 61–76, short broad round face, full cheeks with age lines, broad small nose, hooded warm eyes, thin uneven brows, sturdy stocky torso. Silver-grey hair coiled low with a dark wooden comb. Muted plum coarse-cloth long-sleeved robe, dusty beige apron, sewing pouch and folded cloth held in one hand, practical shoes. Firm kind expression. Clearly aged face and build, not a young woman with grey hair.",
+          "referenceImages": [],
+          "sourceSha256": "3f11e804d366d7875ca12441b2e67b53eb057565e99992a57d991e15a0dc7ae8"
+        },
+        {
+          "mode": "edit",
+          "generator": "image_gen built-in",
+          "prompt": "Edit this existing character asset only to remove the large cloudy/gradient background halo. Preserve the exact person, face, hair, clothing, objects, proportions, pose, painterly style and all character pixels as closely as possible. Output genuine transparent alpha everywhere outside the character silhouette; no gradient, glow, haze, vignette, checkerboard, floor or lettering. Preserve fine hair edges. The person must remain complete including shoes. This is background removal, do not redesign or beautify the character.",
+          "referenceImages": [
+            {
+              "sha256": "3f11e804d366d7875ca12441b2e67b53eb057565e99992a57d991e15a0dc7ae8"
+            }
+          ],
+          "sourceSha256": "cefb46aab39bfe3cdcba5ad342eb7883e5c74198406c9b2f29407673e6074493"
+        }
+      ]
+    },
+    {
+      "id": "xiaoyan:chibi",
+      "file": "media/pools/key-characters/xiaoyan-chibi.webp",
+      "width": 1086,
+      "height": 1448,
+      "bytes": 882094,
+      "sha256": "f1d4685351ef213e601a86816fb35674cc4efb406f9ca1c878a6b034caf7bb41",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        255
+      ],
+      "visibleBounds": [
+        275,
+        8,
+        852,
+        1434
+      ],
+      "qa": "paired identity, full figure, age cohort and alpha visually inspected; static pose only",
+      "steps": [
+        {
+          "mode": "edit",
+          "generator": "image_gen built-in",
+          "prompt": "Use case: style-transfer. ONE dedicated full-body Q/chibi map character asset for a Chinese cultivation RPG. Use the reference only for this SAME character's identity, costume colors, face, hair and tactile gouache/ink material. Redraw as a readable 2.6-head-tall small figure; head and both shoes entirely in frame, neutral standing three-quarter front-right pose with a gently elevated scene camera. Full genuine transparent background, no scenery, floor plane, text, labels, UI, watermark, portrait crop, duplicate body or animation grid. Simplify silhouette while preserving distinctive facial family, age and clothing; never glossy 3D or anime screenshot. Xiao Yan at the opening, adolescent boy about fifteen, short angular youthful male face, thick straight brows, determined narrow dark eyes, short practical tied black hair. Plain worn charcoal training robes, grey linen underlayer, worn cloth belt, simple cloth shoes, discreet dark old ring. Both arms relaxed, one hand lightly near belt. No giant adult sword, ornate armor or imperial costume. Child-appropriate modest outfit.",
+          "referenceImages": [
+            {
+              "sha256": "bf9717486557af0ecb99e0569a5ac07e4b4d6b62b5dc551f7838c311bb7b5e93"
+            }
+          ],
+          "sourceSha256": "f0fb97033d56ed34af45e73a700035efa0e09f6e64bfc35e9774563aaa1368c8"
+        }
+      ]
+    },
+    {
+      "id": "xiaozhan:chibi",
+      "file": "media/pools/key-characters/xiaozhan-chibi.webp",
+      "width": 1086,
+      "height": 1448,
+      "bytes": 1348238,
+      "sha256": "573c54e47adb1de16d83735979ae72b651a45b00528fc04d93dbe5200f093b52",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        255
+      ],
+      "visibleBounds": [
+        102,
+        12,
+        1021,
+        1432
+      ],
+      "qa": "paired identity, full figure, age cohort and alpha visually inspected; static pose only",
+      "steps": [
+        {
+          "mode": "edit",
+          "generator": "image_gen built-in",
+          "prompt": "Use case: style-transfer. ONE dedicated full-body Q/chibi map character asset for a Chinese cultivation RPG. Use the reference only for this SAME character's identity, costume colors, face, hair and tactile gouache/ink material. Redraw as a readable 2.6-head-tall small figure; head and both shoes entirely in frame, neutral standing three-quarter front-right pose with a gently elevated scene camera. Full genuine transparent background, no scenery, floor plane, text, labels, UI, watermark, portrait crop, duplicate body or animation grid. Simplify silhouette while preserving distinctive facial family, age and clothing; never glossy 3D or anime screenshot. Xiao Zhan, sturdy middle-aged family leader with a wide square face, broad nose, protective furrowed brow, short dark beard with slight grey. Muted navy and antique-bronze family robes, broad layered shoulders, neat topknot with restrained gold ornament, calm firm standing pose. Broad heavier build clearly different from a slim boy. Retain the distinctive middle-aged beard and face.",
+          "referenceImages": [
+            {
+              "sha256": "aaac67626f56f619a64a8d010a698c61c3bfc3bd7a5f15c5fcfc0e9b216f6e6d"
+            }
+          ],
+          "sourceSha256": "f16ff36e790741ee125f9c883d9969faaee8790fe53795441826d656175cda4e"
+        }
+      ]
+    },
+    {
+      "id": "xuner:chibi",
+      "file": "media/pools/key-characters/xuner-chibi.webp",
+      "width": 1190,
+      "height": 1322,
+      "bytes": 988372,
+      "sha256": "4ef7eea90c1e555af37e65df3b19df400907417886e2792e547f3394843a2662",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        255
+      ],
+      "visibleBounds": [
+        268,
+        38,
+        985,
+        1267
+      ],
+      "qa": "paired identity, full figure, age cohort and alpha visually inspected; static pose only",
+      "steps": [
+        {
+          "mode": "edit",
+          "generator": "image_gen built-in",
+          "prompt": "Create one SMALL GAME MAP CHIBI FIGURE, not a realistic standing portrait: Xiaoxuner opening-period girl age 14. Use image 1 ONLY for her identity: youthful gentle oval-round face, dark brown eyes, dark half-up hair, jade flower ornament, lavender and ivory modest hanfu, flat lavender shoes. Use image 2 ONLY for chibi proportions and clean isolated sprite format. Huge head 42% of figure height, little short torso and short arms/legs; about 2.4 heads tall. Draw her in a new quiet pose holding hands lightly at waist, whole figure fully inside frame with generous empty TRANSPARENT padding on all sides. Crisp character silhouette, painterly gouache details only INSIDE clothes and hair. Every pixel outside the person is alpha=0. NO halo, NO glow, NO gradient wash, NO cast backdrop, NO fog, NO floor, NO text, NO circle, NO frame. A clean transparent sticker asset for an isometric fantasy game map.",
+          "referenceImages": [
+            {
+              "sha256": "500babdaab7484e5f2ff9f61664b0851483923b24210ac0770050c741d1b6e12"
+            },
+            {
+              "sha256": "53df617814c1c6e853872f642a6464439ad7353a34e8b4710030325d31355682"
+            }
+          ],
+          "sourceSha256": "fc202f1144a0b9499088aa59e50d6ad4dd3bec96082b12c23155622ef004c49e"
+        }
+      ]
+    },
+    {
+      "id": "su:chibi",
+      "file": "media/pools/key-characters/su-chibi.webp",
+      "width": 1191,
+      "height": 1321,
+      "bytes": 743362,
+      "sha256": "1feb41df90003b93ff35256af8ef9b5ecc469d847a44ad9965e53ff92d8c9c4f",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        255
+      ],
+      "visibleBounds": [
+        367,
+        46,
+        852,
+        1289
+      ],
+      "qa": "paired identity, full figure, age cohort and alpha visually inspected; static pose only",
+      "steps": [
+        {
+          "mode": "edit",
+          "generator": "image_gen built-in",
+          "prompt": "Use case: style-transfer. Create ONE production game map chibi sprite of Su Wanhe, the adult herbalist woman in the reference portrait. Preserve her distinct face, brown eyes, loose practical black bun with wooden pin, muted teal rough-cloth robe, oatmeal inner sleeves, worn taupe apron, tiny paper medicine parcel. Full body, including simple cloth shoes, head-to-body proportion 1:2.6 (approximately 2.6 heads tall), readable at 72px. Original refined Chinese gouache and restrained ink style, warm muted teal/ivory palette, simplified confident silhouette, not glossy 3D, not anime screenshot, not a baby or sexualized doll. Slight three-quarter view facing front-right, gently elevated camera appropriate to a top-down RPG scene; neutral idle pose. Adult woman remains recognizably adult despite Q proportions. Isolated centered character, no scene, no floor plane, no text, no labels, no border, no watermark. Genuine transparent background with clean alpha, faint contact shadow only immediately under shoes. This is a single static chibi map asset, not an animation sheet.",
+          "referenceImages": [
+            {
+              "sha256": "dafd282003e1bfbbfc546c0942a7da899cb0ac0e1a6a9f1128d83459e39c438f"
+            }
+          ],
+          "sourceSha256": "53df617814c1c6e853872f642a6464439ad7353a34e8b4710030325d31355682"
+        }
+      ]
+    },
+    {
+      "id": "npc-adult-male-broad:chibi",
+      "file": "media/pools/ordinary/npc-adult-male-broad-chibi.webp",
+      "width": 1122,
+      "height": 1402,
+      "bytes": 969910,
+      "sha256": "4ec3c92645a0fe691e27c5e6d4e818956cde7087fc0249a000aab471450ace2b",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        255
+      ],
+      "visibleBounds": [
+        245,
+        19,
+        914,
+        1385
+      ],
+      "qa": "paired identity, full figure, age cohort and alpha visually inspected; static pose only",
+      "steps": [
+        {
+          "mode": "edit",
+          "generator": "image_gen built-in",
+          "prompt": "Create a standalone Q-version chibi map character of the EXACT ordinary NPC in the reference. Preserve sex, apparent age, distinctive face shape, skin tone, hair, clothes, colors, and accessories. Redraw as 2.6 heads tall with a large expressive head and compact body, not a miniaturized realistic adult. Whole figure including both shoes fully visible, 3/4 front idle standing, slight elevated game-map view, centered with generous transparent padding. Painterly gouache and restrained ink, muted earthen colors and readable silhouette. ONE character only. Genuine transparent alpha background. Absolutely NO background glow, halo, gradient, scenery, platform, labels, lettering, UI, or frame. Keep adult/elder age visible even in chibi face. Do not beautify old people into young people.",
+          "referenceImages": [
+            {
+              "sha256": "3921509a7f6ea8469b8cb423eff9a4246f33258a1a6dab5270092e58ffbe14f1"
+            }
+          ],
+          "sourceSha256": "1bf974d4ea0822f6c42695c088f996fcd65ba44463b04c4d225187c227fd8b9c"
+        }
+      ]
+    },
+    {
+      "id": "npc-adult-female-angular:chibi",
+      "file": "media/pools/ordinary/npc-adult-female-angular-chibi.webp",
+      "width": 1145,
+      "height": 1374,
+      "bytes": 776728,
+      "sha256": "b8d9319e42245d3e0852f7ac48e0402cd0df00e609aa2a24b43236d69069ba85",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        255
+      ],
+      "visibleBounds": [
+        327,
+        48,
+        828,
+        1345
+      ],
+      "qa": "paired identity, full figure, age cohort and alpha visually inspected; static pose only",
+      "steps": [
+        {
+          "mode": "edit",
+          "generator": "image_gen built-in",
+          "prompt": "Create a standalone Q-version chibi map character of the EXACT ordinary NPC in the reference. Preserve sex, apparent age, distinctive face shape, skin tone, hair, clothes, colors, and accessories. Redraw as 2.6 heads tall with a large expressive head and compact body, not a miniaturized realistic adult. Whole figure including both shoes fully visible, 3/4 front idle standing, slight elevated game-map view, centered with generous transparent padding. Painterly gouache and restrained ink, muted earthen colors and readable silhouette. ONE character only. Genuine transparent alpha background. Absolutely NO background glow, halo, gradient, scenery, platform, labels, lettering, UI, or frame. Keep adult/elder age visible even in chibi face. Do not beautify old people into young people.",
+          "referenceImages": [
+            {
+              "sha256": "33cebf61fa17f1d7c243c903c21e88ff2ebf24e5e617e9556b4e3d33a3806316"
+            }
+          ],
+          "sourceSha256": "95c159b03bc96356fe36ad9052e3187905bfeaed2e6e54f1d1372540177e07d4"
+        }
+      ]
+    },
+    {
+      "id": "npc-elder-male-lean:chibi",
+      "file": "media/pools/ordinary/npc-elder-male-lean-chibi.webp",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 1523880,
+      "sha256": "a4c73aaa843fb029873963fbb4f24501dcf003077294f2631e8de8107c0bbcc1",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        254
+      ],
+      "visibleBounds": [
+        179,
+        16,
+        858,
+        1522
+      ],
+      "qa": "paired identity, full figure, age cohort and alpha visually inspected; static pose only",
+      "steps": [
+        {
+          "mode": "edit",
+          "generator": "image_gen built-in",
+          "prompt": "Create a standalone Q-version chibi map character of the EXACT ordinary NPC in the reference. Preserve sex, apparent age, distinctive face shape, skin tone, hair, clothes, colors, and accessories. Redraw as 2.6 heads tall with a large expressive head and compact body, not a miniaturized realistic adult. Whole figure including both shoes fully visible, 3/4 front idle standing, slight elevated game-map view, centered with generous transparent padding. Painterly gouache and restrained ink, muted earthen colors and readable silhouette. ONE character only. Genuine transparent alpha background. Absolutely NO background glow, halo, gradient, scenery, platform, labels, lettering, UI, or frame. Keep adult/elder age visible even in chibi face. Do not beautify old people into young people.",
+          "referenceImages": [
+            {
+              "sha256": "fa44adc52d59dfd52f95e7389a3d0ca2dc225cb9ce380fbaa054c374399affc5"
+            }
+          ],
+          "sourceSha256": "6b15902aad05dc7f2c3fa6bf822d3293acb12f0ff9bf83fca0c8a5006b641190"
+        }
+      ]
+    },
+    {
+      "id": "npc-elder-female-round:chibi",
+      "file": "media/pools/ordinary/npc-elder-female-round-chibi.webp",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 1575394,
+      "sha256": "569e9544904aad6ed93d3bd8941840683fef6b1f297d00c894d5f65f9fab7b8c",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        254
+      ],
+      "visibleBounds": [
+        182,
+        41,
+        882,
+        1520
+      ],
+      "qa": "paired identity, full figure, age cohort and alpha visually inspected; static pose only",
+      "steps": [
+        {
+          "mode": "edit",
+          "generator": "image_gen built-in",
+          "prompt": "Create a standalone Q-version chibi map character of the EXACT ordinary NPC in the reference. Preserve sex, apparent age, distinctive face shape, skin tone, hair, clothes, colors, and accessories. Redraw as 2.6 heads tall with a large expressive head and compact body, not a miniaturized realistic adult. Whole figure including both shoes fully visible, 3/4 front idle standing, slight elevated game-map view, centered with generous transparent padding. Painterly gouache and restrained ink, muted earthen colors and readable silhouette. ONE character only. Genuine transparent alpha background. Absolutely NO background glow, halo, gradient, scenery, platform, labels, lettering, UI, or frame. Keep adult/elder age visible even in chibi face. Do not beautify old people into young people.",
+          "referenceImages": [
+            {
+              "sha256": "3f11e804d366d7875ca12441b2e67b53eb057565e99992a57d991e15a0dc7ae8"
+            }
+          ],
+          "sourceSha256": "0e5e6f8aa10835e316746657fd91c0cbc0d23577cb9b8b1fc859b361cce3f807"
+        }
+      ]
+    },
+    {
+      "id": "he:chibi",
+      "file": "media/pools/key-characters/he-chibi.webp",
+      "width": 1169,
+      "height": 1346,
+      "bytes": 1223678,
+      "sha256": "4c7d41c10bb6a60cae615d7f947d5e10b71855e270a7ec2796a7281983605500",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        255
+      ],
+      "visibleBounds": [
+        212,
+        4,
+        949,
+        1341
+      ],
+      "qa": "paired identity, full figure, age cohort and alpha visually inspected; static pose only",
+      "steps": [
+        {
+          "mode": "edit",
+          "generator": "image_gen built-in",
+          "prompt": "Redraw the exact person in reference as a dedicated Q-version map chibi. 29-year-old male mountain guide, rugged tanned angular face, short moustache and beard, messy high knot, mustard ochre travel cloak, rope coil and small pack. Preserve identifiable face, hair and garment design from reference. 2.6 heads tall, expressive oversized head and compact body. Whole figure including feet visible with transparent padding. Quiet idle standing in 3/4 front with slight elevated map view. Painterly gouache and subtle ink texture, muted jade/earth palette, original Chinese fantasy. ONE character only on genuine alpha transparency. No background, gradient, aura, halo, scenery, pedestal, labels or writing. This is new chibi art, not a resized portrait. Preserve adult and elder age traits.",
+          "referenceImages": [
+            {
+              "sha256": "6dbba14151ca8ac952934e83fe33ab89ba661bf2a00d51f9561f81c070d5cb37"
+            }
+          ],
+          "sourceSha256": "42b12a457cf0da46922ee87fb2ae8e4d733be437055a75bf5b30bd1a48021932"
+        }
+      ]
+    },
+    {
+      "id": "lu:chibi",
+      "file": "media/pools/key-characters/lu-chibi.webp",
+      "width": 1166,
+      "height": 1349,
+      "bytes": 1113438,
+      "sha256": "9e6285c2fc3f06e11cbcd669cf43234cf2d988d659abe7cb56c02a1655100250",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        255
+      ],
+      "visibleBounds": [
+        229,
+        3,
+        935,
+        1345
+      ],
+      "qa": "paired identity, full figure, age cohort and alpha visually inspected; static pose only",
+      "steps": [
+        {
+          "mode": "edit",
+          "generator": "image_gen built-in",
+          "prompt": "Redraw the exact person in reference as a dedicated Q-version map chibi. 24-year-old male herb seeker, lean triangular face, thick slanted brows, tight green-bound topknot, muted dark jade robe, small herb basket. Preserve identifiable face, hair and garment design from reference. 2.6 heads tall, expressive oversized head and compact body. Whole figure including feet visible with transparent padding. Quiet idle standing in 3/4 front with slight elevated map view. Painterly gouache and subtle ink texture, muted jade/earth palette, original Chinese fantasy. ONE character only on genuine alpha transparency. No background, gradient, aura, halo, scenery, pedestal, labels or writing. This is new chibi art, not a resized portrait. Preserve adult and elder age traits.",
+          "referenceImages": [
+            {
+              "sha256": "762ca234e4f2180c39a8c7b0087df63ad7a555f4b4501021c9dfaeb480479b72"
+            }
+          ],
+          "sourceSha256": "b972b1e3e3664f2c4b99ff2ac511caaf9e3cf2f39536d6fafe541ce3422dea6c"
+        }
+      ]
+    },
+    {
+      "id": "ning:chibi",
+      "file": "media/pools/key-characters/ning-chibi.webp",
+      "width": 1145,
+      "height": 1374,
+      "bytes": 964974,
+      "sha256": "615fb4a4d2ef764c133d3705356c03290f39bec84ac9fc03aeb8458b09fa9ba1",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        255
+      ],
+      "visibleBounds": [
+        296,
+        13,
+        902,
+        1357
+      ],
+      "qa": "paired identity, full figure, age cohort and alpha visually inspected; static pose only",
+      "steps": [
+        {
+          "mode": "edit",
+          "generator": "image_gen built-in",
+          "prompt": "Redraw the exact person in reference as a dedicated Q-version map chibi. 27-year-old female healer, calm long oval face, dark eyes, dark hair in loose bun with olive ribbons, ivory and dark sage robe, herbs and leather medicine pouch. Preserve identifiable face, hair and garment design from reference. 2.6 heads tall, expressive oversized head and compact body. Whole figure including feet visible with transparent padding. Quiet idle standing in 3/4 front with slight elevated map view. Painterly gouache and subtle ink texture, muted jade/earth palette, original Chinese fantasy. ONE character only on genuine alpha transparency. No background, gradient, aura, halo, scenery, pedestal, labels or writing. This is new chibi art, not a resized portrait. Preserve adult and elder age traits.",
+          "referenceImages": [
+            {
+              "sha256": "fa4f4b840df15451ac20b08f9ffc2ce7f6d87040a05baf6a38865565989e79dc"
+            }
+          ],
+          "sourceSha256": "06f64d5c091d952eedfe3002656320795ffe2c2298c80d8d56fbd0b6126b60fc"
+        }
+      ]
+    },
+    {
+      "id": "su-father:chibi",
+      "file": "media/pools/key-characters/su-father-chibi.webp",
+      "width": 1230,
+      "height": 1278,
+      "bytes": 867004,
+      "sha256": "934b27f0e2db0cd8371cf14d679ff5e8faf2c4b4879dde1db7e6b17b883403c6",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        255
+      ],
+      "visibleBounds": [
+        283,
+        14,
+        883,
+        1265
+      ],
+      "qa": "paired identity, full figure, age cohort and alpha visually inspected; static pose only",
+      "steps": [
+        {
+          "mode": "edit",
+          "generator": "image_gen built-in",
+          "prompt": "Redraw the exact person in reference as a dedicated Q-version map chibi. 61-year-old male herb trader, lined broad face, graying hair topknot and pointed gray beard, brown patched robe, small wooden walking staff, mildly guarded left leg stance; no graphic injury. Preserve identifiable face, hair and garment design from reference. 2.6 heads tall, expressive oversized head and compact body. Whole figure including feet visible with transparent padding. Quiet idle standing in 3/4 front with slight elevated map view. Painterly gouache and subtle ink texture, muted jade/earth palette, original Chinese fantasy. ONE character only on genuine alpha transparency. No background, gradient, aura, halo, scenery, pedestal, labels or writing. This is new chibi art, not a resized portrait. Preserve adult and elder age traits.",
+          "referenceImages": [
+            {
+              "sha256": "07c85eec139dfb29be0e9177d2b94823fdb824b66d4278ae5e95a7b570453322"
+            }
+          ],
+          "sourceSha256": "518d60241d0a2276c42ac3628cddd1d9c70f43223a85c454175d68850e067b41"
+        }
+      ]
+    },
+    {
+      "id": "npc-adult-male-lean:portrait",
+      "file": "media/pools/ordinary/npc-adult-male-lean-portrait.webp",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 1183930,
+      "sha256": "f507ad6d1c72286e09fec020b5ad99b1267051977a12b3e681f8213366f3d58a",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        254
+      ],
+      "visibleBounds": [
+        265,
+        18,
+        817,
+        1518
+      ],
+      "qa": "paired identity, full figure, age cohort and alpha visually inspected; static pose only",
+      "steps": [
+        {
+          "mode": "generate",
+          "generator": "image_gen built-in",
+          "prompt": "One dedicated ordinary NPC dialogue standing illustration for an original Chinese fantasy cultivation sandbox. Male 20–30, very slim, pale long narrow face, small eyes, straight narrow nose, clean shaven, neat low bun, faded blue scholar robe, bamboo document tube. Whole person including shoes (or whole swaddled baby) fully inside frame. Natural age-appropriate proportions, quiet front 3/4 pose. Painterly gouache and subtle ink texture, matte cloth materials, restrained earthy colors. Distinctive grounded everyday person, not an idealized idol. Genuine transparent alpha background, zero background glow, gradient, halo, cast-color wash, scenery, text, border or UI. Single isolated character only. Keep a clean readable silhouette and 8% padding.",
+          "referenceImages": [],
+          "sourceSha256": "a22fd484121a7ec057734363c86ab4096650ab6c31fd5242558fcb78267fa8c5"
+        }
+      ]
+    },
+    {
+      "id": "npc-adult-female-round:portrait",
+      "file": "media/pools/ordinary/npc-adult-female-round-portrait.webp",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 1324112,
+      "sha256": "24df05613b5bff439c135adde74e4b7e58382d228b47dcdc14c21937d25349b2",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        254
+      ],
+      "visibleBounds": [
+        184,
+        34,
+        832,
+        1504
+      ],
+      "qa": "paired identity, full figure, age cohort and alpha visually inspected; static pose only",
+      "steps": [
+        {
+          "mode": "generate",
+          "generator": "image_gen built-in",
+          "prompt": "One dedicated ordinary NPC dialogue standing illustration for an original Chinese fantasy cultivation sandbox. Female 22–35, short stout build, broad round face with visible freckles, small wide-set eyes, warm tan skin, thick short braid, brick-red merchant jacket, ochre sash, cloth coin pouch. Whole person including shoes (or whole swaddled baby) fully inside frame. Natural age-appropriate proportions, quiet front 3/4 pose. Painterly gouache and subtle ink texture, matte cloth materials, restrained earthy colors. Distinctive grounded everyday person, not an idealized idol. Genuine transparent alpha background, zero background glow, gradient, halo, cast-color wash, scenery, text, border or UI. Single isolated character only. Keep a clean readable silhouette and 8% padding.",
+          "referenceImages": [],
+          "sourceSha256": "3522c941a15d19b6a4249a5691331c983147b97fbc217618832afcf07a504a8f"
+        }
+      ]
+    },
+    {
+      "id": "npc-middle-male-square:portrait",
+      "file": "media/pools/ordinary/npc-middle-male-square-portrait.webp",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 1284156,
+      "sha256": "315cb439eecb6aad8d51b1cff73f2726aa2c6c36f7a6c81cb90c184e9d8a49be",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        254
+      ],
+      "visibleBounds": [
+        185,
+        64,
+        837,
+        1485
+      ],
+      "qa": "paired identity, full figure, age cohort and alpha visually inspected; static pose only",
+      "steps": [
+        {
+          "mode": "generate",
+          "generator": "image_gen built-in",
+          "prompt": "One dedicated ordinary NPC dialogue standing illustration for an original Chinese fantasy cultivation sandbox. Male 40–59, heavyset square face, receding hairline, thick neat beard, deep-set eyes, brown-red brocade coat, account ledger and plain belt. Whole person including shoes (or whole swaddled baby) fully inside frame. Natural age-appropriate proportions, quiet front 3/4 pose. Painterly gouache and subtle ink texture, matte cloth materials, restrained earthy colors. Distinctive grounded everyday person, not an idealized idol. Genuine transparent alpha background, zero background glow, gradient, halo, cast-color wash, scenery, text, border or UI. Single isolated character only. Keep a clean readable silhouette and 8% padding.",
+          "referenceImages": [],
+          "sourceSha256": "6d8aa7c4d9378fdedeb32b18d361d871e27f00cbb5e422f517108405f6dad17e"
+        }
+      ]
+    },
+    {
+      "id": "npc-middle-female-long:portrait",
+      "file": "media/pools/ordinary/npc-middle-female-long-portrait.webp",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 1108814,
+      "sha256": "96d1250c9f5a40cc1d348ba45a058192a478f32d862c2b047436db0f540eec3f",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        254
+      ],
+      "visibleBounds": [
+        299,
+        27,
+        768,
+        1512
+      ],
+      "qa": "paired identity, full figure, age cohort and alpha visually inspected; static pose only",
+      "steps": [
+        {
+          "mode": "generate",
+          "generator": "image_gen built-in",
+          "prompt": "One dedicated ordinary NPC dialogue standing illustration for an original Chinese fantasy cultivation sandbox. Female 40–59, tall lean build, long weathered face with smile lines, broad nose and dark eyes, graying black hair in practical bun, muted pine-green robe with cream sleeves, small covered herbal pouch. Whole person including shoes (or whole swaddled baby) fully inside frame. Natural age-appropriate proportions, quiet front 3/4 pose. Painterly gouache and subtle ink texture, matte cloth materials, restrained earthy colors. Distinctive grounded everyday person, not an idealized idol. Genuine transparent alpha background, zero background glow, gradient, halo, cast-color wash, scenery, text, border or UI. Single isolated character only. Keep a clean readable silhouette and 8% padding.",
+          "referenceImages": [],
+          "sourceSha256": "f18dbf5f4c1d5df316c7fc17ff47d71ebdc59702d9b1dc099a978a9738785315"
+        }
+      ]
+    },
+    {
+      "id": "npc-child-male:portrait",
+      "file": "media/pools/ordinary/npc-child-male-portrait.webp",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 1098126,
+      "sha256": "57943d2116548245545a671c19733d5d116c40c83a8503396a83ca0b72578d27",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        254
+      ],
+      "visibleBounds": [
+        310,
+        37,
+        767,
+        1501
+      ],
+      "qa": "paired identity, full figure, age cohort and alpha visually inspected; static pose only",
+      "steps": [
+        {
+          "mode": "generate",
+          "generator": "image_gen built-in",
+          "prompt": "One dedicated ordinary NPC dialogue standing illustration for an original Chinese fantasy cultivation sandbox. Boy 5–17, default appearance about 10 years, short slim child body, round ears, cheek freckles, thick straight brows, short tied hair, modest plain blue tunic, gray trousers, closed cloth shoes, wooden toy bird. Whole person including shoes (or whole swaddled baby) fully inside frame. Natural age-appropriate proportions, quiet front 3/4 pose. Painterly gouache and subtle ink texture, matte cloth materials, restrained earthy colors. Distinctive grounded everyday person, not an idealized idol. Genuine transparent alpha background, zero background glow, gradient, halo, cast-color wash, scenery, text, border or UI. Single isolated character only. Keep a clean readable silhouette and 8% padding.",
+          "referenceImages": [],
+          "sourceSha256": "99ec4ffabc1be1969b9109d0963e72a88dd4347ef588b4502948c3c3964261bb"
+        }
+      ]
+    },
+    {
+      "id": "npc-child-female:portrait",
+      "file": "media/pools/ordinary/npc-child-female-portrait.webp",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 1033682,
+      "sha256": "3cf8a7a4f4158f8794ea84ebb5ee3c2adaedb9f40cb5572efae0fb1074cd2f00",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        254
+      ],
+      "visibleBounds": [
+        316,
+        39,
+        742,
+        1497
+      ],
+      "qa": "paired identity, full figure, age cohort and alpha visually inspected; static pose only",
+      "steps": [
+        {
+          "mode": "generate",
+          "generator": "image_gen built-in",
+          "prompt": "One dedicated ordinary NPC dialogue standing illustration for an original Chinese fantasy cultivation sandbox. Girl 5–17, default appearance about 9 years, square little face, warm brown skin, wide eyes, two short braids, modest fully covering ochre and rust tunic and trousers, closed cloth shoes, small cloth ball. Whole person including shoes (or whole swaddled baby) fully inside frame. Natural age-appropriate proportions, quiet front 3/4 pose. Painterly gouache and subtle ink texture, matte cloth materials, restrained earthy colors. Distinctive grounded everyday person, not an idealized idol. Genuine transparent alpha background, zero background glow, gradient, halo, cast-color wash, scenery, text, border or UI. Single isolated character only. Keep a clean readable silhouette and 8% padding.",
+          "referenceImages": [],
+          "sourceSha256": "157337c44b98f82dda02c1107720c863d6ed495d886fa2484596f4eb95c7222e"
+        }
+      ]
+    },
+    {
+      "id": "npc-infant-male:portrait",
+      "file": "media/pools/ordinary/npc-infant-male-portrait.webp",
+      "width": 1199,
+      "height": 1312,
+      "bytes": 1060290,
+      "sha256": "eec4fdf78a142147629a5873623374a6f799147e79b7f02cfbcf12cec672069e",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        255
+      ],
+      "visibleBounds": [
+        185,
+        25,
+        1010,
+        1279
+      ],
+      "qa": "paired identity, full figure, age cohort and alpha visually inspected; static pose only",
+      "steps": [
+        {
+          "mode": "generate",
+          "generator": "image_gen built-in",
+          "prompt": "One dedicated ordinary NPC dialogue standing illustration for an original Chinese fantasy cultivation sandbox. Baby boy under 5 years, default infant around 1 year. Soft round baby face, tiny dark hair tuft, fully wrapped in warm pale blue and cream swaddle, supported seated resting pose, no nudity or exposed chest, no adult traits. Whole person including shoes (or whole swaddled baby) fully inside frame. Natural age-appropriate proportions, quiet front 3/4 pose. Painterly gouache and subtle ink texture, matte cloth materials, restrained earthy colors. Distinctive grounded everyday person, not an idealized idol. Genuine transparent alpha background, zero background glow, gradient, halo, cast-color wash, scenery, text, border or UI. Single isolated character only. Keep a clean readable silhouette and 8% padding.",
+          "referenceImages": [],
+          "sourceSha256": "84c618fe5b80210a830c874c43966138686d9b7badb2c5e4849c3777c44606a5"
+        }
+      ]
+    },
+    {
+      "id": "npc-infant-female:portrait",
+      "file": "media/pools/ordinary/npc-infant-female-portrait.webp",
+      "width": 1199,
+      "height": 1312,
+      "bytes": 1204964,
+      "sha256": "50d66df3eb738680d0cb076157729d8e34a9e9f95fdb72c0bfd9b6026e00d72c",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        255
+      ],
+      "visibleBounds": [
+        82,
+        54,
+        1145,
+        1255
+      ],
+      "qa": "paired identity, full figure, age cohort and alpha visually inspected; static pose only",
+      "steps": [
+        {
+          "mode": "generate",
+          "generator": "image_gen built-in",
+          "prompt": "One dedicated ordinary NPC dialogue standing illustration for an original Chinese fantasy cultivation sandbox. Baby girl under 5 years, default infant around 1 year. Soft broad baby cheeks, fine short dark hair, fully wrapped in warm pale apricot and cream swaddle, supported seated resting pose, no nudity or exposed chest, no adult traits. Whole person including shoes (or whole swaddled baby) fully inside frame. Natural age-appropriate proportions, quiet front 3/4 pose. Painterly gouache and subtle ink texture, matte cloth materials, restrained earthy colors. Distinctive grounded everyday person, not an idealized idol. Genuine transparent alpha background, zero background glow, gradient, halo, cast-color wash, scenery, text, border or UI. Single isolated character only. Keep a clean readable silhouette and 8% padding.",
+          "referenceImages": [],
+          "sourceSha256": "689c622abbd828d48935840e94b835c6c5bf8df98f46379db366ffd0c887f923"
+        }
+      ]
+    },
+    {
+      "id": "npc-adult-male-lean:chibi",
+      "file": "media/pools/ordinary/npc-adult-male-lean-chibi.webp",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 1396596,
+      "sha256": "d60b46f1efcd115dc5ac2a953fa778ba6527e489b6f1272fbd6b9690b3e5d8ca",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        254
+      ],
+      "visibleBounds": [
+        201,
+        65,
+        870,
+        1488
+      ],
+      "qa": "paired identity, full figure, age cohort and alpha visually inspected; static pose only",
+      "steps": [
+        {
+          "mode": "edit",
+          "generator": "image_gen built-in",
+          "prompt": "Draw an unmistakable Q-version CHIBI map sprite of the exact referenced ordinary NPC. Preserve sex, apparent age, skin tone, face shape, hair, clothes, color and identifying object. Oversized head occupies about 40% of total height, tiny compact body and short limbs; NOT merely shortened realistic proportions. Elder remains elderly. Children remain children. Infant remains fully clothed swaddled baby, not standing adult. Full character incl feet or entire swaddle, idle 3/4 front, slight elevated game map view. Painterly gouache and restrained ink edges. Single isolated character, generous transparent padding. Genuine alpha transparency with NO background gradient, glow, halo, scenery, floor/platform, writing, UI, frame. Clean silhouette.",
+          "referenceImages": [
+            {
+              "sha256": "a22fd484121a7ec057734363c86ab4096650ab6c31fd5242558fcb78267fa8c5"
+            }
+          ],
+          "sourceSha256": "0fea13a788c0f76b5a2ec5d86ed2f9a1cc593758bfcacfc06d85ab6fbd9ed31c"
+        }
+      ]
+    },
+    {
+      "id": "npc-adult-female-round:chibi",
+      "file": "media/pools/ordinary/npc-adult-female-round-chibi.webp",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 1566264,
+      "sha256": "5b4f2932c21af772f27ef6bd43a4ff97b27bf72e75741449950798dd955a7704",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        254
+      ],
+      "visibleBounds": [
+        69,
+        22,
+        848,
+        1524
+      ],
+      "qa": "paired identity, full figure, age cohort and alpha visually inspected; static pose only",
+      "steps": [
+        {
+          "mode": "edit",
+          "generator": "image_gen built-in",
+          "prompt": "Draw an unmistakable Q-version CHIBI map sprite of the exact referenced ordinary NPC. Preserve sex, apparent age, skin tone, face shape, hair, clothes, color and identifying object. Oversized head occupies about 40% of total height, tiny compact body and short limbs; NOT merely shortened realistic proportions. Elder remains elderly. Children remain children. Infant remains fully clothed swaddled baby, not standing adult. Full character incl feet or entire swaddle, idle 3/4 front, slight elevated game map view. Painterly gouache and restrained ink edges. Single isolated character, generous transparent padding. Genuine alpha transparency with NO background gradient, glow, halo, scenery, floor/platform, writing, UI, frame. Clean silhouette.",
+          "referenceImages": [
+            {
+              "sha256": "3522c941a15d19b6a4249a5691331c983147b97fbc217618832afcf07a504a8f"
+            }
+          ],
+          "sourceSha256": "02392acef5158efcca75fb08c403218f9a0893871debc899e375e05b50441ae9"
+        }
+      ]
+    },
+    {
+      "id": "npc-middle-male-square:chibi",
+      "file": "media/pools/ordinary/npc-middle-male-square-chibi.webp",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 1665098,
+      "sha256": "942c814c36dcf52af5541c7018ad923b0da372deaa11057b99c0ce55f747e740",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        254
+      ],
+      "visibleBounds": [
+        91,
+        27,
+        921,
+        1524
+      ],
+      "qa": "paired identity, full figure, age cohort and alpha visually inspected; static pose only",
+      "steps": [
+        {
+          "mode": "edit",
+          "generator": "image_gen built-in",
+          "prompt": "Draw an unmistakable Q-version CHIBI map sprite of the exact referenced ordinary NPC. Preserve sex, apparent age, skin tone, face shape, hair, clothes, color and identifying object. Oversized head occupies about 40% of total height, tiny compact body and short limbs; NOT merely shortened realistic proportions. Elder remains elderly. Children remain children. Infant remains fully clothed swaddled baby, not standing adult. Full character incl feet or entire swaddle, idle 3/4 front, slight elevated game map view. Painterly gouache and restrained ink edges. Single isolated character, generous transparent padding. Genuine alpha transparency with NO background gradient, glow, halo, scenery, floor/platform, writing, UI, frame. Clean silhouette.",
+          "referenceImages": [
+            {
+              "sha256": "6d8aa7c4d9378fdedeb32b18d361d871e27f00cbb5e422f517108405f6dad17e"
+            }
+          ],
+          "sourceSha256": "da5b998f4ee8ea6efe0f4a6639d44688cd377a14daba5b159c35e6193c2370cd"
+        }
+      ]
+    },
+    {
+      "id": "npc-middle-female-long:chibi",
+      "file": "media/pools/ordinary/npc-middle-female-long-chibi.webp",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 1465224,
+      "sha256": "bab0f2c36dbb38b0402e6c58ddf5d50dd7e37d9bd7753c88597997cbce6c2485",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        254
+      ],
+      "visibleBounds": [
+        142,
+        11,
+        849,
+        1523
+      ],
+      "qa": "paired identity, full figure, age cohort and alpha visually inspected; static pose only",
+      "steps": [
+        {
+          "mode": "edit",
+          "generator": "image_gen built-in",
+          "prompt": "Draw an unmistakable Q-version CHIBI map sprite of the exact referenced ordinary NPC. Preserve sex, apparent age, skin tone, face shape, hair, clothes, color and identifying object. Oversized head occupies about 40% of total height, tiny compact body and short limbs; NOT merely shortened realistic proportions. Elder remains elderly. Children remain children. Infant remains fully clothed swaddled baby, not standing adult. Full character incl feet or entire swaddle, idle 3/4 front, slight elevated game map view. Painterly gouache and restrained ink edges. Single isolated character, generous transparent padding. Genuine alpha transparency with NO background gradient, glow, halo, scenery, floor/platform, writing, UI, frame. Clean silhouette.",
+          "referenceImages": [
+            {
+              "sha256": "f18dbf5f4c1d5df316c7fc17ff47d71ebdc59702d9b1dc099a978a9738785315"
+            }
+          ],
+          "sourceSha256": "f899604c8ebef50cf3ab60bcd23b10e13f25e3624ddea460c4acbcd2f1c24dbc"
+        }
+      ]
+    },
+    {
+      "id": "npc-child-male:chibi",
+      "file": "media/pools/ordinary/npc-child-male-chibi.webp",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 1401842,
+      "sha256": "6344ae2ab1d410dc1b1f161f3f89edf6020346492cbd146b402fd042f2feb440",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        254
+      ],
+      "visibleBounds": [
+        183,
+        27,
+        862,
+        1522
+      ],
+      "qa": "paired identity, full figure, age cohort and alpha visually inspected; static pose only",
+      "steps": [
+        {
+          "mode": "edit",
+          "generator": "image_gen built-in",
+          "prompt": "Draw an unmistakable Q-version CHIBI map sprite of the exact referenced ordinary NPC. Preserve sex, apparent age, skin tone, face shape, hair, clothes, color and identifying object. Oversized head occupies about 40% of total height, tiny compact body and short limbs; NOT merely shortened realistic proportions. Elder remains elderly. Children remain children. Infant remains fully clothed swaddled baby, not standing adult. Full character incl feet or entire swaddle, idle 3/4 front, slight elevated game map view. Painterly gouache and restrained ink edges. Single isolated character, generous transparent padding. Genuine alpha transparency with NO background gradient, glow, halo, scenery, floor/platform, writing, UI, frame. Clean silhouette.",
+          "referenceImages": [
+            {
+              "sha256": "99ec4ffabc1be1969b9109d0963e72a88dd4347ef588b4502948c3c3964261bb"
+            }
+          ],
+          "sourceSha256": "15d31daef72948d6e3b49e1e745a107b068406e10cbdbb6bea15ef8ff83685b3"
+        }
+      ]
+    },
+    {
+      "id": "npc-child-female:chibi",
+      "file": "media/pools/ordinary/npc-child-female-chibi.webp",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 1410898,
+      "sha256": "106876637d4f27992efb44cbc87e9d302a501d691ac345c347eceaf75bfcfd88",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        254
+      ],
+      "visibleBounds": [
+        185,
+        82,
+        849,
+        1489
+      ],
+      "qa": "paired identity, full figure, age cohort and alpha visually inspected; static pose only",
+      "steps": [
+        {
+          "mode": "edit",
+          "generator": "image_gen built-in",
+          "prompt": "Draw an unmistakable Q-version CHIBI map sprite of the exact referenced ordinary NPC. Preserve sex, apparent age, skin tone, face shape, hair, clothes, color and identifying object. Oversized head occupies about 40% of total height, tiny compact body and short limbs; NOT merely shortened realistic proportions. Elder remains elderly. Children remain children. Infant remains fully clothed swaddled baby, not standing adult. Full character incl feet or entire swaddle, idle 3/4 front, slight elevated game map view. Painterly gouache and restrained ink edges. Single isolated character, generous transparent padding. Genuine alpha transparency with NO background gradient, glow, halo, scenery, floor/platform, writing, UI, frame. Clean silhouette.",
+          "referenceImages": [
+            {
+              "sha256": "157337c44b98f82dda02c1107720c863d6ed495d886fa2484596f4eb95c7222e"
+            }
+          ],
+          "sourceSha256": "b7d42075d8f5d4fc6dda406380247a97f9a973e21d7e05e9dd0e219ba980a3ad"
+        }
+      ]
+    },
+    {
+      "id": "npc-infant-male:chibi",
+      "file": "media/pools/ordinary/npc-infant-male-chibi.webp",
+      "width": 1199,
+      "height": 1312,
+      "bytes": 1069148,
+      "sha256": "afb7880c7e1ba75fa427f13f0e5952288036e2a56453b75b17eb241b88e51409",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        255
+      ],
+      "visibleBounds": [
+        240,
+        28,
+        1012,
+        1259
+      ],
+      "qa": "paired identity, full figure, age cohort and alpha visually inspected; static pose only",
+      "steps": [
+        {
+          "mode": "edit",
+          "generator": "image_gen built-in",
+          "prompt": "Draw an unmistakable Q-version CHIBI map sprite of the exact referenced ordinary NPC. Preserve sex, apparent age, skin tone, face shape, hair, clothes, color and identifying object. Oversized head occupies about 40% of total height, tiny compact body and short limbs; NOT merely shortened realistic proportions. Elder remains elderly. Children remain children. Infant remains fully clothed swaddled baby, not standing adult. Full character incl feet or entire swaddle, idle 3/4 front, slight elevated game map view. Painterly gouache and restrained ink edges. Single isolated character, generous transparent padding. Genuine alpha transparency with NO background gradient, glow, halo, scenery, floor/platform, writing, UI, frame. Clean silhouette.",
+          "referenceImages": [
+            {
+              "sha256": "84c618fe5b80210a830c874c43966138686d9b7badb2c5e4849c3777c44606a5"
+            }
+          ],
+          "sourceSha256": "97d27bd20f4e0871faaf7b791e9589522c7a731b78b2976410e18cd0ff16ef88"
+        }
+      ]
+    },
+    {
+      "id": "npc-infant-female:chibi",
+      "file": "media/pools/ordinary/npc-infant-female-chibi.webp",
+      "width": 1199,
+      "height": 1312,
+      "bytes": 1427176,
+      "sha256": "97780f503f9fec161b23dfc9e53d93b3e1ea96eaaaec09f7c4cbdc9dbc766643",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        255
+      ],
+      "visibleBounds": [
+        118,
+        50,
+        1106,
+        1282
+      ],
+      "qa": "paired identity, full figure, age cohort and alpha visually inspected; static pose only",
+      "steps": [
+        {
+          "mode": "edit",
+          "generator": "image_gen built-in",
+          "prompt": "Draw an unmistakable Q-version CHIBI map sprite of the exact referenced ordinary NPC. Preserve sex, apparent age, skin tone, face shape, hair, clothes, color and identifying object. Oversized head occupies about 40% of total height, tiny compact body and short limbs; NOT merely shortened realistic proportions. Elder remains elderly. Children remain children. Infant remains fully clothed swaddled baby, not standing adult. Full character incl feet or entire swaddle, idle 3/4 front, slight elevated game map view. Painterly gouache and restrained ink edges. Single isolated character, generous transparent padding. Genuine alpha transparency with NO background gradient, glow, halo, scenery, floor/platform, writing, UI, frame. Clean silhouette.",
+          "referenceImages": [
+            {
+              "sha256": "689c622abbd828d48935840e94b835c6c5bf8df98f46379db366ffd0c887f923"
+            }
+          ],
+          "sourceSha256": "7fe0075ddb1ae77e815db08f39bb485af2a03694f22c626fcb284205ff0132e0"
+        }
+      ]
+    },
+    {
+      "id": "xiaoyan:portrait",
+      "file": "media/pools/key-characters/xiaoyan-portrait.webp",
+      "width": 1086,
+      "height": 1448,
+      "bytes": 1889378,
+      "sha256": "bf9717486557af0ecb99e0569a5ac07e4b4d6b62b5dc551f7838c311bb7b5e93",
+      "alpha": false,
+      "qa": "approved existing half-body dialogue reference; not a transparent full-body sprite",
+      "source": {
+        "catalog": "media/v1/catalog.json",
+        "entry": "xiaoyan-opening",
+        "prompt": "Use case: stylized-concept. Create ONE finished original game art asset for Doupo Living World / Battle Through the Heavens. Maintain a coherent series style in refined painterly realism, restrained ink contours, tactile gouache texture, warm stone/ivory and muted jade teal, antique gold accents. This is an original visual interpretation of novel characters, NOT a copy of any film, anime, game or celebrity likeness. No lettering, title, labels, watermark, UI or decorative frame. Clear silhouette and distinct identity. Single half-body dialogue portrait, anatomically clean hands if shown, three-quarter view, ample headroom and shoulders fully in frame. Opaque softly mottled ivory-paper background, no scenery. Natural Chinese facial proportions, subtle expression, detailed cloth rather than glossy plastic. Character-specific design below determines the individual subject. Portrait 3:4. Younger characters wear modest fully covered loose long-sleeved clothes appropriate to their stated age, in a simple natural upright pose. Subject: 萧炎·开篇. Adolescent boy, around fifteen, lean earnest face, short tied black hair, plain charcoal practice robes with a worn linen belt, a discreet old dark ring, determined eyes; no adult giant weapon or imperial costume. Character differentiation is essential: individual anatomy, hairstyle, age, costume and pose; do not repeat a stock face or pose from previous images. Painted illustration with visible fine brush texture, not a glossy 3D render. Youthful male face, strong straight thick eyebrows and a short angular jaw; dark intense eyes, no feminine makeup. Simple short tied-back hair, no elaborate bun or ornament. Front three-quarter pose with one hand by the old ring. REQUIRED INDIVIDUAL FACIAL AND POSTURE DESIGN: Short angular male face, thick straight brows, straight medium nose, narrow determined eyes; youthful skin; unadorned hair; forward alert shoulders. Do not homogenize this into a fashion-model face. Preserve believable age and build. Keep decorative facial makeup minimal.",
+        "visualIdentity": "Short angular male face, thick straight brows, straight medium nose, narrow determined eyes; youthful skin; unadorned hair; forward alert shoulders.",
+        "origin": "novel-interpretation"
+      }
+    },
+    {
+      "id": "xiaozhan:portrait",
+      "file": "media/pools/key-characters/xiaozhan-portrait.webp",
+      "width": 1086,
+      "height": 1448,
+      "bytes": 1831548,
+      "sha256": "aaac67626f56f619a64a8d010a698c61c3bfc3bd7a5f15c5fcfc0e9b216f6e6d",
+      "alpha": false,
+      "qa": "approved existing half-body dialogue reference; not a transparent full-body sprite",
+      "source": {
+        "catalog": "media/v1/catalog.json",
+        "entry": "xiaozhan",
+        "prompt": "Use case: stylized-concept. Create ONE finished original game art asset for Doupo Living World / Battle Through the Heavens. Maintain a coherent series style in refined painterly realism, restrained ink contours, tactile gouache texture, warm stone/ivory and muted jade teal, antique gold accents. This is an original visual interpretation of novel characters, NOT a copy of any film, anime, game or celebrity likeness. No lettering, title, labels, watermark, UI or decorative frame. Clear silhouette and distinct identity. Single half-body dialogue portrait, anatomically clean hands if shown, three-quarter view, ample headroom and shoulders fully in frame. Opaque softly mottled ivory-paper background, no scenery. Natural Chinese facial proportions, subtle expression, detailed cloth rather than glossy plastic. Character-specific design below determines the individual subject. Portrait 3:4. Younger characters wear modest fully covered loose long-sleeved clothes appropriate to their stated age, in a simple natural upright pose. Subject: 萧战. Middle-aged male clan leader, sturdy build, square caring face with a short neat beard, dark indigo and umber clan robes, restrained bronze belt, protective dignified gaze. Character differentiation is essential: individual anatomy, hairstyle, age, costume and pose; do not repeat a stock face or pose from previous images. Painted illustration with visible fine brush texture, not a glossy 3D render. Let the specific age, gender, facial build and personality above strongly determine the face, with a pose naturally suited to the role. REQUIRED INDIVIDUAL FACIAL AND POSTURE DESIGN: Wide square middle-aged face, broad straight nose, deep protective brow and short thick beard; solid neck, paternal concerned gaze, upright shoulders. Do not homogenize this into a fashion-model face. Preserve believable age and build. Keep decorative facial makeup minimal.",
+        "visualIdentity": "Wide square middle-aged face, broad straight nose, deep protective brow and short thick beard; solid neck, paternal concerned gaze, upright shoulders.",
+        "origin": "novel-interpretation"
+      }
+    },
+    {
+      "id": "xuner:portrait",
+      "file": "media/pools/key-characters/xuner-portrait.webp",
+      "width": 1086,
+      "height": 1448,
+      "bytes": 1831004,
+      "sha256": "500babdaab7484e5f2ff9f61664b0851483923b24210ac0770050c741d1b6e12",
+      "alpha": false,
+      "qa": "approved existing half-body dialogue reference; not a transparent full-body sprite",
+      "source": {
+        "catalog": "media/v1/catalog.json",
+        "entry": "xuner-opening",
+        "prompt": "Use case: stylized-concept. Create ONE finished original game art asset for Doupo Living World / Battle Through the Heavens. Maintain a coherent series style in refined painterly realism, restrained ink contours, tactile gouache texture, warm stone/ivory and muted jade teal, antique gold accents. This is an original visual interpretation of novel characters, NOT a copy of any film, anime, game or celebrity likeness. No lettering, title, labels, watermark, UI or decorative frame. Clear silhouette and distinct identity. Single half-body dialogue portrait, anatomically clean hands if shown, three-quarter view, ample headroom and shoulders fully in frame. Opaque softly mottled ivory-paper background, no scenery. Natural Chinese facial proportions, subtle expression, detailed cloth rather than glossy plastic. Character-specific design below determines the individual subject. Portrait 3:4. Younger characters wear modest fully covered loose long-sleeved clothes appropriate to their stated age, in a simple natural upright pose. Subject: 萧薰儿·开篇. Adolescent girl in modest loose pale lavender and ivory robes, long dark hair simply tied, gentle reserved smile and alert clear eyes, a small jade hairpin, no adult glamour or heavy ornament. Character differentiation is essential: individual anatomy, hairstyle, age, costume and pose; do not repeat a stock face or pose from previous images. Painted illustration with visible fine brush texture, not a glossy 3D render. Young adolescent face with softly rounded cheeks and a small straight nose, neat straight brows, warm gentle eyes; simple half-tied long hair and no crown. Almost frontal pose, hands naturally folded low. REQUIRED INDIVIDUAL FACIAL AND POSTURE DESIGN: Youthful rounded oval face, small straight nose, fine straight brows and warm soft almond eyes; frontal calm pose, modest relaxed shoulders. Do not homogenize this into a fashion-model face. Preserve believable age and build. Keep decorative facial makeup minimal.",
+        "visualIdentity": "Youthful rounded oval face, small straight nose, fine straight brows and warm soft almond eyes; frontal calm pose, modest relaxed shoulders.",
+        "origin": "novel-interpretation"
+      }
+    },
+    {
+      "id": "su:portrait",
+      "file": "media/pools/key-characters/su-portrait.webp",
+      "width": 1086,
+      "height": 1448,
+      "bytes": 1887452,
+      "sha256": "dafd282003e1bfbbfc546c0942a7da899cb0ac0e1a6a9f1128d83459e39c438f",
+      "alpha": false,
+      "qa": "approved existing half-body dialogue reference; not a transparent full-body sprite",
+      "source": {
+        "catalog": "media/v1/catalog.json",
+        "entry": "local-su",
+        "prompt": "Use case: stylized-concept. Create ONE finished original game art asset for Doupo Living World / Battle Through the Heavens. Match the approved reference in refined painterly realism, restrained ink contours, tactile gouache texture, warm stone/ivory and muted jade teal, antique gold accents. This is an original visual interpretation of novel characters, NOT a copy of any film, anime, game or celebrity likeness. No lettering, title, labels, watermark, UI or decorative frame. Clear silhouette and distinct identity. Single half-body dialogue portrait, anatomically clean hands if shown, three-quarter view, ample headroom and shoulders fully in frame. Opaque softly mottled ivory-paper background, no scenery. Natural Chinese facial proportions, subtle expression, detailed cloth rather than glossy plastic. Character-specific design below determines the individual subject. Portrait 3:4. Younger characters wear modest fully covered loose long-sleeved clothes appropriate to their stated age, in a simple natural upright pose. Subject: original local resident 苏晚禾, 23-year-old herbalist. Female. Plain practical teal and linen shop clothes; caring and independent face.",
+        "visualIdentity": null,
+        "origin": "authored-local"
+      }
+    },
+    {
+      "id": "he:portrait",
+      "file": "media/pools/key-characters/he-portrait.webp",
+      "width": 1086,
+      "height": 1448,
+      "bytes": 1963204,
+      "sha256": "6dbba14151ca8ac952934e83fe33ab89ba661bf2a00d51f9561f81c070d5cb37",
+      "alpha": false,
+      "qa": "approved existing half-body dialogue reference; not a transparent full-body sprite",
+      "source": {
+        "catalog": "media/v1/catalog.json",
+        "entry": "local-he",
+        "prompt": "Use case: stylized-concept. Create ONE finished original game art asset for Doupo Living World / Battle Through the Heavens. Match the approved reference in refined painterly realism, restrained ink contours, tactile gouache texture, warm stone/ivory and muted jade teal, antique gold accents. This is an original visual interpretation of novel characters, NOT a copy of any film, anime, game or celebrity likeness. No lettering, title, labels, watermark, UI or decorative frame. Clear silhouette and distinct identity. Single half-body dialogue portrait, anatomically clean hands if shown, three-quarter view, ample headroom and shoulders fully in frame. Opaque softly mottled ivory-paper background, no scenery. Natural Chinese facial proportions, subtle expression, detailed cloth rather than glossy plastic. Character-specific design below determines the individual subject. Portrait 3:4. Younger characters wear modest fully covered loose long-sleeved clothes appropriate to their stated age, in a simple natural upright pose. Subject: original local resident 何照川, 29-year-old guide. Male. Weathered friendly face, dark tied hair, sturdy ochre mountain travel cloak and practical rope. REQUIRED INDIVIDUAL FACIAL AND POSTURE DESIGN: Adult male broad weathered face, strong nose, sun lines, uneven thick brows and dark stubble; reliable half-smile and relaxed angled traveler shoulders. Do not homogenize this into a fashion-model face. Preserve believable age and build. Keep decorative facial makeup minimal.",
+        "visualIdentity": "Adult male broad weathered face, strong nose, sun lines, uneven thick brows and dark stubble; reliable half-smile and relaxed angled traveler shoulders.",
+        "origin": "authored-local"
+      }
+    },
+    {
+      "id": "lu:portrait",
+      "file": "media/pools/key-characters/lu-portrait.webp",
+      "width": 1086,
+      "height": 1448,
+      "bytes": 1919296,
+      "sha256": "762ca234e4f2180c39a8c7b0087df63ad7a555f4b4501021c9dfaeb480479b72",
+      "alpha": false,
+      "qa": "approved existing half-body dialogue reference; not a transparent full-body sprite",
+      "source": {
+        "catalog": "media/v1/catalog.json",
+        "entry": "local-lu",
+        "prompt": "Use case: stylized-concept. Create ONE finished original game art asset for Doupo Living World / Battle Through the Heavens. Match the approved reference in refined painterly realism, restrained ink contours, tactile gouache texture, warm stone/ivory and muted jade teal, antique gold accents. This is an original visual interpretation of novel characters, NOT a copy of any film, anime, game or celebrity likeness. No lettering, title, labels, watermark, UI or decorative frame. Clear silhouette and distinct identity. Single half-body dialogue portrait, anatomically clean hands if shown, three-quarter view, ample headroom and shoulders fully in frame. Opaque softly mottled ivory-paper background, no scenery. Natural Chinese facial proportions, subtle expression, detailed cloth rather than glossy plastic. Character-specific design below determines the individual subject. Portrait 3:4. Younger characters wear modest fully covered loose long-sleeved clothes appropriate to their stated age, in a simple natural upright pose. Subject: original local resident 陆青, 24-year-old rival. Male. Focused competitive gaze, dark hair, worn green mountain robes and small herb-gathering basket. REQUIRED INDIVIDUAL FACIAL AND POSTURE DESIGN: Adult male compact triangular face, narrow competitive eyes, sharp brows and pointed nose; serious lips and alert forward posture. Do not homogenize this into a fashion-model face. Preserve believable age and build. Keep decorative facial makeup minimal.",
+        "visualIdentity": "Adult male compact triangular face, narrow competitive eyes, sharp brows and pointed nose; serious lips and alert forward posture.",
+        "origin": "authored-local"
+      }
+    },
+    {
+      "id": "ning:portrait",
+      "file": "media/pools/key-characters/ning-portrait.webp",
+      "width": 1086,
+      "height": 1448,
+      "bytes": 1786804,
+      "sha256": "fa4f4b840df15451ac20b08f9ffc2ce7f6d87040a05baf6a38865565989e79dc",
+      "alpha": false,
+      "qa": "approved existing half-body dialogue reference; not a transparent full-body sprite",
+      "source": {
+        "catalog": "media/v1/catalog.json",
+        "entry": "local-ning",
+        "prompt": "Use case: stylized-concept. Create ONE finished original game art asset for Doupo Living World / Battle Through the Heavens. Match the approved reference in refined painterly realism, restrained ink contours, tactile gouache texture, warm stone/ivory and muted jade teal, antique gold accents. This is an original visual interpretation of novel characters, NOT a copy of any film, anime, game or celebrity likeness. No lettering, title, labels, watermark, UI or decorative frame. Clear silhouette and distinct identity. Single half-body dialogue portrait, anatomically clean hands if shown, three-quarter view, ample headroom and shoulders fully in frame. Opaque softly mottled ivory-paper background, no scenery. Natural Chinese facial proportions, subtle expression, detailed cloth rather than glossy plastic. Character-specific design below determines the individual subject. Portrait 3:4. Younger characters wear modest fully covered loose long-sleeved clothes appropriate to their stated age, in a simple natural upright pose. Subject: original local resident 宁素, 27-year-old healer. Female. Mature composed face, practical dark hair bun, plain ivory and dark sage healer robes, medicine pouch. REQUIRED INDIVIDUAL FACIAL AND POSTURE DESIGN: Adult woman with a long rectangular face, straight broad nose, calm deep-set eyes and low straight brows; serious caring mouth and upright practical healer posture. Do not homogenize this into a fashion-model face. Preserve believable age and build. Keep decorative facial makeup minimal.",
+        "visualIdentity": "Adult woman with a long rectangular face, straight broad nose, calm deep-set eyes and low straight brows; serious caring mouth and upright practical healer posture.",
+        "origin": "authored-local"
+      }
+    },
+    {
+      "id": "su-father:portrait",
+      "file": "media/pools/key-characters/su-father-portrait.webp",
+      "width": 1086,
+      "height": 1448,
+      "bytes": 1759464,
+      "sha256": "07c85eec139dfb29be0e9177d2b94823fdb824b66d4278ae5e95a7b570453322",
+      "alpha": false,
+      "qa": "approved existing half-body dialogue reference; not a transparent full-body sprite",
+      "source": {
+        "catalog": "media/v1/catalog.json",
+        "entry": "local-su-father",
+        "prompt": "Use case: stylized-concept. Create ONE finished original game art asset for Doupo Living World / Battle Through the Heavens. Match the approved reference in refined painterly realism, restrained ink contours, tactile gouache texture, warm stone/ivory and muted jade teal, antique gold accents. This is an original visual interpretation of novel characters, NOT a copy of any film, anime, game or celebrity likeness. No lettering, title, labels, watermark, UI or decorative frame. Clear silhouette and distinct identity. Single half-body dialogue portrait, anatomically clean hands if shown, three-quarter view, ample headroom and shoulders fully in frame. Opaque softly mottled ivory-paper background, no scenery. Natural Chinese facial proportions, subtle expression, detailed cloth rather than glossy plastic. Character-specific design below determines the individual subject. Portrait 3:4. Younger characters wear modest fully covered loose long-sleeved clothes appropriate to their stated age, in a simple natural upright pose. Subject: original local resident 苏守义, 61-year-old elder. Male. Elderly man, short gray beard, lined kind face with tired eyes, plain brown shop robes, one hand resting naturally by sleeve. REQUIRED INDIVIDUAL FACIAL AND POSTURE DESIGN: Genuinely old male broad oval face, deep smile and forehead lines, gray mustache and short beard; weary kind eyes, slightly stooped shoulders and relaxed aged hands. Do not homogenize this into a fashion-model face. Preserve believable age and build. Keep decorative facial makeup minimal.",
+        "visualIdentity": "Genuinely old male broad oval face, deep smile and forehead lines, gray mustache and short beard; weary kind eyes, slightly stooped shoulders and relaxed aged hands.",
+        "origin": "authored-local"
+      }
+    }
+  ]
+}

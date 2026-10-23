@@ -1,5 +1,6 @@
 import {DAY} from '../content/catalog.js';
 
+import {arts} from '../pools/arts.js';
 export const PARTS=['head','torso','left_arm','right_arm','left_leg','right_leg','whole'];
 const names={head:'头部',torso:'躯干',left_arm:'左臂',right_arm:'右臂',left_leg:'左腿',right_leg:'右腿',whole:'全身'};
 export const initialCondition=()=>({missing:[],wounds:[]});
@@ -56,10 +57,11 @@ export function capabilities(p){
  const moving=mental||controlled||(leg?reason(leg):p.injury>60?'总伤势不适合移动':'');
  const hands=mental||(arms.length===2?'双臂无法持握':'');
  const labor=moving||hands||(arms.length?reason(arms[0]):burden('torso')>=40||burden('whole')>=40?'躯干或全身伤势不适合负重':'');
+ const combat=arts.entries.find(e=>e.id===p.study?.combat&&e.status==='ready')?.value||arts.entries.find(e=>e.id==='stone-palm').value;
  const training=mental||controlled||(burden('torso')>=40||burden('whole')>=40?'躯干或全身伤势不适合运气':p.injury>40?'总伤势不适合修炼':'');
  return {communicate:mental,move:moving,grip:hands,work:labor,gather:labor,train:training,
   learn:mental||controlled,refine:hands||training,care:hands||mental||controlled,breakthrough:training||(p.injury>20?'总伤势不适合突破':''),
-  attack:hands||moving,technique:arms.length?'当前不满足碎石掌的双臂条件':hands||moving,retreat:moving};
+  attack:hands||moving,technique:arms.length>2-combat.arms?'当前不满足'+combat.name+'的手臂条件':hands||moving,retreat:moving};
 }
 export function conditionDetail(p){
  return {missing:[...p.condition.missing],wounds:p.condition.wounds.map(w=>({id:w.id,part:w.part,

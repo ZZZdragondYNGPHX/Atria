@@ -1,0 +1,25 @@
+// Templates describe a source of livelihood, not a generated biography authority.
+const rows=[
+ ['porter','porter','码头搬运者','替商队装卸货物，攒钱安家',20,42,3,6,1,0,2,'short-fist'],
+ ['mason','artisan','修屋匠人','修补雨损房屋，以手艺换取生计',24,48,3,7,2,0,2,'stone-breath'],
+ ['weaver','artisan','织补手艺人','替邻里织补，期盼经营自己的小铺',20,45,2,5,1,0,3,'steady'],
+ ['potter','artisan','窑工','为药铺烧制陶罐，重视稳定的买卖',26,56,3,6,3,0,2,'fire-breath'],
+ ['peddler','merchant','行商','沿城镇采购日用物资，打听可靠商路',23,52,4,9,2,0,3,'wind-breath'],
+ ['tea-seller','merchant','茶摊经营者','照顾熟客，积蓄用于下一季进货',28,58,3,7,1,1,2,'wood-breath'],
+ ['herb-worker','herbalist','药铺雇工','辨识常见药材，盼望靠勤学改善生活',20,38,3,7,4,1,4,'wood-breath'],
+ ['gatherer','gatherer','山脚采药人','在熟悉山路采药，谨慎避开危险生境',24,49,5,11,2,1,3,'wood-breath'],
+ ['escort','mercenary','短途护卫','接取城镇间护送工作，先备齐口粮',22,42,6,12,2,0,2,'short-fist'],
+ ['guide','guide','山路向导','靠带路谋生，坚持评估同伴的准备',28,50,7,13,1,0,3,'wind-breath'],
+ ['guard','guard','轮值守卫','看护商街夜间秩序，养家并练拳',30,57,5,11,1,0,2,'stone-palm'],
+ ['inn-hand','innkeeper','客栈帮工','照料来客，攒下旅费与修炼时间',20,40,2,6,2,0,2,'steady'],
+ ['copyist','cultivator','抄书散修','抄写账目偿付住食，珍惜求学机会',20,36,3,8,2,0,4,'point-finger'],
+ ['clan-branch','cultivator','小族旁支','在族产做杂务，以有限资源继续修炼',21,40,4,9,3,0,3,'fire-breath'],
+ ['old-trader','elder','年长药商','传授辨药经验，照顾自己与旧友',61,76,4,9,2,1,3,'stone-breath'],
+ ['old-crafter','elder','年长手艺人','继续做力所能及的修补，愿听取街坊消息',61,76,2,6,1,0,3,'steady'],
+ ['courier','mercenary','城际送信人','替商号送信，收入取决于按时抵达',20,35,5,10,2,0,3,'wind-breath'],
+ ['charcoal','artisan','烧炭匠','为药炉提供燃料，避免空耗材料',25,52,3,7,4,0,2,'fire-breath'],
+ ['boat-hand','porter','渡口帮工','照顾渡客行李，攒钱供养家人',23,45,3,6,2,0,2,'stone-breath'],
+ ['settler','cultivator','迁居散修','离开旧居重新谋生，愿结识守信之人',24,48,4,10,2,0,3,'steady'],
+ ['child','child','本地孩子','尚需照护，在家庭环境中逐渐成长',0,0,1,1,2,0,2,'']
+];
+export const people={id:'people.templates',version:1,entries:rows.map(([id,role,origin,plan,minAge,maxAge,minRank,maxRank,fire,wood,soul,art])=>({id,weight:1,status:'ready',conditions:{source:{in:id==='child'?['birth']:['initial','immigration']}},value:{role,origin,plan,minAge,maxAge,minRank,maxRank,fire,wood,soul,art}}))};

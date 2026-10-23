@@ -3,6 +3,7 @@ import {capabilities} from './condition.js';
 
 import {GEAR} from '../content/catalog.js';
 export {GEAR} from '../content/catalog.js';
+import {combatArt} from './progression.js';
 export function gearEffects(p){
  const ability=capabilities(p);let attack=0,defense=0;
  for(const g of p.gear){const spec=GEAR[g.type],repairing=[p.activity,p.suspended].some(a=>a.kind==='repair_wait'&&a.item===g.id);if(!spec||repairing||!g.equipped||spec.durability&&g.durability<=0||spec.slot==='hand'&&ability.grip)continue;attack+=spec.attack;defense+=spec.defense;}
@@ -17,5 +18,5 @@ export function repair(p,id){
 }
 export function combatAbility(p,technique=false){
  const a=capabilities(p),g=gearEffects(p);
- return {attack:a.attack?0:Math.max(1,p.rank*2+skill(p,'basic')+g.attack+(technique&&!a.technique?skill(p,'palm')*4:0)),defense:Math.floor(p.rank/2)+g.defense};
+ return {attack:a.attack?0:Math.max(1,p.rank*2+skill(p,'basic')+g.attack+(technique&&!a.technique?combatArt(p).level*combatArt(p).power:0)),defense:Math.floor(p.rank/2)+g.defense};
 }

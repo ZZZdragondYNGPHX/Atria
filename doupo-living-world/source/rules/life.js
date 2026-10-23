@@ -5,6 +5,9 @@ import {combatAbility,wear,ward,repair,GEAR} from './equipment.js';
 import {contentSha256 as sha} from './hash.js';
 import {canPerceive} from './perception.js';
 
+import {pool} from '../pools/index.js';
+import {eligible} from './pools.js';
+import {artByItem,artContext,learnArt,artKnown,trainingEffort,combatArt} from './progression.js';
 const active=m=>['pending','waiting'].includes(m.status);
 const bound=(list,max)=>{if(list.length>=max)return false;return true;};
 export function know(p,edge){
@@ -40,7 +43,7 @@ function settleEffort(c,r,a){
   const payer=c.w.stocks.find(s=>s.place===n.place&&s.item==='food'),paid=Math.min(delta,Math.floor((payer?.gold||0)/3));
   if(payer&&paid){payer.gold-=paid*3;n.gold+=paid*3;payer.qty+=paid;payer.quote++;c.history('npc_work',[r.id,n.place],n.name+'完成实际劳动片段，补给产出与工钱已经结算。');}
  }else if(skill(n,'basic')){
-  const productive=Math.min(delta,Math.floor(n.qi/2));n.qi-=productive*2;n.xp+=productive*Math.max(1,skill(n,'basic')*n.soul);
+  const productive=trainingEffort(n,delta,2);
   if(productive)c.history('npc_training',[r.id],n.name+'只按已发生的修炼片段积累修为与消耗斗气。');
  }
 }
@@ -240,7 +243,7 @@ export function stepLife(c){
   }else if(a.kind==='rest'){
    n.qi=Math.min(100,n.qi+20);if(n.injury<80)n.hp=Math.min(100,n.hp+8);
   }else if(a.kind==='learn'){
-   const id={manual:'basic',technique:'palm',formula:'formula'}[a.item];if(id&&qty(n,a.item)){learn(n,id);history('npc_learning',[key],n.name+'通过实际学习掌握已有秘籍中的能力。');}
+   const e=artByItem(a.item);if(e&&qty(n,a.item)&&eligible(e,artContext(n,at))){learnArt(n,e);history('npc_learning',[key],n.name+'通过实际学习掌握已有秘籍中的能力。');}
   }else if(a.kind==='breakthrough'){
    const need=n.rank*30;if(n.rank<19&&n.xp>=need&&n.qi>=40&&n.injury<=20){n.xp-=need;n.qi-=40;n.rank++;n.deathAt=Math.max(n.deathAt,at+(n.rank>=10?110:82)*YEAR);history('growth',[key],n.name+'完成准备后突破。');finishGoal(n,'growth',key);}
   }else if(a.kind==='gather'){
@@ -391,8 +394,8 @@ export function stepLife(c){
  const damaged=n.gear.find(g=>GEAR[g.type].durability&&g.durability<GEAR[g.type].durability/2);
  if(damaged&&n.gold>=6&&qty(n,'herb')){const artisan=local.find(o=>o.value.role==='artisan'&&['','rest','work'].includes(o.value.activity.kind));if(reserveRepair(c,key,damaged.id,artisan))return schedule();}
  if(skill(n,'refining')&&skill(n,'formula')&&qty(n,'herb')>=2&&qty(n,'medicine')<2&&!ability().refine){start('refine','',180,'medicine');return schedule();}
- const manual=[['technique','palm'],['formula','formula']].find(([item,id])=>qty(n,item)&&!skill(n,id));
- if(manual&&!ability().learn){start('learn','',DAY,manual[0]);return schedule();}
+ const manual=pool('arts').entries.find(e=>e.status==='ready'&&qty(n,e.value.item)&&!artKnown(n,e)&&eligible(e,artContext(n,at)));
+ if(manual&&!ability().learn){start('learn','',DAY,manual.value.item);return schedule();}
  if(n.xp>=n.rank*30&&n.rank<19&&!ability().breakthrough&&n.qi>=40){goal(n,'growth',key,60,'cultivation:'+key);start('breakthrough',key,DAY);return schedule();}
  const workshop=w.organizations.find(o=>o.leader===key&&o.place===n.place&&o.status==='active'&&o.herbs>=2&&o.gold>=6&&o.output<4);
  if(workshop&&skill(n,'refining')&&!ability().refine){workshop.herbs-=2;workshop.gold-=6;start('produce',workshop.id,180,'medicine','organization:'+workshop.id);return schedule();}
@@ -429,8 +432,8 @@ export function settleConflict(c){
    close('yielded',attacker.id);return;
   }
   if(n.hp<60&&qty(n,'medicine')&&w.time-n.lastMedicine>=60&&!capabilities(n).grip){add(n,'medicine',-1);n.lastMedicine=w.time;treatCondition(n,'medicine',w.time);continue;}
-  const technique=skill(n,'palm')&&n.qi>=15&&!capabilities(n).technique;
-  if(technique)n.qi-=15;
+  const art=combatArt(n),technique=art.level&&n.qi>=art.qiCost&&!capabilities(n).technique;
+  if(technique)n.qi-=art.qiCost;
   const atk=combatAbility(n,technique),def=combatAbility(t),shield=ward(t),damage=Math.max(1,atk.attack-def.defense-shield);
   const noticed=canPerceive(t,n);
   wear(n,'hand',2);wear(t,'body',3);

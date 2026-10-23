@@ -9,6 +9,9 @@ import {packPerson,packWorld,MIND_FIELDS} from '../source/rules/records.js';
 import {PLAYER,CAST,PERIOD,KINDS,ITEMS} from '../source/content/catalog.js';
 import {S,I,B,O,A,person,world,info,view,action,cause} from './schema.mjs';
 import {bridgeSource} from './interfaces.mjs';
+import {POOLS} from '../source/pools/index.js';
+import {assetId} from '../source/rules/appearance.js';
+import {validatePools} from './pools.mjs';
 export const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const stable=(prefix,key)=>prefix+'_'+createHash('sha256').update('doupo-living-world:'+key).digest('hex').slice(0,32);
 const F=formula=>({formula}),C=computed=>({computed});
@@ -18,7 +21,20 @@ export async function compile(core){
  const {appraisalStateSchema}=await load('public/shared/native-appraisal-contract.js'),relation=appraisalStateSchema();
  const version=JSON.parse(await fs.readFile(path.join(root,'package.json'),'utf8')).version;
  const pkg=stable('pkg','work'),pkgv=stable('pkgv',version),worldId=stable('world','douqi'),worldv=stable('worldv','opening'),entry=stable('entry','opening');
- const files=new Map();for(const dir of ['content','rules'])for(const name of await fs.readdir(path.join(root,'source',dir)))if(name.endsWith('.js'))files.set(dir+'/'+name,await fs.readFile(path.join(root,'source',dir,name)));
+ const files=new Map();for(const dir of ['content','pools','rules'])for(const name of await fs.readdir(path.join(root,'source',dir)))if(name.endsWith('.js'))files.set(dir+'/'+name,await fs.readFile(path.join(root,'source',dir,name)));
+ const assets=[],assetPayloads=new Map();
+ validatePools(POOLS);
+ const mediaBytes=await fs.readFile(path.join(root,'media/pools/manifest.json')),media=JSON.parse(mediaBytes);
+ const appearancePool=POOLS.find(p=>p.id==='appearances');
+ for(const e of appearancePool.entries.filter(e=>e.status==='ready'))for(const kind of ['portrait','chibi']){
+  const file=e.value[kind];if(!file.startsWith('media/pools/')||file.includes('..'))throw Error('invalid pooled asset path');
+  const data=await fs.readFile(path.join(root,file)),id=assetId(e.id,kind),hash=createHash('sha256').update(data).digest('hex');
+  const provenance=media.assets.find(a=>a.id===e.id+':'+kind);
+  if(!provenance?.qa||provenance.file!==file||provenance.sha256!==hash||provenance.bytes!==data.length)throw Error('unverified paired asset '+e.id+':'+kind);
+  assets.push({assetId:id,contentHash:hash,size:data.length,mediaType:'image/webp',logicalName:file});assetPayloads.set(id,data);
+ }
+ files.set('integration/pools.json',Buffer.from(JSON.stringify({schemaVersion:1,pools:POOLS,assets})));
+ files.set('integration/pool-media.json',mediaBytes);
  const body=O(Object.fromEntries(Object.entries(person.properties).filter(([k])=>!['actor','alive','health',...MIND_FIELDS].includes(k)))),mind=O(Object.fromEntries(MIND_FIELDS.map(k=>[k,person.properties[k]]))),ps=O({actor:S(),alive:B,state:O({body,mind,health:S(4096)})}),physical=O({actor:S(),alive:B,state:O({body,health:S(4096)})}),mental=O({mind}),ws=O({serial:I(),state:O(Object.fromEntries(Object.entries(world.properties).filter(([k])=>k!=='serial')))});
  const domains=[],automations=[];const people=initialPeople(),w=initialWorld(),v=project(w,people,[],{code:'creation_required',text:'请先完成新局身份绑定与角色创建。',spent:0,at:0,partial:false,steps:[]});
  function domain(id,schema,initial,rows=[]){
@@ -60,7 +76,7 @@ export async function compile(core){
  authorityRuntime:{schemaVersion:1,canonicalClockId:'world',intentObservation:{viewIds:['intent'],maxItems:64,maxBytes:16384},policy:{maxReadGrants:16,maxWorldEvents:16,maxAppCommands:24,maxEffects:32,maxReceiptBytes:32768}},taskRuntime,
  informationRuntime:{schemaVersion:1,actors:[{id:PLAYER,scopeId:'session',availability:{domainId:'dw_people',recordId:'player',field:'alive'}}],graphs:[],
  sources:[{id:'intent-screen',kind:'application',semantic:'truth',scopeId:'session',domainId:'dw_public',fields:[['intent']]},{id:'screen',kind:'application',semantic:'truth',scopeId:'session',domainId:'dw_public',fields:[['screen']]},
- {id:'self',kind:'application',semantic:'truth',scopeId:'session',domainId:'dw_people',actorField:'actor',fields:[...['name','sex','role','plan','chat','injury','inventory','gold','rank','needitem','needqty'].map(k=>['state','body',k]),['state','mind'],['state','health'],...['gear','activity','control'].map(k=>['state','body',k])]},
+ {id:'self',kind:'application',semantic:'truth',scopeId:'session',domainId:'dw_people',actorField:'actor',fields:[...['name','sex','role','plan','chat','generation','inventory','gold','rank','needitem','needqty'].map(k=>['state','body',k]),['state','mind'],['state','health'],...['gear','activity','control'].map(k=>['state','body',k])]},
  {id:'personal',kind:'application',semantic:'belief',scopeId:'session',domainId:'dw_information',actorField:'actor',statusField:'status',channelField:'channel',fields:['text','target','kind','at','source'].map(k=>[k])},
  {id:'relationships',kind:'application',semantic:'relationship',scopeId:'session',domainId:'dw_relations',actorField:'actor',statusField:'status',fields:['text','target','dimension','level','rationale'].map(k=>[k])}],
  views:[{id:'intent',audience:'player',sources:['intent-screen'],exposure:['display'],knowledge:false,memory:false,maxItems:64,maxCharacters:8192},{id:'player',audience:'player',sources:['screen'],exposure:['display'],knowledge:false,memory:false,maxItems:64,maxCharacters:32768},
@@ -97,7 +113,7 @@ export async function compile(core){
  const chosen={...logic.transactions[0],id:'doupo.choice',verb:'doupo_choice',savePointBefore:true,inputSchema:{...action,properties:{...action.properties,kind:S(64,choices)}},intent:{expose:true,description:'需要行动前自动存档的长期活动、家庭重大决定或危险交锋。'+logic.transactions[0].intent.description}};
  chosen.inputSchema={...chosen.inputSchema,properties:{...chosen.inputSchema.properties,steps:{...action.properties.steps,maxItems:0}}};
  logic.transactions[0].inputSchema={...action,properties:{...action.properties,steps:{...action.properties.steps,maxItems:0},kind:S(64,KINDS.filter(k=>!choices.includes(k)))}};
- const parameters='所有字段必填；未用字符串填空串，qty/x/y填0，steps填[]。target为可见人物key或地点ID；交易detail必须逐字复制intent.quotes中对应item的actionDetail字符串，它是报价版本令牌，不能填unitPrice、总价或库存数量；create时target为clan/apprentice/mercenary/wanderer，detail为native/transmigrator，item为male/female，text为姓名。对话text保留原文。browse时qty为从0起的人物页码。含糊或越界用clarify，text写澄清，不编造成功。';
+ const parameters='所有字段必填；未用字符串填空串，qty/x/y填0，steps填[]。target为可见人物key或地点ID；交易detail必须逐字复制intent.quotes中对应item的actionDetail字符串，它是报价版本令牌，不能填unitPrice、总价或库存数量；create时target为clan/apprentice/mercenary/wanderer，detail为native/transmigrator，item为male/female，text为姓名。对话text保留原文。browse时qty为从0起的页码，detail填known看旧档案、空串看当前附近人物；旧档案不是实时定位。focus的target为当前可感知人物key，空串取消选中，不耗时也不代办接近。practice的item为arts中已学功法id，仅选择当前修习；learn的item仍为实际秘籍物品id。含糊或越界用clarify，text写澄清，不编造成功。';
  logic.transactions[0].intent.description='单一普通行动。kind取'+logic.transactions[0].inputSchema.properties.kind.enum.join('/')+'。'+parameters;
  chosen.intent.description='单一长期、家庭重大决定或危险行动，行动前自动存档。kind取'+choices.join('/')+'。qty为数量或天数。'+parameters;
  logic.transactions.push(chosen);
@@ -114,12 +130,13 @@ export async function compile(core){
  worlds:[{world:{worldId,displayName:'斗气大陆·首批三地',currentRevisionId:worldv},revision:{worldId,worldRevisionId:worldv,baseline:{},knowledgeBindingIds:[],assetIds:[],metadata:{period:PERIOD}}}],knowledge:[],knowledgeBindings:[],assets:[],resources,capabilities:['narrative','world-simulation'],permissions:[{permission:'generation',required:true,reason:'自由意图、个人判断与有限视角叙事'}],runtime:{game:{logic:'logic.json'},experience:{mode:'text'},experienceContract:contract}};
  const resolver=modelResources('doupo.resolve','你是斗破沙盒的行动解释器，只把玩家原话映射为一个公开工具调用，不写旁白、不执行规则、不产生状态补丁。依据 observation 中玩家可见的地点、人物 key、报价和当前 operation 选择工具与参数；不要猜隐藏信息。普通行动选 doupo.act，长期或危险重大行动选 doupo.choice，多步要求选 doupo.plan。组合最多四步，未明确对象或不能执行的越界要求用 clarify，text 写简短澄清。交易 detail 必须逐字复制intent.quotes对应item的actionDetail字符串；unitPrice是单价，availableQty是库存，均不能填入detail。例如item=herb、unitPrice=8、actionDetail="1"时，detail必须填"1"，不能填"8"。创建角色时 target 为出身、detail 为 native/transmigrator、item 为 male/female、text 为姓名。对话保留玩家原文；不要把想取得物品、婚姻或功法解释成已经成功。只调用一个工具，不额外输出文字。');
  manifest.runtime.modelPrompt={schemaVersion:1,roles:[{role:'role.intent_resolver',requiredCapabilities:['generation.tools'],promptProgramRef:resolver.exact('core.prompt-program',resolver.pp),generationProfileRef:resolver.exact('core.generation-profile',resolver.gp)}]};
- return {native,manifest,files,logic,contract,output};
+ manifest.assets=assets;manifest.worlds[0].revision.assetIds=assets.map(a=>a.assetId);
+ return {native,manifest,files,logic,contract,output,assetPayloads};
 }
 if(process.argv[1]===fileURLToPath(import.meta.url)){
  const argv=process.argv.slice(2),coreArg=argv.indexOf('--core'),outArg=argv.indexOf('--out');
  if(coreArg<0)throw Error('Usage: node tools/build.mjs --core <Atria source> [--out <new version.atria>]');
- const f=await compile(path.resolve(argv[coreArg+1]));const built=f.native.buildAtriaPackageContainer({manifest:f.manifest,sourceFiles:f.files,assetPayloads:new Map()});
+ const f=await compile(path.resolve(argv[coreArg+1]));const built=f.native.buildAtriaPackageContainer({manifest:f.manifest,sourceFiles:f.files,assetPayloads:f.assetPayloads});
  if(outArg>=0)await fs.writeFile(path.resolve(argv[outArg+1]),built.archive,{flag:'wx'});
  console.log(JSON.stringify({packageId:f.manifest.packageId,packageVersionId:f.manifest.packageVersionId,version:f.manifest.version,bytes:built.archive.length,sha256:createHash('sha256').update(built.archive).digest('hex')}));
 }

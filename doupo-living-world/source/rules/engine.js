@@ -7,15 +7,18 @@ import {capabilities,conditionDetail,conditionAwareness,injure,recoverCondition,
 import {stepLife,deliverMessage,settleConflict,refreshOrganizations,ecologicalStock,know,sendMessage,reserveRepair,endServices,cancelRepairs} from './life.js';
 import {causalLedger} from './causality.js';
 import {canPerceive} from './perception.js';
+import {generatePerson} from './generation.js';
+import {assignAppearance} from './appearance.js';
+import {artByItem,artById,artContext,learnArt,artKnown,trainingEffort,combatArt} from './progression.js';
+import {eligible} from './pools.js';
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
-const emptyPerson=()=>person('none','未入场','wutan.inn','none',20,1,'unavailable');
 const zero='0'.repeat(64);
 const authorMeta=seed=>({origin:'author',invocationId:seed,taskId:'doupo.rules',variantId:'v1',profileId:'doupo.social',profileRevision:'v1',modelProfileId:'rules',modelProfileHash:zero,requestSnapshotHash:zero,previousHash:zero,promptId:'rules',promptRevision:'v1',generationId:'rules',generationRevision:'v1'});
 export const blankRelation=()=>({actor:PLAYER,target:'sub_'+zero.slice(0,32),dimension:'trust',level:0,status:'active',text:'尚未交往',rationale:'规则基线',basis:{viewId:'personal',anchor:{sessionId:'ses_'+zero.slice(0,32),packageVersionId:'pkgv_'+zero.slice(0,32),revisionId:'rev_'+zero.slice(0,32),branchId:'br_'+zero.slice(0,32),scopeEpochs:{session:0}},sourceRefs:[]},appraisal:authorMeta('initial')});
 export const blankInfo=()=>({actor:PLAYER,target:'',status:'known',channel:'witnessed',kind:'event',text:'',at:0,source:'规则'});
 function run(input){
  const {reads,seed,anchor}=input,args=copy(input.args),w=unpackWorld(copy(reads.game)),loadedMinds=new Map(reads.minds.records.map(r=>[r.id,copy(r.value.state.mind)])),relations=copy(reads.relations.records),memories=copy(reads.personal.records);
- const unknownMind=packPerson(emptyPerson()).state.mind;
+ const unknownMind={traits:{ambition:0,care:0,caution:0},goals:[],motives:[],social:[]};
  const rows=[0,1,2].flatMap(i=>reads['people'+i].records).map(r=>({id:r.id,value:unpackPerson({actor:r.value.actor,alive:r.value.alive,state:{body:copy(r.value.state.body),mind:copy(loadedMinds.get(r.id)||unknownMind)}})}));
  const changed=new Map(),events=new Map(),relUpdates=new Map(),p=rows.find(r=>r.id==='player').value;
  const causal=causalLedger(w,rows);
@@ -112,7 +115,7 @@ function run(input){
  const lifeContext=()=>({w,rows,touch,event,history,harm,death,appraisal,level,capture:causal.capture,currentCause:causal.current});
  function scheduleNpc(r,until){
   if(!loadedMinds.has(r.id))return;
-  const n=touch(r.id),days=Math.floor(until/DAY)-Math.floor(n.updated/DAY);n.updated=until;
+  const n=touch(r.id);assignAppearance(r.id,n,age(n,until),w.poolSeed+r.id,rows.map(r=>r.value.appearance));const days=Math.floor(until/DAY)-Math.floor(n.updated/DAY);n.updated=until;
   if(!n.alive)return;
   if(n.deathAt<=until){death(r.id,n.injury>=80?'伤势恶化':'寿尽');return;}
   if(n.role==='child'&&age(n,until)>=18){n.role='apprentice';n.preference='reciprocal';n.plan='成年，开始谋生与求学';learn(n,'basic');history('adulthood',[r.id],n.name+'成年后开始选择自己的生活。');}
@@ -166,9 +169,9 @@ function run(input){
   w.time=until;result.spent+=until-initial;
   const elapsedDays=Math.floor(until/DAY)-Math.floor(initial/DAY);
   if(w.op.kind==='work'&&elapsedDays>0){touch('player');p.gold+=elapsedDays*12;w.producedGold+=elapsedDays*12;}
-  if(elapsedDays>0){touch('player');const nourished=feed('player',p,elapsedDays,until);recoverCondition(p,until,nourished);if(p.injury>=80)p.deathAt=Math.min(p.deathAt,until+7*DAY);}
+  if(elapsedDays>0){touch('player');assignAppearance('player',p,age(p,until),w.poolSeed+'player',rows.map(r=>r.value.appearance));const nourished=feed('player',p,elapsedDays,until);recoverCondition(p,until,nourished);if(p.injury>=80)p.deathAt=Math.min(p.deathAt,until+7*DAY);}
   if(w.op.kind==='move'&&until>initial){const [x,y]=w.op.detail.split(',').map(Number),path=pathTo(p.place,p,{x,y});if(path?.length){touch('player');const step=path[Math.min(path.length,until-initial)-1];p.x=step.x;p.y=step.y;}}
-  if(w.op.kind==='train'&&elapsedDays>0){touch('player');const productive=Math.min(elapsedDays,p.qi);p.xp+=productive*Math.max(1,skill(p,'basic'))*p.soul;p.qi-=productive;if(!p.qi)w.op.end=until;}
+  if(w.op.kind==='train'&&elapsedDays>0){touch('player');trainingEffort(p,elapsedDays,1);if(!p.qi)w.op.end=until;}
 
 
   const conflictDue=w.conflicts.some(f=>f.status==='active'&&f.next<=until),messageDue=w.messages.some(m=>['pending','waiting'].includes(m.status)&&m.due<=until);
@@ -184,7 +187,7 @@ function run(input){
   if(birth){
    causal.capture(birth.id,'birth',[birth.a,birth.b],'reservation:'+birth.id,'scene',true);
    w.reservations=w.reservations.filter(r=>r.id!==birth.id);const a=row(birth.a)?.value,b=row(birth.b)?.value;
-   if(a?.alive&&b?.alive){const key='child-'+sha(birth.id).slice(0,36);newcomer={id:key,value:person(key,(a.name.slice(0,1)||'林')+'初'+sha(key).slice(0,4),a.home,'child',0,1,'unavailable')};
+   if(a?.alive&&b?.alive){const key='child-'+sha(birth.id).slice(0,36);newcomer=generatePerson(w,rows,key,'birth',a.home,[a,b]);
     newcomer.value.born=until;newcomer.value.parentA=birth.a;newcomer.value.parentB=birth.b;newcomer.value.ward=birth.a;newcomer.value.gold=0;newcomer.value.next=until+30*DAY;newcomer.value.deathAt=until+82*YEAR;admit=true;
     for(const parent of [birth.a,birth.b]){const relative=touch(parent);know(newcomer.value,{a:key,b:parent,kind:'family',place:relative.home,at:until,source:'birth:'+birth.id,confidence:'known'});know(relative,{a:parent,b:key,kind:'family',place:newcomer.value.home,at:until,source:'birth:'+birth.id,confidence:'known'});}
     const f=w.families.find(f=>[f.a,f.b].includes(birth.a)&&[f.a,f.b].includes(birth.b));if(f)f.children.push(key);history('birth',[birth.a,birth.b,key],'家庭迎来一名新生儿。');
@@ -196,13 +199,13 @@ function run(input){
    const live=rows.filter(r=>r.id!=='player'&&r.value.alive).length;
    if(live+w.reservations.length<Math.min(w.cap,POLICY.high)){
     const key='arrival-'+Math.floor(until/DAY),region=rows.filter(r=>r.value.alive&&r.value.home.startsWith('qingshan')).length<POLICY.regionalCap?'qingshan.inn':'wutan.inn';
-    const day=Math.floor(until/DAY);newcomer={id:key,value:person(key,'行客'+day,region,'artisan',22+day%16,4,'reciprocal','外地迁入，寻求生计与安稳生活')};newcomer.value.born=until-(22+day%16)*YEAR;newcomer.value.next=until+7*DAY;newcomer.value.updated=until;newcomer.value.deathAt=until+50*YEAR;admit=true;history('immigration',[key],'一名有来历的成年行客迁入。');
+    newcomer=generatePerson(w,rows,key,'immigration',region);admit=true;history('immigration',[key],'一名有来历的成年行客迁入。');
    }w.nextImmigration=until+(rows.filter(r=>r.value.alive).length<POLICY.low?45:90)*DAY;
   }
   const backlog=w.releases.length||rows.some(r=>r.id!=='player'&&r.value.alive&&Math.min(r.value.next,r.value.deathAt)<=until)||w.reservations.some(r=>r.due<=until)||w.promises.some(r=>r.status==='open'&&r.due<=until)||w.messages.some(m=>['pending','waiting'].includes(m.status)&&m.due<=until)||w.conflicts.some(f=>f.status==='active'&&f.next<=until);
   if(w.op.kind&&until>=w.op.end&&!backlog){
    if(w.op.kind==='travel'){
-    const who=touch('player');who.place=w.op.target;who.x=2;who.y=7;w.peoplePage=0;if(!who.visited.includes(who.place))who.visited.push(who.place);
+    const who=touch('player');who.place=w.op.target;who.x=2;who.y=7;w.peoplePage=0;w.peopleFilter='nearby';w.focus='';if(!who.visited.includes(who.place))who.visited.push(who.place);
     for(const key of w.companions){const c=touch(key);if(c?.alive){c.place=who.place;c.destination='';c.arriveAt=0;c.x=3;c.y=7;}}
     const risk=Number(w.op.detail)||0,roll=parseInt(sha(w.op.target+'|'+w.op.end+'|travel').slice(0,8),16)%100;
     if(risk&&roll<risk*10){const severity=Math.max(1,risk*15-Math.floor(who.rank/3));harm('player','left_leg',roll<risk*3?'fracture':'trauma',severity,'旅途中遇险');history('travel_risk',['player'],'旅途中遇险，按实力减轻伤势。');if(!who.hp)death('player','旅途伤势');}
@@ -301,17 +304,22 @@ function run(input){
   const saveArgs=copy(args);Object.assign(args,a);const done=()=>Object.assign(args,saveArgs);
   const t=target(),kind=args.kind;
   if(!KINDS.includes(kind)){reject('unsupported','这个意图还不能由现有规则执行。');done();return;}
-  if(kind==='browse'){if(args.detail==='clues')w.cluesPage=args.qty;else w.peoplePage=args.qty;say('browsed','已读取玩家已知记录页，世界时间不变。');done();return;}
+  if(kind==='browse'){if(args.detail==='clues')w.cluesPage=args.qty;else{w.peoplePage=args.qty;w.peopleFilter=args.detail==='known'?'known':'nearby';}say('browsed','已读取玩家已知记录页，世界时间不变。');done();return;}
+  if(kind==='focus'){
+   if(args.target&&(!t?.alive||!canPerceive(p,t))){reject('focus_unavailable','只能选中当前可感知的人物。');done();return;}
+   w.focus=args.target;say('focused',args.target?'已在地图上临时标出选中人物。':'已取消地图选中。');done();return;
+  }
   if(kind==='recall'){const entry=memories.find(r=>r.id===args.target&&r.value.actor===PLAYER&&r.value.kind!=='person');if(entry)say('recalled',entry.value.text);else reject('unknown_record','没有这条已知记录。');done();return;}
   if(kind==='condition'){say('condition_read','身体详情已更新：'+p.condition.wounds.length+'处持续伤病，'+p.condition.missing.length+'处肢体缺失；各项行动限制见身体详情。');done();return;}
   if(kind==='profile'){say('profile_read','人物详情已更新，可查看身体、器物、当前活动、本人所知的关系与目标。');done();return;}
   if(!p.alive){reject('player_dead','主角已死亡，可以读取整个世界的存档。');done();return;}
-  if((w.op.kind||w.appraisals.length||w.plan.length&&!executingPlan)&&!['continue','cancel','clarify'].includes(kind)){reject('activity_pending','先继续或停止当前长期活动。');done();return;}
+  if((w.op.kind||w.appraisals.length||w.initialResidents||w.plan.length&&!executingPlan)&&!['continue','cancel','clarify'].includes(kind)){reject('activity_pending','先继续或停止当前长期活动。');done();return;}
   if(kind==='clarify'){say('clarification',args.text.slice(0,256)||'请明确对象和一个可结算的打算。');done();return;}
   if(kind==='create'){
    const bg=BACKGROUNDS.find(x=>x.id===args.target);
    if(w.created||!bg||!['native','transmigrator'].includes(args.detail)||!args.text.trim()||args.text.length>48||args.item&&!['male','female'].includes(args.item)){reject('creation_invalid','请提供未创建的新局、有效出身、本土或穿越身份与姓名。');done();return;}
-   touch('player');w.created=true;w.origin=args.detail;w.background=bg.id;p.name=args.text.trim();p.sex=args.item==='female'?'female':'male';p.home=bg.place;p.place=bg.place;p.rank=bg.rank;p.gold=bg.gold;p.fire=bg.fire;p.wood=bg.wood;p.soul=bg.soul;p.visited=[bg.place,'person:'+bg.contact];
+   touch('player');w.created=true;w.poolSeed=sha(seed);w.initialResidents=4;w.origin=args.detail;w.background=bg.id;p.name=args.text.trim();p.sex=args.item==='female'?'female':'male';p.home=bg.place;p.place=bg.place;p.rank=bg.rank;p.gold=bg.gold;p.fire=bg.fire;p.wood=bg.wood;p.soul=bg.soul;p.visited=[bg.place,'person:'+bg.contact];
+   p.appearance='';assignAppearance('player',p,age(p,w.time),w.poolSeed,rows.map(r=>r.value.appearance));
    if(bg.id==='apprentice'){learn(p,'refining');learn(p,'formula');}if(bg.id==='mercenary')learn(p,'palm');
    known(p,'rumor',START_KNOWLEDGE[1].text,START_KNOWLEDGE[1].source,'rumor');
    if(w.origin==='transmigrator')known(p,'novel_memory',START_KNOWLEDGE[0].text,START_KNOWLEDGE[0].source,'inference');
@@ -320,6 +328,11 @@ function run(input){
   if(!w.created){reject('creation_required','先创建自己的角色。');done();return;}
   if(kind==='continue'){
    if(w.appraisals.length){settleAppraisals();done();return;}
+   if(w.initialResidents){
+    const live=rows.filter(r=>r.id!=='player'&&r.value.alive).length;
+    if(live+w.reservations.length<w.cap){const key='resident-'+(5-w.initialResidents);newcomer=generatePerson(w,rows,key,'initial',w.initialResidents%2?'qingshan.inn':'wutan.inn');admit=true;}
+    w.initialResidents--;say(admit?'resident_initialized':'population_full',admit?'一名居民已按内容池建立出身与外观。':'人口与预留名额已满，本次不新增居民。');done();return;
+   }
    if(!w.op.kind&&w.plan.length){runPlanStep();done();return;}
    if(!w.op.kind){reject('no_activity','没有待推进的活动。');done();return;}
    advance(w.op.end);if(accepted)say(w.op.kind?'advancing':'completed',w.op.kind?'已推进一段世界事件，可以继续或停止。':'这段活动已经完成。');done();return;
@@ -388,6 +401,10 @@ function run(input){
    w.companions=w.companions.filter(key=>{const c=row(key)?.value;return c?.alive&&c.place===p.place&&!capabilities(c).move&&c.injury<=30&&qty(c,'food')>=Math.floor(r.ticks/DAY);});
    startOperation('travel',r.to,w.time+r.ticks,String(r.risk));advance(w.op.end);say(w.op.kind?'travelling':'arrived',w.op.kind?'旅途已开始，世界事件正在沿时间顺序推进。':'抵达目的地。');done();return;
   }
+  if(kind==='practice'){
+   const e=artById(args.item);if(!e||!['cultivation','combat'].includes(e.value.type)||!artKnown(p,e)||!eligible(e,artContext(p,w.time))){reject('practice_unavailable','尚未学会或不满足此功法的运用条件。');done();return;}
+   touch('player');p.study[e.value.type]=e.id;say('practice_changed','已改用'+e.value.name+'，之后按该功法的实际消耗与效果结算。');done();return;
+  }
   if(kind==='wait'||kind==='train'||kind==='rest'){
    const days=args.qty||1;if(kind==='train'&&(p.injury>40||!skill(p,'basic')||p.qi<1)){reject('training_conditions','伤势、斗气或功法条件不允许当前修炼。');done();return;}
    startOperation(kind,'',w.time+days*DAY,String(days));advance(w.op.end);say(w.op.kind?'advancing':'completed',w.op.kind?'这段活动已推进部分时间。':'活动完成。');done();return;
@@ -418,9 +435,9 @@ function run(input){
   }
   if(['learn','breakthrough','refine','consume'].includes(kind)){
    if(kind==='learn'){
-    const mapped={manual:'basic',technique:'palm',formula:'formula'},id=mapped[args.item];
-    if(!id||qty(p,args.item)<1||p.injury>40){reject('learning_conditions','缺少秘籍或当前伤势不适合学习。');done();return;}
-    touch('player');learn(p,id);if(id==='formula'&&p.fire>=3&&p.wood>=1&&p.soul>=3)learn(p,'refining');timed(DAY);say('learned','秘籍已学习，运用仍受修为和资源限制。');
+    const e=artByItem(args.item);
+    if(!e||!eligible(e,artContext(p,w.time))||qty(p,args.item)<1||p.injury>40){reject('learning_conditions','缺少秘籍或当前伤势不适合学习。');done();return;}
+    touch('player');learnArt(p,e);timed(DAY);say('learned','秘籍已学习，运用仍受修为和资源限制。');
    }else if(kind==='breakthrough'){
     const need=p.rank*30;if(p.rank>=19||p.xp<need||p.injury>20||p.qi<40){reject('breakthrough_conditions','积累、伤势或斗气不满足条件；本版本可玩到斗师阶段。');done();return;}
     touch('player');p.xp-=need;p.qi-=40;p.rank++;p.deathAt=Math.max(p.deathAt,w.time+(p.rank>=10?110:82)*YEAR);history('growth',['player'],'主角突破一个阶段。');timed(DAY);say('advanced','突破已结算。');
@@ -451,7 +468,8 @@ function run(input){
   if(['attack','technique','guard','retreat','surrender'].includes(kind)){
    const enemy=row(w.combat.enemy||args.target)?.value,key=w.combat.enemy||args.target;
    if(!near(enemy)){reject('combat_target_stale','目标已不在交锋距离内。');done();return;}
-   if(kind==='technique'&&(!skill(p,'palm')||p.qi<15)){reject('technique_conditions','未掌握碎石掌或斗气不足。');done();return;}
+   const technique=combatArt(p);
+   if(kind==='technique'&&(!technique.level||p.qi<technique.qiCost)){reject('technique_conditions','未掌握当前斗技或斗气不足。');done();return;}
    touch('player');touch(key);
    if(kind==='surrender'){const paid=Math.floor(p.gold/4);p.gold-=paid;enemy.gold+=paid;w.combat={enemy:'',round:0,guard:false};history('surrender',['player',key],'主角放弃交锋并付出财物。');timed(5);say('surrendered','对方收下财物，交锋结束。');done();return;}
    if(kind==='retreat'){
@@ -460,8 +478,8 @@ function run(input){
     else{p.hp=Math.max(0,p.hp-Math.max(4,enemy.rank-p.rank));p.injury=Math.min(100,p.injury+5);say('retreat_failed','撤退受阻，受到追击。');}
    }else{
     w.combat.enemy=key;w.combat.round++;w.combat.guard=kind==='guard';
-    if(kind!=='guard'){const damage=Math.max(1,p.rank*2+skill(p,'palm')*(kind==='technique'?4:1)-enemy.rank);
-     enemy.hp=Math.max(0,enemy.hp-damage);enemy.injury=Math.min(100,enemy.injury+Math.floor(damage/3));if(kind==='technique')p.qi-=15;
+    if(kind!=='guard'){const damage=Math.max(1,p.rank*2+(kind==='technique'?technique.level*technique.power:skill(p,'palm'))-enemy.rank);
+     enemy.hp=Math.max(0,enemy.hp-damage);enemy.injury=Math.min(100,enemy.injury+Math.floor(damage/3));if(kind==='technique')p.qi-=technique.qiCost;
      appraisal(enemy,p,'trust',-20,enemy.name+'亲历了你的攻击。');}
     if(!enemy.hp){death(key,'交锋重伤');w.combat={enemy:'',round:0,guard:false};say('enemy_died','对方死亡，物资、家庭与约定按后果处理。');}
     else{const counter=capabilities(enemy).attack?0:Math.max(1,enemy.rank*2-p.rank-(w.combat.guard?8:0));p.hp=Math.max(0,p.hp-counter);p.injury=Math.min(100,p.injury+Math.floor(counter/3));say('combat_round','一段交锋已经结算。');}
@@ -484,7 +502,7 @@ function run(input){
   if(args.steps.length){
    if(w.op.kind||w.appraisals.length||w.plan.length)reject('activity_pending','先继续或停止当前活动。');
    else{w.plan=copy(args.steps);w.planText=args.text;w.planResults=[];runPlanStep();}
-  }else{if(!['continue','cancel','browse','recall','condition','profile'].includes(args.kind))w.planResults=[];act(requested);}
+  }else{if(!['continue','cancel','browse','focus','recall','condition','profile'].includes(args.kind))w.planResults=[];act(requested);}
   if(continuingStep){const step=w.planResults[w.planResults.length-1];step.spent+=result.spent;step.code=result.code;step.text=result.text;}
   result.steps=copy(w.planResults);
   const seen=row(requested.target);if(seen&&seen.id!=='player'&&near(seen.value)&&p.visited.includes('person:'+seen.id)&&events.size<6)event(p,seen.value.actor,'person',JSON.stringify(observePerson(seen.id,seen.value,w.time)),'现场');
@@ -504,8 +522,11 @@ function run(input){
   result.at=w.time;if(admit&&!w.op.kind)startOperation('refresh','',w.time);
   const actualRows=rows;
   const causalUpdates=causal.finish(newcomer?[newcomer]:[]);
+  if(w.focus){const focused=row(w.focus);if(!focused||!canPerceive(p,focused.value))w.focus='';}
   const visible=project(w,actualRows,memories,result);
-  const admission=newcomer?.value||emptyPerson();
+  // With admit=false this typed placeholder has no effect. Reuse granted player
+  // fields instead of generating and hashing an otherwise unused person.
+  const admission=newcomer?.value||p;
   return {world:packWorld(w),people:[...changed.values()].map(r=>{const packed=packPerson(r.value);return {id:r.id,value:{actor:packed.actor,alive:packed.alive,state:{body:packed.state.body,health:packed.state.health}}};}),minds:mindUpdates,causes:causalUpdates,relations:[...relUpdates.values()],information:[...events.values()],
    view:JSON.stringify(visible),intent:intentProjection(visible),ticks:w.time-reads.game.state.time,admit,newPerson:{id:newcomer?.id||'none',value:Object.fromEntries(NEW_PERSON_FIELDS.map(key=>[key,admission[key]]))},
    personCount:changed.size,mindCount:mindUpdates.length,causeCount:causalUpdates.length,relationCount:relUpdates.size,informationCount:events.size};

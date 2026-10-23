@@ -11,6 +11,8 @@ export function bridgeSource(logic,contract){
  bindings.push({...action('acknowledge','doupo.act','deterministic'),inputSchema:O({target:S()}),mapping:{fields:{...Object.fromEntries(Object.entries({kind:'talk',item:'',qty:0,x:0,y:0,detail:'acknowledge',text:'',steps:[]}).map(([key,constant])=>[key,{constant}])),target:{input:'target'}}}});
  bindings.push({...action('browse','doupo.act','deterministic'),inputSchema:O({qty:logic.transactions[0].inputSchema.properties.qty}),mapping:{fields:{...Object.fromEntries(Object.entries({kind:'browse',target:'',item:'',x:0,y:0,detail:'',text:'',steps:[]}).map(([key,constant])=>[key,{constant}])),qty:{input:'qty'}}}});
  bindings.push({...bindings.find(b=>b.id==='browse'),id:'clues',mapping:{fields:{...bindings.find(b=>b.id==='browse').mapping.fields,detail:{constant:'clues'}}}});
+ bindings.push({...bindings.find(b=>b.id==='browse'),id:'known-people',mapping:{fields:{...bindings.find(b=>b.id==='browse').mapping.fields,detail:{constant:'known'}}}});
+ bindings.push({...bindings.find(b=>b.id==='acknowledge'),id:'focus',mapping:{fields:{...bindings.find(b=>b.id==='acknowledge').mapping.fields,kind:{constant:'focus'},detail:{constant:''}}}});
  bindings.push({...bindings.find(b=>b.id==='acknowledge'),id:'recall',mapping:{fields:{...bindings.find(b=>b.id==='acknowledge').mapping.fields,kind:{constant:'recall'},detail:{constant:''}}}});
  for(const kind of ['condition','profile'])bindings.push({...action(kind,'doupo.act','deterministic'),inputSchema:empty,mapping:{fields:Object.fromEntries(Object.entries({kind,target:'',item:'',qty:0,x:0,y:0,detail:'',text:'',steps:[]}).map(([key,constant])=>[key,{constant}]))}});
  return {version:1,bindings};
