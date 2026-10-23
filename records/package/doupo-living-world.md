@@ -453,3 +453,24 @@ be.4归档：`doupo-living-world/releases/doupo-living-world-0.1.0-be.4.atria`�
 提交范围仅本轮包源码、池素材、归档与相应文档；其它素材任务的D35、Record批量制作段及未提交素材目录均保留，不混入本提交。包实现已提交为394a9efaad5ca1e61b69a1eb8b2b97740e1a91b8，并快进合入长期package；main保持4470cffb9f688d7e889eb94b42b1cb85966318c1。9份相关文档117处相对文件/标题链接与目标暂存差异空白检查通过。
 
 远端同步核验：两次完整HTTPS上传因连接重置失败，refs未变；改为临时分支先上传媒体对象，再原子更新package/docs并删除传输分支，推送成功。ls-remote确认package为394a9efaad5ca1e61b69a1eb8b2b97740e1a91b8、首轮docs为3e352af60f348467a17047c5ce84ea150b3e89f2、main仍4470cffb9f688d7e889eb94b42b1cb85966318c1，临时分支不存在；本条同步补记随后随docs提交保存。GitHub仅提示51.09MiB归档超过推荐50MiB大小，未拒绝文件；没有改为外置缺失载荷或覆盖历史归档。
+
+## C4正式前端集成 — fe.2交付（2026-10-23）
+
+- 用户明确指定当前执行者，参考太吾绘卷、觅长生，并追加允许大改、减少主界面按钮。
+- 实际从package@394a9efa的be.5继续；读取feat/doupo-frontend@bed05a36的既有C2原生前端，按路径迁入frontend、design-reference、tools/frontend.mjs，未迁入旧后端、旧构建或覆盖其它任务工作树。
+- 已升级C4：地图独立markers/Q版、成对立绘、零耗时focus、附近与旧档案分离、实际arts、身体器物、关系认识、信件与分页事件；主界面四入口、人物内页签、菜单存档、收起行走工具。
+- 本地规则投影至全部面板/场景state校验、唯一行键、地图与分页独立、旧档案和事件分页检查通过。原生编译已通过；后续完成的浏览器与发行归档验收见下节。
+
+
+### 实装、修正与验收
+
+- 资产提交：package@ac008cdddf04f22a4d94c5e0d8f4e5b397169cd4。正式参考图按hash复制到frontend/assets，design-reference继续由原任务维护，未将原型当运行代码。移除了运行/作者前端目录中不再使用的旧人物图；配对外观仍由统一池管理。
+- 已接四主入口、人物内功法/身体/关系页签、菜单存档、折叠行走工具；C4的Q版/立绘、分页旧档、功法、治疗/器物、书信/事件、真实恢复接线。保留旧交锋但不提前实现D33。
+- 修正新局最后一次refresh未自动推进的问题；修正异步表现状态导致的忙碌提示时机/短暂禁用残留；依据实图修正同格NPC遮挡，身体面板合并正常能力。状态测试另发现当地生产output是数字，已按真实schema改为累计产出。
+- 真实Native compiler通过；最终发行包独占构建，54,810,575 bytes，SHA-256 `86e8d091838d440bfb4610197e6ee9e859ea9c00647565c3c2ce94a3453b41e6`，路径releases/doupo-living-world-0.1.0-fe.2.atria；旧be.5等归档不变。首次集成109,227,453 bytes，通过去掉闲置图及复用交付图降至约55 MB，不扩大Native预算。
+- 本地投影/state/schema测试通过：全部面板、唯一行键、地图与列表独立、旧档案binding、事件分页。Native安装样本验证40个实际资产hash、29个初始Subject、零时focus、旧档案、储备功法拒绝、购买及全人物appearance/generation恢复。
+- Chromium实装使用原生renderer、QuickJS Controller和真实Bridge/SessionCore。浏览器创建、零耗时选人、身体/功法/关系、旧档切换、购买、SavePoint恢复通过。1440×900主流程、1920×1080/1280×720/390×844模拟视口无横向溢出，面板底部与输入区保持8px间距，Escape关闭有效。最终同格两人横向分开56px，Q版和对应立绘实际加载。
+- 最终定向浏览器测试通过：身体正常能力合并、书信输入、非法坐标反馈、合成IME事件不提交、Ctrl+Enter的宿主失败保留草稿，reduced-motion启用；页面异常与Native diagnostics为空。测试曾把Native if隐藏节点的DOM数量误当可见数量，已改成isVisible断言后通过，非产品错误。
+- 本轮使用frontend-design、emil-design-eng制定布局，并按web-design-guidelines/review-animations自查。没有新增持续/进出动画，键盘切换即时；没有独立审查流程。正常能力冗余和同格遮挡按截图修正，未以静态图代替交互证据。
+- 本轮真实模型请求0。浏览器generationHost是本地Authority适配器；自由文字最终使用失败服务验收保稿。be.5真实模型证据保留原边界，不声称本轮真实模型端到端/物理手机/真实IME候选窗/读屏器/96人跨月或完整战斗已完成。大包与零时初始化仍有可见等待，未给出虚构FPS或延迟SLO。
+- 正式交付前只清理源码尾部空行/BOM与统一作者素材路径，再构建最终归档；没有改变已验收操作语义。验证脚本、截图、缓存、临时候选包及私有配置均留仓库外。其它docs/package任务未提交内容保留。

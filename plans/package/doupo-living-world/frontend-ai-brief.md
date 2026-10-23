@@ -2,7 +2,7 @@
 
 - Task ID：`package/doupo-living-world`
 - 用途：交给用户选择的前端 AI，在后端开发期间迭代游戏界面、视觉参考与交互设计。
-- 当前授权：正式开工和前后端分工已确认；be.5/C4为当前后端接口，v0.19记录世界深化及功能承载结果。前端对话继续原型迭代，后端完成后由用户决定谁接手真实前端集成。
+- 当前授权：正式开工和前后端分工已确认；be.5/C4为当前后端接口，v0.19记录世界深化及功能承载结果。前端对话继续原型迭代，用户已于2026-10-23指定当前执行者完成fe.2正式集成，后续设计须对照实际frontend与C4。
 - 方案入口：[index.md](index.md)；分工与文件边界：[execution-split.md](execution-split.md)；共用语义：[frontend-contract.md](frontend-contract.md)；后端任务：[backend-task.md](backend-task.md)。
 
 本文件提炼前端所需内容，不建立第二份世界规则权威。已确认体验归 [decisions.md](decisions.md)，内容范围归 [production-plan.md](production-plan.md)，当前视觉默认方案归 [presentation.md](presentation.md)。颜色、具体布局、人物编制、NPC 上限数值和成长数值并未逐项冻结，原型可以在这些方向内迭代；不能把演示效果写成已完成的游戏能力。
@@ -147,4 +147,4 @@ HTML 内的小量静态演示内容是视觉稿的一部分；用于验证的专
 
 ## 2026-10-23 — 人物显示与内容池补充
 
-D36–D38已确认：重点角色Q版上图、普通人附近列表/临时突出、旧档案独立；重要作者角色专属Q版，普通NPC使用成对立绘/Q版素材池。人物/功法等类别集中source/pools并共用注册/筛选/抽样入口，开局与后续生成保存固定结果。详细职责唯一归[content-pools](content-pools.md)，展示归presentation，实际字段以frontend-contract的当前C4为准。继续既有BE/FE分工，be.5已交付字段与静态图片，正式地图接线仍待集成。
+D36–D38已确认：重点角色Q版上图、普通人附近列表/临时突出、旧档案独立；重要作者角色专属Q版，普通NPC使用成对立绘/Q版素材池。人物/功法等类别集中source/pools并共用注册/筛选/抽样入口，开局与后续生成保存固定结果。详细职责唯一归[content-pools](content-pools.md)，展示归presentation，实际字段以frontend-contract的当前C4为准。继续既有BE/FE分工，be.5已交付字段与静态图片，fe.2已接入正式地图与详情，准确验证范围见同一Record。
