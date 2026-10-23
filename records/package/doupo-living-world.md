@@ -416,3 +416,5 @@ W0–W4默认机制有代表性贯通，W5聚合/依赖唤醒、96人跨月完�
 be.4归档：`doupo-living-world/releases/doupo-living-world-0.1.0-be.4.atria`，104722 bytes；SHA-256 `afaf3e90e100d5cbb91285958e7e207e48f929f4d83e6cc9ffd760bbd078b9dd`；PackageVersion `pkgv_6790d42cc8fafc47da183f423c5052e0`。已按当前源码构建，并从该实际归档安装验证新局、结构化详情、事件拒绝、交易及SavePoint恢复；详情最大数据与schema检查通过。世界420日/成熟96人负载表是be.3默认世界机制证据，be.4变化集中于公开表达/令牌语义与本人已说经历，不扩大其长期容量结论。最终资产提交与远端核对见后续同步行。
 
 最终本地集成：main `4470cffb9f688d7e889eb94b42b1cb85966318c1`，package `02ac55fcc0a3a8b81567bbbc903cb6ef4f213b29`（含be.3技术归档及be.4修正）。当前接口、启动提示和Plan状态已更新为be.4/C3；8份相关文档103处相对文件/标题链接检查通过，目标差异空白检查通过。其它任务、素材追加、设计参考与本机私有连接不纳入本次提交；远端同步执行后按实际refs核验。
+
+远端核验（2026-10-23）：三分支原子推送成功，随后ls-remote确认main `4470cffb9f688d7e889eb94b42b1cb85966318c1`、package `02ac55fcc0a3a8b81567bbbc903cb6ef4f213b29`、首轮docs `026fd96dcc9b39b18e6521284b076faa14a3840f`。此同步补记随docs后续提交保存，最终docs身份用本Record最新git提交定位；长期分支仍相互独立，原有未提交改动保持本地。
