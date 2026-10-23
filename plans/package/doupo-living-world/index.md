@@ -2,7 +2,7 @@
 
 - Task ID: `package/doupo-living-world`
 - Primary Workspace: `package`；本 Bundle 位于 `docs`；必要的产品修补使用独立产品任务。
-- Status: v0.13 — 以世界整体自主运转为首要目标深化方案；be.2/C2 为已有实现基线，新机制尚未实施。
+- Status: v0.14 — 在世界整体运转之上深化连续因果、机会性改策与包含玩家的个人关系图谱；be.2/C2 为已有实现基线，新机制尚未实施。
 - Updated: 2026-10-22
 - Source baseline: 已核对远端 `main@a9a914c66141daaf7ab9ae26119a506444d73698` 与 package `914c624c950dec06c181960d32b2d7f337c31abf`（规则交付提交 `38007d02d`）；实施前重新核对实际 Git，本地旧 main 不代表远端现状。
 - Record: [累计记录](../../../records/package/doupo-living-world.md)
@@ -17,7 +17,8 @@
 
 ## 当前状态
 
-- 本轮先更新方案再讨论。D28 确认源于自身目标和经历的主动社会行为，D29 确认世界整体运转优先；新增 NPC 能动性与世界系统模块，并将运行定义、时间组织、无玩家参与的验证和实施依赖统一纳入方案。
+- 本轮先更新方案再讨论。D30 确认连续逻辑链、复合动机和途中机会性改策，D31 确认包含玩家的个人关系图谱；补齐感知/相遇、个人认知/关系和多主体后续反应的设计依赖。示例是可产生不同结果的能力样本，不能改成预写必达的剧情链。
+- v0.13 已确认 D28 的主动社会行为与 D29 的世界整体运转优先，既有 NPC 能动性、世界系统和时间/精度/人口规则继续生效。
 - 上轮完整调用链调查发现：be.2 已有规则生活、滚动 30 日结算与两类专用旅行；结构化人格/长期目标/通用 NPC 行动执行尚缺，返程和自主补粮等循环有断点。详细证据见 research 与 Record，不将已有后端交付等同于本轮世界目标已达成。
 - 从远端 v0.10 恢复，继续完成规则、确定性 Bridge、完整恢复与真实模型验证；实际提交、样本、失败修正与容量边界见同一 Record。
 - Package 0.1.0-be.2 已有版本化后端验证归档和 integration Bridge/schema。原生接纳扩展已集成 main@a9a914c66141daaf7ab9ae26119a506444d73698，package 资产提交为38007d02d08f70d59e6ebbe0ad612f2d0570e463。
@@ -38,6 +39,7 @@
 | [experience.md](experience.md) | RPG 交互、文字输入、首个贯通体验候选 | decisions、world-simulation |
 | [world-simulation.md](world-simulation.md) | 世界自主运转定义、活动与时间、信息/精度/人口、历史一致性 | decisions、research；领域细则按需读下两模块 |
 | [npc-agency.md](npc-agency.md) | 人格、持续目标、计划执行、NPC 主动社会行为与联合行动 | decisions、world-simulation、world-systems |
+| [social-graphs.md](social-graphs.md) | 全角色个人社交圈、关系事实/所知/评价、图谱访问与连续经历 | decisions、npc-agency、world-simulation |
 | [world-systems.md](world-systems.md) | 资源生态、生计与商路、家庭组织和地区事件的耦合循环 | decisions、world-simulation、npc-agency |
 | [player-and-combat.md](player-and-combat.md) | 自创角色开局、个人原著知识、出身内容与战斗细则 | decisions、experience、world-simulation |
 | [presentation.md](presentation.md) | 已定空间与移动方向的展开、交互与美术细节 | decisions、experience、research |
@@ -57,7 +59,7 @@
 | D4 制作基线 | 已形成 v0.8 默认基线；正式制作已授权，具体数值与视觉细节仍保留拟定状态 | index → decisions → production-plan；按主题加载领域模块 |
 | Implementation 准备 | 已完成；v0.9 已拆分任务，提炼共用语义与两份新对话资料 | index → decisions → execution-split → frontend-contract → Record |
 | BE 后端实施 | 首批后端0.1.0-be.2与C2已交付；后续容量扩展按实测边界继续 | index → decisions → execution-split → backend-task → frontend-contract → research → Record；按阶段加载领域模块 |
-| 世界自主运转深化 | 当前；先更新方案再讨论，既有 be.2 能力与新设计分开；实施先打通 W0–W5 的自主闭环 | index → decisions 的 D28/D29 → world-simulation → npc-agency/world-systems → production-plan/backend-task；事实核对读取 research/Record |
+| 世界自主运转深化 | 当前；先更新方案再讨论，接入连续因果与全角色社交圈；实施先打通 W0–W5 的自主闭环 | index → decisions 的 D28–D31 → world-simulation → npc-agency/social-graphs/world-systems → production-plan/backend-task；事实核对读取 research/Record |
 | FE 界面迭代 | 离线原型和设计；实际进展归对应设计任务 | index → frontend-ai-brief → execution-split → frontend-contract → presentation；确认边界读 decisions，内容按需 |
 | 前端集成与整包交付 | BE 完成后由用户选择执行者；保留 P4 表现与 P5 发布验收 | index → execution-split → frontend-contract 的实际映射 → 选定的前端三项产物 → Record |
 
@@ -83,3 +85,5 @@
 - 2026-10-21，v0.12：新增D27图片与音乐素材要求，实际生成药铺场景和苏晚禾半身像参考；用户确认画风后再继续，未制作音乐或正式前端。
 
 - 2026-10-22，v0.13：核实 be.2 与远端 main 的真实能力，将世界整体运转设为首要目标；确认人物主动求助/邀约/竞争/结盟/隐瞒/利用均来自自身目标与经历。展开人格和目标执行、地区资源与组织循环、月度复盘与月内事件、模拟精度和无玩家参与样本；具体机制保留候选，本轮只更新方案。
+
+- 2026-10-22，v0.14：确认复杂连续因果、复合动机、机会性改策及包含玩家的个人关系图谱。展开相遇/观察/知情链、长期未解决动机、多人反应和相互干预；以报复牵动亲属、携丹访友途中被劫为候选贯通样本，结果不预写；新增社会图谱模块，保留玩家控制、既有时间与世界权威。
