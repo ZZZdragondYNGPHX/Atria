@@ -3,11 +3,11 @@ import path from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {createHash} from 'node:crypto';
 import {initialPeople,initialWorld,person as makePerson,NEW_PERSON_FIELDS} from '../source/rules/state.js';
-import {project} from '../source/rules/projection.js';
+import {project,intentProjection} from '../source/rules/projection.js';
 import {blankInfo,blankRelation} from '../source/rules/engine.js';
-import {packPerson,packWorld} from '../source/rules/records.js';
+import {packPerson,packWorld,MIND_FIELDS} from '../source/rules/records.js';
 import {PLAYER,CAST,PERIOD,KINDS,ITEMS} from '../source/content/catalog.js';
-import {S,I,B,O,A,person,world,info,view,action} from './schema.mjs';
+import {S,I,B,O,A,person,world,info,view,action,cause} from './schema.mjs';
 import {bridgeSource} from './interfaces.mjs';
 export const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const stable=(prefix,key)=>prefix+'_'+createHash('sha256').update('doupo-living-world:'+key).digest('hex').slice(0,32);
@@ -19,7 +19,7 @@ export async function compile(core){
  const version=JSON.parse(await fs.readFile(path.join(root,'package.json'),'utf8')).version;
  const pkg=stable('pkg','work'),pkgv=stable('pkgv',version),worldId=stable('world','douqi'),worldv=stable('worldv','opening'),entry=stable('entry','opening');
  const files=new Map();for(const dir of ['content','rules'])for(const name of await fs.readdir(path.join(root,'source',dir)))if(name.endsWith('.js'))files.set(dir+'/'+name,await fs.readFile(path.join(root,'source',dir,name)));
- const ps=O({actor:S(),alive:B,state:O(Object.fromEntries(Object.entries(person.properties).filter(([k])=>!['actor','alive'].includes(k))))}),ws=O({serial:I(),state:O(Object.fromEntries(Object.entries(world.properties).filter(([k])=>k!=='serial')))});
+ const body=O(Object.fromEntries(Object.entries(person.properties).filter(([k])=>!['actor','alive','health',...MIND_FIELDS].includes(k)))),mind=O(Object.fromEntries(MIND_FIELDS.map(k=>[k,person.properties[k]]))),ps=O({actor:S(),alive:B,state:O({body,mind,health:S(4096)})}),physical=O({actor:S(),alive:B,state:O({body,health:S(4096)})}),mental=O({mind}),ws=O({serial:I(),state:O(Object.fromEntries(Object.entries(world.properties).filter(([k])=>k!=='serial')))});
  const domains=[],automations=[];const people=initialPeople(),w=initialWorld(),v=project(w,people,[],{code:'creation_required',text:'请先完成新局身份绑定与角色创建。',spent:0,at:0,partial:false,steps:[]});
  function domain(id,schema,initial,rows=[]){
   const commands=[{id:'publish',argsSchema:schema,event:id+'.changed',assign:fields(schema,'args')}];
@@ -30,9 +30,12 @@ export async function compile(core){
  domain('dw_world',ws,packWorld(w),[{id:'main',value:packWorld(w)}]);
  domain('dw_chronology',O({calendar:O({year:I()}),era_id:S(),sequence:I()}),{calendar:{year:0},era_id:'opening',sequence:0},[{id:'main',value:{calendar:{year:0},era_id:'opening',sequence:0}}]);
  const pc=domain('dw_people',ps,packPerson(people[0].value),people.filter(r=>r.id==='player').map(r=>({id:r.id,value:packPerson(r.value)})));
+ pc.push({id:'body',argsSchema:physical,event:'person.changed',assign:{actor:F('args.actor'),alive:F('args.alive'),state:{body:fields(body,'args.state.body'),mind:fields(mind,'world.state.mind'),health:F('args.state.health')}}});
+ pc.push({id:'mind',argsSchema:mental,event:'person.cognition',assign:{state:{body:fields(body,'world.state.body'),mind:fields(mind,'args.mind'),health:F('world.state.health')}}});
  pc.push({id:'bind',argsSchema:O({actor:S()}),event:'person.bound',assign:{actor:F('args.actor')}});
- pc.push({id:'decide',argsSchema:O({choice:S(64,['refuse','help','share','follow','negotiate']),text:S(2048)}),event:'person.spoke',assign:{state:{...fields(ps.properties.state,'world.state'),choice:F('args.choice'),decision:F('args.text'),chat:''}}});
- domain('dw_relations',relation,blankRelation());domain('dw_information',info,blankInfo());domain('dw_public',O({screen:S(32768)}),{screen:JSON.stringify(v)},[{id:'main',value:{screen:JSON.stringify(v)}}]);
+ pc.push({id:'decide',argsSchema:O({choice:S(64,['refuse','help','share','follow','negotiate']),text:S(2048)}),event:'person.spoke',assign:{state:{body:{...fields(body,'world.state.body'),choice:F('args.choice'),decision:F('args.text'),chat:''},mind:fields(mind,'world.state.mind'),health:F('world.state.health')}}});
+ domain('dw_causes',cause,{key:'none',mode:'delta',kind:'none',at:0,updated:0,source:'',participants:[],before:[],after:[],facts:[],playerKnown:false,publicDetails:[]});
+ domain('dw_relations',relation,blankRelation());domain('dw_information',info,blankInfo());domain('dw_public',O({screen:S(32768),intent:S(8192)}),{screen:JSON.stringify(v),intent:intentProjection(v)},[{id:'main',value:{screen:JSON.stringify(v),intent:intentProjection(v)}}]);
  const taskRuntime={schemaVersion:1,slots:[{id:'narrative',requiredCapabilities:[]},{id:'npc',requiredCapabilities:[]}],tasks:[],turn:{policy:'authority-first',stages:[],narratorTaskId:'doupo.narrate'}};
  const resources=[],origin={scope:'package',packageId:pkg,packageVersionId:pkgv};
  function modelResources(id,body){
@@ -54,39 +57,40 @@ export async function compile(core){
  const contract={schemaVersion:1,capabilities:['authority-transaction','world-simulation','generation-budget','model-task','session-application','temporal','data-projection'].map(id=>({id,version:1,required:true})),dataResources:[],
  lifecycleRuntime:{schemaVersion:1,scopes:[{id:'session',kind:'session'}],domains,automations,clocks:[{id:'world',unit:'minute',initialTick:0}],advances:[{id:'advance',clockId:'world',maxTicks:Number.MAX_SAFE_INTEGER}],interactions:[],workflows:[],retention:{maxTaskResults:32,maxReceipts:256},history:{schemaVersion:1,clockId:'world',chronologyDomain:'dw_chronology',meaningfulDomains:['dw_world','dw_people','dw_information'],sources:[{id:'elapsed.year',domainId:'dw_chronology',recordId:'main',path:['calendar','year'],public:true,refs:['era:opening'],label:'开局后年序'},{id:'opportunity.ownership',domainId:'dw_world',recordId:'main',path:['state','unique'],public:false,refs:['location:mountain'],label:'机缘归属'}],hot:8,warm:24,cold:32,maxDurable:4096,maxBytes:2097152,checkpointTurns:64}},
  generationBudget:{schemaVersion:1,resolverAttempts:2,narratorAttempts:2,turnAttempts:4,backgroundAttempts:2,backgroundWindowTurns:4,backgroundPeriodTurns:20,backgroundPeriodAttempts:8,turnCounter:{domainId:'dw_world',recordId:'main',field:'serial'}},
- authorityRuntime:{schemaVersion:1,canonicalClockId:'world',intentObservation:{viewIds:['player'],maxItems:64,maxBytes:16384},policy:{maxReadGrants:16,maxWorldEvents:16,maxAppCommands:24,maxEffects:32,maxReceiptBytes:32768}},taskRuntime,
+ authorityRuntime:{schemaVersion:1,canonicalClockId:'world',intentObservation:{viewIds:['intent'],maxItems:64,maxBytes:16384},policy:{maxReadGrants:16,maxWorldEvents:16,maxAppCommands:24,maxEffects:32,maxReceiptBytes:32768}},taskRuntime,
  informationRuntime:{schemaVersion:1,actors:[{id:PLAYER,scopeId:'session',availability:{domainId:'dw_people',recordId:'player',field:'alive'}}],graphs:[],
- sources:[{id:'screen',kind:'application',semantic:'truth',scopeId:'session',domainId:'dw_public',fields:[['screen']]},
- {id:'self',kind:'application',semantic:'truth',scopeId:'session',domainId:'dw_people',actorField:'actor',fields:[...['name','role','plan','chat','injury','inventory','gold','rank','choice','decision','needitem','needqty'].map(k=>['state',k]),['state','condition','missing']]},
+ sources:[{id:'intent-screen',kind:'application',semantic:'truth',scopeId:'session',domainId:'dw_public',fields:[['intent']]},{id:'screen',kind:'application',semantic:'truth',scopeId:'session',domainId:'dw_public',fields:[['screen']]},
+ {id:'self',kind:'application',semantic:'truth',scopeId:'session',domainId:'dw_people',actorField:'actor',fields:[...['name','role','plan','chat','injury','inventory','gold','rank','decision','needitem','needqty'].map(k=>['state','body',k]),['state','mind'],['state','health'],...['gear','activity','control'].map(k=>['state','body',k])]},
  {id:'personal',kind:'application',semantic:'belief',scopeId:'session',domainId:'dw_information',actorField:'actor',statusField:'status',channelField:'channel',fields:['text','target','kind','at','source'].map(k=>[k])},
  {id:'relationships',kind:'application',semantic:'relationship',scopeId:'session',domainId:'dw_relations',actorField:'actor',statusField:'status',fields:['text','target','dimension','level','rationale'].map(k=>[k])}],
- views:[{id:'player',audience:'player',sources:['screen'],exposure:['display'],knowledge:false,memory:false,maxItems:64,maxCharacters:32768},
+ views:[{id:'intent',audience:'player',sources:['intent-screen'],exposure:['display'],knowledge:false,memory:false,maxItems:64,maxCharacters:8192},{id:'player',audience:'player',sources:['screen'],exposure:['display'],knowledge:false,memory:false,maxItems:64,maxCharacters:32768},
  {id:'narrator',audience:'narrator',sources:['screen'],exposure:['context'],knowledge:false,memory:false,maxItems:64,maxCharacters:32768},
  {id:'protagonist',audience:'actor',actorId:PLAYER,sources:['self','personal','relationships'],exposure:['context'],knowledge:false,memory:false,maxItems:64,maxCharacters:16384},
  {id:'person',audience:'actor',subjectScopeId:'session',subjectAvailability:{domainId:'dw_people',field:'alive'},sources:['self','personal','relationships'],exposure:['context'],knowledge:false,memory:false,maxItems:64,maxCharacters:16384}],
  narration:{mode:'separate',contextViewId:'narrator',disclosureViewId:'player'}},
  simulationRuntime:{schemaVersion:1,clockId:'world',policy:{maxSteps:1,maxDeliberations:1,maxAdvanceTicks:Number.MAX_SAFE_INTEGER},jobs:[{
  id:'person.reply',scopeId:'session',reads:[{id:'agenda',domainId:'dw_world',recordId:'main',fields:['state.agenda']}],
- subject:{id:F('reads.agenda.state.agenda.actor'),domainId:'dw_people',perspective:'person',fields:['state.chat']},enabled:'reads.subject.state.chat != ""',due:F('reads.agenda.state.agenda.due'),priority:0,relevance:'hot',action:{kind:'task',taskId:'doupo.npc',variantId:'default',input:{}}}]}};
+ subject:{id:F('reads.agenda.state.agenda.actor'),domainId:'dw_people',perspective:'person',fields:['state.body.chat','state.body.speechReady']},enabled:'reads.subject.state.body.chat != "" && reads.subject.state.body.speechReady == true',due:F('reads.agenda.state.agenda.due'),priority:0,relevance:'hot',action:{kind:'task',taskId:'doupo.npc',variantId:'default',input:{}}}]}};
  const grants=[{id:'game',domainId:'dw_world',recordId:'main',fields:['serial','state']},
- {id:'protagonist',domainId:'dw_people',recordId:'player',fields:['actor','alive','state']},
- {id:'people',domainId:'dw_people',collection:{maxItems:256,where:{field:'alive',equals:true}},fields:['actor','alive','state']},
+ ...[0,1,2].map(i=>({id:'people'+i,domainId:'dw_people',collection:{maxItems:i===0?33:32,ids:{read:'game',field:'state.peopleKeys'+i}},fields:['actor','alive','state.body']})),
+ {id:'population',domainId:'dw_people',collection:{maxItems:128,where:{field:'alive',equals:true}},fields:['alive']},
+ {id:'minds',domainId:'dw_people',collection:{maxItems:8,ids:{read:'game',field:'state.mindKeys'}},fields:['state.mind']},
  {id:'relations',domainId:'dw_relations',collection:{maxItems:256,recordHash:true,ids:{read:'game',field:'state.relationKeys'},where:{field:'target',equals:PLAYER},match:'any'},fields:['actor','target','dimension','level','status']},
  {id:'personal',domainId:'dw_information',collection:{maxItems:128,where:{field:'actor',equals:PLAYER}},fields:Object.keys(info.properties)}];
  const rowSchema=s=>O({id:S(),value:s});
- const output=O({world:ws,people:A(rowSchema(ps),8),relations:A(rowSchema(relation),4),information:A(rowSchema(info),8),view:S(32768),ticks:I(),admit:B,newPerson:rowSchema(O(Object.fromEntries(NEW_PERSON_FIELDS.map(key=>[key,person.properties[key]])))),personCount:I(0,8),relationCount:I(0,4),informationCount:I(0,8)});
+ const output=O({world:ws,people:A(rowSchema(physical),6),minds:A(rowSchema(mental),4),causes:A(rowSchema(cause),2),relations:A(rowSchema(relation),2),information:A(rowSchema(info),6),view:S(32768),intent:S(8192),ticks:I(),admit:B,newPerson:rowSchema(O(Object.fromEntries(NEW_PERSON_FIELDS.map(key=>[key,person.properties[key]])))),personCount:I(0,6),mindCount:I(0,4),causeCount:I(0,2),relationCount:I(0,2),informationCount:I(0,6)});
  const effects=[];
- for(const [key,id,schema,max,counter] of [['people','dw_people',ps,8,'personCount'],['information','dw_information',info,8,'informationCount'],['relations','dw_relations',relation,4,'relationCount']])for(let n=0;n<max;n++)effects.push({kind:'app.command',domainId:id,commandId:'publish',recordId:F('computed.'+key+'['+n+'].id'),args:C(key+'.'+n+'.value'),when:'computed.'+counter+' > '+n});
+ for(const [key,id,,max,counter,commandId] of [['people','dw_people',physical,6,'personCount','body'],['minds','dw_people',mental,4,'mindCount','mind'],['information','dw_information',info,6,'informationCount','publish'],['causes','dw_causes',cause,2,'causeCount','publish'],['relations','dw_relations',relation,2,'relationCount','publish']])for(let n=0;n<max;n++)effects.push({kind:'app.command',domainId:id,commandId,recordId:F('computed.'+key+'['+n+'].id'),args:C(key+'.'+n+'.value'),when:'computed.'+counter+' > '+n});
  // Numeric path references are typed by the computation's bounded array schema.
  const newcomerDefaults=packPerson(makePerson('none','未入场','wutan.inn','none',20,1,'unavailable'));
- effects.push({kind:'app.command',domainId:'dw_people',commandId:'publish',recordId:F('computed.newPerson.id'),args:{...newcomerDefaults,actor:F('subjects.newperson'),state:{...newcomerDefaults.state,...Object.fromEntries(NEW_PERSON_FIELDS.map(key=>[key,C('newPerson.value.'+key)]))}},when:'computed.admit'},
+ effects.push({kind:'app.command',domainId:'dw_people',commandId:'publish',recordId:F('computed.newPerson.id'),args:{...newcomerDefaults,actor:F('subjects.newperson'),state:{...newcomerDefaults.state,...Object.fromEntries(['body','mind'].map(group=>[group,{...newcomerDefaults.state[group],...Object.fromEntries(NEW_PERSON_FIELDS.filter(k=>MIND_FIELDS.includes(k)===(group==='mind')).map(key=>[key,C('newPerson.value.'+key)]))}]))}},when:'computed.admit'},
  {kind:'app.command',domainId:'dw_world',commandId:'publish',recordId:'main',args:C('world')},
- {kind:'app.command',domainId:'dw_public',commandId:'publish',recordId:'main',args:{screen:C('view')}},
+ {kind:'app.command',domainId:'dw_public',commandId:'publish',recordId:'main',args:{screen:C('view'),intent:C('intent')}},
  {kind:'app.command',domainId:'dw_chronology',commandId:'publish',recordId:'main',args:{sequence:F('computed.world.serial'),era_id:'opening',calendar:{year:F('floor(computed.world.state.time / 525600)')}}},
  {kind:'clock.advance',commandId:'advance',ticks:F('computed.ticks'),when:'computed.ticks > 0'});
  const logic={schemaVersion:3,commands:[],reducers:[],rules:[],interpretations:[],derivedPublications:[],transactions:[{
  id:'doupo.act',verb:'doupo_action',inputSchema:action,intent:{expose:true,description:'执行一个斗破沙盒动作或最多四个顺序步骤。kind 取 create/move/approach/travel/talk/work/promise/deliver/buy/sell/gift/allocate/investigate/gather/claim/train/learn/breakthrough/rest/refine/consume/attack/technique/guard/retreat/surrender/invite/confess/engage/marry/separate/conceive/care/teach/wait/continue/cancel/clarify。qty为数量或天数；target用可见人物key或地点ID；交易detail为当前quote整数文本；create时target为clan/apprentice/mercenary/wanderer，detail为native/transmigrator，text为姓名。对话text写原文。所有字符串未用为空，未用qty/x/y为0，未用steps为空数组。含糊或越界用clarify，text写澄清，不编造成功。'},
- reads:grants,validators:[],computation:{source:'rules/engine.js',outputSchema:output,invariantContext:['reads'],invariantReads:[{id:'game',fields:['state.cap','state.reservations']},{id:'people',fields:['alive','state.gold','state.inventory']}]},resolution:{kind:'deterministic',cases:[],fallback:'resolved'},
+ reads:grants,validators:[],computation:{source:'rules/engine.js',outputSchema:output,invariantContext:['reads'],invariantReads:[{id:'game',fields:['state.cap','state.reservations']},{id:'population',fields:['alive']}]},resolution:{kind:'deterministic',cases:[],fallback:'resolved'},
  subjects:[{id:'newperson',kind:'person',perspective:'person',localRef:{domainId:'dw_people',recordId:F('computed.newPerson.id')},when:'computed.admit'}],effects,derivedPublications:[],
  savePointBefore:false,receipt:{schema:O({outcome:S(64),label:S(128)}),projection:{outcome:F('resolution.outcome'),label:'实际结果见 player 投影中的 result。'},maxBytes:4096}}]};
  const choices=['travel','train','wait','rest','marry','conceive','attack','technique','work'];
@@ -101,6 +105,7 @@ export async function compile(core){
  // Initial Subjects are bound in three small native transactions; no guessed
  // Session-derived Subject IDs enter authored source or player input.
  for(let offset=0;offset<CAST.length;offset+=8){const ids=CAST.slice(offset,offset+8).map(c=>c[0]);logic.transactions.push({id:'doupo.bind'+offset/8,verb:'bind_people_'+offset/8,inputSchema:O({}),intent:{expose:false,description:'新局身份绑定，不推进时间。'},reads:[{id:'game',domainId:'dw_world',recordId:'main',fields:['state.created']}],validators:[{id:'new_session',formula:'reads.game.state.created == false',error:'只能初始化尚未创建的世界。'}],resolution:{kind:'deterministic',cases:[],fallback:'bound'},subjects:ids.map((id,n)=>({id:'p'+n,kind:'person',perspective:'person',localRef:{domainId:'dw_people',recordId:id}})),effects:ids.flatMap((id,n)=>[{kind:'app.command',domainId:'dw_people',commandId:'publish',recordId:id,args:{...packPerson(people.find(r=>r.id===id).value),actor:F('subjects.p'+n)}},{kind:'app.command',domainId:'dw_information',commandId:'publish',recordId:'background-'+id,args:{actor:F('subjects.p'+n),target:'',status:'known',channel:'direct_message',kind:['lu','bo'].includes(id)?'opportunity':'background',text:['lu','bo'].includes(id)?'近期收到药谷赤叶药材的线索，已经准备自行出发。':CAST.find(c=>c[0]===id)[7],at:0,source:'本人的生活经历与已有消息'}}]),derivedPublications:[],receipt:{schema:O({outcome:S()}),projection:{outcome:F('resolution.outcome')},maxBytes:1024}});}
+ logic.transactions.push({id:'doupo.event',verb:'doupo_event_detail',inputSchema:O({target:S(),page:I(0,100)}),intent:{expose:true,description:'读取本人已经获知的事件详情，不推进世界时间。target为screen.events中的事件id，或本人记录中cause:后面的事件id；page从0开始。不会读取未知或他人私有事件。'},reads:[{id:'screen',domainId:'dw_public',recordId:'main',fields:['screen']},{id:'cause',domainId:'dw_causes',collection:{maxItems:1,where:{field:'key',equals:F('args.target')}},fields:Object.keys(cause.properties)}],validators:[],computation:{source:'rules/event-query.js',outputSchema:O({screen:S(32768),intent:S(8192)}),invariantContext:[],invariantReads:[]},resolution:{kind:'deterministic',cases:[],fallback:'read'},subjects:[],effects:[{kind:'app.command',domainId:'dw_public',commandId:'publish',recordId:'main',args:{screen:C('screen'),intent:C('intent')}}],derivedPublications:[],receipt:{schema:O({outcome:S()}),projection:{outcome:F('resolution.outcome')},maxBytes:4096}});
  files.set('logic.json',Buffer.from(JSON.stringify(logic)));
  files.set('integration/bridge.json',Buffer.from(JSON.stringify(bridgeSource(logic,contract))));
  files.set('integration/screen.schema.json',Buffer.from(JSON.stringify(view)));

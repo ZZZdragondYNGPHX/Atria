@@ -31,7 +31,7 @@ export const ITEMS = [
 ];
 export const KINDS = ['create','move','approach','travel','talk','work','promise','deliver','buy','sell','gift','allocate',
  'investigate','gather','claim','train','learn','breakthrough','rest','refine','consume','attack','technique','guard','retreat','surrender',
- 'invite','confess','engage','marry','separate','conceive','care','treat','teach','wait','continue','cancel','clarify','browse','recall','condition'];
+ 'invite','confess','engage','marry','separate','conceive','care','treat','teach','wait','continue','cancel','clarify','browse','recall','condition','profile','equip','repair','release','message'];
 // Each person has a livelihood, finite resources, an origin and a preference.
 // Canon characters are not automatically romance candidates or omniscient.
 export const CAST = [
@@ -61,6 +61,13 @@ export const CAST = [
  ['shen','沈原','qingshan.guild','cultivator',43,15,true,'原创：佣兵教头，收徒取决于意愿与实际能力。'],
 ];
 export const YEAR = 365*24*60, DAY=24*60;
+// Authored equipment effects; these are not statistics asserted by the novel.
+export const GEAR={blade:{slot:'hand',attack:5,defense:0,durability:60,charges:0},armor:{slot:'body',attack:0,defense:4,durability:80,charges:0},ward:{slot:'charm',attack:0,defense:0,durability:0,charges:3}};
+export function initialGear(key,role){
+ if(!['guide','mercenary','guard','rival','gatherer'].includes(role))return [];
+ const types=role==='guard'?['blade','armor']:role==='rival'?['blade','ward']:['blade'];
+ return types.map(type=>({id:'gear-'+key+'-'+type,type,slot:GEAR[type].slot,equipped:true,durability:GEAR[type].durability,charges:GEAR[type].charges}));
+}
 export const POLICY = {liveCap:96,low:48,high:84,regionalCap:64,adultYears:18,gestationDays:270,immigrationDays:90};
 export const START_KNOWLEDGE = [
  {kind:'novel_memory',text:'你记得小说中的萧炎、古戒与后来的成长，但记忆不等于本局事实，也不向本土人物公开。',source:'玩家创建时选择穿越者'},

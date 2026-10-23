@@ -1,7 +1,10 @@
 # 版本化构建
 
-此目录保留历代 `.atria` 成品，禁止覆盖旧版本。
+本目录保留历代 `.atria`，禁止覆盖旧版本。均为后端验证构建，没有最终原生前端或美术；归档含随机盐/nonce，重建核对明文内容和版本。
 
-`doupo-living-world-0.1.0-be.2.atria` 是首批后端验证构建，包含规则和集成 Bridge/schema，没有最终原生前端或美术。需要 Atria `main@a9a914c66141daaf7ab9ae26119a506444d73698`。实际归档 55,261 bytes，SHA-256 `4992ccaefcda78de98ae04ae52c53f21b837c2a7750293b8dcd85decd38009cd`。
+| 版本 | 所需 Atria main | PackageVersion ID | Bytes | SHA-256 |
+| --- | --- | --- | --- | --- |
+| 0.1.0-be.3 | 4470cffb9f688d7e889eb94b42b1cb85966318c1 | pkgv_7ec58f3860f3d419bbf0763f363db4b8 | 103931 | 1a7b4a8ae350e5ade07acab52453827c7ba368fc08540852cdeba3164edbef83 |
+| 0.1.0-be.2 | a9a914c66141daaf7ab9ae26119a506444d73698 | pkgv_7c88452886975acbfe72d2af6c59b44f | 55261 | 4992ccaefcda78de98ae04ae52c53f21b837c2a7750293b8dcd85decd38009cd |
 
-PackageVersion ID：`pkgv_7c88452886975acbfe72d2af6c59b44f`。源、构建、安装、规则/恢复/负载与真实模型证据及边界见同一任务 Record；正式前端集成和完整浏览器验收不在本构建的完成声明内。归档带随机盐/nonce，重建核对明文内容与版本，不要求归档字节相同。
+be.3 增加真实身体/活动/器物/世界生活、个人图谱与因果查询，实际接口为 C3，使用新局，不声明 be.2 存档迁移。本归档已通过真实安装、新局、详情/事件查询、交易和恢复。完整验证与真实模型结果归 `docs:records/package/doupo-living-world.md`，不能用包构建替代服务或界面验收。

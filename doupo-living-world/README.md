@@ -1,37 +1,39 @@
 # 斗破苍穹·众生行 — Native 后端
 
-Task ID：`package/doupo-living-world`。`0.1.0-be.2` 是后端验证构建。正式前端与美术留给集成阶段；`design-reference/` 由另一个对话维护。设定与原创规则的区别见 [设定来源](source/content/SOURCES.md)。实施证据归 `docs:records/package/doupo-living-world.md`，实际接口归 `docs:plans/package/doupo-living-world/frontend-contract.md` 的 C2。
+Task ID：`package/doupo-living-world`。`0.1.0-be.3` 是世界自主运转深化后的后端验证构建，包含身体/伤势、真实活动与补给、器物损耗和维修、NPC成长/后台冲突、个人图谱/消息及因果事件查询。正式前端与美术由后续集成负责；`design-reference/` 由另一个对话维护。设定来源见 [SOURCES](source/content/SOURCES.md)。当前实际接口为 `docs:plans/package/doupo-living-world/frontend-contract.md` 的 C3，实施证据归同一 Record。
 
 ```sh
-node tools/build.mjs --core /path/to/Atria --out releases/doupo-living-world-0.1.0-be.2.atria
+node tools/build.mjs --core /path/to/Atria --out releases/doupo-living-world-0.1.0-be.3.atria
 ```
 
-需要包含 `feat/doupo-native-authority` 扩展的 Atria：有界 collection grants、computed 数组引用、真实 anchor、invariantContext、Subject 评价和确定性 Bridge 动作。实际集成 HEAD 见 Record。构建直接调用 Native 容器构建器；随机盐和 nonce 使归档不逐字节相同，重建核对明文内容与 Package 版本。`--out` 独占创建，不覆盖历史归档。
+需要 Atria `main@4470cffb9f688d7e889eb94b42b1cb85966318c1`：保留既有 Native Authority/Subject/Information/Bridge 扩展，并支持有界计算输出组合、显式 invariant 读取预算和计算输入组合预算。单值、总读取、CPU、堆和 effects 限额继续生效。归档使用随机盐/nonce，重建核对明文与版本；`--out` 独占创建，不覆盖历史版本。
 
-载入顺序：安装并授予 generation → 创建 Session → `experience.ready` → `bind0/1/2` → `act` 创建角色。初始化取得真实 Subject，不在前端推算身份。规则复用 Native Session、Domain、Clock、Information、Task、History、SavePoint/Branch。
+载入顺序：安装并授予 generation → 创建 Session → `experience.ready` → `bind0/1/2` → `act` 创建角色。Subject 由 Native 初始化绑定，前端不得推算身份。本版 Domain 结构较 be.2 发生变化，使用新局，不声明旧存档迁移。
 
-容器内 `integration/bridge.json` 是正式前端可引用的作者 Bridge 声明，须经 Native frontend compiler 编译；`integration/screen.schema.json` 是玩家 screen 的闭合 schema。
+容器内 `integration/bridge.json` 是需经过 Native frontend compiler 编译的作者声明；`integration/screen.schema.json` 为公开 screen 的闭合 schema。只读 `dw_public`，禁止向前端发送人物 Domain 或 NPC 个人 view。
 
 | Binding | 输入 | 行为 |
 | --- | --- | --- |
-| `screen` | `{}` | 只读 dw_public，数组中 main.value.screen 为 JSON 字符串 |
-| `act` / `choice` / `plan` | 对应 transaction schema | 普通 / 重大 / 1–4 步复合行动，经过生成宿主 |
-| `bind0` / `bind1` / `bind2` | `{}` | 新局初始化，不调用模型 |
-| `continue` / `cancel` | `{}` | 结算或停止剩余活动，不调用模型 |
-| `acknowledge` | `{target:人物key}` | 接纳已完成的 NPC 回应，不调用模型 |
-| `browse` / `clues` | `{qty:从0起的页码}` | 已知人物12条/消息摘要8条一页，不推进时间 |
-| `recall` | `{target:消息id}` | result.text 为本人已知消息全文，拒绝他人或未知记录，不推进时间 |
+| screen | {} | 数组中 main.value.screen 为 JSON 字符串；同条 intent 为有界公开摘要 |
+| act / choice / plan | 对应 transaction schema | 普通 / 重大 / 1–4步复合动作，通过生成宿主 |
+| bind0 / bind1 / bind2 | {} | 新局身份绑定，不调用模型 |
+| continue / cancel | {} | 推进或停止活动；保留已发生的时间、物资和后果 |
+| acknowledge | {target:人物key} | 接纳 NPC 已完成回应，不调用模型 |
+| browse / clues | {qty:从0起的页码} | 人物12条、线索摘要8条一页，不推进时间 |
+| recall | {target:消息id} | 本人已知记录全文，不推进时间 |
+| condition / profile | {} | 更新人物详情；读取 screen 的结构化字段，不解析 result.text 为详情 JSON |
+| event | {target:事件id,page:从0起的页码} | 本人已知事件详情；只更新公开回执，不改变物质状态或推进时间 |
 
-规则输入所有字段必填：`{kind,target,item,qty,x,y,detail,text,steps}`；未用字符串填空串、数字填0、steps填[]。`travel/train/wait/rest/marry/conceive/attack/technique/work` 使用 doupo.choice，其他单步使用 doupo.act。复合使用 doupo.plan、kind=plan，steps 每项 `{kind,target,item,qty,x,y,detail}`。创建示例：`{kind:"create",target:"apprentice",item:"female",qty:0,x:0,y:0,detail:"transmigrator",text:"云禾",steps:[]}`。交易 detail 使用当前 quotes.quote 的整数文本。
+所有规则输入字段必填：`{kind,target,item,qty,x,y,detail,text,steps}`；未用字符串为空、数字为0、steps为[]。`travel/train/wait/rest/marry/conceive/attack/technique/work` 使用 doupo.choice，其余单步使用 doupo.act；复合使用 doupo.plan、kind=plan，steps最多四项 `{kind,target,item,qty,x,y,detail}`。创建例：`{kind:"create",target:"apprentice",item:"female",qty:0,x:0,y:0,detail:"transmigrator",text:"云禾",steps:[]}`。交易 detail 为当前 quote 整数文本。
 
-Bridge 成功返回 receipt，公开 payload 为{}，随后重读 screen。携带实际 epoch/revision/idempotencyKey；重试使用原 key，读档后重开 Bridge 并清理旧目标。结构/CAS/scope 错误由 Native 拒绝；玩法拒绝通常提交 result.code/text。
+新操作：`treat` 的 target 为本人或近处病人，detail 为伤处id，需要能接诊的医者、两份药草、十二金币；`equip` 的 target 为自有器物id，detail=remove 时卸下；`repair` 需要工匠、一份药草和六金币，原器物在维修期间不可生效；`message` 使用本人已知地址寄信，text为正文；`release` 只能释放自己实际控制且在身边的人。普通药物不修复缺肢或未处置骨折。
 
-operation.kind 非空时调用 continue 并重读；appraise 是个人评价，不推进时间。耗时单位分钟。取消保留已走路径、已耗时和物资。复合 result.steps 保存各段结果，partial 表示后段失败或取消前已有成功部分。
+screen 的 condition/gear/control/social/goals 为玩家本人数据；people 仅提供当前实际可见或旧观察，含 signs/activity/carrying/observedAt，不含他人私有伤处、物品、目标或图谱。last_known 是旧记录，不能用作实时定位。messages 是已知信件摘要；events 是最近16个已知事件入口。event 的 result.text 是带 details/page/pages 的 JSON；未知与私有事件统一拒绝。更早的合法事件可按已保存 id 重读，不因目录滚动删除事实记录。
 
-talk 提交后由宿主执行 doupo.npc 后台任务；完成后以原人物 key 调用 acknowledge，立即展示 result.text，然后继续评价。完整回应可经 clues/recall 重读。任务取消不撤回已说出的话；读档拒绝旧生成结果。玩家只读 public screen；NPC 使用真实 Subject 个人 view。远方人物 last_known 是已知旧档案，deceased 是已获知死亡，均不提供秘密实时定位。
+operation.kind 非空时 continue 并重读，appraise 不耗时；耗时单位分钟。Bridge 使用真实 epoch/revision/idempotencyKey，成功后重读 screen；恢复后重开 Bridge、清除旧目标。玩法拒绝见 result.code/text，结构/CAS/权限拒绝由 Native 报错。talk 等待已有回应时不覆盖原请求，cancel 可结束等候；已说出的话不撤销，取消生成或读档后拒绝迟到结果。
 
-模型由宿主 Runtime Route 提供：role.intent_resolver 使用 doupo.resolve；narrative 槽使用 doupo.narrate；npc 槽使用 doupo.npc。需要工具调用和结构化 JSON 输出。endpoint、密钥和调用日志在仓库外，GGchan 停用。确定性执行模式由安装包声明，调用者不能临时选择。
+NPC 使用真实 Subject 的个人 view，规划由规则根据自身人格、目标、动机与可见线索执行，模型负责有界回应/意向。模型不写物品、伤亡或婚约。宿主路线：role.intent_resolver → doupo.resolve，narrative → doupo.narrate，npc → doupo.npc，需要工具调用与结构化 JSON。连接/凭证仅保存在仓库外；GGchan 停用。本轮真实服务结果见 Record，不能将模拟传输当模型质量证明。
 
-首批内容为四出身、两类来源、男女创建、三地区十二场所、24名初始NPC；境界开放至斗师，炼药为基础疗伤散。人口默认96，出生预留计入上限；有地区迁居、NPC家庭、生计和机缘竞争。证据区分：50年纯规则模拟、96人真实脚本沙箱分页、真实 Native Session 家庭出生/恢复与并发 Bridge；不据此宣称96人完整宿主长期运行或无限历史容量。
+首批三地区十二场所、24名初始NPC，人口上限96（含出生预留）。本轮证据包括60日不同分批的人物结果一致、420日纯规则演化、真实 Native 的治疗/冲突/维修/控制/事件查询与完整恢复，以及96名NPC成熟数据的早期推进和74人同场分页。它们不证明96人跨月完整宿主性能、无限历史、全部候选社会策略或最终界面已完成。
 
-容量边界：个人信息 grant 128条、关系 grant 256条、家庭48、约定64，Domain最多4096条，History4096项/2MiB；超限拒绝，不静默丢人物或历史。扩大世代容量需要追加设计与验证。正式 UI、Canvas/Controller、宿主任务等待呈现和真实浏览器验收留给集成。验证实现、请求响应、fixture、缓存和机器配置不提交。
+边界：伤处8、器物4、当前个人图谱16、目标/动机各6、热信件16、热冲突4；个人信息grant128、关系grant256、家庭48、约定64、Domain4096条/1MiB、History4096项/2MiB。重要因果保留有界稀疏前后变化及来源，常规生活不为每次进食创建独立事实记录。容量超限拒绝；未承诺无限世代。继承仍为简化直接转移；完整玩家战斗按D33后续实施。多尺度聚合与96人长期宿主成本仍需深化，正式UI/Canvas/Controller、浏览器与美术不在本归档内。测试、fixture、日志、缓存和机器配置不提交。
