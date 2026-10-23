@@ -2,7 +2,7 @@
 
 - Task ID: `package/doupo-living-world`
 - Primary Workspace: `package`；本 Bundle 位于 `docs`；必要的产品修补使用独立产品任务。
-- Status: v0.16 — 将世界行为与后果逐项对应到状态、规则、认知、界面和恢复；补充身体/伤势及功能承载缺口。从be.2/C2继续W0–W5，新机制尚未实现；完整玩家战斗后续独立实施。
+- Status: v0.16 — 将世界行为与后果逐项对应到状态、规则、认知、界面和恢复；补充身体/伤势及功能承载缺口。从be.2/C2继续W0–W5，W0 已有未验收身体/伤势代码快照；完整玩家战斗后续独立实施。
 - Updated: 2026-10-22
 - Source baseline: 已核对远端 `main@a9a914c66141daaf7ab9ae26119a506444d73698` 与 package `914c624c950dec06c181960d32b2d7f337c31abf`（规则交付提交 `38007d02d`）；实施前重新核对实际 Git，本地旧 main 不代表远端现状。
 - Record: [累计记录](../../../records/package/doupo-living-world.md)
@@ -28,7 +28,7 @@
 - Package 0.1.0-be.2 已有版本化后端验证归档和 integration Bridge/schema。原生接纳扩展已集成 main@a9a914c66141daaf7ab9ae26119a506444d73698，package 资产提交为38007d02d08f70d59e6ebbe0ad612f2d0570e463。
 - 共用契约 C2 覆盖 F01–F12，区分纯规则长测、96人脚本沙箱、真实宿主恢复/并发与真实模型证据，不承诺无限历史容量或96人完整宿主长期负载。
 - 正式前端与浏览器流程仍待用户选择集成执行者；图片与音乐素材按D27制作，当前先提供两张画风参考，确认前不批量生成。
-- 开工许可和分工保持，不重复询问decisions中的确认，不导入旧doupo-open-world确认。旧换设备快照已消费并删除，无新HANDOFF。
+- 开工许可和分工保持，不重复询问decisions中的确认，不导入旧doupo-open-world确认。旧换设备快照已消费；2026-10-22按用户换设备请求创建[当前HANDOFF](../../../HANDOFF.md)，记录W0进行中代码与设计文档快照。
 
 ## 新对话开工入口
 

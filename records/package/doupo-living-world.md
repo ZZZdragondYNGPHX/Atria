@@ -340,3 +340,14 @@ C2契约与容器内 integration/bridge.json、integration/screen.schema.json �
 
 - 21个Plan/Record文件的279处本地文件/标题链接检查通过；本任务差异空白检查通过。其它任务HTML仍为67行新增/35行删除，未纳入本次提交范围；package及Atria工作区无本次实现变更。
 - 没有新增构建、安装、运行测试、真实宿主/模型API或浏览器验证。源码证据仅支持缺口定位和依赖设计，不能宣称v0.16的数据结构、伤势规则、详情接口或目标规模已技术验证通过。下一次实施按W0的实际切片验证，再回写真实契约与结果。
+
+
+## 换设备交接 — v0.16 / W0 进行中快照
+
+- Date：2026-10-22；用户明确要求推送 Task ID `package/doupo-living-world` 并换设备继续，按治理 §7 创建当前 HANDOFF。docs 起点 `5345bdc8012a6a54c86fd2b4c3bc023e954937bf`。
+- 实际发现 package 存在尚未记录的 W0 身体/伤势实现改动；已原样保存为 `package@09eec362e`，包含 condition 模块、人物状态/schema、能力限制、治疗/详情动作、NPC 调度及观察投影接线。本轮只保存既有改动，没有继续实现或宣布 W0 完成。
+- 前端隔离工作树的两份设计文档已保存为 `feat/doupo-living-world-design-reference@a850f9f88`。该分支基线较旧，继续作为独立设计资料使用；未合并至 package。文档引用的 `doupo-visual-direction.html` 实际不存在，两份文档采用较早 v0.9 基线，尚不能作为完整或已对齐 v0.16 的前端交付。
+- 执行代理自查：package 七个改动文件通过 Node 语法检查，Git 空白检查通过；以 Atria `main@a9a914c66` 执行包构建成功，内存归档为 60185 bytes。没有输出/覆盖发布文件，没有新增运行、恢复、宿主、模型或浏览器验证，不将打包成功描述为机制验收。
+- 现有 `0.1.0-be.2` 版本号未修改，历史 release 保留；W0 快照与已发布 be.2 内容不同，后续正式发布前须更新版本与真实接口/验证记录，不能覆盖已有版本归档。
+- 本轮远端存储目标为 `package`、`docs`、`feat/doupo-living-world-design-reference`；实际同步证据以最终远端 ref 核对为准。其它任务 HTML 未提交改动保留，不纳入提交；未上传测试代码、测试配置或专用测试资产。
+- 下一步从 [HANDOFF](../../HANDOFF.md) 核实真实 Git，读取 Plan index 与 W0 所需模块，检查快照的完整性及运行/恢复行为后继续 W0–W5；不把本次换设备请求解释为新机制交付。
