@@ -2,7 +2,9 @@
 
 ## 证据范围
 
-源码基线为 `main@f9a8a83827c8b3662c44e67e95c9ed84118baadd`。以下是源码与声明契约证据；未进行目标游戏负载压测、真实模型游戏质量测试或完整浏览器验证。不将未合入方案视为现有能力，不以声明上限推断可流畅运行规模。
+历史首轮源码基线为 `main@f9a8a83827c8b3662c44e67e95c9ed84118baadd`；原有行号和调查时的待验证结论保留其时间范围。2026-10-22 已核对远端 `main@a9a914c66141daaf7ab9ae26119a506444d73698` 与 package `914c624c9`（规则交付提交 `38007d02d`）。be.2 实际验证以 [Record](../../../records/package/doupo-living-world.md) 的 BE2–BE6 为准；本轮新增的是完整调用链阅读和纯规则内存试算，没有重跑真实宿主、模型或浏览器。
+
+当前人物与调度缺口见 [v0.13 代码现状](#v013-代码现状与边界)，新增外部依据见 [世界自主性研究](#v013-世界自主性的一手研究)。旧文中的 manifest 目标限制和确定性 Bridge 缺口已由后续框架提交解决；新方案不因复用这些能力而被视为已实现，也不以声明上限推断容量。
 
 2026-10-20 续接核实：最新 `origin/docs@5e215cbef` 包含指定 `5e215cbe`；fetch 后 `origin/main` 与上述源码基线一致。按用户追加要求，本机 main 已快进到同一提交且干净，其它工作树改动保留。本轮仅重读相关源码，没有新增游戏运行证据。
 
@@ -12,7 +14,7 @@
 
 Wiki/百科中的既有设定、游戏为可玩性设计的公式与规则、实际游玩生成的历史分别记录。后续调查从机制结构与资格条件开始，不将未知倍率、寿元或伤害公式擅自归为小说规定。
 
-## Atria 可复用能力
+## Atria 可复用能力 — 首轮历史基线
 
 | 能力 | 主要证据与用途 |
 | --- | --- |
@@ -49,7 +51,7 @@ World、Knowledge、Information、Cognition、Memory 与事务具有不同职责
 
 依据：`src/native/session-core.js:990,412,420,512,763`、`src/native/cognition-authority.js:10`、`src/native/memory-authority.js:150,280`。
 
-NativeMemoryAuthority 的图与来源记录也进入 Session.states，但跨 Session 的长期 MemoryGraph、外部存储或 Continuity/Realm 账本不因此自动回滚。后台迟到结果已有修订与时效约束；保存/恢复期间的运行任务、恢复后的待办与个人记忆可见性仍需贯通验证。游戏“恢复整个世界”的目标已由 D18 确认，需要在明确持久化边界后实现并证明，尚非已验证能力。
+NativeMemoryAuthority 的图与来源记录也进入 Session.states，但跨 Session 的长期 MemoryGraph、外部存储或 Continuity/Realm 账本不因此自动回滚。第五轮当时尚未贯通家庭与迟到任务；be.2 的后续恢复样本见 Record。新增目标、组织项目、货运和在途消息仍需纳入恢复边界，不能因旧样本已通过就推定新结构自动通过。
 
 ## NPC 关系与动态人物 — 第六轮补查
 
@@ -57,7 +59,7 @@ NativeMemoryAuthority 的图与来源记录也进入 Session.states，但跨 Ses
 
 依据：`public/shared/native-appraisal-contract.js:33-39`、`src/native/appraisal-authority.js:71-103`、`src/native/cognition-authority.js:109`。
 
-已直接核实 `src/native/appraisal-authority.js:86-87`：该模型评价接纳路径要求关系 target 出现在 `base.manifest.actors`，同时要求引用证据包含目标。仅有动态 Subject 身份、未列入 manifest Actor 的目标，不能直接假定该路径能够接纳。动态生成 NPC 与后续世代人物的关系评价需做原型验证；如目标确实被此边界阻碍，扩展现有身份与评价权威，不另建一套关系真相或靠自由叙事绕过结算。
+第六轮历史基线中，`src/native/appraisal-authority.js:86-87` 要求 target 出现在 `base.manifest.actors`，因此动态人物需要原型验证。该限制后来已在斗破接纳扩展中复现并修补，a9 主线复用 `hasPerspectiveIdentity` 接纳真实 Subject，保留未知身份拒绝和来源检查；实际结果见 Record。它不再是当前未修复阻碍。
 
 关系维度按人物与目标独立存储，规模验证应同时考虑接触图和记录数量。建议按真实接触与已发生关系建立稀疏数据，而非给所有人物两两预建关系；具体保留与聚合策略须维持来源、个人视角和长期后果。
 
@@ -164,10 +166,10 @@ NativeMemoryAuthority 的图与来源记录也进入 Session.states，但跨 Ses
 
 ## D4 验证安排与修补边界
 
-具体验证样本、通过依据及实施先后集中在 [制作稿](production-plan.md#框架验证与必要修补) 的 V1–V7，负载与性能候选见 [运行模块](content-and-runtime.md#制作负载与性能目标)。本节只补充源码证据与判断边界。
+历史 D4 验证样本为 V1–V7；v0.13 新增 V8–V10，均集中在 [制作稿](production-plan.md#框架验证与必要修补)，负载与性能候选见 [运行模块](content-and-runtime.md#制作负载与性能目标)。本节前两项记录 D4 当时的证据，不覆盖已完成的 be.2 验证。
 
-- 动态关系：在最新远端源码再次核实 `appraisal-authority.js:86-87` 的 manifest Actor 目标检查仍存在；Information 的人物校验已有 `hasPerspectiveIdentity` 路径，不应把所有动态身份能力都误判为缺失。优先验证身份、个人视角、关系评价接纳的整个链路，定位真实阻断位置。
-- 世界恢复：再次读取 `session-core.js` 的 SavePoint/restore 路径，精确 revision 与派生分支仍是可复用基础；未实际验证本局家庭、待办、记忆或迟到请求，不能把代码路径存在当作全部通过。
+- 动态关系（D4历史）：当时 manifest Actor 目标检查仍存在；后来已沿 Information 的人物身份路径补齐，当前依据见下文。
+- 世界恢复（D4历史）：当时仅阅读 SavePoint/restore；后来 be.2 已有家庭出生/恢复与迟到任务样本，新目标和活动结构仍须扩展验证。
 - 长时推进：job 模板与单次 steps 是工作预算，游戏应尽量用复用模板及有界事件推进；长跳时在多批提交之间仍需保持因果、可恢复与进度反馈。若预算确实阻断必要事件吞吐，再据测量调整既有能力，而非先增加声明上限。
 - 长期状态：Information 按 source 计入记录数并在遍历时校验；稀疏关系、必要事件摘要与合理保留有助于规模，但不能通过删活跃证据、婚姻/亲属或换 Domain 掩盖预算问题。索引、投影、clone 与保留策略是否需改，以 V4 的真实增长数据判断。
 - 运行身份：P0 要核实正在连接的实例、源码构建和 Package 版本；本轮没有建立该运行身份链，没有调用真实 Provider 或使用 Atria 工具报告游戏验证。
@@ -175,3 +177,47 @@ NativeMemoryAuthority 的图与来源记录也进入 Session.states，但跨 Ses
 验证实现与专用样本只在本地保留；提交 Record 保存环境中立的结果、实际版本与限制，不提交临时请求/响应、凭证或专用测试资产。普通实现选择不产生新审批，修补范围遵循 D06 与用户正式启动边界。
 
 v0.8 补充：用户确认的 NPC 人口上限是游戏世界规则，现有 Subject definitions、Information 扫描与 Simulation 工作预算属于不同技术约束，不能直接把其中任一数字当作人口上限。V7 需验证新增/死亡/迁徙的计数语义、并发接纳、事件平衡的长期效果，以及人口受限后历史和关系记录仍持续增长的负载；本轮未执行这些运行样本。
+
+## v0.13 代码现状与边界
+
+以下行号相对 package `914c624c9`，是完整 NPC 调用链调查的结果；文档/README 的能力措辞不能代替代码执行路径。
+
+| 主题 | 源码证据 | 当前含义 |
+| --- | --- | --- |
+| 人物与人格 | `source/rules/state.js:12–19`、`source/content/catalog.js:37–61` | 背景初始存入 plan，随后可被通用活动覆写；没有结构化人格/价值/持续目标记录 |
+| 生活与成长 | `source/rules/engine.js:67–131` | 按经过日数结算收入、进食、经验、恢复；有实际照护、交往、家庭与迁居分支，主要是固定条件规则 |
+| 月度与事件 | `engine.js:129–188,286–299` | 每人错峰滚动30日，旅行到达/死亡等提前；一次最多处理一位到期居民，continue清理，非统一月度批处理 |
+| 旅行与竞争 | `engine.js:94–100,127–130,313–318` | NPC采药24h/迁居3日为专用规则，未走玩家ROUTES；采到药后的“准备返镇”无返程活动；hasClue由角色类型判断 |
+| 生活补给 | `engine.js:67–78,118–123` | 金币结算餐食不补库存干粮；无自主买粮分支，却有出行/成家的干粮条件，存在自然闭环断点 |
+| 模型回应 | `tools/build.mjs:34,53,60–70`、`engine.js:194–215` | person.reply仅为收到chat的人物生成choice/text；acknowledge主要记录对话/少量亲近，follow/help不自动创建真实活动 |
+| 玩家多步计划 | `engine.js:403–415` | w.plan是玩家至多四步操作队列；planRelations是关系读取键准备，均非NPC长期规划器 |
+| 可见与保存 | `source/rules/projection.js:3–15`、build的Native Domain/History声明 | 同地状态和本人旧观察分开；新目标/组织/货运/在途信息仍需新增权威数据并验证完整恢复 |
+
+纯规则内存试算：初始人物、占位actor和全量关系输入下，3日经历39次compute/continue，观察到两人到药谷、薄尧得赤叶和苏晚禾实际照护。另一300日样本仅给玩家充足金币以隔离玩家生存干扰，418次计算后29名NPC、无新家庭；部分人物关系达标但干粮为0，竞争者仍留药谷。这些是断点的局部证据，不验证真实Subject授权、宿主开销、模型质量或所有开局。
+
+框架已核实为 a9，而非本机旧 main：
+
+- a9 直接继承 6e44 接纳扩展；相对 f9 主线为两提交、11文件。动态 Subject 评价、有界集合/ID筛选、computed引用、真实anchor与invariant输入缩减已集成。[固定提交](https://github.com/ZZZdragondYNGPHX/Atria/commit/a9a914c66141daaf7ab9ae26119a506444d73698)
+- `src/native/frontend/host-bridge.js:169–179`、`src/native/session-core.js:711–741` 直接提交安装包声明的确定性动作，复用CAS/幂等/分支/保存，不运行resolver/narrator；普通act仍经生成宿主。package的continue/cancel等已使用该声明。
+- `src/native/simulation-authority.js:43–93` 是游戏世界时钟调度；先处理到期确定性job，再有限接纳模型任务。任务队列的并发scheduler不是月度生活规则。
+- hot/warm/cold主要影响模型任务接纳，不自动提供NPC近中远完整模拟层次。privateReads仍先按原记录数计费并遍历，再筛选，返回有界不等于扫描成本已消失。
+
+be.2既有50年纯规则、96人QuickJS分页、真实宿主家庭/恢复、Bridge与模型样本各有不同边界，统一保留在Record。本轮不重用这些数字证明新世界循环通过，不将源码已集成等同于当前运行实例身份已确认。
+
+## v0.13 世界自主性的一手研究
+
+以下是设计依据；最后一列是本项目推导，尚未实现，也不把他作规模当作本项目容量。
+
+| 方法或案例 | 核实的一手资料 | 对本项目的候选应用与边界 |
+| --- | --- | --- |
+| Utility与行动惯性 | [Graham原作者章节](https://www.gameaipro.com/GameAIPro/GameAIPro_Chapter09_An_Introduction_to_Utility_Theory.pdf)讨论性格/处境改变效用，以及相近评分造成摇摆、承诺与冷却的处理 | 人格影响真实取舍，保留长期目标与当前承诺；评分不能单独替代行动链 |
+| GOAP与执行 | [Orkin GDC原论文镜像](https://www.gamedevs.org/uploads/three-states-plan-ai-of-fear.pdf)以条件/效果/代价规划，明确移动等效果需要执行时间，失败知识支持重规划 | 有限近期计划连接真实活动，受阻后改策；不承诺每人每步全量搜索 |
+| 离散事件与区间计算 | [Graham事件模拟章节](https://www.gameaipro.com/GameAIProOnlineEdition2021/GameAIProOnlineEdition2021_Chapter02_Efficient_Event_Based_Simulations.pdf)区分时间切片与减少总工作；[SimPy官方](https://simpy.readthedocs.io/en/latest/topical_guides/time_and_scheduling.html)解释按时刻和稳定事件ID排序 | 月内事件先后结算，稳定活动按阈值唤醒；不因月底批量执行省略中途因果 |
+| 生成式人物与裁定分工 | [Generative Agents](https://arxiv.org/abs/2304.03442)研究记忆、反思和规划；[Concordia官方](https://github.com/google-deepmind/concordia)以agent提出行动、环境侧判断效果 | 模型用于有限主观判断和表达，物品/位置/生死由既有规则裁定；小型实验不能证明大陆长期规模 |
+| 真实位置与旅行 | [CK3官方旅行开发日志](https://store.steampowered.com/news/posts/?appids=1158310&enddate=1679405424&feed=steam_community_announcements)明确AI也赴活动旅行，速度、安全、地区危险影响旅程 | 出行占用时间和交互，路线变化可使计划失效；该日志不能证明所有日常均被完整模拟 |
+| 地理、文明与历史 | [Bay12官方DF Talk 4](https://www.bay12games.com/media/df_talk_4_transcript.html)描述地理/生物群系影响文明落点和历史，并提醒回填未发生往事会造成不一致 | 地区条件先约束生计与组织，展示和回忆引用已有历史；历史访谈中未来构想不算现行功能 |
+| 生态和资源循环的失败教训 | [UO原首席设计师澄清](https://www.raphkoster.com/games/snippets/did-players-destroy-the-uo-ecology/)与[资源系统原文](https://www.raphkoster.com/2006/06/04/uos-resource-system-part-2/)指出搜索/寻路成本及封闭资源池被制品囤积锁死的问题 | 再生、有限存量、外部来源和加工分开；地区生态可聚合，不能把玩家仓库当全世界再生的唯一资源银行 |
+| 组织按当前处境经营 | [Stellaris官方开发日志227](https://store.steampowered.com/news/posts/?appids=281990&enddate=1635418905&feed=steam_community_announcements)说明阶段模板不足，改用依条件启停的子计划，并处理基础收入赤字连锁 | 受损组织先恢复生活/维护与供给，再扩张；不据此声称该作所有货物都实体运输 |
+| 叙事导演边界 | [RimWorld官网](https://rimworldgame.com/)明确导演为玩家调度事件牌和节奏 | 可借鉴展示与节奏，但本项目事件须有条件和来源；不能把随机袭击倒写成此前已经筹划执行的组织历史 |
+
+由这些材料推导：先用首批三地的一条完整供需/旅行/社会循环启动世界；事件区分自然过程、主体行动及明确建模的外部冲击；叙事只解释与传播实际结果。健康运行可以长期平稳，后续灾变或争斗必须有成因，不用新闻数量衡量世界自主性。

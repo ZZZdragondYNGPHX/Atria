@@ -2,14 +2,14 @@
 
 - Task ID: `package/doupo-living-world`
 - Primary Workspace: `package`；本 Bundle 位于 `docs`；必要的产品修补使用独立产品任务。
-- Status: v0.12 — 后端be.2/C2已交付；图片与音乐素材范围已补充，首轮参考图等待用户确认。
-- Updated: 2026-10-21
-- Source baseline: `main@f9a8a83827c8b3662c44e67e95c9ed84118baadd`；实施前重新核对实际 Git。
+- Status: v0.13 — 以世界整体自主运转为首要目标深化方案；be.2/C2 为已有实现基线，新机制尚未实施。
+- Updated: 2026-10-22
+- Source baseline: 已核对远端 `main@a9a914c66141daaf7ab9ae26119a506444d73698` 与 package `914c624c950dec06c181960d32b2d7f337c31abf`（规则交付提交 `38007d02d`）；实施前重新核对实际 Git，本地旧 main 不代表远端现状。
 - Record: [累计记录](../../../records/package/doupo-living-world.md)
 
 ## 目标与确认边界
 
-基于 Atria 制作《斗破苍穹》开放沙盒 RPG。采用地图、场所、人物与功能界面，自由文字贯穿交互；先围绕自创角色设计，设定以小说为准。世界设计优先服务 NPC 自主生活与长期时代演化。
+基于 Atria 制作《斗破苍穹》开放沙盒 RPG。采用地图、场所、人物与功能界面，自由文字贯穿交互；先围绕自创角色设计，设定以小说为准。首要目标是让整个世界在游戏时间内自主运转：人物追求目标，家庭与组织协调成员，资源和生计产生需求，旅行与消息连接地区，结果继续影响后续选择。NPC 自主生活与长期时代演化由这些相互作用形成。
 
 允许自由改写原著人物命运、机缘归属和历史，采用开放沙盒方向，不将原著事件结果当作必须维护的轨道。小说设定与玩家造成的新历史需要分开表达。
 
@@ -17,11 +17,13 @@
 
 ## 当前状态
 
+- 本轮先更新方案再讨论。D28 确认源于自身目标和经历的主动社会行为，D29 确认世界整体运转优先；新增 NPC 能动性与世界系统模块，并将运行定义、时间组织、无玩家参与的验证和实施依赖统一纳入方案。
+- 上轮完整调用链调查发现：be.2 已有规则生活、滚动 30 日结算与两类专用旅行；结构化人格/长期目标/通用 NPC 行动执行尚缺，返程和自主补粮等循环有断点。详细证据见 research 与 Record，不将已有后端交付等同于本轮世界目标已达成。
 - 从远端 v0.10 恢复，继续完成规则、确定性 Bridge、完整恢复与真实模型验证；实际提交、样本、失败修正与容量边界见同一 Record。
 - Package 0.1.0-be.2 已有版本化后端验证归档和 integration Bridge/schema。原生接纳扩展已集成 main@a9a914c66141daaf7ab9ae26119a506444d73698，package 资产提交为38007d02d08f70d59e6ebbe0ad612f2d0570e463。
 - 共用契约 C2 覆盖 F01–F12，区分纯规则长测、96人脚本沙箱、真实宿主恢复/并发与真实模型证据，不承诺无限历史容量或96人完整宿主长期负载。
 - 正式前端与浏览器流程仍待用户选择集成执行者；图片与音乐素材按D27制作，当前先提供两张画风参考，确认前不批量生成。
-- 开工许可和分工保持，不重复询问D01–D26，不导入旧doupo-open-world确认。旧换设备快照已消费并删除，无新HANDOFF。
+- 开工许可和分工保持，不重复询问decisions中的确认，不导入旧doupo-open-world确认。旧换设备快照已消费并删除，无新HANDOFF。
 
 ## 模块路由
 
@@ -34,7 +36,9 @@
 | [frontend-ai-brief.md](frontend-ai-brief.md) | 给前端 AI 的关键内容、三项设计交付与新对话启动提示 | execution-split、frontend-contract、presentation |
 | [frontend-contract.md](frontend-contract.md) | F01–F12 能力覆盖、数据/操作/状态语义与后续真实接口映射 | decisions、领域规则、实际实现 |
 | [experience.md](experience.md) | RPG 交互、文字输入、首个贯通体验候选 | decisions、world-simulation |
-| [world-simulation.md](world-simulation.md) | NPC 自主生活、动态人口与事件平衡、时间推进、历史改写和时代演化 | decisions、research |
+| [world-simulation.md](world-simulation.md) | 世界自主运转定义、活动与时间、信息/精度/人口、历史一致性 | decisions、research；领域细则按需读下两模块 |
+| [npc-agency.md](npc-agency.md) | 人格、持续目标、计划执行、NPC 主动社会行为与联合行动 | decisions、world-simulation、world-systems |
+| [world-systems.md](world-systems.md) | 资源生态、生计与商路、家庭组织和地区事件的耦合循环 | decisions、world-simulation、npc-agency |
 | [player-and-combat.md](player-and-combat.md) | 自创角色开局、个人原著知识、出身内容与战斗细则 | decisions、experience、world-simulation |
 | [presentation.md](presentation.md) | 已定空间与移动方向的展开、交互与美术细节 | decisions、experience、research |
 | [progression-and-consequences.md](progression-and-consequences.md) | 已定成长深度、死亡存档和活动优先级的展开与验证要求 | decisions、player-and-combat、world-simulation、research |
@@ -53,6 +57,7 @@
 | D4 制作基线 | 已形成 v0.8 默认基线；正式制作已授权，具体数值与视觉细节仍保留拟定状态 | index → decisions → production-plan；按主题加载领域模块 |
 | Implementation 准备 | 已完成；v0.9 已拆分任务，提炼共用语义与两份新对话资料 | index → decisions → execution-split → frontend-contract → Record |
 | BE 后端实施 | 首批后端0.1.0-be.2与C2已交付；后续容量扩展按实测边界继续 | index → decisions → execution-split → backend-task → frontend-contract → research → Record；按阶段加载领域模块 |
+| 世界自主运转深化 | 当前；先更新方案再讨论，既有 be.2 能力与新设计分开；实施先打通 W0–W5 的自主闭环 | index → decisions 的 D28/D29 → world-simulation → npc-agency/world-systems → production-plan/backend-task；事实核对读取 research/Record |
 | FE 界面迭代 | 离线原型和设计；实际进展归对应设计任务 | index → frontend-ai-brief → execution-split → frontend-contract → presentation；确认边界读 decisions，内容按需 |
 | 前端集成与整包交付 | BE 完成后由用户选择执行者；保留 P4 表现与 P5 发布验收 | index → execution-split → frontend-contract 的实际映射 → 选定的前端三项产物 → Record |
 
@@ -76,3 +81,5 @@
 - 2026-10-21，v0.11：完成首批后端规则与真实任务/模型接线，修复长时关系读取、沙箱负载、资源和恢复问题；交付be.2验证归档及C2接口。源码已集成main，正式前端与扩展容量仍按分工另验。
 
 - 2026-10-21，v0.12：新增D27图片与音乐素材要求，实际生成药铺场景和苏晚禾半身像参考；用户确认画风后再继续，未制作音乐或正式前端。
+
+- 2026-10-22，v0.13：核实 be.2 与远端 main 的真实能力，将世界整体运转设为首要目标；确认人物主动求助/邀约/竞争/结盟/隐瞒/利用均来自自身目标与经历。展开人格和目标执行、地区资源与组织循环、月度复盘与月内事件、模拟精度和无玩家参与样本；具体机制保留候选，本轮只更新方案。
