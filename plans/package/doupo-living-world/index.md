@@ -2,7 +2,7 @@
 
 - Task ID: `package/doupo-living-world`
 - Primary Workspace: `package`；本 Bundle 位于 `docs`；必要的产品修补使用独立产品任务。
-- Status: v0.14 — 在世界整体运转之上深化连续因果、机会性改策与包含玩家的个人关系图谱；be.2/C2 为已有实现基线，新机制尚未实施。
+- Status: v0.14 — 世界整体运转、连续因果和全角色关系图谱的讨论基线已具备开工条件；从 be.2/C2 继续实施 W0–W5，新机制尚未实现。
 - Updated: 2026-10-22
 - Source baseline: 已核对远端 `main@a9a914c66141daaf7ab9ae26119a506444d73698` 与 package `914c624c950dec06c181960d32b2d7f337c31abf`（规则交付提交 `38007d02d`）；实施前重新核对实际 Git，本地旧 main 不代表远端现状。
 - Record: [累计记录](../../../records/package/doupo-living-world.md)
@@ -17,7 +17,8 @@
 
 ## 当前状态
 
-- 本轮先更新方案再讨论。D30 确认连续逻辑链、复合动机和途中机会性改策，D31 确认包含玩家的个人关系图谱；补齐感知/相遇、个人认知/关系和多主体后续反应的设计依赖。示例是可产生不同结果的能力样本，不能改成预写必达的剧情链。
+- v0.14 已补齐方案与讨论，当前没有必须在开工前由用户再决定的关键事项；可在新对话按既有 D25 授权继续后端实施。人格参数、规划算法、周期细目和容量按默认候选实现并验证校准，不把未逐项冻结解释为等待新审批。
+- D30 确认连续逻辑链、复合动机和途中机会性改策，D31 确认包含玩家的个人关系图谱；感知/相遇、个人认知/关系和多主体后续反应已有设计依赖。示例是可产生不同结果的能力样本，不能改成预写必达的剧情链。
 - v0.13 已确认 D28 的主动社会行为与 D29 的世界整体运转优先，既有 NPC 能动性、世界系统和时间/精度/人口规则继续生效。
 - 上轮完整调用链调查发现：be.2 已有规则生活、滚动 30 日结算与两类专用旅行；结构化人格/长期目标/通用 NPC 行动执行尚缺，返程和自主补粮等循环有断点。详细证据见 research 与 Record，不将已有后端交付等同于本轮世界目标已达成。
 - 从远端 v0.10 恢复，继续完成规则、确定性 Bridge、完整恢复与真实模型验证；实际提交、样本、失败修正与容量边界见同一 Record。
@@ -25,6 +26,10 @@
 - 共用契约 C2 覆盖 F01–F12，区分纯规则长测、96人脚本沙箱、真实宿主恢复/并发与真实模型证据，不承诺无限历史容量或96人完整宿主长期负载。
 - 正式前端与浏览器流程仍待用户选择集成执行者；图片与音乐素材按D27制作，当前先提供两张画风参考，确认前不批量生成。
 - 开工许可和分工保持，不重复询问decisions中的确认，不导入旧doupo-open-world确认。旧换设备快照已消费并删除，无新HANDOFF。
+
+## 新对话开工入口
+
+按 [backend-task.md 的启动提示](backend-task.md#可复制到后端新对话) 进入实施。先核实实际 Git/源码/包基线，从 W0/W1 开始补齐全角色图谱、事件来源、感知与真实活动，再贯通无玩家世界循环和持续因果；不要机械重做已交付 BE0–BE6，也不先扩写更多候选文档代替实现。必要自查、代码验证和真实模型证据按当前任务执行，正式前端/美术按既有分工处理。
 
 ## 模块路由
 
@@ -59,7 +64,7 @@
 | D4 制作基线 | 已形成 v0.8 默认基线；正式制作已授权，具体数值与视觉细节仍保留拟定状态 | index → decisions → production-plan；按主题加载领域模块 |
 | Implementation 准备 | 已完成；v0.9 已拆分任务，提炼共用语义与两份新对话资料 | index → decisions → execution-split → frontend-contract → Record |
 | BE 后端实施 | 首批后端0.1.0-be.2与C2已交付；后续容量扩展按实测边界继续 | index → decisions → execution-split → backend-task → frontend-contract → research → Record；按阶段加载领域模块 |
-| 世界自主运转深化 | 当前；先更新方案再讨论，接入连续因果与全角色社交圈；实施先打通 W0–W5 的自主闭环 | index → decisions 的 D28–D31 → world-simulation → npc-agency/social-graphs/world-systems → production-plan/backend-task；事实核对读取 research/Record |
+| 世界自主运转深化 | 当前可进入实施；v0.14接入连续因果与全角色社交圈，按W0–W5打通自主闭环 | index → decisions 的 D28–D31 → world-simulation → npc-agency/social-graphs/world-systems → production-plan/backend-task；事实核对读取 research/Record |
 | FE 界面迭代 | 离线原型和设计；实际进展归对应设计任务 | index → frontend-ai-brief → execution-split → frontend-contract → presentation；确认边界读 decisions，内容按需 |
 | 前端集成与整包交付 | BE 完成后由用户选择执行者；保留 P4 表现与 P5 发布验收 | index → execution-split → frontend-contract 的实际映射 → 选定的前端三项产物 → Record |
 

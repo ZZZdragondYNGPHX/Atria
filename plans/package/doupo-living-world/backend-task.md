@@ -1,6 +1,6 @@
 # BE — 后端开发任务
 
-状态：首批后端已推进至 0.1.0-be.2，实际接口收敛为 C2；验证、容量边界与模型证据见同一 Record。v0.14 在世界整体自主运转之上深化连续因果、机会性改策与全角色图谱，工作依赖为制作稿 W0–W5，不能用 be.2 交付代替新目标完成。当前先更新方案再讨论；正式前端集成另行执行，阶段不另加审批。
+状态：已具备在后端新对话继续实施的条件，当前没有阻挡开工的待确认设计项；D25 的正式制作授权保持有效。以 v0.14 为当前默认实施方案，从已交付的 0.1.0-be.2/C2 按制作稿 W0–W5 深化世界自主运转、连续因果、机会性改策与全角色图谱，不重做已有基线，也不把具体算法、数值与容量全数冻结。验证、容量边界与模型证据见同一 Record；新增机制仍待实际实现，正式前端集成另行执行，阶段不另加审批或独立审查。
 
 ## 最小读取路线
 
@@ -58,9 +58,17 @@ V8–V10覆盖无参与世界循环、持续目标/主动社会与多尺度成�
 
 ```text
 继续 Atria《斗破苍穹》开放沙盒，Task ID：package/doupo-living-world，执行 BE 后端开发。
-正式开工已确认；本对话实施后端，前端 AI 在另一对话独立迭代设计。后端完成后由我选择前端集成者，现在不要展开正式前端制作。
+D25 正式制作授权保持有效，已具备开工条件；以 v0.14 为当前默认实施方案，直接推进后端。已确认方向不重复询问；具体算法、数值和容量按方案与验证校准，不将全部候选细节视为冻结要求。
 
-先核实 Git/工作树并保护其它任务；读取 docs:HANDOFF.md（若仍属于本任务），再读 plans/package/doupo-living-world/index.md，按 BE 路由读取 decisions.md、execution-split.md、backend-task.md、frontend-contract.md、research.md 与 records/package/doupo-living-world.md。
-be.2/C2已交付，先核实最新Plan/Record，再按制作稿W0–W5推进世界自主运转；读取world-simulation、npc-agency、social-graphs、world-systems，不从BE0机械重做已完成工作。游戏资产归package，必要框架修补用独立源码任务，main不合入package。维护真实共用契约及同一Record，勿改前端design-reference文件。
-不重复询问decisions中已确认方向，不从doupo-open-world导入历史确认；不得引入独立审查。阶段不另设审批，测试与验证资产只本地保留。后端完成时交付实际接口、包/源码版本、验证结果和前端接线清单，再由我决定集成执行者。
+先核实 docs、package、Atria 源码的真实 Git/工作树与未提交内容，保护其它任务，不按历史 HEAD 强制回退。先读 docs:plans/package/doupo-living-world/index.md，按路由读取 decisions.md、world-simulation.md、npc-agency.md、social-graphs.md、world-systems.md、production-plan.md、backend-task.md、research.md、execution-split.md，以及同目录 frontend-contract.md 的当前 C2 和 docs:records/package/doupo-living-world.md。不要从旧 doupo-open-world 草案恢复确认。
+
+从已有 be.2/C2 接续制作稿 W0–W5：先核对实际断点和恢复边界，补齐活动/补给/旅行与感知，再贯通无玩家接任务的世界循环、持续目标、主动社会行为、可中断长链和全角色个人图谱，随后验证地区后果与多尺度成本。不要从 BE0 机械重做已完成工作，也不要只演示两条固定剧本或经济数字变化；玩家不参与时其他人物仍应按自身所知和目标行动，玩家选择由本人控制。
+
+游戏资产归 package；必要 Atria 源码修补使用独立任务 worktree，main 不合入 package，不为候选玩法预先重写框架。沿用同一权威、资源、时钟、个人所知和完整世界恢复路径；新增动作先有可结算规则，模型不能临时创造效果。
+
+由执行代理完成直接相关的必要自查、规则/宿主验证和真实模型验证；测试代码、fixture、日志、截图等验证资产只留本地，不引入独立审查、交叉审查或逐阶段确认。模型验证沿用 Record 的实施顺序和当时实际有效配置；GGchan 保持停用，不照抄历史临时密钥、旧连接或旧额度，不把私有配置写入仓库。
+
+每项能力实际落地后准确更新同一 Record、包/源码版本和共用契约；C2 现有能力与新增未实现语义分开，必要时发布后续接口版本，不把设计写成已交付。后端完成时提供真实接口、构建身份、验证结果、限制和前端接线清单。
+
+前端 AI 的离线设计、正式前端集成执行者和批量美术沿用既有分工与确认边界；不要修改前端 design-reference 或擅自选择集成者，也不等待这些工作才推进后端。
 ```
