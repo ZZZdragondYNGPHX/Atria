@@ -2,10 +2,12 @@
 
 - Task ID：`package/doupo-living-world`
 - 用途：交给用户选择的前端 AI，在后端开发期间迭代游戏界面、视觉参考与交互设计。
-- 当前授权：用户已经表示正式开工，并要求先拆分前后端。本轮先交付分工材料；后续前端对话开展原型迭代，后端完成后由用户决定谁接手真实前端集成。
+- 当前授权：正式开工和前后端分工已确认；be.2/C2为已有后端，v0.16补充世界深化及功能承载要求。前端对话继续原型迭代，后端完成后由用户决定谁接手真实前端集成。
 - 方案入口：[index.md](index.md)；分工与文件边界：[execution-split.md](execution-split.md)；共用语义：[frontend-contract.md](frontend-contract.md)；后端任务：[backend-task.md](backend-task.md)。
 
 本文件提炼前端所需内容，不建立第二份世界规则权威。已确认体验归 [decisions.md](decisions.md)，内容范围归 [production-plan.md](production-plan.md)，当前视觉默认方案归 [presentation.md](presentation.md)。颜色、具体布局、人物编制、NPC 上限数值和成长数值并未逐项冻结，原型可以在这些方向内迭代；不能把演示效果写成已完成的游戏能力。
+
+新增伤势/身体、装备损耗、受控、图谱/消息及活动/生产的最低信息与反馈见 [共用契约](frontend-contract.md) 的v0.16候选部分，身体规则见 [character-condition.md](character-condition.md)。设计须覆盖真实状态的可读详情、行动限制及恢复反馈，并标明候选数据；后端读口与正式界面接线的完成程度分别记录。完整玩家战斗仍按D33后续独立实施，不由本轮详情设计提前扩建。
 
 ## 1. 你在设计什么
 

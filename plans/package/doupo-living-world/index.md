@@ -2,7 +2,7 @@
 
 - Task ID: `package/doupo-living-world`
 - Primary Workspace: `package`；本 Bundle 位于 `docs`；必要的产品修补使用独立产品任务。
-- Status: v0.15 — 补充NPC自主修炼、基于功法/装备/道具及损耗的后台冲突；完整玩家战斗后续独立实施。从be.2/C2继续W0–W5，新机制尚未实现。
+- Status: v0.16 — 将世界行为与后果逐项对应到状态、规则、认知、界面和恢复；补充身体/伤势及功能承载缺口。从be.2/C2继续W0–W5，新机制尚未实现；完整玩家战斗后续独立实施。
 - Updated: 2026-10-22
 - Source baseline: 已核对远端 `main@a9a914c66141daaf7ab9ae26119a506444d73698` 与 package `914c624c950dec06c181960d32b2d7f337c31abf`（规则交付提交 `38007d02d`）；实施前重新核对实际 Git，本地旧 main 不代表远端现状。
 - Record: [累计记录](../../../records/package/doupo-living-world.md)
@@ -17,7 +17,9 @@
 
 ## 当前状态
 
-- v0.15 接入 D32 的NPC自主修炼/后台冲突/物品损耗和 D33 的完整玩家战斗延后；当前仍可在新对话按既有 D25 授权继续实施。人格、规划、战斗策略/数值、周期与容量按默认候选实现并验证校准，不把未逐项冻结解释为等待新审批。
+- v0.16 接入 D34：每个玩法后果须贯通真实状态/schema、合法写入、能力与AI影响、视角读口/界面、保存及必要验证。新增 [实施对应](implementation-readiness.md) 汇总各系统的承载缺口，[身体与伤势](character-condition.md) 详细展开重伤、骨折、缺肢和治疗；当前只有设计与源码调查，没有新增运行证据。
+- v0.15 的 D32 NPC自主修炼/后台冲突/物品损耗和 D33 完整玩家战斗延后继续生效；当前仍可在新对话按既有 D25 授权继续实施。人格、规划、战斗策略/数值、周期与容量按默认候选实现并验证校准，不把未逐项冻结解释为等待新审批。
+- 伤势现状：玩家已有hp/qi/injury总数值，NPC公开观察缺少伤势；没有部位损伤/肢体缺失、持续伤病与统一能力限制，也无正式伤势详情。不能以旁白里的“断腿”代替可持续影响旅行、工作、修炼和交锋的状态。
 - 代码核对：NPC已有按日积累经验和阈值升阶，尚无自主功法/闭关/突破准备闭环；没有NPC/NPC战斗，现有玩家交锋的NPC反击为简化公式。库存数量会消耗，但没有装备实例/穿戴/耐久/充能/维修。详细证据见research及新增领域模块。
 - D30 确认连续逻辑链、复合动机和途中机会性改策，D31 确认包含玩家的个人关系图谱；感知/相遇、个人认知/关系和多主体后续反应已有设计依赖。示例是可产生不同结果的能力样本，不能改成预写必达的剧情链。
 - v0.13 已确认 D28 的主动社会行为与 D29 的世界整体运转优先，既有 NPC 能动性、世界系统和时间/精度/人口规则继续生效。
@@ -30,7 +32,7 @@
 
 ## 新对话开工入口
 
-按 [backend-task.md 的启动提示](backend-task.md#可复制到后端新对话) 进入实施。先核实实际 Git/源码/包基线，从 W0/W1 补齐全角色图谱、事件来源、感知与真实活动，再贯通无玩家世界循环、NPC自主修炼/后台冲突和持续因果。完整玩家战斗按D33后续独立实施，不机械重做BE0–BE6，也不先扩写更多候选文档代替实现。必要自查、代码验证和真实模型证据按当前任务执行，正式前端/美术按既有分工处理。
+按 [backend-task.md 的启动提示](backend-task.md#可复制到后端新对话) 进入实施。先核实实际 Git/源码/包基线，读 [实施对应](implementation-readiness.md)，从W0用少量身体/物品/关系数据贯通schema、合法效果、视角读取和恢复，再由W1真实活动使用。随后接无玩家世界循环、NPC自主修炼/后台冲突、全角色图谱与持续因果。完整玩家战斗按D33后续独立实施，不机械重做BE0–BE6，也不先扩写更多候选文档代替实现。必要自查、代码验证和真实模型证据按当前任务执行，正式前端/美术按既有分工处理；后端读口就绪不能宣称玩家详情界面已集成。
 
 ## 模块路由
 
@@ -38,6 +40,8 @@
 | --- | --- | --- |
 | [decisions.md](decisions.md) | 当前对话已确认的跨模块决定 | 用户明确指令 |
 | [production-plan.md](production-plan.md) | D4 整体制作范围、贯通样本、数据职责、框架验证与实施顺序 | decisions；按主题链接领域模块 |
+| [implementation-readiness.md](implementation-readiness.md) | 玩法对应的代码承载缺口、完整实现路径、构建预算与完成状态 | 实际源码、领域模块、frontend-contract |
+| [character-condition.md](character-condition.md) | 身体部位、持续伤病、能力影响、治疗、观察/详情与恢复 | decisions、NPC冲突、世界时间、个人所知 |
 | [execution-split.md](execution-split.md) | BE/FE 分工、文件边界、并行推进与后续集成 | decisions、production-plan |
 | [backend-task.md](backend-task.md) | 后端完整任务、完成条件、交付与新对话启动提示 | execution-split、frontend-contract、research |
 | [frontend-ai-brief.md](frontend-ai-brief.md) | 给前端 AI 的关键内容、三项设计交付与新对话启动提示 | execution-split、frontend-contract、presentation |
@@ -66,7 +70,7 @@
 | D4 制作基线 | 已形成 v0.8 默认基线；正式制作已授权，具体数值与视觉细节仍保留拟定状态 | index → decisions → production-plan；按主题加载领域模块 |
 | Implementation 准备 | 已完成；v0.9 已拆分任务，提炼共用语义与两份新对话资料 | index → decisions → execution-split → frontend-contract → Record |
 | BE 后端实施 | 首批后端0.1.0-be.2与C2已交付；后续容量扩展按实测边界继续 | index → decisions → execution-split → backend-task → frontend-contract → research → Record；按阶段加载领域模块 |
-| 世界自主运转深化 | 当前可进入实施；v0.15覆盖连续因果、社交圈及NPC自主成长/后台冲突，按W0–W5推进 | index → decisions 的 D28–D33 → world-simulation → npc-agency/social-graphs/npc-progression-conflict/world-systems → production-plan/backend-task；事实核对读取 research/Record |
+| 世界自主运转深化 | 当前可进入实施；v0.16先补状态、作用和可读反馈，再组合连续因果、社交圈及NPC自主成长/后台冲突，按W0–W5推进 | index → decisions 的 D28–D34 → implementation-readiness → world-simulation → 当前功能的领域模块（身体读character-condition） → production-plan/backend-task；事实核对读取 research/Record |
 | FE 界面迭代 | 离线原型和设计；实际进展归对应设计任务 | index → frontend-ai-brief → execution-split → frontend-contract → presentation；确认边界读 decisions，内容按需 |
 | 前端集成与整包交付 | BE 完成后由用户选择执行者；保留 P4 表现与 P5 发布验收 | index → execution-split → frontend-contract 的实际映射 → 选定的前端三项产物 → Record |
 
@@ -96,3 +100,5 @@
 - 2026-10-22，v0.14：确认复杂连续因果、复合动机、机会性改策及包含玩家的个人关系图谱。展开相遇/观察/知情链、长期未解决动机、多人反应和相互干预；以报复牵动亲属、携丹访友途中被劫为候选贯通样本，结果不预写；新增社会图谱模块，保留玩家控制、既有时间与世界权威。
 
 - 2026-10-22，v0.15：补查NPC被动成长、现有玩家交锋与物品模型，确认NPC自主修炼和NPC/NPC后台冲突需深化，功法/装备/道具及分类消耗/损耗进入判定；完整玩家战斗按新指令留待后续大修改。本轮只更新方案与准确能力说明，未修改代码。
+
+- 2026-10-22，v0.16：按用户要求重新对照想法与代码承载，新增功能实现对应与身体/伤势模块。将伤势、装备、受控状态、图谱/消息、活动/组织生产等逐项连接到合法写入、能力影响、可见详情和恢复，调整W0/W1先贯通基础再组合长链。补齐BE/FE责任和如实标记完成程度；本轮仍只更新方案，没有声称新机制已经运行通过。
