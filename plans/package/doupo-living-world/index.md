@@ -2,9 +2,9 @@
 
 - Task ID: `package/doupo-living-world`
 - Primary Workspace: `package`；本 Bundle 位于 `docs`；必要的产品修补使用独立产品任务。
-- Status: v0.17 — be.4/C3世界运行后端已形成版本化验证构建；W0–W4默认机制有代表性贯通证据，W5聚合/长期宿主成本继续深化。正式前端与完整玩家战斗仍按分工另行实施。
+- Status: v0.19 — be.5/C4已接入D36–D38：地图/列表分层、重要人物专属Q版及普通NPC成对外观池、开局与后续生成共用的统一内容池。W5与正式前端仍按实际证据推进。
 - Updated: 2026-10-23
-- Source baseline: 已核对远端 `main@a9a914c66141daaf7ab9ae26119a506444d73698` 与 package `914c624c950dec06c181960d32b2d7f337c31abf`（规则交付提交 `38007d02d`）；实施前重新核对实际 Git，本地旧 main 不代表远端现状。
+- Source baseline: main@4470cffb9f688d7e889eb94b42b1cb85966318c1；package@394a9efaad5ca1e61b69a1eb8b2b97740e1a91b8（be.5/C4），以实际Git为准。
 - Record: [累计记录](../../../records/package/doupo-living-world.md)
 
 ## 目标与确认边界
@@ -17,21 +17,22 @@
 
 ## 当前状态
 
-- 0.1.0-be.4/C3已实现持续身体伤势/缺失、统一能力限制、装备实例/损耗/维修、可中断NPC生活/修炼/旅行、实际补给与生态采运、药铺投入和工资、个人目标/动机/图谱、信件与后台冲突/有限控制。角色所知及观察传播受视角约束，重要原因保留有界稀疏变化和事实级公开详情。
+- 0.1.0-be.5/C4在既有机制上新增集中注册的7个池、初始化/迁入/出生共用生成、成对外观和实际差异功法；地图重点标记与附近/旧档案分开，素材20组40张。此前已实现持续身体伤势/缺失、统一能力限制、装备实例/损耗/维修、可中断NPC生活/修炼/旅行、实际补给与生态采运、药铺投入和工资、个人目标/动机/图谱、信件与后台冲突/有限控制。角色所知及观察传播受视角约束，重要原因保留有界稀疏变化和事实级公开详情。
 - 真实构建/安装、Native状态写入、治疗/维修/冲突/控制、来源查询与完整恢复、Bridge幂等和迟到任务隔离有直接证据。60日分批人物结果一致，420日纯规则演化与96名NPC成熟数据的早期完整宿主样本通过；具体计数、失败修正及真实模型服务结果见同一Record。
-- 当前实际字段、操作和失败语义只有[frontend-contract的C3](frontend-contract.md#c3--2026-10-22-世界运行后端接口)一份权威；C2保留为旧版本历史。使用新局，没有be.2存档迁移。后端读口不等于正式详情界面已集成。
+- 当前实际字段、操作和失败语义只有[frontend-contract的C4](frontend-contract.md#c4--2026-10-23-人物显示分层与统一内容池)一份权威；C2/C3保留为旧版本历史。使用新局，没有be.4旧存档迁移。后端读口不等于正式详情界面已集成。
 - W0–W4已形成默认规则切片，不能据此声称所有社会策略、内容变体或整个W0–W5完成。W5尚需稳定活动聚合、区域/依赖唤醒、96人跨月完整宿主及更长期增长成本；现有图谱/信息/Domain容量有界，超限拒绝。
-- D33的完整玩家战斗仍后续独立实施；正式前端集成执行者未定。设计分支a850f9f88的两份文档与缺失HTML不是已完成接线。素材分工独立，本轮不修改design-reference或批量素材。
+- D33的完整玩家战斗仍后续独立实施；正式前端集成执行者未定。设计分支a850f9f88的两份文档与缺失HTML不是已完成接线。素材分工独立，本轮新增media/pools，复用8张既有半身图；没有修改design-reference和独立批量素材原目录。
 - 已消费2026-10-22换设备HANDOFF，恢复与实施事实归同一Record，移除临时交接文件；没有新建HANDOFF、独立审查或阶段审批。
 
 ## 新对话开工入口
 
-先核对真实Git，再从本index读取C3、同一Record和当前阶段模块。be.4是当前已保存后端版本，不再把be.2源码缺口或W0快照当作现状。优先按W5继续成本/聚合与剩余行为覆盖；必要时修正受影响的默认机制。模型连接只读当前本机私有配置，不复制历史临时凭证；正式前端/美术与完整玩家战斗保持既有分工。
+先核对真实Git，再从本index读取C4、同一Record和当前阶段模块。be.5是当前后端版本；池/显示数据的首批接入已完成。按content-pools补充内容变体，继续W5成本/聚合与剩余行为覆盖；必要时修正受影响的默认机制。模型连接只读当前本机私有配置，不复制历史临时凭证；正式前端/美术与完整玩家战斗保持既有分工。
 
 ## 模块路由
 
 | 模块 | 唯一职责 | 依赖 |
 | --- | --- | --- |
+| [content-pools.md](content-pools.md) | 各类池统一目录/注册、资格/抽样/重复控制、人物成对外观、初始化/后续生成与恢复 | decisions D36–D38、presentation、frontend-contract |
 | [decisions.md](decisions.md) | 当前对话已确认的跨模块决定 | 用户明确指令 |
 | [production-plan.md](production-plan.md) | D4 整体制作范围、贯通样本、数据职责、框架验证与实施顺序 | decisions；按主题链接领域模块 |
 | [implementation-readiness.md](implementation-readiness.md) | 玩法对应的代码承载缺口、完整实现路径、构建预算与完成状态 | 实际源码、领域模块、frontend-contract |
@@ -64,7 +65,7 @@
 | D4 制作基线 | 已形成 v0.8 默认基线；正式制作已授权，具体数值与视觉细节仍保留拟定状态 | index → decisions → production-plan；按主题加载领域模块 |
 | Implementation 准备 | 已完成；v0.9 已拆分任务，提炼共用语义与两份新对话资料 | index → decisions → execution-split → frontend-contract → Record |
 | BE 后端实施 | 首批后端0.1.0-be.2与C2已交付；后续容量扩展按实测边界继续 | index → decisions → execution-split → backend-task → frontend-contract → research → Record；按阶段加载领域模块 |
-| 世界自主运转深化 | be.4/C3已有默认机制和代表性证据；按W5继续聚合/长期宿主与更广行为覆盖 | index → decisions 的 D28–D34 → implementation-readiness → world-simulation → 当前功能的领域模块（身体读character-condition） → production-plan/backend-task；事实核对读取 research/Record |
+| 世界自主运转深化 | be.5/C4已有默认机制及首批统一内容池和代表性证据；按W5继续聚合/长期宿主与更广行为覆盖 | index → decisions 的 D28–D34 → implementation-readiness → world-simulation → 当前功能的领域模块（身体读character-condition） → production-plan/backend-task；事实核对读取 research/Record |
 | FE 界面迭代 | 离线原型和设计；实际进展归对应设计任务 | index → frontend-ai-brief → execution-split → frontend-contract → presentation；确认边界读 decisions，内容按需 |
 | 前端集成与整包交付 | BE 完成后由用户选择执行者；保留 P4 表现与 P5 发布验收 | index → execution-split → frontend-contract 的实际映射 → 选定的前端三项产物 → Record |
 

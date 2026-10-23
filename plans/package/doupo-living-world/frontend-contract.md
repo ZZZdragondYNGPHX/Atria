@@ -1,6 +1,6 @@
-# 前后端共用契约 — C0 语义与 C3 实际接口
+# 前后端共用契约 — C0 语义与 C4 实际接口
 
-状态：C0语义继续生效；当前实际接口为末节C3（0.1.0-be.3）。C2保留为be.2历史接口；下文候选设计不自动变为已实现能力。正式前端待集成。
+状态：C0语义继续生效；当前实际接口为末节C4（0.1.0-be.5）。C2/C3保留为历史接口；下文候选设计不自动变为已实现能力。正式前端待集成。
 
 v0.15范围：NPC自主成长、NPC/NPC后台战斗与功法/装备/道具损耗属当前新增世界规则，实际字段待实现后更新。完整玩家战斗按D33未来独立实施；下述F07既有接口和v0.14候选玩家战斗/约束表现保留原适用范围，不据此要求本轮新建完整玩家战斗机制或界面，也不将后台NPC冲突伪装为当前C2已支持。
 
@@ -233,3 +233,41 @@ operation.kind 非空时继续或停止；appraise 是以本人经历形成评�
 当前预算：人口96（含预留），伤处8/器物4，个人当前图谱16、目标6/动机6，热消息16/冲突4/运输8；body每批33/32/32，选中认知最多8，单次输出body6/mind4/信息6/评价2/原因2及固定世界发布。个人信息grant128、关系grant256、家庭48、约定64、Domain4096条/1MiB、History4096项/2MiB。超限拒绝；不静默删活人/未解决动机或扩充所有全局限额。计算输出允许有界字段组合，计算输入使用既有Authority总值上限；普通schema、单值64KiB、读取256KiB、CPU40ms、堆8MiB及effects约束仍生效。
 
 W0–W4默认机制已有代表性后端贯通；W5的稳定活动聚合、多尺度成本、96人长期完整宿主和候选社会行为的更广覆盖继续深化。正式AUI/Canvas/Controller、美术和浏览器端到端仍待选定集成者，不能标为玩家界面完成。
+
+## C4 — 2026-10-23 人物显示分层与统一内容池
+
+当前版本 `0.1.0-be.5`；沿用C3的Package ID、main依赖和Native读取路径，本节替代C3中受影响的字段与创建流程，其余接口不变。具体PackageVersion、归档哈希与验证见Record。使用新局，不提供be.4旧存档迁移。
+
+### 附近列表、旧档案与地图
+
+| 字段 | 当前实际语义 |
+| --- | --- |
+| peopleFilter | nearby为当前可感知活人；known为旧观察/已故档案，不混入当前附近人物 |
+| people / peoplePage / peoplePages / peopleTotal | 所选集合每页12人，页码从0起，越界钳制；reply最多512字符 |
+| nearbyTotal / knownPeopleTotal | 两个集合的独立总数；旧档案保留observedAt与last_known/deceased，坐标是旧观察 |
+| markers / markerTotal / markersTruncated | 地图集合独立于人物列表页，最多12项；总数与是否截断明确返回 |
+| markers[] | key/name/x/y/reason/appearance；优先级selected → interaction → key → relation，同级按key排序 |
+| focus | 当前可感知的已选人物key；失去感知后为空，不允许跟踪远方旧档案 |
+| appearance / people[].appearance / markers[].appearance | 玩家或人物的profile/period/ready/portraitAsset/chibiAsset；空引用与ready=false表示该时期素材缺失 |
+
+地图仅显示合法可感知的重要作者角色、已知亲属/伴侣/同行者及当前选择/交互/冲突对象；大多数普通NPC仅在附近列表。markers不含主角，主角由screen自身坐标与appearance绘制。人口上限96不是96个常驻地图点，地图也不是全世界人物雷达。
+
+新增deterministic binding `known-people({qty})`等同act browse/detail=known；原browse仍切回nearby。`focus({target})`选中当前可感知对象，target空串取消；失败focus_unavailable。二者零耗时，focus不代办接近/交谈，也不解除活动锁。恢复后重开Bridge并按新投影重绑，不保留旧epoch对象。
+
+### 统一池、外观与实际功法
+
+作者入口为source/pools/index.js，通用筛选/抽取为source/rules/pools.js；目录与扩展规则唯一归[content-pools](content-pools.md)。随包提供integration/pools.json和integration/pool-media.json供内容集成校验，不是玩家全知读口。
+
+已装入20组、40张WebP：8位重要开篇角色的专属Q版及对应既有半身立绘，12组普通NPC配对立绘/Q版，覆盖男女与婴幼/儿童/成年/中年/老年。普通成人每性别两种外观；按资格优先减少重复，数量有限时允许复用。地图必须解析chibiAsset，对话/详情解析portraitAsset；均走既有Native资产引用，不拼开发机路径。重要人物缺少后续时期图时返回缺失，禁止冒用另一角色。初版为静态姿态，不含行走动画或正式Canvas集成。
+
+`screen.arts`只列本人已学或实际持有秘籍对应的已就绪内容，字段为id/name/type/tier/attribute/item/known/level/active/eligible/xpRate/qiRate/qiCost/power/arms/source。未学内容level=0、active=false；eligible只说明当前年龄/属性资格，不代表已经学会。修炼xpRate/qiRate为百分比整数；斗技qiCost为基础斗气消耗，power为规则加成，arms为所需可用手臂数；最终结算仍受原有身体/装备等规则约束。配方未用参数为0。
+
+`practice`走act，item传已学功法/斗技的条目id，成功零耗时换修，拒绝practice_unavailable；活动锁仍适用。`learn`继续传实际秘籍物品id并耗时学习，条件不符或储备条目不能学习。功法池首批10个可执行条目（5功法、4斗技、1配方），另1个储备条目不参与生成。人物模板只限定初始功法类别，再按年龄/属性资格与重复控制独立抽取，不把所有同职业NPC固定成同一功法。
+
+### 初始化、后续生成与验证边界
+
+安装/授权 → Session → experience.ready → bind0/1/2 → act创建后，持续读取operation并continue直至空。initialize每次用既有Native Subject准入补入1人，共4名池生成居民；连同24名作者NPC和主角，新局29个Subject，游戏时间仍为0。人口或出生预留已满时不增员。出生、迁入沿同一入口；婴儿有实际亲属关系，没有成人技能/携金。
+
+Session保存种子与近期抽样记录，人物保存来源/模板/外观/已学功法，SavePoint恢复这些实际选择；渲染不重新抽取。NPC的隐藏来历、人格和未来储备不进入玩家投影。角色年龄变化仅在已存外观失效时重新分配符合资格的素材。
+
+已执行纯规则分布/资格/恢复检查、实际Native出生/迁入/学习/修炼/资产安装、96名NPC成熟样本与分页/恢复；最终版本证据归Record。正式前端接线、真实浏览器交互及动画验收仍由后续选定集成者负责，不能把后端字段和静态美术标为地图界面已经完成。
