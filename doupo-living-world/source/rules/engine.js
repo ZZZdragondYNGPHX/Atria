@@ -3,6 +3,7 @@ import {copy,qty,add,skill,learn,age,record,price,person,infoItem,NEW_PERSON_FIE
 import {packPerson,unpackPerson,packWorld,unpackWorld} from './records.js';
 import {project,pathTo,observePerson} from './projection.js';
 import {contentSha256 as sha,canonical} from './hash.js';
+import {capabilities,conditionDetail,injure,recoverCondition,treatCondition} from './condition.js';
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 const emptyPerson=()=>person('none','未入场','wutan.inn','none',20,1,'unavailable');
 const zero='0'.repeat(64);
@@ -55,6 +56,14 @@ function run(input){
  const target=()=>row(args.target)?.value;
  const known=(who,kind,text,source,channel='told_by')=>event(who,'',kind,text,source,channel);
  const history=(kind,refs,text)=>record(w,kind,refs,text);
+ const capable=(who,kind)=>{const reason=capabilities(who)[kind];return !reason||reject('condition_unavailable',reason);};
+ function harm(key,part,kind,severity,cause){
+  const who=touch(key),id='w-'+sha(key+'|'+w.serial+'|'+cause).slice(0,40);
+  if(injure(who,{id,part,kind,severity,at:w.time,source:'event:'+w.serial,cause})){
+   history('bodily_harm',[key,id],who.name+'的身体受到持续损伤。');
+   event(who,'','condition',conditionDetail(who).wounds.find(w=>w.id===id).symptom,'本人的身体感受');
+  }
+ }
  function death(key,cause){const d=touch(key);if(!d?.alive)return;d.alive=false;d.hp=0;d.plan='已故：'+cause;w.combat.enemy=w.combat.enemy===key?'':w.combat.enemy;
   history('death',[key],d.name+'因'+cause+'死亡。');
   const kin=rows.filter(r=>r.value.alive&&(r.value.partner===key||r.value.parentA===key||r.value.parentB===key));
@@ -76,6 +85,7 @@ function run(input){
   const meals=Math.min(needed,Math.floor(n.gold/3));n.gold-=meals*3;w.consumedGold+=meals*3;needed-=meals;
   if(needed){n.injury=clamp(n.injury+needed*2,0,100);n.needitem='food';n.needqty=Math.min(100,needed);n.plan='缺粮，寻求低风险工作与照护';if(f&&f.status!=='bereaved')f.status='strained';}
   if(n.injury>=80)n.deathAt=Math.min(n.deathAt,until+7*DAY);
+  return needed===0;
  }
  function scheduleNpc(r,until){
   const n=touch(r.id),elapsed=Math.max(0,until-n.updated),days=Math.floor(elapsed/DAY);n.updated=until;
@@ -86,26 +96,29 @@ function run(input){
   if(days){
    // Livelihood outputs have an explicit production source; consumption does
    // not transfer another person's finite inventory by narrative fiat.
-   if(n.role!=='child'){const income=days*(n.role==='merchant'?5:rows.filter(r=>r.value.alive).length<POLICY.low?4:3);n.gold+=income;w.producedGold+=income;n.xp+=days*(n.role==='cultivator'?4:1);}
-   feed(r.id,n,days,until);
+   const ability=capabilities(n);
+   if(n.role!=='child'&&!ability.work&&!n.destination){const income=days*(n.role==='merchant'?5:rows.filter(r=>r.value.alive).length<POLICY.low?4:3);n.gold+=income;w.producedGold+=income;}
+   if(n.role!=='child'&&!ability.train&&!n.destination)n.xp+=days*(n.role==='cultivator'?4:1);
+   const nourished=feed(r.id,n,days,until);recoverCondition(n,until,nourished);
    if(n.injury>=80)n.deathAt=Math.min(n.deathAt,until+7*DAY);n.injury=Math.max(0,n.injury-Math.min(days,3));n.hp=Math.min(100,n.hp+days);n.qi=100;
-   if(n.xp>=n.rank*30&&n.rank<19&&n.injury<20){n.xp-=n.rank*30;n.rank++;history('growth',[r.id],n.name+'修为精进。');}
+   if(n.xp>=n.rank*30&&n.rank<19&&n.injury<20&&!capabilities(n).breakthrough){n.xp-=n.rank*30;n.rank++;history('growth',[r.id],n.name+'修为精进。');}
   }
   if(['rival','gatherer'].includes(n.role)){
    const u=w.unique.find(u=>u.id==='redleaf'),hasClue=['rival','gatherer'].includes(n.role);
    if(n.destination&&until>=n.arriveAt){n.place=n.destination;n.destination='';n.arriveAt=0;n.x=15;n.y=5;}
    if(u?.status==='available'&&hasClue){
-    if(n.place==='mountain.valley'){
+    if(n.place==='mountain.valley'&&!capabilities(n).gather){
      u.owner=r.id;u.status='claimed';add(n,'redleaf',1);n.plan='取得赤叶药材，准备返镇';history('opportunity',[r.id],n.name+'抢先采得赤叶药材。');event(n,'','opportunity','我取得了药谷中的赤叶药材。','亲自采集');
-    }else if(!n.destination&&qty(n,'food')>=2){add(n,'food',-2);n.destination='mountain.valley';n.arriveAt=until+24*60;n.place='route:'+n.home+'>mountain.valley';n.plan='沿已知山路前往药谷';}
+    }else if(!n.destination&&qty(n,'food')>=2&&!capabilities(n).move){add(n,'food',-2);n.destination='mountain.valley';n.arriveAt=until+24*60;n.place='route:'+n.home+'>mountain.valley';n.plan='沿已知山路前往药谷';}
    }else n.plan='筹资、采药与修炼';
   }else if(n.injury>=30){n.plan='养伤并请求照护';}
   else if(n.partner&&row(n.partner)?.value.alive&&qty(n,'food')>=2){n.plan='谋生、修炼与照料家人';}
   else n.plan=n.role==='cultivator'?'修炼与拜访熟人':n.role==='child'?'成长与求学':'谋生后修炼、休息';
-  if(n.role==='merchant'){for(const stock of w.stocks.filter(s=>s.place===n.home&&s.qty<8)){const replenish=8-stock.qty,cost=Math.max(1,Math.floor(price(stock.item)/2))*replenish;if(stock.gold>=cost){stock.gold-=cost;stock.qty+=replenish;stock.quote++;w.consumedGold+=cost;}}}
+  if(capabilities(n).work&&!n.destination)n.plan='身体受限，休养并寻求合适照护';
+  if(n.role==='merchant'&&!capabilities(n).work&&!n.destination){for(const stock of w.stocks.filter(s=>s.place===n.home&&s.qty<8)){const replenish=8-stock.qty,cost=Math.max(1,Math.floor(price(stock.item)/2))*replenish;if(stock.gold>=cost){stock.gold-=cost;stock.qty+=replenish;stock.quote++;w.consumedGold+=cost;}}}
   if(n.injury>=20){n.needitem='medicine';n.needqty=1;}else if(qty(n,'food')<3){n.needitem='food';n.needqty=3;}
   const dependent=rows.find(other=>other.value.alive&&other.id!==r.id&&[n.parentA,n.parentB,n.ward].includes(other.id)&&other.value.place===n.place&&other.value.injury>=20);
-  if(dependent&&qty(n,'herb')>=1){const d=touch(dependent.id);add(n,'herb',-1);d.injury=Math.max(0,d.injury-8);n.plan='照护受伤家人后谋生';appraisal(d,n,'trust',8,d.name+'记得家人实际投入药材的照护。');}
+  if(dependent&&qty(n,'herb')>=1&&!capabilities(n).care){const d=touch(dependent.id);add(n,'herb',-1);d.injury=Math.max(0,d.injury-8);n.plan='照护受伤家人后谋生';appraisal(d,n,'trust',8,d.name+'记得家人实际投入药材的照护。');}
   if(n.partner){
    const f=w.families.find(f=>[f.a,f.b].includes(r.id)&&[f.a,f.b].includes(n.partner)&&['active','strained'].includes(f.status));
    if(f&&n.gold>=20&&f.gold<180){n.gold-=20;f.gold+=20;}
@@ -125,13 +138,16 @@ function run(input){
    }
   }
   const region=n.home.split('.')[0],other=region==='wutan'?'qingshan':'wutan',load=place=>rows.filter(r=>r.value.alive&&(r.value.destination||r.value.home).startsWith(place+'.')).length;
-  if(!n.partner&&n.role!=='child'&&!n.destination&&!w.companions.includes(r.id)&&load(region)>POLICY.regionalCap&&load(other)<POLICY.regionalCap&&qty(n,'food')>=3){add(n,'food',-3);n.destination=other+'.inn';n.arriveAt=until+3*DAY;n.place='route:'+n.home+'>'+n.destination;n.plan='迁居以寻找生计';}
+  if(!n.partner&&n.role!=='child'&&!n.destination&&!capabilities(n).move&&!w.companions.includes(r.id)&&load(region)>POLICY.regionalCap&&load(other)<POLICY.regionalCap&&qty(n,'food')>=3){add(n,'food',-3);n.destination=other+'.inn';n.arriveAt=until+3*DAY;n.place='route:'+n.home+'>'+n.destination;n.plan='迁居以寻找生计';}
   n.next=until+30*DAY;
+  if(n.condition.wounds.length)n.next=Math.min(n.next,until+DAY);
   if(n.arriveAt>until)n.next=Math.min(n.next,n.arriveAt);
  }
  function startOperation(kind,targetKey,end,detail=''){w.op={kind,target:targetKey,end,detail,stopped:false};}
  function advance(requested){
   const initial=w.time;let until=Math.min(requested,w.op.kind?w.op.end:requested);
+  const interrupted=w.op.kind&&capabilities(p)[w.op.kind==='travel'?'move':w.op.kind];
+  if(interrupted){w.op={kind:'',target:'',end:0,detail:'',stopped:true};w.plan=[];reject('condition_interrupted',interrupted);return;}
   const deadlines=[p.deathAt,w.nextMarket,...w.reservations.map(r=>r.due),...w.promises.filter(r=>r.status==='open').map(r=>r.due),w.nextImmigration].filter(t=>t>=initial);
   if(deadlines.length)until=Math.min(until,...deadlines);
   // Resolve one due resident per commit. Equal-time work is drained before
@@ -144,7 +160,7 @@ function run(input){
   w.time=until;result.spent+=until-initial;
   const elapsedDays=Math.floor(until/DAY)-Math.floor(initial/DAY);
   if(w.op.kind==='work'&&elapsedDays>0){touch('player');p.gold+=elapsedDays*12;w.producedGold+=elapsedDays*12;}
-  if(elapsedDays>0){touch('player');feed('player',p,elapsedDays,until);if(p.injury>=80)p.deathAt=Math.min(p.deathAt,until+7*DAY);}
+  if(elapsedDays>0){touch('player');const nourished=feed('player',p,elapsedDays,until);recoverCondition(p,until,nourished);if(p.injury>=80)p.deathAt=Math.min(p.deathAt,until+7*DAY);}
   if(w.op.kind==='move'&&until>initial){const [x,y]=w.op.detail.split(',').map(Number),path=pathTo(p.place,p,{x,y});if(path?.length){touch('player');const step=path[Math.min(path.length,until-initial)-1];p.x=step.x;p.y=step.y;}}
   if(w.op.kind==='train'&&elapsedDays>0){touch('player');const productive=Math.min(elapsedDays,p.qi);p.xp+=productive*Math.max(1,skill(p,'basic'))*p.soul;p.qi-=productive;if(!p.qi)w.op.end=until;}
 
@@ -178,7 +194,7 @@ function run(input){
     const who=touch('player');who.place=w.op.target;who.x=2;who.y=7;w.peoplePage=0;if(!who.visited.includes(who.place))who.visited.push(who.place);
     for(const key of w.companions){const c=touch(key);if(c?.alive){c.place=who.place;c.destination='';c.arriveAt=0;c.x=3;c.y=7;}}
     const risk=Number(w.op.detail)||0,roll=parseInt(sha(seed+'travel').slice(0,8),16)%100;
-    if(risk&&roll<risk*10){const harm=Math.max(1,risk*5-Math.floor(who.rank/3));who.hp=Math.max(0,who.hp-harm);who.injury=clamp(who.injury+harm,0,100);history('travel_risk',['player'],'旅途中遇险，按实力减轻伤势。');if(!who.hp)death('player','旅途伤势');}
+    if(risk&&roll<risk*10){const severity=Math.max(1,risk*15-Math.floor(who.rank/3));harm('player','left_leg',roll<risk*3?'fracture':'trauma',severity,'旅途中遇险');history('travel_risk',['player'],'旅途中遇险，按实力减轻伤势。');if(!who.hp)death('player','旅途伤势');}
     if(!w.known.includes(who.place))w.known.push(who.place);history('travel',['player'],who.name+'抵达'+(PLACES.find(s=>s.id===who.place)?.name||who.place));
    }else if(w.op.kind==='train'){touch('player');history('training',['player'],'完成一段修炼，积累由资质与功法决定。');}
    else if(w.op.kind==='rest'){touch('player');p.hp=100;p.qi=100;p.injury=Math.max(0,p.injury-10);}
@@ -191,7 +207,9 @@ function run(input){
  function adultPair(t){return age(p,w.time)>=18&&age(t,w.time)>=18&&t.preference!=='unavailable';}
  function social(kind,t){
   if(!near(t))return reject('out_of_reach','请先接近仍在此地的人物。');
+  if(!capable(p,['care','treat','teach'].includes(kind)?'care':'communicate'))return false;
   if(kind==='talk'){
+   if(!capable(t,'communicate'))return false;
    if(args.detail==='acknowledge'){
     if(!t.decision)return reject('reply_pending','对方还没有可接纳的回应。');
     const spoken=t.decision;touch(args.target);event(p,t.actor,'conversation',t.name+'说：'+spoken,t.name,'direct_message');
@@ -210,6 +228,7 @@ function run(input){
    history('gift',['player',args.target],'物品已赠与，礼物不自动换取亲密或同意。');say('gifted','物品已交到对方手中。');timed(5);return true;
   }
   if(kind==='invite'){
+   if(!capable(t,'move'))return false;
    if(level(t,p)<10||t.injury>30||qty(p,'food')<2)return reject('npc_refused','对方顾虑准备、信任或自身状况，拒绝同行。');
    if(w.companions.includes(args.target))return reject('already_invited','对方已在同行安排中。');if(w.companions.length>=4)return reject('party_full','目前的补给安排不能再接纳同行者。');
    touch('player');touch(args.target);add(p,'food',-2);add(t,'food',2);w.companions.push(args.target);t.plan='与'+p.name+'约定同行';known(p,'companion',t.name+'愿意同行，仍保留自己的安排。',t.name);say('agreed','对方答应了同行提议，补给已经交付。');timed(10);return true;
@@ -219,7 +238,7 @@ function run(input){
    if(t.injury>=10&&qty(p,'medicine')<1)return reject('care_materials','照护这项伤势需要疗伤散。');
    if(t.injury<10&&qty(p,'food')<2)return reject('care_materials','照护孩子需要两份干粮。');
    if(qty(p,'medicine')<1&&qty(p,'food')<2)return reject('care_materials','照护需要疗伤散或两份干粮。');
-   touch('player');touch(args.target);if(qty(p,'medicine')&&t.injury>=10){add(p,'medicine',-1);t.injury=Math.max(0,t.injury-20);t.hp=Math.min(100,t.hp+25);}else{add(p,'food',-2);add(t,'food',2);}
+   touch('player');touch(args.target);if(qty(p,'medicine')&&t.injury>=10){add(p,'medicine',-1);treatCondition(t,'medicine',w.time);}else{add(p,'food',-2);add(t,'food',2);}
    appraisal(t,p,'trust',12,t.name+'记得你实际投入物资的照护。');appraisal(p,t,'affinity',4,'照护使你更了解对方的生活。');
    const witness=rows.find(r=>r.value.alive&&r.value.place===t.place&&[r.value.parentA,r.value.parentB].includes(args.target));if(witness){appraisal(witness.value,p,'trust',6,witness.value.name+'看见你实际照护了家人。');appraisal(witness.value,p,'affinity',4,'实际照护家人的经历使彼此亲近。');}say('cared','照护已结算。');timed(60);return true;
   }
@@ -231,7 +250,7 @@ function run(input){
    const pr=w.promises.find(x=>x.receiver===args.target&&x.giver==='player'&&x.status==='open');
    if(!pr||qty(p,pr.item)<pr.qty)return reject('delivery_unavailable','没有可履行的约定或物资不足。');
    touch('player');touch(args.target);add(p,pr.item,-pr.qty);add(t,pr.item,pr.qty);pr.status='fulfilled';t.needqty=Math.max(0,t.needqty-pr.qty);
-   if(pr.item==='medicine'){const patient=row(t.parentA)?.value?.injury>0?touch(t.parentA):t;if(patient.injury>0){add(t,'medicine',-1);patient.injury=Math.max(0,patient.injury-10);}}
+   if(pr.item==='medicine'){const patient=row(t.parentA)?.value?.injury>0?touch(t.parentA):t;if(patient.injury>0){add(t,'medicine',-1);treatCondition(patient,'medicine',w.time);}}
    appraisal(t,p,'trust',15,t.name+'记得你如期履约。');appraisal(t,p,'affinity',6,'相处中多了一次可靠的经历。');say('fulfilled','物资与约定一并结清。');timed(10);return true;
   }
   if(['confess','engage','marry','conceive','separate'].includes(kind)){
@@ -270,6 +289,7 @@ function run(input){
   if(!KINDS.includes(kind)){reject('unsupported','这个意图还不能由现有规则执行。');done();return;}
   if(kind==='browse'){if(args.detail==='clues')w.cluesPage=args.qty;else w.peoplePage=args.qty;say('browsed','已读取玩家已知记录页，世界时间不变。');done();return;}
   if(kind==='recall'){const entry=memories.find(r=>r.id===args.target&&r.value.actor===PLAYER&&r.value.kind!=='person');if(entry)say('recalled',entry.value.text);else reject('unknown_record','没有这条已知记录。');done();return;}
+  if(kind==='condition'){say('condition_read',JSON.stringify(conditionDetail(p)));done();return;}
   if(!p.alive){reject('player_dead','主角已死亡，可以读取整个世界的存档。');done();return;}
   if((w.op.kind||w.appraisals.length||w.plan.length&&!executingPlan)&&!['continue','cancel','clarify'].includes(kind)){reject('activity_pending','先继续或停止当前长期活动。');done();return;}
   if(kind==='clarify'){say('clarification',args.text.slice(0,256)||'请明确对象和一个可结算的打算。');done();return;}
@@ -287,7 +307,7 @@ function run(input){
    if(w.appraisals.length){settleAppraisals();done();return;}
    if(!w.op.kind&&w.plan.length){runPlanStep();done();return;}
    if(!w.op.kind){reject('no_activity','没有待推进的活动。');done();return;}
-   advance(w.op.end);say(w.op.kind?'advancing':'completed',w.op.kind?'已推进一段世界事件，可以继续或停止。':'这段活动已经完成。');done();return;
+   advance(w.op.end);if(accepted)say(w.op.kind?'advancing':'completed',w.op.kind?'已推进一段世界事件，可以继续或停止。':'这段活动已经完成。');done();return;
   }
   if(kind==='cancel'){
    result.partial=w.planResults.some(r=>r.accepted);
@@ -299,7 +319,20 @@ function run(input){
    say('stopped',due?'后续计划已停止，正在结清当前时点已到期的事件。':'后续计划已停止，已发生的时间与后果保留。');done();return;
   }
   if(w.combat.enemy&&!['attack','technique','guard','retreat','surrender','consume'].includes(kind)){reject('in_combat','交锋中先应对当前阶段或尝试脱离。');done();return;}
+  if(kind==='treat'){
+   const patient=args.target==='player'?p:t,healer=rows.find(r=>r.id!=='player'&&near(r.value)&&skill(r.value,'healing')&&!capabilities(r.value).care);
+   if(!patient||patient!==p&&!near(patient)||!healer||p.place!=='qingshan.inn'||qty(p,'herb')<2||p.gold<12){reject('treatment_conditions','需要接近诊疗场所的医者、两份药草和十二金币；病人也须在可接触范围。');done();return;}
+   const wound=patient.condition.wounds.find(w=>(!args.detail||w.id===args.detail)&&w.kind==='fracture'&&w.treatedAt<0);
+   if(!wound){reject('treatment_unavailable','医者检查后没有可进行这项指定处置的伤处。');done();return;}
+   if(!capable(p,'communicate')){done();return;}
+   touch('player');touch(args.target);touch(healer.id);add(p,'herb',-2);p.gold-=12;healer.value.gold+=12;
+   treatCondition(patient,'splint',w.time,wound.id);history('treatment',['player',args.target,healer.id,wound.id],'医者已对指定伤处进行处置，恢复仍需游戏时间与生活条件。');
+   event(patient,'','condition','医者已处置'+conditionDetail(patient).wounds.find(w=>w.id===wound.id).symptom,healer.value.name);
+   say('treated','医者完成指定处置，恢复过程已开始，不会立即恢复行动能力。');timed(60);done();return;
+  }
   if(['talk','gift','invite','care','promise','deliver','confess','engage','marry','conceive','separate','teach'].includes(kind)){social(kind,t);done();return;}
+  const required={move:'move',approach:'move',travel:'move',work:'work',train:'train',learn:'learn',breakthrough:'breakthrough',refine:'refine',gather:'gather',claim:'gather',attack:'attack',technique:'technique',retreat:'retreat',consume:'grip'}[kind];
+  if(required&&!capable(p,required)){done();return;}
   if(kind==='move'||kind==='approach'){
    let to={x:args.x,y:args.y};
    if(kind==='approach'){
@@ -314,7 +347,7 @@ function run(input){
    const r=ROUTES.find(r=>r.from===p.place&&r.to===args.target);
    if(!r||!w.known.includes(args.target)){reject('route_unavailable','当前位置没有已知可用路线通往那里。');done();return;}
    if(p.injury>60||qty(p,'food')<Math.floor(r.ticks/DAY)){reject('travel_unprepared','伤势过重或干粮不足，请先准备。');done();return;}
-   w.companions=w.companions.filter(key=>{const c=row(key)?.value;return c?.alive&&c.place===p.place&&c.injury<=30&&qty(c,'food')>=Math.floor(r.ticks/DAY);});
+   w.companions=w.companions.filter(key=>{const c=row(key)?.value;return c?.alive&&c.place===p.place&&!capabilities(c).move&&c.injury<=30&&qty(c,'food')>=Math.floor(r.ticks/DAY);});
    startOperation('travel',r.to,w.time+r.ticks,String(r.risk));advance(w.op.end);say(w.op.kind?'travelling':'arrived',w.op.kind?'旅途已开始，世界事件正在沿时间顺序推进。':'抵达目的地。');done();return;
   }
   if(kind==='wait'||kind==='train'||kind==='rest'){
@@ -360,7 +393,7 @@ function run(input){
    }else{
     if(args.item!=='medicine'||qty(p,'medicine')<1){reject('medicine_unavailable','没有可服用的疗伤散。');done();return;}
     if(w.time-p.lastMedicine<60){reject('medicine_interval','药效尚在作用，暂时不能再次服用。');done();return;}
-    touch('player');add(p,'medicine',-1);p.lastMedicine=w.time;p.injury=Math.max(0,p.injury-20);p.hp=Math.min(100,p.hp+30);history('medicine',['player'],'服用基础疗伤散，伤势与重复服用间隔已记录。');timed(5);say('consumed','疗伤散按实际伤势生效。');
+    touch('player');add(p,'medicine',-1);p.lastMedicine=w.time;treatCondition(p,'medicine',w.time);history('medicine',['player'],'服用基础疗伤散，不会复原缺失部位或治愈未经指定处置的骨折。');timed(5);say('consumed','疗伤散按实际伤势生效。');
    }done();return;
   }
   if(['investigate','gather','claim'].includes(kind)){

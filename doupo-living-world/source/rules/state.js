@@ -1,5 +1,6 @@
 import {CAST,PLAYER,DAY,YEAR,POLICY,ITEMS,PLACES} from '../content/catalog.js';
 import {contentSha256} from './hash.js';
+import {initialCondition,injure} from './condition.js';
 export const copy=v=>JSON.parse(JSON.stringify(v));
 export const qty=(p,id)=>p.inventory.find(x=>x.item===id)?.qty||0;
 export function add(p,item,n){let row=p.inventory.find(x=>x.item===item);if(!row){row={item,qty:0};p.inventory.push(row);}row.qty+=n;if(row.qty<0)throw Error('inventory');}
@@ -12,7 +13,7 @@ export const NEW_PERSON_FIELDS=['sex','name','home','place','role','x','born','r
 export function person(key,name,place,role,years,rank,preference,description=''){
  const female=['su','xuner','yan','ning','lin-mother','gao-child','qiao','lian','shu'].includes(key)||(!CAST.some(c=>c[0]===key)&&key!=='player'&&parseInt(contentSha256(key).slice(0,8),16)%2===0);
  return {actor:key==='player'?PLAYER:'',sex:female?'female':'male',name,place,home:place,role,x:3+(name.length%5),y:7,born:-years*YEAR,alive:true,rank,xp:0,hp:100,qi:100,injury:0,gold:120,
- inventory:[{item:'food',qty:role==='child'?0:12},{item:'herb',qty:role==='child'?0:role==='herbalist'?6:1}],skills:role==='child'?[]:[{id:'basic',level:1}],fire:2,wood:0,soul:2,
+ condition:initialCondition(),inventory:[{item:'food',qty:role==='child'?0:12},{item:'herb',qty:role==='child'?0:role==='herbalist'?6:1}],skills:role==='child'?[]:[{id:'basic',level:1}],fire:2,wood:0,soul:2,
  destination:'',arriveAt:0,plan:description||'维持生计并修炼',next:DAY+(name.length%7)*60,updated:0,deathAt:(82-years)*YEAR,
  partner:'',parentA:'',parentB:'',ward:'',needitem:role==='herbalist'?'medicine':'food',needqty:role==='herbalist'?1:3,preference,chat:'',decision:'',choice:'',visited:[place],lastSocial:0,lastMedicine:-DAY};
 }
@@ -20,7 +21,10 @@ export function initialPeople(){const rows=CAST.map(([key,name,place,role,years,
  rows.push({id:'player',value:person('player','尚未创建','wutan.inn','player',20,4,'player')});
  rows.find(x=>x.id==='su').value.parentA='su-father';rows.find(x=>x.id==='lin').value.parentA='lin-mother';rows.find(x=>x.id==='gao-child').value.parentA='gao';
  for(const id of ['su','ning']){const p=rows.find(x=>x.id===id).value;p.fire=4;p.wood=1;p.soul=4;learn(p,'refining',1);learn(p,'formula',1);}
- rows.find(x=>x.id==='su-father').value.injury=35;return rows;}
+ const father=rows.find(x=>x.id==='su-father').value;
+ injure(father,{id:'opening-su-father',part:'left_leg',kind:'fracture',severity:70,at:0,source:'opening',cause:'原创开局：既有腿伤，尚未获得指定处置'});
+ father.injury=35;father.hp=85;
+ learn(rows.find(x=>x.id==='ning').value,'healing',1);return rows;}
 export function initialWorld(){return {created:false,origin:'',background:'',time:0,serial:0,producedGold:0,consumedGold:0,cap:POLICY.liveCap,peoplePage:0,cluesPage:0,relationKeys:[],plan:[],planText:'',planResults:[],companions:[],appraisals:[],reservations:[],families:[],
  unique:[{id:'redleaf',owner:'',status:'available'},{id:'relic',owner:'',status:'sealed'}],
  stocks:PLACES.filter(p=>p.region!=='mountain').flatMap(p=>ITEMS.filter(i=>i.kind!=='unique').map(i=>({place:p.id,item:i.id,qty:8,gold:800,quote:1}))).slice(0,64),

@@ -31,7 +31,7 @@ export const ITEMS = [
 ];
 export const KINDS = ['create','move','approach','travel','talk','work','promise','deliver','buy','sell','gift','allocate',
  'investigate','gather','claim','train','learn','breakthrough','rest','refine','consume','attack','technique','guard','retreat','surrender',
- 'invite','confess','engage','marry','separate','conceive','care','teach','wait','continue','cancel','clarify','browse','recall'];
+ 'invite','confess','engage','marry','separate','conceive','care','treat','teach','wait','continue','cancel','clarify','browse','recall','condition'];
 // Each person has a livelihood, finite resources, an origin and a preference.
 // Canon characters are not automatically romance candidates or omniscient.
 export const CAST = [

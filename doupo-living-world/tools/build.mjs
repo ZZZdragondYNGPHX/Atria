@@ -57,7 +57,7 @@ export async function compile(core){
  authorityRuntime:{schemaVersion:1,canonicalClockId:'world',intentObservation:{viewIds:['player'],maxItems:64,maxBytes:16384},policy:{maxReadGrants:16,maxWorldEvents:16,maxAppCommands:24,maxEffects:32,maxReceiptBytes:32768}},taskRuntime,
  informationRuntime:{schemaVersion:1,actors:[{id:PLAYER,scopeId:'session',availability:{domainId:'dw_people',recordId:'player',field:'alive'}}],graphs:[],
  sources:[{id:'screen',kind:'application',semantic:'truth',scopeId:'session',domainId:'dw_public',fields:[['screen']]},
- {id:'self',kind:'application',semantic:'truth',scopeId:'session',domainId:'dw_people',actorField:'actor',fields:['name','role','plan','chat','injury','inventory','gold','rank','choice','decision','needitem','needqty'].map(k=>['state',k])},
+ {id:'self',kind:'application',semantic:'truth',scopeId:'session',domainId:'dw_people',actorField:'actor',fields:[...['name','role','plan','chat','injury','inventory','gold','rank','choice','decision','needitem','needqty'].map(k=>['state',k]),['state','condition','missing']]},
  {id:'personal',kind:'application',semantic:'belief',scopeId:'session',domainId:'dw_information',actorField:'actor',statusField:'status',channelField:'channel',fields:['text','target','kind','at','source'].map(k=>[k])},
  {id:'relationships',kind:'application',semantic:'relationship',scopeId:'session',domainId:'dw_relations',actorField:'actor',statusField:'status',fields:['text','target','dimension','level','rationale'].map(k=>[k])}],
  views:[{id:'player',audience:'player',sources:['screen'],exposure:['display'],knowledge:false,memory:false,maxItems:64,maxCharacters:32768},
