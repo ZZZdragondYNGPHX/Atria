@@ -2,6 +2,7 @@ import { readTaskArtifact, markTaskArtifactConsumption } from './task-artifact-a
 import { prepareSubjects, resolveSimulationSubject } from './subject-authority.js';
 import { prepareSpeechDraft } from './participant-authority.js';
 import { runPackageComputation } from './package-computation.js';
+import { AUTHORITY_EXECUTION_LIMITS } from './authority-execution-limits.js';
 import { prepareLifetimes, validateLifetimes } from './lifetime-authority.js';
 import { lifetimePolicy } from '../../public/shared/native-lifetime-contract.js';
 import { prepareHistory, historySources, validateHistory } from './history-authority.js';
@@ -9,6 +10,7 @@ import { assertNativeExperienceContract } from '../../public/shared/native-exper
 import { assertJsonDeclaration, fields } from '../../public/shared/native-values.js';
 import { assertTaskValue, taskId } from '../../public/shared/native-task-contract.js';
 import { compileDataSchema } from '../../public/shared/native-data-schema.js';
+import { compileComputationSchema } from '../../public/shared/native-computation-schema.js';
 import { simulationInstantSchema } from '../../public/shared/native-simulation-contract.js';
 import { AUTHORITY_LIMITS, authorityPublicRefusal } from '../../public/shared/native-authority-contract.js';
 import { projectInformation, assertInformationAnchor } from '../../public/shared/native-information-runtime.js';
@@ -23,10 +25,7 @@ import { packageKnowledgeManifest } from './session-knowledge.js';
 
 // Internal preparation API only. No repository, provider, scheduler or commit
 // handle is accepted. SessionCore remains the sole eventual publication owner.
-export const AUTHORITY_EXECUTION_LIMITS = Object.freeze({
-    valueBytes: 65536, totalValueBytes: 1048576, readBytes: 262144,
-    recordScans: 4096, ruleEvaluations: 256, steps: 1024,
-});
+export { AUTHORITY_EXECUTION_LIMITS };
 const bytes = value => Buffer.byteLength(JSON.stringify(value), 'utf8');
 function freeze(value) {
     if (value && typeof value === 'object' && !Object.isFrozen(value)) {
@@ -270,7 +269,7 @@ async function executeTransaction(candidate, installed, contract, logic, world, 
         if (checked.value !== true) throw new TypeError('Domain precondition rejected');
         execution.push(checked.evidence);
         const prepared = await runPackageComputation(installed, transaction.computation.source, 'compute', input);
-        computed = budget.typed(prepared.value, transaction.computation.outputSchema);
+        computed = assertTaskValue(budget.value(prepared.value), compileComputationSchema(transaction.computation.outputSchema));
         execution.push(prepared.evidence);
     }
     const rng = createDeterministicRng(identity);

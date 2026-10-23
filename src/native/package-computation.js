@@ -4,6 +4,7 @@ import { SCRIPT_LIMITS } from '../../public/shared/native-frontend-script.js';
 import { assertJsonDeclaration } from '../../public/shared/native-values.js';
 import { resourcePath } from '../../public/shared/native-frontend-contract.js';
 import { hashNativeDocument } from './repositories/common.js';
+import { AUTHORITY_EXECUTION_LIMITS } from './authority-execution-limits.js';
 
 // Cache only exact immutable module declarations, never inputs or outcomes.
 const artifacts = new Map();
@@ -32,7 +33,9 @@ function pinnedArtifact(installed, source) {
 export async function runPackageComputation(installed, source, method, input) {
     if (!['precondition', 'compute', 'invariant', 'derive', 'transform'].includes(method)) throw new TypeError('Invalid computation stage');
     const artifact = pinnedArtifact(installed, source);
-    const safe = assertJsonDeclaration(input, 'Computation input', SCRIPT_LIMITS.messageBytes);
+    // Several budgeted reads/values form one input; the frontend bridge message
+    // ceiling is not the Authority aggregate. Guest execution limits still apply.
+    const safe = assertJsonDeclaration(input, 'Computation input', AUTHORITY_EXECUTION_LIMITS.totalValueBytes);
     const engine = await getQuickJS();
     const runtime = engine.newRuntime();
     runtime.setMemoryLimit(SCRIPT_LIMITS.heap); runtime.setMaxStackSize(SCRIPT_LIMITS.stack);

@@ -4,6 +4,7 @@ import { assertRunTransactions } from '../../../../shared/native-run-contract.js
 import { LIFETIME_OPERATIONS } from '../../../../shared/native-lifetime-contract.js';
 import { HISTORY_OPERATIONS } from '../../../../shared/native-history-contract.js';
 import { assertSimulationTransactions } from '../../../../shared/native-simulation-contract.js';
+import { compileComputationSchema } from '../../../../shared/native-computation-schema.js';
 import { fields, json, text, assertJsonDeclaration } from '../../../../shared/native-values.js';
 import { taskId } from '../../../../shared/native-task-contract.js';
 import { assertNativeExperienceContract } from '../../../../shared/native-experience-contract.js';
@@ -181,7 +182,7 @@ export function compileTransactionDeclarations(raw, options) {
             }
             resourcePath(transaction.computation.source);
             if (!/\.(js|ts)$/.test(transaction.computation.source)) throw new TypeError('Computation requires exact JS/TS source');
-            computed = { computed: objectSchema(transaction.computation.outputSchema) };
+            computed = { computed: compileComputationSchema(transaction.computation.outputSchema) };
         }
         const result = resolution(transaction.resolution, { ...before, ...computed });
         const resolved = { ...before, ...computed, resolution: result };
@@ -216,7 +217,11 @@ export function compileTransactionDeclarations(raw, options) {
         if (publications.some(item => item.reads.some(read => changed.includes(read.domainId)) && !selected.includes(item))) throw new TypeError('Transaction omits an affected derived publication');
         // Reserve for the whole hook: ordinary Lifecycle effects can also trigger
         // it. C2 must enforce these same ceilings on actual expanded execution.
-        budget(grants.length * (transaction.computation ? 3 : 1) + publications.reduce((sum, item) => sum + item.reads.length, 0),
+        // Preconditions and compute share the same captured reads. Invariants
+        // read after effects and again after simulation/publication, each using
+        // the explicit selection when one is declared.
+        const invariantReadCount = transaction.computation ? 2 * (transaction.computation.invariantReads?.length ?? grants.length) : 0;
+        budget(grants.length + invariantReadCount + publications.reduce((sum, item) => sum + item.reads.length, 0),
             [...transaction.effects, ...publications.flatMap(item => item.effects)], authority);
         fields(transaction.receipt, ['schema', 'projection', 'maxBytes'], 'Transaction safe receipt');
         const schema = objectSchema(transaction.receipt.schema);
