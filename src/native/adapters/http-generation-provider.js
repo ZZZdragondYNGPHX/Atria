@@ -57,7 +57,7 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
         if (!['full', 'shape-only'].includes(outputSchemaMode) || (!messages && outputSchemaMode !== 'full')) throw new GenerationError('generation_adapter_control_unsupported');
         if (!['generation-profile', 'stream'].includes(responseMode)
             || (!messages && responseMode !== 'generation-profile')) throw new GenerationError('generation_adapter_control_unsupported');
-        if (Object.keys(connection.networkPolicy).length || Object.keys(connection.options).some(key => !['toolSchemaMode', 'responseSchemaMode', 'responseMode'].includes(key))
+        if (Object.keys(connection.networkPolicy).length || Object.keys(connection.options).some(key => !['toolSchemaMode', 'responseSchemaMode', 'responseMode', 'reasoningSplit'].includes(key))
             || Object.keys(model.messageFormat).length || Object.keys(model.providerHints).length) throw new GenerationError('generation_adapter_control_unsupported');
         const allowed = { sampling: ['temperature', 'topP'], output: ['maxTokens'], stop: ['sequences'], streaming: ['enabled'], toolChoice: ['value'] };
         if (messages) Object.assign(allowed, { reasoning: ['effort'], cache: ['key', 'retention'] });
@@ -69,6 +69,12 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
         const sequence = renderPromptMessages(promptIr);
         if (sequence.some(message => message.providerState)) throw new GenerationError('generation_adapter_prompt_unsupported');
         const body = { model: model.remoteModelId, max_tokens: maxTokens, stream: responseMode === 'stream' ? true : generation.streaming.enabled ?? false };
+        // Some compatible providers otherwise embed reasoning inside structured content.
+        // This explicit wire option does not change the requested reasoning effort.
+        if (connection.options.reasoningSplit !== undefined) {
+            if (!messages || typeof connection.options.reasoningSplit !== 'boolean') throw new GenerationError('generation_adapter_control_unsupported');
+            body.reasoning_split = connection.options.reasoningSplit;
+        }
         if (generation.streaming.enabled !== undefined && typeof generation.streaming.enabled !== 'boolean') throw new GenerationError('generation_adapter_stream_invalid');
         if (messages && Object.keys(generation.reasoning).length) {
             if (!['none', 'minimal', 'low', 'medium', 'high', 'xhigh'].includes(generation.reasoning.effort)) throw new GenerationError('generation_adapter_control_unsupported');
