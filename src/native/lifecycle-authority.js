@@ -107,14 +107,17 @@ export function compactLifecycle(base, state, { reserveTask = false, pruneIntera
     for (const domain of def.domains) {
         const records = state.domains[domain.id].records;
         const policy = domain.retention;
+        let logicalBytes = Buffer.byteLength(JSON.stringify(records));
         for (let index = 0; index < records.length;) {
             const record = records[index];
             const expired = policy.terminalTtl && state.clocks[policy.terminalTtl.clockId] - record.terminalTicks?.[policy.terminalTtl.clockId] >= policy.terminalTtl.ticks;
-            const oversized = records.length > policy.maxItems || Buffer.byteLength(JSON.stringify(records)) > policy.maxLogicalBytes;
-            if ((expired || oversized) && !protectedRecord(base, state, domain.id, record)) records.splice(index, 1);
-            else index++;
+            const oversized = records.length > policy.maxItems || logicalBytes > policy.maxLogicalBytes;
+            if ((expired || oversized) && !protectedRecord(base, state, domain.id, record)) {
+                records.splice(index, 1);
+                logicalBytes = Buffer.byteLength(JSON.stringify(records));
+            } else index++;
         }
-        if (records.length > policy.maxItems || Buffer.byteLength(JSON.stringify(records)) > policy.maxLogicalBytes) throw new TypeError('Domain retention is pinned or active');
+        if (records.length > policy.maxItems || logicalBytes > policy.maxLogicalBytes) throw new TypeError('Domain retention is pinned or active');
     }
     const taskState = base.states.atri_task_results;
     if (taskState) {
