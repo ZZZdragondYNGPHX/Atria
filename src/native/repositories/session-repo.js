@@ -936,6 +936,20 @@ export class SessionRepo {
         });
     }
 
+    async observeHead(handle, sessionId) {
+        return this._engine.withTransaction(handle, async tx => {
+            await assertRunAccess(tx, handle, sessionId, 'inspect');
+            const session = assertSession(await readCheckedDocument(tx, this._sessionKey(handle, sessionId)));
+            if (session.sessionId !== sessionId) throw new TypeError('Session resource identity mismatch');
+            if (!session.headRevisionId) throw new NotFoundError('committed native session revision', { sessionId });
+            const revision = await readCheckedDocument(tx, this._revisionKey(handle, sessionId, session.headRevisionId));
+            if (revision.sessionId !== sessionId || revision.revisionId !== session.headRevisionId || revision.branchId !== session.activeBranchId) {
+                throw new TypeError('Session HEAD identity mismatch');
+            }
+            return { session, revision };
+        });
+    }
+
     async loadSnapshot(handle, sessionId, { revisionId = null, illustrationAnchor } = {}) {
         return this._engine.withTransaction(handle, async tx => {
             // Host-only presentation reads do not restore or publish history.

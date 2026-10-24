@@ -1,5 +1,4 @@
 import { getQuickJS } from 'quickjs-emscripten';
-import { createHash } from 'node:crypto';
 import { compileController } from './frontend/script-compiler.js';
 import { SCRIPT_LIMITS } from '../../public/shared/native-frontend-script.js';
 import { assertJsonDeclaration } from '../../public/shared/native-values.js';
@@ -21,21 +20,20 @@ export function compilePackageComputation(source, files) {
 }
 
 function pinnedArtifact(installed, source) {
-    // Include all source bytes in the key: imports cannot follow mutable latest.
-    // Hash binary resources directly; decoding a large media library as text
-    // creates needless strings and loses byte identity for invalid UTF-8.
-    const key = hashNativeDocument({ source, files: [...installed.sourceFiles].map(([path, bytes]) => [path, createHash('sha256').update(bytes).digest('hex')]).sort() });
-    if (!artifacts.has(key)) {
-        const artifact = compilePackageComputation(source, installed.sourceFiles);
-        if (artifacts.size >= 8) artifacts.delete(artifacts.keys().next().value);
-        artifacts.set(key, artifact);
-    }
-    return artifacts.get(key);
+    const cached = artifacts.get(source);
+    // Only the exact linked modules affect this artifact, not scene images.
+    if (cached && cached.modules.every(([path, bytes]) => installed.sourceFiles.has(path) && bytes.equals(installed.sourceFiles.get(path)))) return cached;
+    const artifact = compilePackageComputation(source, installed.sourceFiles);
+    const entry = { artifact, modules: artifact.modules.map(module => [module.id, Buffer.from(installed.sourceFiles.get(module.id))]),
+        resourceHash: hashNativeDocument(artifact) };
+    if (artifacts.size >= 8) artifacts.delete(artifacts.keys().next().value);
+    artifacts.set(source, entry);
+    return entry;
 }
 
 export async function runPackageComputation(installed, source, method, input) {
     if (!['precondition', 'compute', 'invariant', 'derive', 'transform'].includes(method)) throw new TypeError('Invalid computation stage');
-    const artifact = pinnedArtifact(installed, source);
+    const { artifact, resourceHash } = pinnedArtifact(installed, source);
     // Several budgeted reads/values form one input; the frontend bridge message
     // ceiling is not the Authority aggregate. Guest execution limits still apply.
     const safe = assertJsonDeclaration(input, 'Computation input', AUTHORITY_EXECUTION_LIMITS.totalValueBytes);
@@ -93,6 +91,6 @@ export async function runPackageComputation(installed, source, method, input) {
         let value;
         try { value = assertJsonDeclaration(JSON.parse(vm.getString(result.value)), 'Computation output', SCRIPT_LIMITS.messageBytes); } finally { result.value.dispose(); }
         if (runtime.hasPendingJob()) throw new TypeError('Asynchronous computation denied');
-        return { value, evidence: { source, resourceHash: hashNativeDocument(artifact), stage: method } };
+        return { value, evidence: { source, resourceHash, stage: method } };
     } finally { vm.dispose(); runtime.dispose(); }
 }

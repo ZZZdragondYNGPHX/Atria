@@ -44,17 +44,22 @@ independent 128 MiB archive limit; save imports and `.atriabundle` resource bund
 retain their own limits. Use local binary Work import for larger packages.
 
 Archive memoization includes encoded archive bytes, decoded file bytes and an
-estimate of metadata size in its budget. Every open still verifies the owner's
-archive and returns isolated mutable byte copies. Cache size is not a process
+estimate of metadata size in its budget. Runtime cache hits check the owning
+installation and the blob's device/file identity, size, modification/change and
+creation stamps, then return isolated mutable byte copies. Cold, changed and
+export reads verify the complete archive. This lightweight runtime path assumes
+host-managed immutable blobs; it is not a fresh cryptographic verification of
+every byte on each action. A deliberately external rewrite preserving all file
+stamps is outside that fast-path guarantee. Cache size is not a process
 memory ceiling: encryption, ZIP processing, validation and caller copies allocate
 additional buffers. The current container is processed as a whole. A 1 GiB
 encoded Work or streaming installation requires a separate container/transport
 design and measurement; raising a constant alone does not provide that support.
 
-Rule artifact cache keys hash package files as raw bytes, including binary media,
-instead of converting them to UTF-8 JSON strings. All file identities remain in
-the key; changing a module invalidates the artifact. Inputs and rule outcomes are
-never memoized.
+Rule artifact cache hits compare the exact bytes of the linked JS/TS modules.
+Scene images and unrelated files are not scanned on every computation stage.
+Changing or removing any linked module recompiles the artifact; its evidence
+identity is computed once per compilation. Inputs and outcomes are never cached.
 
 Server Authority computation has its own 100 ms wall-clock budget per stage in
 `AUTHORITY_EXECUTION_LIMITS.computationWallMs`. This includes loading the module,

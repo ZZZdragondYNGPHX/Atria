@@ -29,7 +29,7 @@ function digest(bytes) {
 
 // A full-resolution Work can exceed the former 32 MiB memoization budget.
 // Bound the server-side parsed cache independently from browser media, while
-// retaining owner-blob verification and copy isolation on every open.
+// retaining owner/file identity checks and caller copy isolation on every open.
 const PARSED_ARCHIVE_BYTES = 256 * 1024 * 1024;
 const PARSED_ARCHIVE_ENTRIES = 8;
 
@@ -326,22 +326,29 @@ export class PackageInstaller {
         if (version.packageId !== packageId || version.packageVersionId !== packageVersionId) {
             throw new Error('Installed PackageVersion metadata does not match exact Package reference');
         }
-        const archive = await this._assetStore.readBlob(handle, version.packageContentHash);
-        if (!archive) {
+        let cached = this.#parsedArchives.get(version.packageContentHash);
+        const stamp = await this._assetStore.blobStamp?.(handle, version.packageContentHash);
+        const reusable = !includeArchive && !!stamp && cached?.owner === handle && cached.blobStamp === stamp;
+        const archive = reusable ? cached.archive : await this._assetStore.readBlob(handle, version.packageContentHash);
+        if (stamp === null || !archive) {
             const error = new Error('Installed Package content blob is missing');
             error.code = 'native_package_content_missing';
             throw error;
         }
-        if (digest(archive) !== version.packageContentHash) {
-            throw new Error('Installed Package content hash mismatch');
+        if (!reusable && stamp !== undefined && stamp !== await this._assetStore.blobStamp(handle, version.packageContentHash)) {
+            throw new Error('Installed Package content changed during read');
         }
-        let cached = this.#parsedArchives.get(version.packageContentHash);
-        // The key is an acceleration hint only. Each open has read the
-        // owner's actual blob and checked its complete digest above.
-        if (cached && !cached.archive.equals(archive)) {
-            this.#parsedArchives.delete(version.packageContentHash);
-            this.#parsedArchiveBytes -= cached.bytes;
-            cached = null;
+        // Installed blobs are immutable in the host. Normal runtime opens use
+        // owner + file identity/change stamps; cold/changed/export reads hash.
+        if (!reusable && (!cached || !cached.archive.equals(archive))) {
+            if (digest(archive) !== version.packageContentHash) {
+                throw new Error('Installed Package content hash mismatch');
+            }
+            if (cached) {
+                this.#parsedArchives.delete(version.packageContentHash);
+                this.#parsedArchiveBytes -= cached.bytes;
+                cached = null;
+            }
         }
         const inspected = cached?.inspected ?? inspectAtriaPackageContainer(archive);
         if (!cached) validateContentComposition(inspected);
@@ -353,6 +360,7 @@ export class PackageInstaller {
             throw new Error('Installed PackageVersion metadata does not match Package content');
         }
         if (cached) {
+            cached.owner = handle; cached.blobStamp = stamp;
             this.#parsedArchives.delete(version.packageContentHash);
             this.#parsedArchives.set(version.packageContentHash, cached);
         } else {
@@ -364,7 +372,7 @@ export class PackageInstaller {
                     this.#parsedArchiveBytes -= this.#parsedArchives.get(oldest).bytes;
                     this.#parsedArchives.delete(oldest);
                 }
-                this.#parsedArchives.set(version.packageContentHash, { bytes, archive: copyPackageBytes(archive), inspected: copyParsedArchive(inspected) });
+                this.#parsedArchives.set(version.packageContentHash, { bytes, archive: copyPackageBytes(archive), inspected: copyParsedArchive(inspected), owner: handle, blobStamp: stamp });
                 this.#parsedArchiveBytes += bytes;
             }
         }

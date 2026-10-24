@@ -165,6 +165,12 @@ export class SessionCore {
         return { ...installed, entryPoint };
     }
 
+    // Identity-only polling cannot expose or authorize unvalidated world data.
+    async observeHead(handle, sessionId) {
+        assertNativeId(sessionId, 'session');
+        return this._sessions.observeHead(handle, sessionId);
+    }
+
     /** Observe one committed Revision without synchronizing current Package edits. */
     async observe(handle, sessionId, { revisionId } = {}) {
         assertNativeId(sessionId, 'session');
@@ -176,6 +182,10 @@ export class SessionCore {
     }
 
     async load(handle, sessionId, options = {}) {
+        return (await this.#loadWithPackage(handle, sessionId, options)).base;
+    }
+
+    async #loadWithPackage(handle, sessionId, options = {}) {
         assertNativeId(sessionId, 'session');
         if (options.revisionId) assertNativeId(options.revisionId, 'revision');
         const snapshot = await this._sessions.loadSnapshot(handle, sessionId, options);
@@ -207,7 +217,7 @@ export class SessionCore {
                 try { await this._publish(handle, { ...base, manifest }, { states }); } catch (error) {
                     if (error.code !== 'native_session_head_conflict' || options.retriedRegex) throw error;
                 }
-                return this.load(handle, sessionId, { ...options, retriedRegex: true });
+                return this.#loadWithPackage(handle, sessionId, { ...options, retriedRegex: true });
             }
         }
         if (continuityDefinition(base)) {
@@ -218,7 +228,7 @@ export class SessionCore {
             base.continuityRevisionId = revision?.revisionId ?? null;
             base.continuityViews = continuityDisplay(base, revision);
         }
-        return loadRealm(this, handle, base, Boolean(options.revisionId));
+        return { base: await loadRealm(this, handle, base, Boolean(options.revisionId)), installed };
     }
 
     async create(handle, input) {
@@ -711,9 +721,8 @@ export class SessionCore {
     async applyAuthorityAction(handle, sessionId, { transactionId, input, invocationId }, { expectedRevisionId } = {}) {
         if (!expectedRevisionId || typeof invocationId !== 'string' || !/^[a-zA-Z0-9._:-]{1,128}$/.test(invocationId)) throw new TypeError('Authority action anchor and invocation required');
         return this._sessions.withRunLock(handle, sessionId, async () => {
-            const base = await this.load(handle, sessionId);
+            const { base, installed } = await this.#loadWithPackage(handle, sessionId);
             await this.runs.assert(handle, sessionId, 'write');
-            const installed = await this._openPackage(handle, base.session.packageId, base.session.packageVersionId, base.session.entryPointId);
             const catalog = await authorityCatalog(base, installed);
             const selection = authoritySelection(catalog, { transactionId, input });
             if (transactionId === base.manifest.runtime?.experienceContract?.storyStart?.transactionId) throw runFailure('native_story_start_only');
@@ -728,7 +737,9 @@ export class SessionCore {
             if (retiredInvocation(base.states.atri_lifecycle?.history, invocationId)
                 || retiredInvocation(base.states.atri_lifecycle?.history, 'authority:' + invocationId)) throw authorityFailure('native_authority_invocation_expired');
             const player = authorityPlayerEntry(this, base, selection, catalog);
-            const { prepared } = await this.prepareAuthorityTurn(handle, base, selection, player);
+            // Reuse the already opened package within this locked action.
+            await this.runs.assert(handle, sessionId, 'generation');
+            const { prepared } = await prepareAuthorityTurn(this, handle, base, installed, selection, player);
             const candidate = prepared.candidate;
             const runPolicy = base.manifest.runtime.experienceContract.runPolicy;
             let states = candidate.states;

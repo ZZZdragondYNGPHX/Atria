@@ -56,7 +56,7 @@ export class FrontendBridgeService {
         const state = this.experiences.get(epoch);
         if (!state || state.owner !== owner || state.revoked || state.expires < Date.now()) throw bridgeFailure('bridge_epoch_stale');
         if (state.terminalRevision) throw bridgeFailure('bridge_epoch_stale');
-        const base = await services.core.observe(owner, state.sessionId);
+        const base = await services.core.observeHead(owner, state.sessionId);
         if (base.revision.branchId !== state.branchId || base.session.packageContentHash !== state.packageHash) throw bridgeFailure('bridge_epoch_stale');
         return bridgeReceipt({ epoch: state.epoch, revision: base.revision.revisionId, data: {
             sessionId: state.sessionId, branchId: base.revision.branchId,
@@ -64,9 +64,9 @@ export class FrontendBridgeService {
             descriptorDigest: hash(canonicalJson(state.graph.bridge)), readOnly: true,
         } });
     }
-    async current(services, state) {
+    async current(services, state, { headOnly = false } = {}) {
         if (state.revoked || state.expires < Date.now()) { this.close(state.owner, state.epoch); throw bridgeFailure('bridge_epoch_stale'); }
-        const base = await services.core.load(state.owner, state.sessionId);
+        const base = await services.core[headOnly ? 'observeHead' : 'load'](state.owner, state.sessionId);
         if (state.revoked || base.revision.branchId !== state.branchId || base.session.packageContentHash !== state.packageHash) {
             this.revoke(state.owner, state.sessionId); throw bridgeFailure('bridge_epoch_stale');
         }
@@ -97,7 +97,11 @@ export class FrontendBridgeService {
                 }
                 throw bridgeFailure('bridge_method_denied');
             }
-            base = await this.current(services, state);
+            const deterministic = request.method === 'action.invoke' && state.graph.bridge.bindings.some(item =>
+                item.id === request.bindingId && item.kind === 'action' && item.target.transactionId && item.target.execution === 'deterministic');
+            // The Authority action validates its own locked snapshot. Its
+            // frontend preflight only needs identity, not a second world load.
+            base = await this.current(services, state, { headOnly: request.method === 'status' || deterministic });
             if (request.method === 'status') return bridgeReceipt({ epoch: state.epoch, revision: base.revision.revisionId });
             binding = state.graph.bridge.bindings.find(item => item.id === request.bindingId);
             if (!binding || !state.scopes.get(request.componentId)?.has(binding.id)) throw bridgeFailure('bridge_binding_denied');

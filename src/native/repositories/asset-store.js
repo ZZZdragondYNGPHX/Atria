@@ -165,6 +165,18 @@ export class AssetStore {
         return bytes;
     }
 
+    async blobStamp(handle, contentHash) {
+        if (!/^[a-f0-9]{64}$/.test(String(contentHash || ''))) throw new TypeError('Invalid AssetStore contentHash');
+        try {
+            const stat = await fsp.stat(this._blobPath(handle, contentHash), { bigint: true });
+            if (!stat.isFile()) throw new TypeError('Native Blob must be a file');
+            return [stat.dev, stat.ino, stat.size, stat.mtimeNs, stat.ctimeNs, stat.birthtimeNs].join(':');
+        } catch (error) {
+            if (error.code === 'ENOENT') return null;
+            throw error;
+        }
+    }
+
     async getRef(handle, assetId) {
         return this._engine.withTransaction(handle, tx => getNativeDocument(
             tx,
