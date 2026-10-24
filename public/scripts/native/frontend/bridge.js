@@ -1,5 +1,5 @@
 import { fixedHostTarget } from '../../../shared/native-frontend-host.js';
-import { bridgeFailure, bridgeReceipt, bridgeValue, mapBridgeInput, publicBridgeError, bridgeDescriptorDigest, assertBridgeReceipt } from '../../../shared/native-frontend-bridge.js';
+import { bridgeFailure, bridgeReceipt, bridgeValue, mapBridgeInput, publicBridgeError, bridgeDescriptorDigest, assertBridgeReceipt, makeBridgeReceiptRoom } from '../../../shared/native-frontend-bridge.js';
 
 export function frontendHttpTransport({ sessionId, fetchImpl = globalThis.fetch, headers = {} }) {
     const post = async (path, body, signal) => {
@@ -88,9 +88,13 @@ export async function createFrontendBridge({ descriptor, transport, onEpoch = ()
                     const fingerprint = JSON.stringify({ input, revision: capturedRevision });
                     const previous = kind === 'action' ? localReceipts.get(key) : null;
                     if (previous && previous.fingerprint !== fingerprint) return failure('bridge_idempotency_conflict', id);
-                    if (!previous && kind === 'action' && localReceipts.size >= 256) return failure('bridge_backpressure', id);
+                    if (!previous && kind === 'action' && !makeBridgeReceiptRoom(localReceipts, capturedRevision)) return failure('bridge_backpressure', id);
                     const pending = previous?.pending ?? hostServices.invoke(binding.target, mapBridgeInput(binding, input), capturedRevision);
-                    if (kind === 'action' && !previous) localReceipts.set(key, { fingerprint, pending });
+                    if (kind === 'action' && !previous) {
+                        const cached = { fingerprint, pending, revision: capturedRevision, settled: false };
+                        localReceipts.set(key, cached);
+                        Promise.resolve(pending).then(() => { cached.settled = true; }, () => { cached.settled = true; });
+                    }
                     const data = await pending;
                     result = bridgeReceipt({ bindingId: id, epoch, revision: capturedRevision, schemaDigest: binding.schemaDigest, data: bridgeValue(data, binding.outputSchema) });
                 } else result = await exchange('request', { epoch, componentId, bindingId: id, method, input,

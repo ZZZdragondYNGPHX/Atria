@@ -3,6 +3,16 @@ import { fields } from './native-frontend-contract.js';
 import { validateSchemaValue } from '../scripts/native/experience/world/schema.js';
 import { authorityPublicRefusal } from './native-authority-contract.js';
 export const bridgeFailure = code => Object.assign(new Error(code), { code });
+export function makeBridgeReceiptRoom(receipts, revision) {
+    if (receipts.size < 256) return true;
+    // Only obsolete, settled transport receipts are disposable. In-flight and
+    // current-revision retries stay cached; Authority owns durable deduplication.
+    for (const [key, receipt] of receipts) {
+        if (receipt.settled && receipt.revision !== revision) receipts.delete(key);
+        if (receipts.size < 256) return true;
+    }
+    return false;
+}
 export function bridgeValue(value, schema) {
     if (!validateSchemaValue(value, schema).ok) throw bridgeFailure('bridge_schema_invalid');
     const json = JSON.stringify(value);

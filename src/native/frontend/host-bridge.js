@@ -3,7 +3,7 @@ import { readFixedHost, writeFixedHost } from './host-services.js';
 import { onFrontendEpochInvalidated } from './epoch.js';
 import { randomUUID } from 'node:crypto';
 import { fields } from '../../../public/shared/native-frontend-contract.js';
-import { bridgeFailure, bridgeReceipt, bridgeValue, mapBridgeInput, publicBridgeError, projectBridgeCollection } from '../../../public/shared/native-frontend-bridge.js';
+import { bridgeFailure, bridgeReceipt, bridgeValue, mapBridgeInput, publicBridgeError, projectBridgeCollection, makeBridgeReceiptRoom } from '../../../public/shared/native-frontend-bridge.js';
 import { canonicalJson, hash } from './bridge.js';
 import { projectApplication } from '../lifecycle-authority.js';
 import { resolveNativeRuntimePackage } from '../runtime-descriptor.js';
@@ -121,12 +121,15 @@ export class FrontendBridgeService {
                 const fingerprint = hash(canonicalJson({ input, revision: request.revision, method: request.method }));
                 const previous = state.receipts.get(key);
                 if (previous) { if (previous.fingerprint !== fingerprint) throw bridgeFailure('bridge_idempotency_conflict'); if (previous.result) return await previous.result; }
-                if (state.receipts.size >= 256) throw bridgeFailure('bridge_backpressure');
+                if (!previous && !makeBridgeReceiptRoom(state.receipts, base.revision.revisionId)) throw bridgeFailure('bridge_backpressure');
                 if (!binding.target.transactionId && request.revision !== base.revision.revisionId) throw bridgeFailure('bridge_revision_stale');
                 const result = this.write(services, state, binding, request, input, base, receipt);
-                const cached = { fingerprint, result };
+                const cached = { fingerprint, result, revision: request.revision, settled: false };
                 state.receipts.set(key, cached);
-                if (binding.target.transactionId) result.catch(() => { cached.result = null; });
+                result.then(value => { cached.settled = !value.operationId; }, () => {
+                    cached.settled = true;
+                    if (binding.target.transactionId) cached.result = null;
+                });
                 return await result;
             }
             if (request.revision !== base.revision.revisionId) throw bridgeFailure('bridge_revision_stale');
