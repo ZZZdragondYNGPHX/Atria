@@ -277,3 +277,139 @@ be.2既有50年纯规则、96人QuickJS分页、真实宿主家庭/恢复、Brid
 推导：Atria已有身份、权威状态、事务、时钟、确定性计算和信息投影，尚非现成的身体、装备或NPC规划引擎。新增领域主要在package实现；只有实际代表性切片证明通用框架能力阻断时，才进入独立源码任务补充。当前调查足以定位缺口，不足以承诺某个新结构已经通过编译/安装、权限、完整恢复和规模验证。
 
 方案据此把W0改为先贯通少量状态、作用、读口与恢复，W1接活动及合法伤势/治疗/受控结果，后续长链只能调用已支持效果。伤势细则归 [character-condition.md](character-condition.md)，其他领域的状态/后果/详情对应归 [implementation-readiness.md](implementation-readiness.md)，FE责任归 [共用契约](frontend-contract.md)。不得用前端示意、模型能描述或旧be.2长跑记录替代新增功能证据。
+
+## 2026-10-23 任务机制研究摘要（首轮资料承接）
+
+本节主要承接首轮网络调查，供 [任务机制讨论稿](quest-system.md) 与 [任务内容讨论稿](quest-content.md) 引用；仅保存外部依据、适用边界和本项目推演，不复制两份模块的详细规则。本轮没有执行新的模型、性能或玩法验证，也不以上文旧版本测试记录证明任务机制已可用。阅读范围限于下列相关问答、更新条目、制作文档、作者案例和论文段落；没有完整复现他作系统。
+
+| 来源与证据范围 | 支持的判断 | 局限与面向斗破的推演 |
+| --- | --- | --- |
+| [Bruce Nesmith 原始访谈：Skyrim Radiant Story](https://rpgamer.com/2022/03/bruce-nesmith-interview/)；相关 Radiant 问答 | 系统捕获事件，结合人物关系、地点和物件数据为任务选角；作者也回顾过程序任务的荒唐、乏味结果及后续限制 | 不是任意拼装就能获得好任务的证明。**斗破推演：** 日常委托可选择符合身份、关系、地域和能力的人物，但仍需内容适配与人工限制，不能只换姓名、地点和数量 |
+| [Warframe Update 40 官方更新说明](https://www.warframe.com/en/patch-notes/pc/40-0-0)；开放区域 Bounty 重复条目 | 连续重复同一 Bounty 时，各阶段重新选择 encounter，增加重复游玩变化 | 官方条目支持阶段遭遇重选，不证明完全不重复或任务都具有长期因果。**斗破推演：** 同类采运、巡查等日常可改变途中遭遇与处理条件；体验变化仍须由实际行动差异检验 |
+| [Guild Wars 2：Dynamic Events 官方说明](https://www.guildwars2.com/en-gb/the-game/dynamic-events/)；胜负、地区变化与后续事件段落 | 事件改变周边状态，成功后可以推进优势，失败后可以重新组织；事件链承接结果 | 不能将可循环事件称为永久历史改变。**斗破推演：** 药田失守可转为救援、短缺与夺回；守住可转为运送、追查与交易，失败仍保留可玩的后续 |
+| [Tynan Sylvester：RimWorld Update 1.1.2610](https://ludeon.com/blog/2020/04/update-1-1-2609-improves-quest-generation-and-more/)；任务生成说明与相关调整项 | 生成任务需适配难度、外交与规模；实际调整包括威胁持续时间、次数、强度菜单、奖励和选择权重 | 这是生成条件与质量控制的经验，不能提供斗破的难度、报酬数值。**斗破推演：** 内容池的丰富度须同时考虑阶段适配、变化维度与最近体验，词槽组合数不能直接视作玩法数量 |
+| [Wildermyth：Comic Editor Reference](https://wildermyth.com/wiki/Comic_Editor_Reference)；官方域名制作文档的 Story Roles、性格与关系选角段落 | 故事角色按人物特征、性格、关系等匹配；必需角色不存在时故事不发生 | 资料支持有条件的故事选角，不证明可以自动生成完整长篇剧情。**斗破推演：** 手写故事模块可复用于合适人物，固定人物专属内容则保留其角色语义，避免任何 NPC 都能套用同一经历 |
+| [KCD2 任务作者 Mila Brousil 的案例说明](https://www.milabrousil.com/kcd2-quest)；Materia Prima 与 Magnum Opus 案例 | Materia Prima 尽量复用潜行、犯罪、巡逻和干扰等系统以减少专用脚本；Magnum Opus 的既有承诺、隐瞒与人物生死影响过程，不能只以主要结局数衡量分支 | 作者案例不能替代本项目交互能力检查。**斗破推演：** 任务内容应使用现有采集、交易、旅行、关系等真实机制；同一目标的不同方法与前情可形成有意义的变化 |
+| [Bannerlord 官方 Dev Blog 18/04/19](https://www.taleworlds.com/en/Games/Bannerlord/Blog/106)；开发者对 Issues 的说明 | 城镇问题可影响士气、食物或繁荣，任务成为解决问题的入口，连接角色扮演和战略系统 | 开发日志不能证明 Atria 已具备同等经济或任务承载。**斗破推演：** 断供、商路受阻和组织需求可成为任务来源；如果实际世界没有该问题，任务文案不能倒写出其已发生 |
+| [Shadows of Doubt DevBlog 10：Gameplay Loop](https://colepowered.com/shadows-of-doubt-devblog-10-gameplay-loop/)；2018 年早期原型的行为、证据与发现兜底段落 | 任务线索可来自人物实际行动、物证和目击；作者为无人发现案件的问题加入声音、痕迹等兜底 | 属于早期制作迭代，不能把所有计划当成正式版功能，也不证明全量仿真成本可接受。**斗破推演：** 失窃与调查类任务先有可核对事实，再呈现线索；同时考虑玩家如何合理获知机会 |
+| [Mike Booth：The AI Systems of Left 4 Dead](https://cdn.fastly.steamstatic.com/apps/valve/2009/ai_systems_of_l4d_mike_booth.pdf)；首轮已读第 73 页及第 77–91 页的选择、压力与节奏段落 | 内容选择可减少连续重复；Director 在压力高低间调整事件频率，节奏控制与改变难度有所区分 | 合作射击的压力模型不能直接搬到开放沙盒。**斗破推演：** 参考其分散重复、保留平静窗口的思路，不让任务提示与危机密度成为世界自主运转的衡量标准 |
+| [Doran、Parberry：A Prototype Quest Generator Based on a Structural Analysis of Quests from Four MMORPGs](https://ianparberry.com/pubs/pcg2011.pdf)；首轮已读任务样本、结构与生成相关段落 | 研究从约 750 个任务分析动机、目标和行为结构，以前后置条件约束组合 | 结构分析和生成原型不证明任务有趣，也不证明玩家已体验到足够差异。**斗破推演：** 可用于检查任务是否有合理动机与可执行路径，趣味、人物可信度和重复感仍须在后续实际样本中检验 |
+
+这些来源共同支持有条件的内容组合、人物适配、真实结果承接与变化控制；它们不证明特定池容量、规则与模型的混合比例、长期运行成本或任务品质。上述斗破例子均为设计推演，不属于原著设定事实，也不表示当前包已实现。任务生命周期、规则与模型职责等以任务机制模块为唯一正文，内容结构与扩充依据以任务内容模块为唯一正文。
+
+## 2026-10-23 固定活动设定核实：拍卖与炼药师考核
+
+本轮为 [固定活动讨论稿](quest-activities.md) 补充最低必要设定依据，不扩展通用游戏机制调研。Wuxiaworld 的 [作品页](https://www.wuxiaworld.com/novel/battle-through-the-heavens) 明列授权来源 Yuewen；以下分别记录可读正文、受限预览和二手百科的实际证据范围。本轮只有资料核对与方案准备，没有新增游戏、模型、性能或浏览器运行验证。
+
+| 资料与可读范围 | 支持的最低事实 | 不据此确定的内容 |
+| --- | --- | --- |
+| [授权译本第 21 章：Second Tier Alchemist Gu Ni](https://www.wuxiaworld.com/novel/battle-through-the-heavens/btth-chapter-21)；本次可读正文 | 米特尔拍卖场为乌坦城的拍卖机构、米特尔家族分支；存在鉴宝室，谷尼参与药液鉴定，鉴定后可安排委拍 | 单次场景不规定全部拍品的通用受理条件、固定鉴定耗时、库存生成或每场排期；Gu Ni 对应谷尼，不与项目人物谷茗混用 |
+| [授权译本第 22 章：Hurricane Chant](https://www.wuxiaworld.com/novel/battle-through-the-heavens/btth-chapter-22)；本次可读正文 | 雅妃为乌坦城拍卖场首席拍卖师；场景包含拍品介绍、现场叫价、竞争者取舍和落锤成交 | 不把该场拍品、成交者、价格或出价次序预写成游戏必定重演的结果；统一最小加价、资金占用和特殊竞价规则仍属游戏设计 |
+| [授权译本第 24 章：Everything For Later](https://www.wuxiaworld.com/novel/battle-through-the-heavens/btth-chapter-24)；本次可读正文 | 拍卖后另有手续与款项结算；雅妃会争取有价值的供应者，场景出现贵宾身份和差别待遇 | 不由这次交易推定所有角色自动有贵宾待遇，也不直接冻结游戏通用手续费、信用额度或收益数值 |
+| [授权译本第 164 章：The Alchemist Association](https://www.wuxiaworld.com/novel/battle-through-the-heavens/btth-chapter-164) 与 [第 166 章：Passing the Test](https://www.wuxiaworld.com/novel/battle-through-the-heavens/btth-chapter-166)；本次均只可读 Teaser | 黑岩城有炼药师公会及等级徽章咨询场景；考场存在炼药实作，弗兰克与奥托在场观察 | 未读取受限正文；不从章节标题和预览补出完整登记手续、材料份数、次数、时限、题目、评分、费用或授证流程 |
+| [小说向 Wiki：Fu Lan Ke](https://battle-through-the-heavens.fandom.com/wiki/Fu_Lan_Ke)；搜索返回的可见背景、弟子及考核段，直接打开受限 | 二手资料将弗兰克列为黑岩城炼药师公会会长、雪魅的师父，并描述其与奥托主持考核 | 只作人物身份和机构职责的补充线索，不冒充本次已读小说正文；不采用词条跨时期的品阶、年龄或后续人物状态 |
+| [百度百科：琳菲](https://bkso.baidu.com/item/%E7%90%B3%E8%8F%B2/65361189?fromModule=lemma_inlink)；本次搜索可读身份背景及考核经历段 | 二手资料将琳菲列为奥托弟子，描述琳菲与雪魅在黑岩城共同参与炼药师考核 | 原著情节中的通过与后续成长不等于游戏开局已发生；本轮不据此追加奥托的副会长职务、二女的开局品阶或以后必定晋阶的结果 |
+
+原著有关人物首次出场时的身份，不足以精确证明小说第一天的所有在场、资格或关系状态；开局采用范围与独立世界历史需在内容方案中明确。原著后续拍卖、考试、晋阶、迁居和关系结果不因被资料提及而自动成为游戏未来。
+
+活动的可执行手续、公开递增竞价与资金处理，以及报名、实操、结果评定和认证的完整交互流程，均按 [固定活动讨论稿](quest-activities.md) 标注的游戏原创候选处理。上述资料不证明这些规则已在当前包实现，也不代替后续能力、库存、资金、所知与恢复验证。
+
+## 2026-10-23 战斗机制与功法重构研究
+
+本节承接本轮网络调查与当前工作树代码检查，为 [战斗机制讨论稿](combat-system.md) 和 [功法重构讨论稿](arts-reconstruction.md) 提供证据；详细玩法、数值、数据职责与待讨论项只在对应模块维护。
+证据区分官方说明、授权译本正文、二手百科与公开模拟器实现；协作代理读取的范围同样明确记录，不将搜索摘要写成逐章全文核实。
+本轮只调研并更新方案，不改游戏代码；以下代码结论取当前实际工作树，不由旧版本文档、包版本号或历史测试推定新战斗完成。
+
+### 宝可梦结构与可借鉴边界
+
+| 来源与实际读取范围 | 支持的事实 | 世代、用途与跨作品局限 |
+| --- | --- | --- |
+| [Pokemon官方视频游戏词汇表](https://www.pokemon.com/us/play-pokemon/about/video-game-glossary)；已读招式、PP、优先级、特性、携带物、状态与双打相关正文 | 招式有使用资源和目标；优先级先于同档速度；特性按条件触发；物品区分持续生效、主动使用和自动消耗；常规冒险与竞技恢复不同 | 页面含USUM时代例子及旧数值，只作结构定义；不照搬四招式上限、单携带物、十八属性、战后恢复或六项能力值 |
+| [官方《剑/盾》双打速度控制](https://www.pokemon.com/us/features/battle-tactics-speed-control-in-double-battles-in-pokemon-sword-and-pokemon-shield)；已读New Speed Mechanics及协作案例正文 | 第VIII世代回合内速度变化立即影响尚未执行的行动；速度控制、保护同伴与协同触发可改变局势 | 不是所有世代一直如此；Dynamax等该作专有机制不转写成斗破规则；速度与行动优先级不能混为同一属性 |
+| [官方VGC规则文件](https://www.pokemon.com/static-assets/content-assets/cms2/pdf/play-pokemon/rules/play-pokemon-vg-rules-formats-and-penalty-guidelines-en.pdf)；搜索可读2025版携带物、队伍与双打条款 | 常用双打格式从战斗队伍选择四名，两名同时上场；竞技赛可设置同种及同物品限制 | 未将该文件作为2026全部赛制权威；竞技队伍、等级拉平、公开名单和比赛终止规则不适合直接替代开放沙盒 |
+| [Bulbapedia：Move](https://bulbapedia.bulbagarden.net/wiki/Move)；已读招式特征、学习与遗忘、标准字段正文 | 威力、命中、PP、优先级、类别、属性、范围及附加效果是不同维度；第IV世代起物理/特殊类别按招式区分 | 二手跨世代汇总；不能由火属性推出必定远程或特殊攻击，也不能由宝可梦学习限制推出修炼者必须遗忘旧斗技 |
+| [Bulbapedia：Priority](https://bulbapedia.bulbagarden.net/wiki/Priority)；已读Mechanics、特殊顺序、特性和阻止先制的条目 | 同档速度与优先级分层；保护、先手攻击、延迟反击、协作改变次序形成不同战术作用 | 列表含多世代例外；项目需要自己冻结执行顺序，不把百科所有特例混成一套规则 |
+| [Bulbapedia：Status condition](https://bulbapedia.bulbagarden.net/wiki/Status_condition)；已读持续/临时状态及烧伤、冰冻、麻痹相关正文 | 主系列区分非易失与易失状态，能力受限和持续损伤并非同一效果；不同世代的伤害、速度倍率会变化 | 大多数主系列的单一主要异常限制、切换消除效果和PLA的状态覆盖规则不同；持续伤处、毒素与临时破绽不能直接合并为一个槽 |
+| [Bulbapedia：Escape](https://bulbapedia.bulbagarden.net/wiki/Escape)；已读撤离条件、限制与跨世代说明 | 野生遭遇可撤离失败并失去行动机会；逃跑、陷阱、特性和物品存在条件关系；训练家/玩家战斗另有规则 | 页面标注部分第IV世代之后公式待核或过时；只借鉴撤离有代价与限制，不搬精确公式或训练家战禁止逃跑 |
+| [PLA官方玩法](https://legends.arceus.pokemon.com/en-us/gameplay/)；已读Time for a Pokemon Battle及Agile/Strong Style正文 | PLA允许连续行动；迅疾降低威力并提高行动速度，刚猛提高威力但降低行动速度 | 这是不同于传统回合的时间轴参考，不自动与当前宝可梦式回合基线叠加，也不作为免费连招或实时操作依据 |
+
+这些材料支持先选择合法行动、再依明确顺序结算，以及资源成本、条件效果和协作形成战术差异；它们不提供斗破的人体、境界或距离公式。
+多人协作可以参考双打的目标选择、掩护和辅助，但NPC是否协助、撤退或拒绝仍须接既有目标、关系、所知与能力条件，不能变成全员服从玩家的竞技队伍。
+战斗界面展示的情报应延续项目现有个人视角；竞技公开名单不授权暴露NPC私有斗技、物品或动机。
+
+### 公开实现与许可
+
+| 已读取实现 | 支持的工程判断 | 不据此承诺的内容 |
+| --- | --- | --- |
+| [Showdown行动队列固定版本](https://github.com/smogon/pokemon-showdown/blob/b86dd3ae/sim/battle-queue.ts)；已读队列说明、排序、插入/取消与改变行动函数 | 选择与执行分开；行动按类别顺序、优先级及速度排序；队列变化有明确入口 | 它是宝可梦模拟器，不是Atria原生事务或世界时间实现；不能直接套用其对象、循环和容量 |
+| [Showdown battle.ts](https://github.com/smogon/pokemon-showdown/blob/master/sim/battle.ts)及[事件流程说明](https://github.com/smogon/pokemon-showdown/blob/master/simulator-doc.txt)；已读事件系统说明与主要流程 | 通用结算、效果事件、状态和各类数据分离；命中前、伤害时、行动后及回合尾有可辨识时点 | 说明和当前源码不一定完全同步；不采用其全部历史兼容分支，也不把任意脚本钩子当成本项目已支持能力 |
+| [招式数据](https://github.com/smogon/pokemon-showdown/blob/master/data/moves.ts)与[道具数据](https://github.com/smogon/pokemon-showdown/blob/master/data/items.ts)；已读文件开头及After You、Air Slash、触发物品等具体条目 | 招式不仅有名称/伤害，还含目标、标签、概率效果与队列作用；物品持续效果和实际消耗分别处理 | master链接会变化，本轮没有下载或复现全模拟器；不能声称全部数据都已核验，更不能据此复制名称、素材或完整机制 |
+| [Showdown LICENSE](https://github.com/smogon/pokemon-showdown/blob/master/LICENSE)；已读MIT许可全文 | 实质复用软件需保留相应版权与许可声明 | 软件许可不自动授予宝可梦名称、图像及其它IP权利；本项目目前只参考组织方式，没有增加该依赖 |
+
+可复用的是职责分层和有界执行思路，而非第二个脱离Atria权威状态的独立战斗世界。
+新领域是否需要通用产品修补，须由后续实际schema、读取/输出预算、事务与恢复验证证明，不能仅凭他作源码存在就承诺可安装。
+
+### 小说设定与非致命后果参考
+
+| 来源与实际读取范围 | 支持的最低事实 | 原著倍率、时期及跨IP局限 |
+| --- | --- | --- |
+| [Webnovel授权译本第2章：Dou Qi Continent](https://www.webnovel.com/book/battle-through-the-heavens_8093990805004205/dou-qi-continent_21770727598387027)；本轮协作实读正文 | Qi Method与Dou Technique分开；功法分天/地/玄/黄，各低/中/高；自身境界是战力首要因素，一星斗者即使天阶功法也难胜斗师；配套功法/斗技有额外优势；成为真正斗者后才能修炼功法 | 不给出通用伤害、容量、恢复、相性或跨境界倍率；“难胜”不等于绝对无敌；章节的局部魂力常识不能外推为后期灵魂体系全部规则 |
+| [Wiki：Qi Method](https://battle-through-the-heavens.fandom.com/wiki/Qi_Method)；协作实读百科正文；相关第68/235章仅读teaser | 二手资料整理功法对斗气容量、质量、吸纳炼化及运转的作用，以及换功法相关线索 | 百科不是本次逐章核实的小说正文；受限章节未完整读取；具体倍率、替换损失、战中恢复与高阶条件仍待条目级核对 |
+| [Wiki：Dou Techniques](https://battle-through-the-heavens.fandom.com/wiki/Dou_Techniques)与[Cultivation](https://battle-through-the-heavens.fandom.com/wiki/Cultivation)；协作实读百科正文，本代理另查搜索可读相关段落 | 可作为斗技分阶、境界能力解锁、武器/护体/飞行等能力的索引，辅助建立需要核实的内容清单 | 多时期综合且含翻译歧义，不把索引说明、价格或破坏力修辞当统一数值，也不把高阶能力自动开放给当前低境界玩法 |
+| [Wiki：Flame Mantra](https://battle-through-the-heavens.fandom.com/wiki/Flame_Mantra)与[Heavenly Flame](https://battle-through-the-heavens.fandom.com/wiki/Heavenly_Flame)；协作实读百科正文 | 焚诀与异火取得/融合/成长联系特殊，不能当作普通随机功法的仅换名版本 | 脚注存在错配，未声称逐章核实；异火资格、反噬、成长和取得未实现前保留储备，不把原著机缘归属预写为游戏未来 |
+| [Kenshi官方作品说明](https://lofigames.com/about-kenshi/)；本轮协作实读正文，本代理另查官网相关可见说明 | 无等级缩放、世界非主角中心；伤势可影响移动，昏迷、失血、救援及逃离囚禁进入持续世界 | 只参考失败后仍可继续游玩的后果结构；不复制即时战斗、肢体数值、机械义肢或该作奴役设定 |
+| [Kenshi Medical System Update 0.61.0](https://lofigames.com/medical-system-update-0-61-0/)；协作实读2014年开发日志正文 | 设计讨论区分死亡、失肢、昏迷、自救和伤后延迟死亡，说明败退/倒地与死亡可以分离 | 旧开发日志只支持设计动机，不证明当前版精确流程或概率；不采用其阈值、治疗速度及死亡公式 |
+
+小说证据支持功法、斗技与境界分别表达，不能直接证明某组游戏参数“原著正确”。
+Kenshi仅补充非致命失败与持续后果的比较依据，不决定本项目切磋、拘束、救援或伤亡细则。
+属性相性、身法距离、临时状态及所有数值落点均为游戏设计；后续原著条目补充仍遵循小说优先、百科索引和未实现内容不参与有效抽样的既有边界。
+
+### 当前工作树的最小代码事实
+
+以下路径均相对游戏目录 `doupo-living-world/`；它们是读取事实，不是本轮新增实现或验收结论。
+
+| 读取位置 | 当前事实 | 对新机制的约束 |
+| --- | --- | --- |
+| `source/pools/arts.js`、`source/rules/progression.js` | 同一arts池含cultivation/combat/formula；10个ready、1个reserve。study只选一个修炼功法和一个当前斗技；修炼主要使用xpRate/qiRate，斗技主要使用qiCost/power/arms | 已有统一内容入口可复用，但不能把四个数值条目当成完整多招式战斗；不另建隐蔽随机表 |
+| `source/rules/state.js`、`tools/schema.mjs` | 默认人物hp/qi各100；study有两个当前条目和小数carry；world/screen战斗为enemy/round/guard；skills容量16 | schema允许的最大值不等于真实容量成长；尚无多人参战、行动队列、距离/临时效果和多斗技选择结构 |
+| `source/rules/engine.js`的玩家交锋分支 | 玩家先造成基于rank及当前斗技的伤害，存活敌人再按rank差反击；投降转移四分之一金币；撤退以简化条件判断并改到固定坐标；一段推进5分钟 | 不是宝可梦式双方选择后排序；不能由已有按钮推定先制、装备参战、追击路线或多人博弈已完成 |
+| `source/rules/life.js:settleConflict`、`source/rules/equipment.js` | NPC后台冲突已有实际斗技/耗气、装备作用与磨损、药物、伤处、撤离/认输/有限拘束及观察传播；双方仍按固定遍历顺序执行 | 可复用物质与后果权威，但后台固定顺序及公式不是新的统一战斗内核；玩家交锋与后台冲突不能继续各自宣称同一语义 |
+| `source/rules/condition.js`、`source/rules/projection.js` | 伤处/缺失影响能力；capabilities当前直接读取arts及study.combat；公开arts仅投影本人已学或持有秘籍 | 重构须同步能力限制、合法执行和投影；不能只增加战斗数据表而留下旧当前斗技判定或泄露他人私有能力 |
+| `frontend/panels.js`、`frontend/main.js`、`tools/build.mjs` | 正式界面仍是施展当前斗技与简单攻防入口；attack/technique走choice；构建器消费闭合schema、内容/池校验与原生接口声明 | 功法重构需要接口、投影、模型意图及界面一起对应；模型描述、静态页面或版本标识不能替代原生执行证据 |
+
+### 本轮验证边界
+
+- 首轮root实际执行只读 `validatePools` 与 `validateContent`，均通过；本轮不重复已通过且未受代码变更影响的检查。
+- 该检查读取结果为6地区、32场所、66路、48名作者NPC、13池、10个ready加1个reserve功法/斗技/丹方条目、15项物品；不是新战斗内容覆盖数。
+- 检查只证明当时内容/池声明满足其校验器；不证明行动排序、功法重构、多人距离、结果恢复或NPC战术已经可用。
+- 未执行新构建、安装、Native战斗事务、真实模型、浏览器战斗流程、性能或战斗测试；没有新增相关通过结论。
+- 工作树含既有未提交改动；`package.json`的quests.2与README的quests.1是标识/文档差异，不是新增战斗完成或旧档迁移证据。
+- 正式实施和验收待方案确定后在新对话进行；本节不写Record、HANDOFF或实施完成声明。
+
+### 首批战斗内容的代码证据补充（2026-10-23）
+
+本次仅按首批内容选取问题重读当前 `package` 工作树的池注册、人物/地理、能力、旅行/成长入口与包内SOURCES；没有新增构建、测试或广泛网络调查。以下是方案输入，不记录新的内容数量确认，不将拟议遭遇或条目写成已存在玩法。
+
+| 当前实际证据（路径相对 `doupo-living-world/`） | 可用于内容讨论的事实 | 未知与不能推出的结论 |
+| --- | --- | --- |
+| `source/content/SOURCES.md`、`source/rules/engine.js`成长分支、`source/rules/life.js`突破分支 | SOURCES定义rank 1–9为斗之气、10–19为首批斗者进阶，20以上仅用于已有强者游戏数值；玩家与NPC的现有突破均只在rank小于19时增加一级 | engine拒绝文案又称“可玩到斗师阶段”，与SOURCES口径不一致；未见完整境界/星级转换权威。首批范围不能由一句文案扩为完整斗师，更不能由rank数值反推飞行、护体或空间能力已实现 |
+| `source/pools/cast.js`、`source/pools/people.js`、`source/rules/state.js` | 作者人物池含48名角色；职业模板仍是人的身份、生计与基础属性，非完整战斗流派。萧战rank 25、弗兰克32、奥托31等为当前配置，作者注明精确年龄、rank和驻留是游戏参数 | 高rank原著NPC不等于其小说全能力已落地；不能依据原著身份给他们补成已学高阶斗技、必然参战或完整境界。NPC何时在场仍由实际活动决定 |
+| `source/pools/arts.js`、`source/rules/progression.js` | 当前ready共5个修炼功法、4个斗技、1个丹方，均标黄阶；焚诀为reserve。斗技差异主要是耗气、威力和手臂要求，功法主要是修炼效率与耗气率；现有条目名为游戏内容 | 点脉指名称不证明已能封脉，轻风息法名称不证明已实现战斗身法；没有阶内低/中/高字段，也没有相应范围、先制、蓄力或控制效果。新增条目与原著名字仍需逐项来源和可执行能力匹配 |
+| `source/content/catalog.js`的GEAR、`source/pools/items.js`、`source/rules/equipment.js` | 已有blade/armor/ward三个装备规格及实际磨损/充能作用；物品池15项由5个补给/材料/药物/札记和10份ready能力抄本组成 | 不等于15种战斗道具或已实现锻造/魔核/魔兽材料；装备实例与普通物品数量分开，首批内容不能凭胜利凭空生成其库存外战利品 |
+| `source/pools/index.js`、`source/pools/cast.js`及source中的主体/战斗入口 | 当前13个注册池没有魔兽/生物池，现有初始主体与后台交锋使用人物；魔兽山脉与兽域文本分别出现在地理/世界目录中 | 地名、图像和目录标签不证明魔兽是可持续参战主体；没有本轮已核实的魔兽种类、品阶、行为或战后材料。拟议魔兽行为类型只能先作原创候选，不挂未经核实的原著专名 |
+| `source/pools/geography.js`、`source/rules/engine.js`的travel及到达结算 | 六地区有现成场所/道路；场所配置20×14布局和blocks。旅途按route risk直接造成伤处并记录travel_risk，没有先创建某只魔兽再执行其攻击 | 旅行遇险不是可选择目标的魔兽遭遇；现有blocks也不证明已具备战斗射线、群体范围或掩护结算。路线风险不能直接冒充首批魔兽战斗通过 |
+| `source/pools/quests.js`、`source/content/SOURCES.md` | QC28护人而非清场、QC29让争斗停下来、QC30在约定规则内证明自己仍标dependency，依赖D33；地点、机构与人物来源清单将原著身份和原创参数分开 | 三个储备标题不是已可玩战斗任务；SOURCES中早期拍卖/考核未开放描述可能滞后于其它现有任务实现，不能用整份旧措辞替代当前代码或Record事实 |
+
+本轮主代理随后局部网络检索以下百科条目，实际工具返回的正文摘录用于最低内容索引；没有完整读取条目、逐章核实小说或验证游戏能力，也不把预期检索内容充作已读证据。
+
+| 实际返回的来源摘录 | 支持的首批内容索引 | 不据此冻结的内容 |
+| --- | --- | --- |
+| [Wiki：Cultivation](https://battle-through-the-heavens.fandom.com/wiki/Cultivation)；搜索返回斗师/大斗师相关段落 | 斗师斗气由气态向液态变化及斗气纱衣；大斗师斗晶与斗气铠甲，可作为境界能力切片的二手索引 | 不给出容量、减伤或跨境界倍率；不由人物个例推定普遍全身铠甲星级阈值，也不证明当前代码已解锁这些能力 |
+| [Wiki：Da Dou Shi](https://battle-through-the-heavens.fandom.com/wiki/Da_Dou_Shi)；搜索返回armor、External Emission及武器相关段落 | 大斗师护体铠甲、斗气外放和覆盖武器可作为后续条目核实的方向 | 不据此让所有攻击无条件远程、覆武器必定同一增幅或低阶角色提前获得完整高阶能力；实际资格、作用方式和代价仍候选 |
+| [Wiki：Magical Beasts](https://battle-through-the-heavens.fandom.com/wiki/Magical_Beasts)；搜索返回阶级对应及特殊攻击说明 | 一/二/三阶分别索引斗者/斗师/大斗师；不分人的星级，特殊攻击可能使同阶魔兽更强 | 人兽对应不是1:1能力数值或固定胜率；不推出每只必有可掉落魔核、统一材料数量或具体物种能力，未核实的原著species名仍待逐条查证 |
+
+本轮不采用萧炎个人全甲例子作为通用星级门槛；检索中的战耗补充表述也不改变D70默认回合恢复边界，例外仍须有真实能力条目、资格及代价。上述来源只支持首批候选切片，不替代完整原著能力核对。
+
+首批可据已有人的身份、地方关系与可达场所准备内容，但可执行战斗风格须由新功法/斗技能力逐项支持，不能只给现有NPC贴标签。高阶原著能力、特定魔兽专名与完整境界映射仍有证据缺口。
+原著基础沿本节已读第2章及明确范围的百科证据；上述新增检索仍只作索引，不用来认证新增倍率、低阶斗技的具体效果或某个原著魔兽的完整能力。
+首批人物、功法、斗技、道具及遭遇数量与投放选择仍由 [战斗内容讨论](combat-system.md) 和 [能力条目讨论](arts-reconstruction.md) 提出并讨论；本补充没有冻结这些数量，也没有新增自然流程、战斗或性能通过结论。

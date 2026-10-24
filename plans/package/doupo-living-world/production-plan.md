@@ -2,6 +2,8 @@
 
 状态：正式制作已获授权；确认项以 [decisions.md](decisions.md) 的 D01–D34 为准。be.2/C2 是已有后端基线，v0.16补齐玩法与状态、规则、界面及恢复的实施对应；新增机制尚未实现，完整玩家战斗后续独立实施。具体规则、算法、数值与容量作为默认候选在实现/验证中校准，未逐项冻结不构成新的开工前置审批；前后端职责沿用 [分工](execution-split.md)，不替用户选择正式前端集成者或批准批量美术。
 
+v0.36当前边界：旧世界／任务制作授权与成果保留其适用阶段；当前D61–D62的完整战斗和功法重构只更新方案并讨论，正式实施等待讨论确定后的新对话。新战斗细则归 [combat-system](combat-system.md)，功法／斗技／能力成长细则归 [arts-reconstruction](arts-reconstruction.md)，本总稿只汇总依赖，不复制规则或扩大本轮范围。
+
 ## 作品体验与首批交付
 
 首要目标是世界整体自主运转。先证明玩家未参与时，首批三地的人物、家庭和组织也会围绕生计与长期目标生产、交换、出行、合作、竞争和传播信息，结果持续改变后续机会。玩家接触的是已经在运转的社会，进入场所或接取任务不会成为世界开始工作的必要条件。详细运行原则归 [世界模块](world-simulation.md)，人物和地区规则分别归 [npc-agency.md](npc-agency.md)、[world-systems.md](world-systems.md)。
@@ -49,13 +51,20 @@ NPC成长和相互冲突也是当前世界循环的必要部分，详见 [npc-pr
 
 ## 各模块的制作职责
 
+任务机制扩展当前只完善方案并讨论，正式实现等待讨论确定后的新对话；下面既有制作顺序不覆盖这一本轮边界。人物/活动、拍卖/考核及通用履约/信息/机会规则按D48–D58准备；D59确定首批QC01–QC27与D33储备，D60确定可跳过的开局轻引导，作者内容和操作/选择/结算/后果完成要求唯一归quest-content。具体领域规则沿下表路由。
+
 | 模块 | 本版展开的默认设计 |
 | --- | --- |
+| [combat-system](combat-system.md) | 回合、空间／身法、多人、决策／终止和世界接续的当前讨论稿 |
+| [arts-reconstruction](arts-reconstruction.md) | 功法与斗技分层、资格／学习／独立掌握／换修及效果的当前讨论稿 |
+| [quest-system](quest-system.md) | 六类任务的共同状态、动态编排、清算与长期后果；后续实现组织和必要验收 |
+| [quest-content](quest-content.md) | 任务内容矩阵、候选短单/长链与手写故事编制、丰富度覆盖 |
+| [quest-activities](quest-activities.md) | 拍卖、炼药师考核、家族/佣兵试炼和市井交流的领域规则与实际依赖 |
 | [content-and-runtime](content-and-runtime.md) | 场所与人物编制、日常关系、婚姻家庭、探索争夺、运行负载 |
-| [player-and-combat](player-and-combat.md) | 出身、原著记忆与初始事实、文字意图、战术交锋 |
+| [player-and-combat](player-and-combat.md) | 出身、原著记忆与初始事实；战斗规则路由到combat-system |
 | [world-simulation](world-simulation.md) | 动态 NPC/人口上限与事件平衡、行动时间、中断、消息、精度与世代、远方边界 |
 | [npc-agency](npc-agency.md) | 人格、长期目标与当前行动、主动社会行为、承诺与联合计划、改策 |
-| [npc-progression-conflict](npc-progression-conflict.md) | NPC自主修炼、后台战斗、真实能力/装备/道具及损耗、未来玩家战斗边界 |
+| [npc-progression-conflict](npc-progression-conflict.md) | NPC修炼／突破活动、后台世界接续、器物／道具分类损耗；新战斗路由到combat-system |
 | [character-condition](character-condition.md) | 身体部位、伤病来源、功能约束、恢复/治疗、本人详情与合法观察 |
 | [implementation-readiness](implementation-readiness.md) | 玩法承载缺口、状态至规则/读取/恢复的实现路径、构建预算与完成状态 |
 | [social-graphs](social-graphs.md) | 每个角色的社交圈、关系事实/本人所知/主观评价、认识第三者与私有图谱 |

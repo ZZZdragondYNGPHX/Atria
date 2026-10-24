@@ -1,6 +1,8 @@
-# 前后端共用契约 — C0 语义与 C4 实际接口
+# 前后端共用契约 — C0 语义与 C6 实际接口
 
-状态：C0语义继续生效；当前实际接口为C4（be.5规则、0.1.0-fe.2原生前端整包）。C2/C3保留为历史接口；下文候选设计不自动变为已实现能力。正式接线说明见本文件末节。
+状态：C0语义继续生效；当前实际接口以文末C6战斗／功法增量及仍适用的C4/C5领域为准。C2/C3与旧版本验证段落保留历史边界。当前源码和闭合schema是字段事实，不能把候选扩展当成已实现。
+
+当前路由：2026-10-24按正式指令实装C6。详细领域设计见 [combat-system.md](combat-system.md)、[arts-reconstruction.md](arts-reconstruction.md)，工程与验证见 [implementation-readiness.md](implementation-readiness.md)。下文v0.36以前的未实施陈述仅适用其历史版本。
 
 v0.15范围：NPC自主成长、NPC/NPC后台战斗与功法/装备/道具损耗属当前新增世界规则，实际字段待实现后更新。完整玩家战斗按D33未来独立实施；下述F07既有接口和v0.14候选玩家战斗/约束表现保留原适用范围，不据此要求本轮新建完整玩家战斗机制或界面，也不将后台NPC冲突伪装为当前C2已支持。
 
@@ -290,3 +292,201 @@ PackageVersion `pkgv_c3898a0270b98a0064c4ac8e4b9c81f9`，Package ID与main依赖
 63张交付图包含40张配对池图及23张场景/物品/总览/占位引用；稳定asset id不变。安装manifest记录前端交付WebP的hash/size，原图与media/pools/manifest.json仍是作者来源证据，二者不再要求字节相同。frontend/media-delivery.json连接原始hash、像素尺寸、编码参数和交付体积；不修改池抽样或存档外观身份。
 
 浏览器验收包括真实Authority购买与Native存档恢复，但本地generationHost只负责Authority交易，自由文字服务用于失败保稿验证；本轮没有真实模型请求，不能声称模型质量或延迟已验收。D33完整战斗、W5跨月成本、实际设备与行走动画仍未完成。
+## content.1 内容兼容补充（2026-10-23）
+
+沿用C4的screen字段、操作和视角约束。本轮构建新增原著/原创人物与场所后，`known` 的 schema 上限从24扩为64；当前全图32场所，隐藏地点仍按线索揭示。其它个人数据、stocks64、ecology4、organizations4、96NPC及Native计算预算不变。
+
+身份绑定由作者人物数按8人一批生成，前端消费构建导出的公开 `BINDINGS`；content.1为 `bind0` 至 `bind5`，每项空对象输入、确定性执行。不得按旧文写死三批。公开静态目录另含 `REGIONS`，区域名称不由前端维护第二份表。新增原著人物 `appearance.ready=false` 时明确缺图；新增场所不借旧三地图充当实际场景。
+
+本补充只改变内容容量和绑定数量，不引入飞行购票、药师认证或新的高阶技能。采用新局，无旧存档自动补入承诺。新增内容明细见 [content-expansion.md](content-expansion.md)。
+
+## v0.23 任务机制候选路由（历史方案）
+
+任务通用原则、人物/活动范围、拍卖/考核、履约/信息/协作、机会汇总、首批范围与轻引导见D39–D60。任务实例、条款、阶段、世界变化、报酬、长期后果和恢复的候选语义唯一见 [quest-system.md](quest-system.md)，作者内容与首批QC01–QC27的实际操作/选择/结算/后果要求见 [quest-content.md](quest-content.md)，拍卖/考核等活动领域规则见 [quest-activities.md](quest-activities.md)。以下段落保留 v0.23–v0.34 的历史候选语义；当前已实施部分以本文末尾 C5 及实际源码为准，历史“待实施”措辞不覆盖新接口。
+
+后续实现需从同一任务权威派生本人可见日志、详情、追踪与状态变化反馈，并接入当前人物/见闻/地图入口。正式委托明示目标、报酬、期限与已确认进度；调查探索展示合法已知线索和最后核实位置，可手动追踪；协助与转包区分邀请/接受/委托人同意，不能把私有NPC目标、过时位置或后台真实终态直接公开。具体字段、操作、容量和拒绝语义在实现编译并验证后更新此契约，承载缺口与所需验证见 [implementation-readiness.md](implementation-readiness.md)。
+
+拍卖的参与角色/寄售托管/代拍授权与预算/本人及受托资金占用/当前拍品与有效报价/成交交割、考核的报名资格/四阶段实操投入与操作反馈/中间状态及损耗/评价认证，以及其他活动的可知阶段均需后续真实接线；现有buy/sell/refine按钮不表示这些活动已可用。活动具体屏幕与操作尚未冻结，正式实现沿现有组件与同一规则结果更新。
+
+协商需区分提议/反提议/拒绝/已同意和当前有效条款，公开悬赏显示原公告约定。误报与隐瞒按本人所知展示陈述来源、可查线索、矛盾和已确认更正，不预标幕后真相；核实、揭发或改立场只表达可执行意图，不能由前端直接判责、解约或删除托付/欠款。相关公开字段与错误反馈须经真实规则接线后再补契约。
+
+付款和担保在接单前按合法所知展示，承诺交存与已核实托管、部分保障与全额保障、已付与应付未付分别反馈；欠款详情关联工作与后续追偿。异地代交展示已同意承运、实际交出、最后获知在途情况、签收、验收和付款，运输/获知时间分别保留；本人要求和允许代交范围可查。发件、签收回执或申请追偿均不能由界面直接写成已履约/已收款，真实操作和状态待后续接线。
+
+长期合作需显示当前有效协议、本期工作/期限、分期验收/支付、暂停请求/生效及终止后的未清事项；多单顺路整理保留分单条款和实际交付。长途旅行/闭关提交前按本人已知期限、本人到场要求与计划耗时提示冲突及不确定性，提供返回安排、请求改约、寻找代交或继续的选择；提示不直接改变合同或NPC安排，真实字段、容量与操作仍待实施接线。
+
+附近已知机会从已获公告/来信/交谈/亲历来源派生，保留发生/获知/核实时点、最后核实地点和陈旧/矛盾说明，多来源关联同一机会；不显示未发现内容，也不按远方实时位置或未知终态筛选而泄密。查看、筛选或追踪不接单、不保留名额，恢复后清理未来消息与缓存；对应视图、分页与真实操作待实施接线。
+
+开局轻引导按出身/所在地和合法机会提供可关闭、可跳过的逐步提示，展示/跳过与真实任务状态分别反馈；不自动接单、发奖、解约或披露全池，恢复后不将未来发现带回。具体提示与帮助布局、数量和频率仍拟定，实际入口待后续接线。
+
+
+## C5 — quests.1 活动接口（2026-10-23）
+
+本节对应 `0.1.0-quests.1` 中实际固定活动接口。规则源为 `source/rules/quest-activities.js`，显式作者 Schema 为 `tools/quest-activities-schema.mjs`。活动参数与详细玩法只在 [quest-activities.md](quest-activities.md) 维护，不在本契约复制评分公式。这里不声明所有 QC、自然旅行/学习、模型或浏览器已经验收。
+
+### 状态权威与公开投影
+
+解码后的唯一领域状态为 `world.questActivities={serial,instances,history,certificates}`。它随同一个世界记录保存，不建立活动专用钱包、人物副本或另一只时钟；存储编码由 `packWorld/unpackWorld` 负责，界面只读 `screen.activities`。
+
+| 状态集合 | 实际字段与界限 |
+| --- | --- |
+| `instances` | 最多8个。固定字段：`id,type,version,host,place,participant,status,stage,role,item,quantity,seller,stock,price,bidder,escrow,round,budget,principal,funds,score,material,spent,quality,mode,reason,at,due,steps,workUntil,source,destination,cargo`。`type` 为 `auction/exam/trial/exchange/auction_work`；`steps` 最多8个字符串；不允许任意动态键 |
+| `history` | 最多24条；`{id,type,status,at,score,text}`，淘汰旧明细不重置人物、余额、资格或活跃托管 |
+| `certificates` | 最多4条；`{holder,kind,issuer,at,evidence,version}`，当前可颁发类型只有 `basic-alchemist`，同人不重复颁发 |
+| `serial` | 单调实例序号；只用于身份，不是第二份世界时间 |
+
+`status` 的实际终态为 `completed/failed/cancelled/unsold`。新增实例优先保留全部活跃记录，并用剩余容量保留最近终态；活跃达到8个则拒绝新增。普通阶段工时不是终态。
+
+`screen.activities` 的固定结构为：
+
+- `openings`：最多4项现场入口，每项 `{label,detail,item,qty,text}`。查看入口不报名，现场真实条件仍由提交时规则复核。
+- `instances`：最多8项，只有本人参与或现场可知活动。字段为 `id,type,title,place,host,status,stage,role,item,quantity,price,bidder,round,score,material,spent,summary,at,due,workUntil,destination,budget,principal,options,combatDependency`。预算与委托人仅对本人参与实例投影，不公开 NPC 钱包、隐藏估值或动机。
+- `options`：每实例最多10项，固定为 `{label,detail,item,qty,text}`。前端使用当前选项构造意图，不能在本地推进 `stage`、结清托管或增加物品。选项身份须包含 `text`，避免大金额默认值变更后仍使用旧选项。
+- `history`：最近6条本人活动结算摘要；`certificates`：本人实际资格记录。
+
+`summary` 在未完成工时时追加剩余分钟说明；`workUntil` 是主时钟分钟门槛。`due` 当前只是创建时登记的 `at+1440` 字段，不能解释为已经实现的强制到期/取消。`combatDependency` 在试炼中明确提示 D33 战斗型分支尚未实施。
+
+`intentProjection` 仅提供活动 `id/title/stage/options` 和现场 `activityOpenings`，不向模型开放原始托管、私人估值或全部世界状态。原有 intent 大小上限仍生效，内容可能按既有裁剪顺序缩减；模型应以当前观察为准。
+
+### 实际操作通道
+
+沿用 `doupo.act`/已有 `act` binding，`kind='activity'`；输入仍为既有 `kind,target,item,qty,x,y,detail,text,steps`，没有新增任意对象补丁入口。`target` 为当前活动实例 ID，创建入口为空。`detail` 是下表命令；普通选择在 `item`，普通数量在 `qty`。
+
+| `detail` | 其他输入与实际意义 |
+| --- | --- |
+| `auction_open` | `item` 为分号实际有库存的普通物品/秘籍，默认 `manual`；实际托管一份并创建场次 |
+| `auction_consign` | `item` 为本人普通物品，`qty` 为1–10份；实际移出本人可支配库存；不接唯一物/装备实例 |
+| `auction_authorize` | `item` 为现场真实 NPC key，金额为其代拍预算；服务器检查真实需求、资金、目标与利益冲突后才能同意，不接受伪造同意标志 |
+| `auction_bid` | 金额为本次总出价，不是加价差额；需有足额可占用资金且满足最低加价 |
+| `auction_close` | 三轮之前推进实际竞价节点，三轮之后落槌或流拍；不是无条件领奖 |
+| `auction_cancel` | 受托管/有效报价/权利人约束的撤拍清算 |
+| `auction_appraise/provenance/buyers/transport/assist/delivery` | `target` 为真实拍品 ID；分别请求鉴定、核源、寻访、筹备运送、协助寄售、成交后交付。`auction_assist.item` 可指定主持人真实余货，默认药草。每件拍品同项只接受一次 |
+| `auction_job_perform/auction_job_finish` | `target` 为新建 `auction_work` ID；实际执行和达到工时后的交接结算分别提交；运输需实际地点及真实库存/货物/收货人 |
+| `exam_start` | 黑岩公会现场报名，校验真实属性、技能、身体和考官 |
+| `exam_prepare` | `item=careful/generous/quick`，实际处理并消耗本次材料 |
+| `exam_fire` | `item=steady/strong/gentle`，基于前序质量实际消耗斗气并提炼 |
+| `exam_fuse` | `item=layered/swift/patient`，使用本次过程融合 |
+| `exam_inspect` | 前三段实际工时已满足、本人和合格考官在场后验收；不能用旧成品替换 |
+| `trial_start/prepare/survey/finish` | 报名；`prepare.item=light/prepared`；`survey.item=cautious/direct` 且检查本人真实到访记录；最后交接。仅非完整战斗内容 |
+| `exchange_start/show/finish` | 报名；`show.item=herb/medicine/route` 需真实样本或本人到访依据；工时满足后结清练习与信任 |
+| `activity_wait` | 继续推进至活动 `workUntil`，仍可被主世界到期事务截断 |
+| `activity_exit` | 主动退出并尝试按原所有权清算；不会返还已消耗药材/斗气，也不能远程归还在途托付货物 |
+
+拍卖金额使用兼容通道：`auction_bid` 与 `auction_authorize` 的非空 `text` 优先作为十进制整数金额，必须是1至1,000,000,000的安全整数；小额旧调用可继续使用 `qty`。不接受指数、负数、小数、非数字或越界输入。前端大额用 `text` 并将 `qty=0`；通用 `qty`/步骤数量上限仍为100，没有为了拍卖扩大所有动作数量范围。金额文本不是自由叙事或成功证明。
+
+### 结果、失败与钱物流转
+
+成功阶段返回 `activity_updated`；继续未满工时返回 `activity_working`；规则拒绝统一返回 `activity_conditions` 并附具体原因。整个 engine 的 `activity_pending/in_combat/player_dead` 等既有前置拒绝仍可能先发生。前端应显示权威结果并刷新公开状态，不能只按按钮名称推定成交、发证或收款。
+
+拍品、本人最高报价占用、代理剩余专款、周边工资托管与采购专款分开计量。拍卖占用通过真实扣款实现，不能同时用于另一次买卖；被超过才释放原占用。落槌原物只转移一次，佣金和余款有真实收款方，未用代理款退回原主。周边工作先扣真实付款方报酬，签收后转给玩家；货物独立托管，不可再消费/出售。不能读取退款权利人时保留托管并拒绝，不猜继承人或吞掉余额。
+
+阶段提交后 `workUntil` 保留在同一世界。普通 `cancel` 仅停止主世界推进，不清除这个门槛；未到时再次提交下一阶段或领取结果会被拒绝。最终发证、钱物交割和领奖只在前段工时已满足后发生。活动退出与停止时间推进是不同意图。
+
+同一世界 SavePoint 恢复阶段、工时、余额、库存、托管、证书与历史；恢复后旧 Bridge/修订/epoch 的隔离继续由既有宿主处理。领域规则还拒绝重复阶段、重复终态结算与同拍品同类工作重复领取，不能把这些检查当作另建一套调用幂等存储。
+
+### 已执行验证与限制
+
+- 纯规则：六类周边工作、真实采购/货物/交接、钱守恒、代理预算拒绝、重复拒绝、唯一物边界、四阶段成功/失败实际耗材、试炼到访门槛；80次交流后实例≤8、历史≤24，显式状态/视图 Schema 通过。
+- 实际 engine/Schema：报名在 NPC 时间节点被打断，cancel 后提前下一阶段被拒，等待后完成四阶段；快照恢复与重复验收不增物、拍卖钱守恒。该21动作样本最大人物写入2、screen最大7256字符。满活动容量8和历史24的投影夹具整个screen为15334字符，低于32768，intent也检查8192限制。
+- 大金额实际 engine 输入：`text=140` 代理预算与 `text=120` 出价通过；实际占用/返还/结清钱守恒。指数、负数、小数、NaN、十亿以上及过长数字拒绝，原占用不变。
+- 真实 Native：实际编译、安装、身份绑定、SessionCore四阶段操作、中途SavePoint、重复验收拒绝、恢复时间/钱物/未认证并再次验收通过。第二次实际重编译还覆盖120金币出价、非法金额拒绝与总钱守恒，结束screen为5503字符，包含最近终态保留和金额通道修改。该验证使用明确的合法状态夹具提供公会位置、技能、材料，未证明自然开局旅行与学习全流程；模型服务调用0。最新归档和浏览器覆盖、编译快照差异归 [Record](../../../records/package/doupo-living-world.md)。
+
+D33完整玩家战斗、唯一物/装备拍卖、无人参与时自动举办完整场次、隐藏品质/复杂鉴伪、活动权利人死亡后的继承领取，均不能从本节现有接口推断为已经实现。当前基础认证不是原著完整药师品阶体系。
+
+### C5 通用任务与已知机会接口
+
+同一 `doupo.act` 使用 `kind=quest`，字段沿用既有闭合输入。`target` 是本人已知实例ID；除发现和分页外，未知ID一律拒绝。任务规则只接受实际操作，不接受旁白、模型声明或任意状态补丁。
+
+| `detail` | 输入及约束 |
+| --- | --- |
+| `discover` | `item=notice/talk/witness/letter`；交谈的target为实际近处人物。当地发现最多三项；来信仅解析真实送达且有规则收据的邀约，保留寄信时条款 |
+| `public_discover/public_contribute` | 读取当地真实需求悬赏；贡献须真实库存，工资先由发布者交存，单目标与可拆贡献分别验收 |
+| `accept/negotiate` | 承接时复核资金/需求/独占；协商qty为报酬、text为1–14天、item为候选成果ID，双方同意后version递增；已有工作不单方改写 |
+| `perform/resume_work` | item为当前候选选择；实际耗料、地点、能力、人物同意及工时均检查。中断后只续剩余工时，不重复耗材；也可退出并按已完成工时清算，不领取未做工时的全额工资 |
+| `submit/collect` | 当面验收与追偿分别提交；仅实际成果产生earned，实际资金才能增加paid；欠款保留 |
+| `assist/subcontract/dispatch` | item为实际近处且可用协作者；真实先付工料费用。转包须委托人同意；代交只开放模板允许的成果/原物，NPC沿真实路线推进、签收、验收、返程回执 |
+| `recall` | 当面接回协作/托付，不能远程召回货物；转包重接还须委托人在场；已付工料不凭空退回 |
+| `abandon/withdraw/return` | 主动退出、核实委托人撤单、归还未用托付；未归财物与欠款保留，不能通过移除任务抹账 |
+| `cooperate/pause/resume/terminate/renew` | 已结清可重复短单建立七日周期；按真实条件成立下一期，暂停不补造积压订单；失败续期不撤销原协议 |
+| `track/page/guide_skip` | 本人最后所知追踪、qty从0起分页、跳过轻引导；均不改变任务世界事实 |
+
+公开 `screen.quests`：`known` 每页12项，字段为 `id,seed,title,status,due,source,observedAt,place,issuer,terms,progress,tracked,alternatives,options`；`alternatives` 为 `{id,label}`，`options` 为 `{label,detail,item,qty,text}`。`guide={skipped,text}`、`counts={active,completed}`、`warnings` 最多8条、`page/pages`、`deadlines` 最多12条 `{id,title,due}`。`due=0` 表示无固定期限。协作者在途只显示等待回执，不投影其远方精确进度。前端跨页按本次行动分钟数对照已知期限提示，玩家可自行决定。
+
+解码状态 `world.quests={serial,page,skipped,instances,totals,history,publicOffers}`；最多48实例、12项同时履约、64种汇总、24旧明细、12悬赏。实例保留条款版本、独占者、成果/实付/托管、真实托付保管、8条有限证据、协作者与分段运输、合作期次。只压缩完全清算且无有效长期协议的终态；48为明细上限，整个world超过60000 UTF-8字节时提前回收已结清旧明细到有界历史/汇总，不丢弃欠款或未归物。引擎同时按完整计算返回值（包括公开view/intent及人物写入）预算提前回收；超过Native65536且无可回收终态时拒绝写入，不能静默丢义务。详情字段以 `tools/quests-schema.mjs` 为闭合权威。保存时 `packWorld/unpackWorld` 用可逆布局/文本字典消除重复属性名与文本，将任务/活动分别编码为最多4/2个32768字符块，仍是同一世界记录；内部严格结构不变，不扩大宿主Domain预算。
+
+规则错误通过 `result.code/text` 展示；`quest_taken/quest_unfinished/quest_conditions/issuer_unavailable/helper_contact_required/period_unavailable` 等表示事实未满足，不能由前端乐观更新成功。正式前端复用当前选项、确认、busy和Bridge版本锚；存档恢复清除旧表单/目标，事务幂等及迟到隔离由Native负责。精确最新构建、浏览器与模型范围见Record。
+
+### C5 组合容量与宿主恢复补证
+
+最终源码的真实 Native 容量夹具包含125期合同累计、48条合同明细、24条合同历史、8个完整拍卖实例、24条活动历史，以及12条公开悬赏各8名贡献者（夹具记录每人qty=1、paid=5，悬赏完成、余额归零）的结构记录。该组合并非声称自然执行了全部拍卖与96次悬赏贡献。原样安装、世界写入和正式 `focus` 计算通过；完全清算的旧合同明细按整个计算输出预算归档，活动/悬赏与累计事实保留。随后实际沿拍卖行—药铺—坊市—客栈旅行、接近委托人、等待七日并完成第126期，再从 SavePoint 恢复到累计125期，世界深等、时间和有界历史校验通过。恢复态6条合同明细/24条历史，screen14928字符；当前源码独立 QuickJS 100ms约束重复两次通过。该容量验证使用合法状态夹具、模型调用0，完整输出预算与归档规则以通用接口和实际源码为准；详细证据见 Record。
+
+
+### quests.2 操作补正
+
+现场观察普通委托必须实际感知需求人物；自主探索与机缘仍按所在地和本人所知开放，不要求远方线索人同时在场。协助/转包完成实操工时后才生成可验收成果，不重复等待模板工时；多段勘察依实际路线续行，转包者走近委托人验收后取得工资。承运者在收件和验收地点实际走近权利人，回执仍需真实返程。受托任务接管人物移动后，该人物退出同行名单，玩家旅行不得搬动在途承运者。
+
+自由文字解释器明确区分询问委托（quest/discover/talk）与普通对话、发现与承接，最终仍只使用公开工具和当前实例选项。真实模型服务、最终归档和浏览器实测范围以Record为准。
+
+`paused_work` 仍属于承接中的未清义务，前端筛选保留该条目并显示“工时已暂停”。任务/活动成功回执只有在原稿仍与本次提交文本一致且公开结果已变化时才清除草稿；规则拒绝与提交中继续编辑不清除输入。前端只认定实际规则成功码，不凭旁白判断成功。
+
+### quests.2 已确认长行动的前端续行
+
+用户确认长行动或明确继续后，前端只串行调用已安装契约的 `continue` binding，等待每次真实回执和公开投影后再推进；最多10000次续行后停下等待用户继续。`continue/cancel` 为契约固定的 deterministic 权限，不触发解释器或旁白；不借此产生新行动。失败、结果无法核实、世界分支/epoch改变时停止自动续发。恢复存档不会自动执行旧页面尚未完成的续行。
+
+场景和抽屉均显示自动推进/停止请求状态。停止按钮在请求进行中仍可操作，先记录停止意图，当前回执结束后串行提交cancel；已经发生的工时与后果保留。重复确认、继续与停止不创建并发写入。重新进入页面的未完成操作须由玩家明确继续。
+
+真实模型连接使用Native当前ConnectionProfile；MiniMax返回思考正文混入结构化内容时，显式设置 `options.reasoningSplit=true`（main@df1dd440及以后）发送 `reasoning_split:true`，不改变思考深度或放宽结果Schema。未设置时维持原请求，raw-text和非布尔值拒绝。凭证仍由宿主Secret Port提供，游戏包不携带连接或密钥。
+
+长行动使用 main@8321cdc7 及以后的有界临时回执回收，不扩大256项缓存限额；具体回收判据唯一归 `main:public/shared/native-frontend-bridge.js`，服务端与本地宿主客户端共用。持久幂等、CAS、在途操作及分支/epoch权威不转交给前端。
+
+quests.2最终续行每步只读取一次带真实Revision的公开screen快照，再按该Revision提交下一次动作；Bridge已绑定epoch/branch，不再每步重复session→screen→session及旁白读取，也不从Action回执构造世界。自动推进保持连续忙碌反馈；spent=0明确表示结算当前时点事件，不跳时钟或跳NPC。停止、未知结果及恢复规则沿本节已有语义。核心轻量包/HEAD与脚本缓存权威见 `main:docs/development/native-media-capacity.md`；最终归档及速度实测见Record。
+
+### world.1 续行实现补充
+
+公开continue binding映射隐藏doupo.continue，仅接受kind=continue，连续相同内部输入复用最后的玩家锚；新玩家行动、旁白或Persona变化中断合并。每次计算、权限、CAS、回执及保存仍独立执行，停止和恢复沿既有Bridge语义；不新增前端权限或改变C5业务字段。认知已授权且实际改变的人物用既有publish一次提交完整身体/认知，身体单变仍走body；总人物6、认知4及公开screen预算不变。规则预检明确省略恒真precondition，人口后置检查转引同一小模块。实际验收及版本只归Record。
+
+### world.2 持久化与续行实现补充
+
+C5公开字段、操作与停止/恢复语义不变。隐藏doupo.continue声明continuationCondition，FS宿主在原锁内最多准备8个普通逻辑动作，并在累计准备250ms、条件停止、待处理outbox、人物发言或Run状态处结束；单步规则/NPC/权限和预算不跳过。每步仍有Revision、回执及历史，整体journal持久发布后再自动保存，失败与重试仍沿原事务/Branch权威。Native差分、压缩、缓存及当前/历史修订读取规则唯一见 main:docs/development/native-transactions.md。96人月/年度容量及真实浏览器证据只见Record，不据此承诺多年秒过。
+
+
+## C6 实际接口：战斗与功法（2026-10-24）
+
+适用包为0.1.0-combat.1，新局及同一规则完整世界恢复。C6替换旧F07简化单挑与共用掌法熟练度，C4身体／器物／所知及C5任务／活动继续作为唯一领域事实。闭合字段以包内integration/screen.schema.json、source/rules和tools/schema.mjs为准；不维护旧数据转换。
+
+| 公开字段 | 实际语义 |
+| --- | --- |
+| realm / rank / xp / growthNeed | realm.js的唯一境界命名；玩家成长到rank36，突破不回满斗气 |
+| qi / qiCapacity / qiQuality / primary / auxiliary | 存量、容量、驱动质量、一个主修与相容辅助分别展示；查询不运转／补气 |
+| arts / artsPage / artsPages / artsTotal | 本人已学或实际持有秘籍的法门；平时8项／页，交锋时4项／页，每门独立掌握、来源、准备和快捷引用 |
+| switching / hotbar | 实际学习或换修的时点与未清过程；快捷只保存已学引用，普通斗技不限制为四招 |
+| combat | id / round / phase / objective / result / winner、可见参战者分页与日志、本人完整已学斗技库、本人可知请求与投降／停战提议；不公开NPC精确气血、库存、斗技库或内心 |
+| combat.participants | 每页8名实际可感知对象；位置、同方／对方／中立、失能／退出等状态与可观察体况。页面不成为命中授权 |
+| remains | 每页3具可见尸身的位置、姓名及本人继承资格；近身且曾查验才显示当前实际金币、库存和原gear实例 |
+| operation / actions / result | 可继续事项及当前可用动作；死亡登记和评价优先于后续交锋，锁定后不能新增主要行动；回执区分拒绝、锁定、执行失效、落空和实际后果 |
+
+### 动作与Bridge
+
+所有未用字符串填空、数字填0、steps填空数组。初次危险接触attack走choice；spar请求双方同意的三轮徒手切磋。已在交锋choice阶段时统一用act的kind=battle，detail为具体行动，qty必须等于当前combat.round；战中不得把technique填入普通act工具的kind枚举。
+
+| 行动 | 参数及结算 |
+| --- | --- |
+| battle | detail=attack / technique / guard / breathe / consume / prepare / rescue / retreat / surrender / accept / negotiate / move。target为真实目标；technique与prepare的item为已学斗技id，consume使用medicine |
+| 位移衔接 | 主要行动detail加:move，x/y为两步内实际可走落点。纯移动用detail=move；身法／区域技也用实际x/y，不能靠选中或动画免费位移 |
+| command | qty为当前轮号，target为同伴，detail=action时item为其已知斗技、text为目标key；detail=goal时item=focus或retreat。每轮最多两条短令，本人可拒绝／调整；不占主角主要行动 |
+| 投降／停战 | surrender可用item=gold:非负整数承诺金币；不填为无条件。接受前不转钱，accept在本人主要行动中重检并实际交割。negotiate先留下停战提议，由接收方自己的决策步骤接受或拒绝；多人不因一人接受而整体服从 |
+| 学习／换修 | learn.item为实际秘籍物品id；practice.item为已学主修／辅助id。主修换修一日、干粮一份、十五气，完成前仍使用旧底盘；辅助按相容／互斥条件有时耗切换。train.item可指定一门已学斗技独立演练 |
+| 快捷／分页 | practice.detail=hotbar增删快捷引用；browse.detail=arts/combat/corpses，qty为从0起页码，不推进时间 |
+| 战后物资／看守 | search.target为近身可见尸身，耗十分钟；loot的item/qty来自查验后的实物，gear:原实例id每次一件。loot.detail=inherit须合法继承且实际到场。capture须近身失能或已接受投降的对象；release解除本人看守 |
+| 魔兽 | investigate.detail=wildlife，仅在对应生境建立尚未建立过的真实个体；发现不等于攻击，重复调查不重生 |
+
+隐藏battleStep映射doupo.battle-step，只用于已锁定的collecting/resolving/cleanup；不建立主体或推进世界钟。普通continue处理死亡登记、评价、世界时间及其它活动。前端根据operation.kind选择，不直接读取世界私有状态。暂停只停止后续自动结算，已接纳的决定仍锁定；继续与SavePoint从同一队列／seed／游标接续。
+
+### Native承载与准确边界
+
+同一dw_people保留规范身体和认知。普通事务最多六个完整身体更新；专用交锋步用一个行动者补丁、最多十三个受击补丁和至多一个认知整人更新，在原子提交内保持一次逻辑行动。受击补丁只覆盖实际身体字段和准备，保留未变的学习库／库存／活动；越界字段变化由engine断言拒绝。共24个声明app.command槽，未提高Native全局预算，未将十四个写入窗口解释为整场十四人上限。
+
+身体读取为五组，每组至多20名NPC，首组再加玩家；当前活人上限96，待清算死者、当前交锋及现场尸身通过同一索引窗口读取。完整世界保留队列、死亡遗留、准备和未清事务。尸身索引及查验记录各有96项上限，超过拒绝；不宣称无限世代或无限现场遗留。
+
+QC28要求实际送达出口、QC29要求当前接触终止且当事人存活、QC30要求约定演武完成与真实参与。开始／结果凭据由规则产生，未结束、未参与或提前退出不能伪领成果。具体已执行的规则、Native、浏览器、服务与容量证据归同一Record；契约存在不替代验证。
+
+接受投降／停战同时在原promises权威登记一项已履行的truce安排；NPC不以同一旧理由立刻重开攻击，新的亲历／来信归因仍可改变后续安排。它不是永久阵营归属。容量不足时拒绝完成接受，不虚报交割。

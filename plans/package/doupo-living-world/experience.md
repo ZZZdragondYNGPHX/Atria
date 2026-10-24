@@ -34,6 +34,7 @@ NPC可主动接触玩家，也会在玩家拒绝、失联或离开后寻求其�
 
 ## D4 具体设计路由
 
+- 任务机制的六类来源、日常短单与可选长链、日志/追踪和长期后果候选见 [quest-system.md](quest-system.md)，内容种子与丰富度见 [quest-content.md](quest-content.md)。当前只讨论方案，不把这些候选体验当成C4已有玩家流程。
 - 场景美术、桌面布局、镜头与移动反馈的拟定方案见 [presentation.md](presentation.md)。
 - 按钮与文字使用共同规则；动作解释、歧义和复合意图的拟定方案见 [player-and-combat.md](player-and-combat.md)。
 - 行动时间与长时中断的拟定方案见 [world-simulation.md](world-simulation.md)。
