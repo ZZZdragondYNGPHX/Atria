@@ -14,6 +14,12 @@ import { subjectTaskContext } from './subject-authority.js';
 import { actorAvailability } from '../../public/shared/native-information-runtime.js';
 
 const copy = value => structuredClone(value);
+const retentionSizes = new WeakMap();
+function retentionCache(authority, reset = false) {
+    if (!authority) return null;
+    if (reset || !retentionSizes.has(authority)) retentionSizes.set(authority, new WeakMap());
+    return retentionSizes.get(authority);
+}
 const integer = value => Number.isSafeInteger(value) && value >= 0;
 const invocation = value => typeof value === 'string' && /^[a-zA-Z0-9._:-]{1,128}$/.test(value);
 export const lifecycleDefinition = base => base.manifest.runtime?.experienceContract?.lifecycleRuntime;
@@ -44,7 +50,7 @@ export function validateLifecycle(base) {
         const records = state.domains[domain.id]?.records;
         if (!Array.isArray(records) || records.length > domain.retention.maxItems || new Set(records.map(item => item.id)).size !== records.length) throw new TypeError('Invalid domain records');
         for (const record of records) {
-            taskId(record.id); assertTaskValue(record.value, domain.recordSchema);
+            taskId(record.id); assertTaskValue(record.value, domain.recordSchema, { copy: false });
             if (!['active', 'terminal'].includes(record.status) || typeof record.pinned !== 'boolean') throw new TypeError('Invalid scoped record');
         }
     }
@@ -102,12 +108,12 @@ export function taskResultTombstone(record) {
         kind: record.kind, requestHash: record.requestHash ?? null, status: record.status, branchId: record.branchId, storedRevisionId: record.storedRevisionId,
         ...(record.anchorRevisionId ? { anchorRevisionId: record.anchorRevisionId } : {}) };
 }
-export function compactLifecycle(base, state, { reserveTask = false, pruneInteractions = false } = {}) {
+export function compactLifecycle(base, state, { reserveTask = false, pruneInteractions = false, byteCache = null } = {}) {
     const def = lifecycleDefinition(base);
     for (const domain of def.domains) {
         const records = state.domains[domain.id].records;
         const policy = domain.retention;
-        let logicalBytes = Buffer.byteLength(JSON.stringify(records));
+        let logicalBytes = byteCache?.get(records) ?? Buffer.byteLength(JSON.stringify(records));
         for (let index = 0; index < records.length;) {
             const record = records[index];
             const expired = policy.terminalTtl && state.clocks[policy.terminalTtl.clockId] - record.terminalTicks?.[policy.terminalTtl.clockId] >= policy.terminalTtl.ticks;
@@ -118,10 +124,11 @@ export function compactLifecycle(base, state, { reserveTask = false, pruneIntera
             } else index++;
         }
         if (records.length > policy.maxItems || logicalBytes > policy.maxLogicalBytes) throw new TypeError('Domain retention is pinned or active');
+        byteCache?.set(records, logicalBytes);
     }
     const taskState = base.states.atri_task_results;
     if (taskState) {
-        const records = copy(taskState.records); const limit = def.retention.maxTaskResults - Number(reserveTask);
+        const records = taskState.records.slice(); const limit = def.retention.maxTaskResults - Number(reserveTask);
         for (let i = 0; records.length > limit && i < records.length;) {
             const record = records[i];
             if (protectedTaskResult(base, state, record)) { i++; continue; }
@@ -235,6 +242,7 @@ export async function applyLifecycleCandidate(candidate, installed, action, auth
     const def = lifecycleDefinition(candidate);
     if (!def) throw new TypeError('Package lifecycle contract required');
     const state = candidate.states[NS];
+    let byteCache = retentionCache(authority, ['app.pin', 'information.rollup'].includes(action.kind));
     const events = []; let budget = 32; let taskResolution = null; const drafts = [];
     const queue = (...args) => {
         const item = addOutbox(...args);
@@ -252,7 +260,9 @@ export async function applyLifecycleCandidate(candidate, installed, action, auth
             if (!command) throw new TypeError('Unknown App Command');
             active(state, domain.scopeId); taskId(request.recordId);
             const args = authority ? authority.typed(request.args, command.argsSchema) : assertTaskValue(request.args, command.argsSchema);
-            const records = state.domains[domain.id].records; let record = records.find(item => item.id === request.recordId);
+            const records = state.domains[domain.id].records, logicalBytes = byteCache?.get(records);
+            let record = records.find(item => item.id === request.recordId);
+            const beforeBytes = logicalBytes === undefined ? 0 : record ? Buffer.byteLength(JSON.stringify(record)) : -Number(records.length > 0);
             if (record?.status === 'terminal') throw new TypeError('App record is terminal');
             if (!record) { record = { id: request.recordId, scopeId: domain.scopeId, value: copy(domain.initial), status: 'active', pinned: false, createdLogicalTime: state.logicalTime }; records.push(record); }
             const { terminal: _terminal, ...mutation } = command;
@@ -262,10 +272,12 @@ export async function applyLifecycleCandidate(candidate, installed, action, auth
             record.value = authority ? authority.typed(nextValue, domain.recordSchema) : assertTaskValue(nextValue, domain.recordSchema);
             record.updatedLogicalTime = state.logicalTime + 1;
             if (command.terminal) { record.status = 'terminal'; record.terminalTicks = copy(state.clocks); }
+            if (logicalBytes !== undefined) byteCache.set(records, logicalBytes - beforeBytes + Buffer.byteLength(JSON.stringify(record)));
             events.push({ type: event.type, domainId: domain.id, recordId: record.id, payload: args });
         } else if (request.kind === 'world.command') {
             fields(request, ['kind', 'commandId', 'args'], 'World Process Command');
             Object.assign(candidate.states, await prepareTaskAuthority(candidate, installed, { command: { id: request.commandId, args: request.args } }, authority));
+            byteCache = retentionCache(authority, true);
         } else if (request.kind === 'task') {
             active(state, scopeId); queue(state, request, scopeId, occurrence);
         } else if (request.kind === 'workflow.transition') {
@@ -407,7 +419,7 @@ export async function applyLifecycleCandidate(candidate, installed, action, auth
         await prepareActivity(candidate, action, { apply, addOutbox: queue, events });
     } else if (['app.command', 'workflow.transition'].includes(action.kind)) await apply(action);
     else throw new TypeError('Undeclared lifecycle command');
-    compactLifecycle(candidate, state, { pruneInteractions: action.kind === 'retention.compact' });
+    compactLifecycle(candidate, state, { pruneInteractions: action.kind === 'retention.compact', byteCache });
     return { states: candidate.states, events, taskResolution, drafts };
 }
 

@@ -8,19 +8,24 @@ export function text(value, limit = 8192) {
     if (typeof value !== 'string' || value.length > limit) throw new Error('Expected bounded text');
     return value;
 }
-export function json(value, depth = 0, budget = { nodes: 0 }) {
+export function json(value, depth = 0, budget = { nodes: 0 }, copy = true) {
     if (depth > 24 || ++budget.nodes > 32768) throw new Error('Native JSON exceeds complexity limit');
     if (value === null || typeof value === 'boolean') return value;
     if (typeof value === 'string') return text(value, 65536);
     if (typeof value === 'number' && Number.isFinite(value)) return value;
-    if (Array.isArray(value)) return Object.freeze(value.map(child => json(child, depth + 1, budget)));
+    if (Array.isArray(value)) {
+        if (copy) return Object.freeze(value.map(child => json(child, depth + 1, budget)));
+        for (let index = 0; index < value.length; index++) if (index in value) json(value[index], depth + 1, budget, false);
+        return value;
+    }
     if (!value || typeof value !== 'object') throw new Error('Expected JSON value');
     const out = {};
     for (const [key, child] of Object.entries(value)) {
         if (BLOCKED.has(key)) throw new Error('Blocked JSON key');
-        out[key] = json(child, depth + 1, budget);
+        const checked = json(child, depth + 1, budget, copy);
+        if (copy) out[key] = checked;
     }
-    return Object.freeze(out);
+    return copy ? Object.freeze(out) : value;
 }
 
 // json supplies the existing depth/node/string budgets and immutable copying.

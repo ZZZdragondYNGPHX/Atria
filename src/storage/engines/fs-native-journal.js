@@ -5,6 +5,7 @@ import { durableWriteAsync, durableRemoveAsync, syncDirectoryAsync } from '../du
 import { isNativeStorageKind, normalizeNativeResourceKey, encodeNativeResourceKey, nativeResourceMatchesFilter, sortAndLimitNativeRecords } from './native-resource-key.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../../native/contracts.js';
 import { prepareIndependent } from '../../../public/shared/native-independent-preparation.js';
+import { encodeNativeJson, decodeNativeJson } from './native-json-codec.js';
 
 const identity = key => key.kind + '\0' + encodeNativeResourceKey(key);
 const digest = text => createHash('sha256').update(text).digest('hex');
@@ -13,11 +14,14 @@ const dependencies = new Set([K.sessionState, K.sessionRevision, K.timelineEntry
 // One committed redo journal per user. Engine isolation excludes readers while
 // installation is partial. Recovery finishes installation before any read/ACK.
 export class FsNativeJournal {
-    constructor(tx, root, handle, fault = () => {}) {
+    constructor(tx, root, handle, fault = () => {}, stateCache = null) {
         this.base = tx; this.root = root; this.handle = handle; this.fault = fault;
         this.writes = new Map();
+        this.reads = new Map();
+        this.stateCache = stateCache;
         this.file = path.join(root, 'native-commit.journal');
         this.tx = new Proxy(tx, { get: (target, name) => {
+            if (name === 'nativeStateCache') return this.stateCache;
             if (['getResource', 'putResource', 'putResourceIfMatch', 'deleteResource', 'listResources'].includes(name)) return this[name].bind(this);
             const value = target[name]; return typeof value === 'function' ? value.bind(target) : value;
         } });
@@ -30,11 +34,18 @@ export class FsNativeJournal {
     async getResource(key) {
         if (!isNativeStorageKind(key.kind)) return this.base.getResource(key);
         const normalized = this.checkedKey(key), item = this.writes.get(identity(normalized));
-        return item ? structuredClone(item.record) : this.base.getResource(normalized);
+        if (item) return structuredClone(item.record);
+        const id = identity(normalized);
+        if (!this.reads.has(id)) {
+            if (this.reads.size >= 64) this.reads.delete(this.reads.keys().next().value);
+            this.reads.set(id, this.base.getResource(normalized));
+        }
+        return structuredClone(await this.reads.get(id));
     }
     async putResource(key, record) {
         if (!isNativeStorageKind(key.kind)) return this.base.putResource(key, record);
         const normalized = this.checkedKey(key);
+        this.stateCache?.delete([normalized.handle, normalized.sessionId, normalized.namespace, normalized.head].join('\0'));
         const existing = await this.getResource(normalized), now = Date.now();
         this.writes.set(identity(normalized), { key: normalized, record: structuredClone({ ...record, key: normalized,
             createdAt: record.createdAt ?? existing?.createdAt ?? now, updatedAt: record.updatedAt ?? now }) });
@@ -48,6 +59,7 @@ export class FsNativeJournal {
     async deleteResource(key) {
         if (!isNativeStorageKind(key.kind)) return this.base.deleteResource(key);
         const normalized = this.checkedKey(key), existed = Boolean(await this.getResource(normalized));
+        this.stateCache?.delete([normalized.handle, normalized.sessionId, normalized.namespace, normalized.head].join('\0'));
         this.writes.set(identity(normalized), { key: normalized, record: null }); return existed;
     }
     async listResources(filter) {
@@ -81,9 +93,10 @@ export class FsNativeJournal {
     }
     async recover() {
         let raw;
-        try { raw = await fsp.readFile(this.file, 'utf8'); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+        try { raw = await fsp.readFile(this.file); } catch (error) { if (error.code !== 'ENOENT') throw error; }
         if (raw !== undefined) {
-            const journal = JSON.parse(raw);
+            this.stateCache?.clear();
+            const journal = decodeNativeJson(raw);
             if (journal.schemaVersion !== 1 || digest(journal.payload) !== journal.digest) throw new Error('Native commit journal integrity mismatch');
             await this.install(JSON.parse(journal.payload));
             await durableRemoveAsync(this.file);
@@ -95,7 +108,7 @@ export class FsNativeJournal {
         const items = [...this.writes.values()], payload = JSON.stringify(items);
         const prepared = this.file + '.prepared';
         await this.fault('prepare');
-        await durableWriteAsync(prepared, JSON.stringify({ schemaVersion: 1, payload, digest: digest(payload) }));
+        await durableWriteAsync(prepared, encodeNativeJson({ schemaVersion: 1, payload, digest: digest(payload) }));
         await this.fault('dependencies');
         await fsp.rename(prepared, this.file); await syncDirectoryAsync(this.root);
         await this.fault('publish');

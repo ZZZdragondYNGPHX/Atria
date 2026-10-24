@@ -27,8 +27,8 @@ function exact(value) {
     if (!text(value.revision, 128)) throw new TypeError('Task resource revision required');
     return value;
 }
-export function assertTaskValue(value, schema) {
-    const result = json(value);
+export function assertTaskValue(value, schema, { copy = true } = {}) {
+    const result = json(value, 0, { nodes: 0 }, copy);
     if (!validateSchemaValue(result, schema).ok) throw new TypeError('Task value violates schema');
     return result;
 }

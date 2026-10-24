@@ -8,6 +8,7 @@ import _ from 'lodash';
 import sanitizeFilename from 'sanitize-filename';
 import { sync as writeFileAtomic } from 'write-file-atomic';
 import { durableWriteAsync, durableRemoveAsync } from '../durable-file.js';
+import { encodeNativeJson, decodeNativeJson } from './native-json-codec.js';
 
 import { SIDECAR_INFIX, buildSidecarFilename, parseSidecarFilename } from './sidecar-naming.js';
 import { PRESET_FOLDER_BY_API_ID } from '../repositories/preset-repo.js';
@@ -772,7 +773,7 @@ function registerNativeResourceHandlers(tx) {
         const fp = filePath(normalized);
         let envelope;
         try {
-            envelope = JSON.parse(await fsp.readFile(fp, 'utf-8'));
+            envelope = decodeNativeJson(await fsp.readFile(fp));
         } catch (error) {
             if (error.code === 'ENOENT') return null;
             throw new Error('Native resource envelope integrity mismatch');
@@ -816,7 +817,7 @@ function registerNativeResourceHandlers(tx) {
                 createdAt: Number(record.createdAt ?? existing?.createdAt ?? now),
             };
             const fp = filePath(normalized);
-            await durableWriteAsync(fp, JSON.stringify(envelope));
+            await durableWriteAsync(fp, encodeNativeJson(envelope));
         },
         async delete(key) {
             const normalized = normalizeNativeResourceKey(key);
@@ -836,7 +837,7 @@ function registerNativeResourceHandlers(tx) {
             const readEntry = async entry => {
                 let envelope;
                 try {
-                    envelope = JSON.parse(await fsp.readFile(path.join(dir, entry), 'utf-8'));
+                    envelope = decodeNativeJson(await fsp.readFile(path.join(dir, entry)));
                 } catch {
                     return null;
                 }

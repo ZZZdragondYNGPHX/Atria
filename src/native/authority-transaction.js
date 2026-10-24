@@ -18,8 +18,8 @@ import { compileFormula, evaluateFormulaAst } from '../../public/scripts/native/
 import { createDeterministicRng } from '../../public/scripts/native/experience/logic/rng.js';
 import { createRulesEngine } from '../../public/scripts/native/experience/logic/rules.js';
 import { assertNativeId } from './identity.js';
-import { hashNativeDocument } from './repositories/common.js';
-import { createTaskWorld } from './task-authority.js';
+import { hashNativeDocument, equalNativeDocuments } from './repositories/common.js';
+import { createTaskWorld, loadTaskLogic } from './task-authority.js';
 import { applyLifecycleCandidate, validateLifecycle } from './lifecycle-authority.js';
 import { packageKnowledgeManifest } from './session-knowledge.js';
 
@@ -37,20 +37,20 @@ function bounded(value, maxBytes = AUTHORITY_EXECUTION_LIMITS.valueBytes) {
     return assertJsonDeclaration(value, 'Authority value', maxBytes);
 }
 function contractFor(base, installed = null) {
-    const contract = assertNativeExperienceContract(base.manifest.runtime?.experienceContract);
+    const contract = installed ? loadTaskLogic(installed).contract : assertNativeExperienceContract(base.manifest.runtime?.experienceContract);
     if (!contract.authorityRuntime || !contract.capabilities.some(item => item.id === 'authority-transaction' && item.version === 1)) {
         throw new TypeError('Authority capability required');
     }
     if (installed && (installed.manifest.packageId !== base.session.packageId
         || installed.manifest.packageVersionId !== base.session.packageVersionId
         || installed.entryPoint.entryPointId !== base.session.entryPointId
-        || hashNativeDocument(installed.entryPoint) !== hashNativeDocument(installed.manifest.entryPoints.find(item => item.entryPointId === base.session.entryPointId))
+        || !equalNativeDocuments(installed.entryPoint, installed.manifest.entryPoints.find(item => item.entryPointId === base.session.entryPointId))
         // Explicit source adoption changes the captured Knowledge projection,
         // while executable Work rules remain pinned to the installed Package.
-        || hashNativeDocument(packageKnowledgeManifest(installed.manifest, base.knowledge)) !== hashNativeDocument(base.manifest))) throw new TypeError('Authority Package pin mismatch');
+        || !equalNativeDocuments(packageKnowledgeManifest(installed.manifest, base.knowledge), base.manifest))) throw new TypeError('Authority Package pin mismatch');
     return contract;
 }
-function snapshotAnchor(base) {
+export function snapshotAnchor(base) {
     assertNativeId(base.session.sessionId, 'session'); assertNativeId(base.session.packageVersionId, 'packageVersion');
     assertNativeId(base.revision.revisionId, 'revision'); assertNativeId(base.revision.branchId, 'branch');
     return { sessionId: base.session.sessionId, packageVersionId: base.session.packageVersionId,
@@ -312,7 +312,8 @@ async function executeTransaction(candidate, installed, contract, logic, world, 
     const computationState = transaction.computation ? { args, beforeReads: reads, computed, resolution, seed: identity, artifacts } : null;
     await checkComputation(candidate, installed, contract, transaction, budget, computationState, execution);
     for (const item of consumed) markTaskArtifactConsumption(candidate, item, identity);
-    return { resolution, computationState, execution, artifacts: consumed.map(item => item.evidence), speeches };
+    const more = transaction.continuationCondition !== undefined && predicate(transaction.continuationCondition, resolved);
+    return { resolution, computationState, execution, artifacts: consumed.map(item => item.evidence), speeches, more };
 }
 
 async function checkComputation(candidate, installed, contract, transaction, budget, state, evidence) {
@@ -404,7 +405,9 @@ export async function prepareAuthorityTransaction(base, installed, rawRequest) {
             ...(executed.speeches.length ? { communications: executed.speeches.map(draft => ({ speaker: draft.participant.displayName, text: draft.content })) } : {}),
             ...(executed.execution.length ? { execution: executed.execution } : {}),
             ...(executed.artifacts.length ? { artifacts: executed.artifacts } : {}) }, transaction.receipt.maxBytes);
-        return freeze({ candidate, receipt, identity, inputHash, outcome: resolution.outcome, speeches: executed.speeches, work: { ...budget.counts } });
+        return freeze({ candidate, receipt, identity, inputHash, outcome: resolution.outcome, speeches: executed.speeches,
+            more: executed.more && !executed.speeches.length && !candidate.states.atri_run
+                && !candidate.states.atri_lifecycle.outbox.some(item => item.status === 'pending'), work: { ...budget.counts } });
     } catch (error) { throw failure('transaction preparation', authorityPublicRefusal(error)); }
 }
 

@@ -1,11 +1,12 @@
 import { prepareIndependent } from '../../public/shared/native-independent-preparation.js';
 import { NATIVE_RESOURCE_KINDS as K, assertBranch, assertSessionRevision, assertTimelineEntry, assertVariant } from './contracts.js';
 import { assertNativeId } from './identity.js';
-import { equalNativeDocuments, getNativeDocument } from './repositories/common.js';
+import { equalNativeDocuments } from './repositories/common.js';
 import { NotFoundError } from '../storage/errors.js';
 import { ILLUSTRATION_NAMESPACE, selectIllustrations } from '../../public/shared/native-illustration-contract.js';
 import { readIllustrationState } from './session-illustrations.js';
 import { readTimelineIndex } from './timeline-index.js';
+import { deltaStateNamespace, readStoredState } from './state-delta.js';
 
 export const SESSION_CORE_NAMESPACE = 'atri_session_core';
 export const TIMELINE_NAMESPACE = 'atri_timeline';
@@ -18,16 +19,16 @@ export async function readCheckedDocument(tx, key) {
     const record = await tx.getResource(key);
     if (!record) throw new NotFoundError('native session dependency', { key });
 
-    return key.kind === K.sessionState && key.namespace === 'atri_world_state' ? getNativeDocument(tx, key) : record.doc;
+    return key.kind === K.sessionState && deltaStateNamespace(key.namespace) ? readStoredState(tx, key, record) : record.doc;
 }
 
-export async function readSessionSnapshot(tx, handle, session, value) {
+export async function readSessionSnapshot(tx, handle, session, value, publishedStates = null) {
     const revision = assertSessionRevision(value);
     if (revision.sessionId !== session.sessionId) throw new TypeError('Revision belongs to another Session');
     const sessionId = session.sessionId;
     const states = {};
     for (const [namespace, head] of Object.entries({ ...revision.stateHeads, [KNOWLEDGE_NAMESPACE]: revision.knowledgeHead })) {
-        const state = await readCheckedDocument(tx, { kind: K.sessionState, handle, sessionId, namespace, head });
+        const state = publishedStates ? publishedStates[namespace] : await readCheckedDocument(tx, { kind: K.sessionState, handle, sessionId, namespace, head });
 
         states[namespace] = state;
     }

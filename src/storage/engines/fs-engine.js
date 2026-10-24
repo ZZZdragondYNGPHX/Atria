@@ -15,6 +15,7 @@ export class FsEngine {
         this._directoriesByHandle = directoriesByHandle;
         this._recoveredPatchJournals = new Set();
         this._durabilityFault = durabilityFault;
+        this._nativeStateCache = new Map();
     }
 
     // `handle` is accepted but unused by FsTransaction — its per-kind handlers
@@ -43,11 +44,15 @@ export class FsEngine {
             this._recoveredPatchJournals.add(handle);
         }
         const tx = new FsTransaction({ directoriesByHandle: this._directoriesByHandle });
-        const journal = new FsNativeJournal(tx, root, handle, this._durabilityFault);
+        const journal = new FsNativeJournal(tx, root, handle, this._durabilityFault, this._nativeStateCache);
         await journal.recover();
         const scope = { root, tx: journal.tx, open: true };
         return active.run(scope, async () => {
-            try { const result = await fn(journal.tx); await journal.commit(); return result; } finally { scope.open = false; }
+            try {
+                const result = await fn(journal.tx); await journal.commit(); return result;
+            } catch (error) {
+                this._nativeStateCache.clear(); throw error;
+            } finally { scope.open = false; }
         });
     }
 

@@ -1,5 +1,5 @@
-import { buildAuthorityObservation, prepareAuthorityTransaction } from './authority-transaction.js';
-import { createTaskWorld } from './task-authority.js';
+import { snapshotAnchor, prepareAuthorityTransaction } from './authority-transaction.js';
+import { loadTaskLogic } from './task-authority.js';
 import { assertJsonDeclaration } from '../../public/shared/native-values.js';
 import { assertTaskValue } from '../../public/shared/native-task-contract.js';
 import { compileDataSchema } from '../../public/shared/native-data-schema.js';
@@ -23,8 +23,8 @@ export const authorityValue = value => assertJsonDeclaration(value, 'Authority T
 
 // Only public declaration metadata crosses the resolver boundary. Never include
 // validators, effects, private grants or authoring-only Resolution formulas.
-export async function authorityCatalog(base, installed) {
-    const { logic } = await createTaskWorld(base, installed);
+export async function authorityCatalog(_base, installed) {
+    const { logic } = loadTaskLogic(installed);
     return immutable(logic.transactions.filter(item => item.origin !== 'simulation').map(({ id, verb, inputSchema, intent, coalesceInput }) => ({ id, verb, inputSchema, intent,
         ...(coalesceInput ? { coalesceInput: true } : {}) })));
 }
@@ -76,9 +76,9 @@ export async function prepareAuthorityTurn(core, owner, base, installed, selecti
     selection = immutable(authorityValue(selection));
     player = player ? immutable(player) : null;
     const source = player ? { ...base, timeline: [...base.timeline, player.entry], variants: [...base.variants, player.variant] } : base;
-    const request = { ...selection, anchor: buildAuthorityObservation(source).anchor, playerMessageId: source.timeline.at(-1)?.messageId };
+    const request = { ...selection, anchor: snapshotAnchor(source), playerMessageId: source.timeline.at(-1)?.messageId };
     const prepared = await prepareAuthorityTransaction(source, installed, request);
-    const { logic } = await createTaskWorld(base, installed);
+    const { logic } = loadTaskLogic(installed);
     if (logic.transactions.find(item => item.id === selection.transactionId)?.savePointBefore && base.states.atri_run?.mode !== 'ironman') {
         await core.createSavePoint(owner, base.session.sessionId, { expectedRevisionId: base.revision.revisionId, kind: 'auto', displayName: 'Before choice' });
     }

@@ -39,6 +39,7 @@ import { ENGINE_DUMP_ENTRY, ENGINE_META_ENTRY, SCRATCH_HANDLE_PREFIX } from '../
 import { USER_DIRECTORY_TEMPLATE } from '../../constants.js';
 import { CrossModeScratchConnectionError } from './cross-mode-errors.js';
 import { NATIVE_STORAGE_KINDS, normalizeNativeResourceKey, nativeResourceFileId } from '../engines/native-resource-key.js';
+import { decodeNativeJson, encodeNativeJson } from '../engines/native-json-codec.js';
 
 /**
  * @typedef {object} TransientSource
@@ -141,12 +142,12 @@ async function buildFsTransient({ scratchRoot, scratchHandle, zipPath }) {
                 const target = path.join(directory, entry.name);
                 if (entry.isDirectory()) { pending.push(target); continue; }
                 if (!entry.isFile() || !entry.name.endsWith('.json')) throw new Error('Invalid Native backup resource file');
-                const envelope = JSON.parse(fs.readFileSync(target, 'utf8'));
+                const envelope = decodeNativeJson(fs.readFileSync(target));
                 const key = normalizeNativeResourceKey(envelope.key);
                 const expected = path.join(root, ...(key.sessionId ? [key.sessionId] : []), nativeResourceFileId(key) + '.json');
                 if (key.kind !== kind || target !== expected) throw new Error('Invalid Native backup resource identity');
                 envelope.key = { ...key, handle: scratchHandle };
-                fs.writeFileSync(target, JSON.stringify(envelope));
+                fs.writeFileSync(target, encodeNativeJson(envelope));
             }
         }
     }

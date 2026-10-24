@@ -11,7 +11,7 @@ import { readIllustrationState, validateIllustrationDependencies, illustrationCo
 import { ContinuityRepo } from './continuity-repo.js';
 import { appendTimelineIndex, readTimelineIndex } from '../timeline-index.js';
 import { orchestrationSessionRoots } from '../orchestration/reference-roots.js';
-import { putWorldState } from '../state-delta.js';
+import { putStoredState, deltaStateNamespace } from '../state-delta.js';
 import {
     NATIVE_RESOURCE_KINDS,
     assertBranch,
@@ -35,7 +35,7 @@ import {
 } from './common.js';
 
 import {
-    SESSION_CORE_NAMESPACE, TIMELINE_NAMESPACE, readCheckedDocument, readSessionSnapshot,
+    SESSION_CORE_NAMESPACE, TIMELINE_NAMESPACE, KNOWLEDGE_NAMESPACE, readCheckedDocument, readSessionSnapshot,
 } from '../session-snapshot.js';
 
 // Serialize domain publication before entering the engine's durable transaction.
@@ -480,8 +480,8 @@ export class SessionRepo {
             await new RunControl(this).assert(handle, sessionId, 'write');
             assertWritable();
             const doc = cloneNativeDocument(value, 'SessionState');
-            return this._engine.withTransaction(handle, tx => namespace === 'atri_world_state'
-                ? putWorldState(tx, this._stateKey(handle, sessionId, namespace, head), doc)
+            return this._engine.withTransaction(handle, tx => deltaStateNamespace(namespace)
+                ? putStoredState(tx, this._stateKey(handle, sessionId, namespace, head), doc)
                 : putImmutable(tx, this._stateKey(handle, sessionId, namespace, head), doc));
         });
     }
@@ -588,7 +588,15 @@ export class SessionRepo {
         const avatars = personaAvatars(states[PERSONA_NAMESPACE]);
         return withSessionWrite(handle, session.sessionId, () => withNativeResourceWrites(handle, avatars.map(ref => 'asset:' + ref.assetId), () => this._engine.withTransaction(handle, async tx => {
             const receiptKey = { kind: NATIVE_RESOURCE_KINDS.commitReceipt, handle, sessionId: session.sessionId, commitId };
-            const fingerprint = requestFingerprint ?? hashNativeDocument({ session, revision, states, branches, entries, variants, expectedRevisionId });
+            // SessionCore already computed these heads for its private candidate.
+            // Other callers still prove the actual documents before publication.
+            const owned = validRunPublication(runProof);
+            const heads = owned ? { ...revision.stateHeads, [KNOWLEDGE_NAMESPACE]: revision.knowledgeHead }
+                : Object.fromEntries(Object.entries(states).map(([namespace, value]) => [namespace, hashNativeDocument(value)]));
+            for (const [namespace, head] of Object.entries(heads)) {
+                if (head !== (namespace === KNOWLEDGE_NAMESPACE ? revision.knowledgeHead : revision.stateHeads[namespace])) throw new TypeError('Revision State head mismatch');
+            }
+            const fingerprint = requestFingerprint ?? hashNativeDocument({ session, revision, branches, entries, variants, expectedRevisionId });
             const prior = await getNativeDocument(tx, receiptKey);
             if (prior) {
                 if (prior.fingerprint !== fingerprint) throw new ConflictError('native_commit_id_conflict');
@@ -637,12 +645,11 @@ export class SessionRepo {
                 if (entry.sessionId !== session.sessionId) throw new TypeError('Timeline Session mismatch');
                 await putImmutable(tx, this._timelineKey(handle, session.sessionId, entry.branchId, entry.messageId), entry);
             }
+            const previousRevision = existing?.doc.headRevisionId && await getNativeDocument(tx, this._revisionKey(handle, session.sessionId, existing.doc.headRevisionId));
             for (const [namespace, value] of Object.entries(states)) {
-                const stateKey = this._stateKey(handle, session.sessionId, namespace, hashNativeDocument(value));
-                if (namespace === 'atri_world_state') {
-                    const previousRevision = existing?.doc.headRevisionId && await getNativeDocument(tx, this._revisionKey(handle, session.sessionId, existing.doc.headRevisionId));
-                    await putWorldState(tx, stateKey, value, previousRevision?.stateHeads.atri_world_state);
-                } else await putImmutable(tx, stateKey, value);
+                const stateKey = this._stateKey(handle, session.sessionId, namespace, heads[namespace]);
+                if (deltaStateNamespace(namespace)) await putStoredState(tx, stateKey, value, previousRevision?.stateHeads[namespace]);
+                else await putImmutable(tx, stateKey, value);
             }
             // Mutable presentation metadata belongs to the current Session root,
             // not the generation/restore draft captured before a concurrent rename.
@@ -659,11 +666,11 @@ export class SessionRepo {
             const knownBranches = new Set(states[SESSION_CORE_NAMESPACE].branches.map(item => item.branchId));
             published.illustrationHeads = Object.fromEntries(Object.entries(branchHeads).filter(([id]) => knownBranches.has(id)));
             if (!Object.keys(published.illustrationHeads).length) delete published.illustrationHeads;
-            const snapshot = await readSessionSnapshot(tx, handle, assertSession(published), revision);
+            const snapshot = await readSessionSnapshot(tx, handle, assertSession(published), revision, owned ? states : null);
             if (historyCheckpoint) {
                 const history = snapshot.states.atri_lifecycle?.history;
                 const previousRevision = (await tx.getResource(this._revisionKey(handle, session.sessionId, expectedRevisionId)))?.doc;
-                const previous = previousRevision && (await tx.getResource(this._stateKey(handle, session.sessionId, 'atri_lifecycle', previousRevision.stateHeads.atri_lifecycle)))?.doc;
+                const previous = previousRevision && await getNativeDocument(tx, this._stateKey(handle, session.sessionId, 'atri_lifecycle', previousRevision.stateHeads.atri_lifecycle));
                 if (!existing || snapshot.core.parentRevisionId !== expectedRevisionId || !history
                     || history.checkpoint !== history.transactions || history.checkpoint <= (previous?.history?.checkpoint ?? 0)) throw new TypeError('Invalid History checkpoint');
             } else if (snapshot.core.parentRevisionId !== expectedRevisionId) throw new TypeError('Revision parent must match expected HEAD');
@@ -774,7 +781,7 @@ export class SessionRepo {
                     throw new ConflictError('native_session_import_state_integrity', { namespace, head });
                 }
                 const stateKey = this._stateKey(handle, sessionId, namespace, head);
-                if (namespace === 'atri_world_state') await putWorldState(tx, stateKey, record.data);
+                if (deltaStateNamespace(namespace)) await putStoredState(tx, stateKey, record.data);
                 else await putImmutable(tx, stateKey, record.data);
             }
             for (const revision of revisions) {
@@ -819,29 +826,33 @@ export class SessionRepo {
         })));
     }
 
-    async _reachableRevisions(tx, handle, sessionId, retainRevisionIds = []) {
+    async _reachableRevisions(tx, handle, sessionId, retainRevisionIds = [], targetRevisionId = null) {
         const session = await getNativeDocument(tx, this._sessionKey(handle, sessionId));
-        const pending = [...retainRevisionIds, ...(session?.headRevisionId ? [session.headRevisionId] : [])];
+        const pending = [...retainRevisionIds];
         const presentationHeads = new Set([session?.illustrationHead, ...Object.values(session?.illustrationHeads ?? {})].filter(Boolean));
         for (const save of await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.savePoint, handle, sessionId })) {
             pending.push(save.doc.revisionId);
             if (save.doc.illustrationHead) presentationHeads.add(save.doc.illustrationHead);
         }
         for (const head of presentationHeads) for (const item of (await readIllustrationState(tx, handle, sessionId, head)).annotations) pending.push(item.anchor.revisionId);
+        // The current lineage proves recent save anchors without scanning every
+        // older root first. Full enumeration still visits every retained root.
+        if (session?.headRevisionId) pending.push(session.headRevisionId);
         const reachable = new Set();
         while (pending.length) {
             const revisionId = pending.pop();
             if (reachable.has(revisionId)) continue;
             reachable.add(revisionId);
             const revision = await readCheckedDocument(tx, this._revisionKey(handle, sessionId, revisionId));
+            if (revisionId === targetRevisionId) return reachable;
             const coreHead = revision.stateHeads?.[SESSION_CORE_NAMESPACE];
             if (!coreHead) continue; // N1 low-level storage fixtures have no N3 snapshot.
             const core = await readCheckedDocument(tx, this._stateKey(handle, sessionId, SESSION_CORE_NAMESPACE, coreHead));
-            if (core.parentRevisionId) pending.push(core.parentRevisionId);
             for (const node of core.branches) {
                 pending.push(node.headRevisionId);
                 if (node.forkRevisionId) pending.push(node.forkRevisionId);
             }
+            if (core.parentRevisionId) pending.push(core.parentRevisionId);
         }
         return reachable;
     }
@@ -897,7 +908,7 @@ export class SessionRepo {
                     if (key.namespace === 'atri_timeline_index' && record.doc.level) for (const child of record.doc.children) await mark({ ...key, head: child.head });
                     if (key.namespace === TIMELINE_NAMESPACE && record.doc.tree) await mark({ ...key, namespace: 'atri_timeline_index', head: record.doc.tree.head });
                     if (key.namespace === ILLUSTRATION_NAMESPACE) for (const ref of record.doc.imageRefs ?? []) await mark({ ...key, namespace: IMAGE_VERSION_NAMESPACE, head: ref.head });
-                    if (key.namespace === 'atri_world_state' && record.doc.kind === 'delta') await mark({ ...key, head: record.doc.baseHead });
+                    if (deltaStateNamespace(key.namespace) && record.doc.kind === 'delta') await mark({ ...key, head: record.doc.baseHead });
                 }
             };
             await mark(sessionKey);
@@ -932,7 +943,9 @@ export class SessionRepo {
         return this._engine.withTransaction(handle, async tx => {
             const target = await getNativeDocument(tx, this._revisionKey(handle, sessionId, revisionId));
             if (!target?.stateHeads?.[SESSION_CORE_NAMESPACE] && !await this._isCoreSession(tx, handle, sessionId)) return true;
-            return (await this._reachableRevisions(tx, handle, sessionId)).has(revisionId);
+            const session = await getNativeDocument(tx, this._sessionKey(handle, sessionId));
+            if (target && session?.headRevisionId === revisionId) return true;
+            return (await this._reachableRevisions(tx, handle, sessionId, [], revisionId)).has(revisionId);
         });
     }
 
@@ -959,7 +972,7 @@ export class SessionRepo {
             if (session.sessionId !== sessionId) throw new TypeError('Session resource identity mismatch');
             const target = revisionId || session.headRevisionId;
             if (!target) throw new NotFoundError('committed native session revision', { sessionId });
-            if (revisionId && !(await this._reachableRevisions(tx, handle, sessionId)).has(revisionId)) {
+            if (revisionId && revisionId !== session.headRevisionId && !(await this._reachableRevisions(tx, handle, sessionId, [], revisionId)).has(revisionId)) {
                 throw new NotFoundError('committed native session revision', { sessionId, revisionId });
             }
             const revision = await readCheckedDocument(tx, this._revisionKey(handle, sessionId, target));

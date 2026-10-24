@@ -83,7 +83,8 @@ export async function maintainSession(repo, handle, sessionId, options = {}) {
 }
 async function maintain(repo, handle, sessionId, { now, graceMs, batchSize, scanLimit, maxScanBytes, signal, retainRevisionIds = [] }) {
     const key = { kind: K.maintenance, handle, scope: 'session:' + sessionId };
-    const pause = () => signal?.aborted || nativeTaskScheduler.hasForegroundWork(handle);
+    const pause = () => signal?.aborted || nativeTaskScheduler.hasForegroundWork(handle)
+        || Date.now() - (maintenanceTimes.get(repo._engine)?.get(leaseKey(handle, sessionId))?.lastWriteAt ?? 0) < 1000;
     const held = () => Boolean(leases.get(leaseKey(handle, sessionId))?.size);
     if (pause()) return { phase: 'paused', deleted: [] };
     const engine = repo._engine;
@@ -160,20 +161,21 @@ export function scheduleSessionMaintenance(repo, handle, sessionId, assetStore, 
         }, finalize: value => value }).result);
 }
 const maintenanceTimes = new WeakMap();
-export function requestSessionMaintenance(repo, handle, sessionId, assetStore) {
+export function requestSessionMaintenance(repo, handle, sessionId, assetStore, activity = true) {
     let times = maintenanceTimes.get(repo._engine);
     if (!times) maintenanceTimes.set(repo._engine, times = new Map());
     const key = leaseKey(handle, sessionId), now = Date.now();
     const old = times.get(key);
+    if (old && activity) old.lastWriteAt = now;
     if (old?.timer || now - (old?.at ?? 0) < 30000) return;
-    const entry = { at: now, timer: null }; times.delete(key); times.set(key, entry);
+    const entry = { at: now, timer: null, lastWriteAt: activity ? now : old?.lastWriteAt ?? 0 }; times.delete(key); times.set(key, entry);
     while (times.size > 512) { const first = times.keys().next().value; clearTimeout(times.get(first)?.timer); times.delete(first); }
     // Timers only resume scheduler slices; no second execution authority.
     void scheduleSessionMaintenance(repo, handle, sessionId, assetStore).then(result => {
         if (times.get(key) !== entry || result.phase === 'absent') return;
         // Blob work is also incremental, including in an idle Session.
         if (result.phase === 'complete' && !assetStore) return;
-        entry.timer = setTimeout(() => { entry.timer = null; entry.at = 0; requestSessionMaintenance(repo, handle, sessionId, assetStore); }, result.phase === 'quarantine' || result.phase === 'complete' ? 60001 : 1000);
+        entry.timer = setTimeout(() => { entry.timer = null; entry.at = 0; requestSessionMaintenance(repo, handle, sessionId, assetStore, false); }, result.phase === 'quarantine' || result.phase === 'complete' ? 60001 : 1000);
         entry.timer.unref?.();
     }).catch(error => {
         if (!['operation_stale', 'operation_cancelled'].includes(error.code)) console.warn('[Native maintenance] Session cleanup failed', { sessionId, code: error.code ?? error.name });

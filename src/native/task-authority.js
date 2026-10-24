@@ -1,4 +1,4 @@
-import { hashNativeDocument } from './repositories/common.js';
+import { equalNativeDocuments } from './repositories/common.js';
 import { compileDeclarativeLogic } from '../../public/scripts/native/experience/logic/declarative.js';
 import { createGameWorldSession } from '../../public/scripts/native/experience/world/session.js';
 import { createInterpretationMappingRegistry } from '../../public/scripts/native/experience/logic/interpretations.js';
@@ -7,6 +7,7 @@ import { assertTaskValue } from '../../public/shared/native-task-contract.js';
 import { assertNativeId } from './identity.js';
 import { prepareLifecycle } from './lifecycle-authority.js';
 import { selectedWorlds } from './session-worlds.js';
+import { assertNativeExperienceContract } from '../../public/shared/native-experience-contract.js';
 
 export function validateTaskRecords(base) {
     const state = base.states.atri_task_results;
@@ -35,22 +36,24 @@ export function validateTaskRecords(base) {
     }
 }
 
-// Bounded, content-addressed declaration cache. It contains no Session state,
+// Bounded, exact-byte declaration cache. It contains no Session state,
 // candidates, authority proofs or RNG. Exact source/Data/contract changes miss.
-const compiledWorlds = new Map();
+const compiledWorlds = [];
 function pinnedLogic(bytes, data, experienceContract) {
+    const cached = compiledWorlds.find(item => item.bytes.equals(bytes) && equalNativeDocuments(item.data, data) && equalNativeDocuments(item.contract, experienceContract));
+    if (cached) return cached;
     const text = bytes.toString('utf8');
-    const key = hashNativeDocument({ text, data, experienceContract });
-    if (compiledWorlds.has(key)) return compiledWorlds.get(key);
-    const compiled = compileDeclarativeLogic(JSON.parse(text), { data, experienceContract });
-    if (compiledWorlds.size >= 4) compiledWorlds.delete(compiledWorlds.keys().next().value);
-    compiledWorlds.set(key, compiled);
-    return compiled;
+    const validatedContract = experienceContract ? assertNativeExperienceContract(experienceContract) : undefined;
+    const compiled = compileDeclarativeLogic(JSON.parse(text), { data, experienceContract: validatedContract });
+    if (compiledWorlds.length >= 4) compiledWorlds.shift();
+    const entry = { bytes: Buffer.from(bytes), data: structuredClone(data), contract: structuredClone(experienceContract), logic: compiled, validatedContract };
+    compiledWorlds.push(entry);
+    return entry;
 }
 
 // The existing World/Command/Rule/Reducer engine runs against a private candidate
 // snapshot. Only SessionCore may publish its result, with the narrative, in one CAS.
-export async function createTaskWorld(base, installed, publish = null, authority = null) {
+export function loadTaskLogic(installed) {
     const runtime = { ...installed.manifest.runtime, ...installed.entryPoint.runtime };
     const path = runtime?.game?.logic;
     const bytes = installed.sourceFiles.get(path);
@@ -63,7 +66,12 @@ export async function createTaskWorld(base, installed, publish = null, authority
         for (const key of keys.slice(0, -1)) { target[key] ??= {}; target = target[key]; }
         target[keys.at(-1)] = JSON.parse(bytes.toString('utf8'));
     }
-    const logic = pinnedLogic(bytes, data, installed.manifest.runtime?.experienceContract);
+    const entry = pinnedLogic(bytes, data, installed.manifest.runtime?.experienceContract);
+    return { runtime, logic: entry.logic, contract: entry.validatedContract };
+}
+
+export async function createTaskWorld(base, installed, publish = null, authority = null) {
+    const { runtime, logic } = loadTaskLogic(installed);
     const candidate = structuredClone(base);
     candidate.worlds = selectedWorlds(candidate.states, installed.manifest, installed.entryPoint);
     const statePatch = {};

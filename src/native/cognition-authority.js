@@ -2,7 +2,7 @@ import { hasPerspectiveIdentity, resolvePerspectiveView } from '../../public/sha
 import { isCognitionSource, isAppraisalSource, assertCognitionValue, assertCognitionBasis, informationItemFingerprint } from '../../public/shared/native-cognition-runtime.js';
 import { hasInformationBasis, isManagedMemory, assertMemoryValue } from '../../public/shared/native-memory-contract.js';
 import { informationDefinition, projectInformation, refreshInformationCognition, assertInformationAnchor, actorAvailability } from '../../public/shared/native-information-runtime.js';
-import { hashNativeDocument } from './repositories/common.js';
+import { hashNativeDocument, equalNativeDocuments } from './repositories/common.js';
 import { validateHypothesisEvidence } from './tom-authority.js';
 import { INFORMATION_LIMITS } from '../../public/shared/native-information-contract.js';
 import { subjectTaskContext } from './subject-authority.js';
@@ -76,7 +76,7 @@ export function validateCognitionTransition(base, candidate, { taskId = null, ta
     for (const source of (def?.sources ?? []).filter(source => isCognitionSource(source) || hasInformationBasis(source))) {
         const old = new Map((base.states.atri_lifecycle.domains[source.domainId]?.records ?? []).map(record => [record.id, record.value]));
         for (const { id, value } of candidate.states.atri_lifecycle.domains[source.domainId]?.records ?? []) {
-            if (old.has(id) && hashNativeDocument(old.get(id)) === hashNativeDocument(value)) continue;
+            if (old.has(id) && equalNativeDocuments(old.get(id), value)) continue;
             if (isCognitionSource(source)) assertCognitionValue(source, value);
             else assertCognitionBasis(value);
             if (isManagedMemory(source)) {

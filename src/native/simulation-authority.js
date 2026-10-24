@@ -37,7 +37,13 @@ export async function prepareWorldSimulation(base, installed, untilTick, budget,
     if (untilTick < start || untilTick - start > simulation.policy.maxAdvanceTicks) throw new TypeError('Simulation advance outside declared bounds');
     const requestedTick = untilTick;
     if (attention) untilTick = nextAttentionTick(base, untilTick, budget);
-    let candidate = { ...base, states: structuredClone(base.states) };
+    let candidate = base;
+    const mutable = () => {
+        if (candidate !== base) return;
+        const state = base.states.atri_lifecycle;
+        candidate = { ...base, states: { ...base.states, atri_lifecycle: { ...state,
+            clocks: { ...state.clocks }, outbox: state.outbox.slice(), automations: { ...state.automations } } } };
+    };
     const occurrences = new Set();
     let steps = 0;
     while (true) {
@@ -48,14 +54,17 @@ export async function prepareWorldSimulation(base, installed, untilTick, budget,
         const occurrence = next.job.id + ':' + next.tick + (next.context.subject ? ':' + next.context.subject.id : '');
         if (occurrences.has(occurrence) || ++steps > simulation.policy.maxSteps) throw new TypeError('Simulation progress/work limit');
         occurrences.add(occurrence);
+        mutable();
         const tick = Math.max(candidate.states.atri_lifecycle.clocks[simulation.clockId], next.tick);
         candidate.states.atri_lifecycle.clocks[simulation.clockId] = tick;
         candidate = await prepareSimulationStep(candidate, installed, next.job.id, tick, budget, untilTick, requestedTick);
     }
-    candidate.states.atri_lifecycle.clocks[simulation.clockId] = untilTick;
+    if (candidate.states.atri_lifecycle.clocks[simulation.clockId] !== untilTick) {
+        mutable(); candidate.states.atri_lifecycle.clocks[simulation.clockId] = untilTick;
+    }
     // Admission is after deterministic catch-up, not once per event or model.
     if (admit && simulation.policy.maxDeliberations) {
-        const state = candidate.states.atri_lifecycle;
+        let state = candidate.states.atri_lifecycle;
         const pending = state.outbox.some(item => item.status === 'pending' && item.simulation);
         if (!pending) {
             const candidates = simulation.jobs.filter(job => job.action.kind === 'task' && job.id !== excludeJobId)
@@ -74,6 +83,7 @@ export async function prepareWorldSimulation(base, installed, untilTick, budget,
             candidates.sort((a, b) => (a.relevance === b.relevance ? 0 : a.relevance === 'hot' ? -1 : 1) || compare(a, b));
             const selected = candidates[0];
             if (selected) {
+                mutable(); state = candidate.states.atri_lifecycle;
                 const { job, tick, input, inputHash } = selected;
                 const task = contract.taskRuntime.tasks.find(item => item.id === job.action.taskId);
                 const action = { kind: 'task', taskId: job.action.taskId, variantId: job.action.variantId, input };

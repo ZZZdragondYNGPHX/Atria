@@ -421,7 +421,7 @@ export class SessionCore {
 
     async _publishLocked(handle, base, { timeline = base.timeline, states = base.states, knowledge = base.knowledge,
         graph = base.graph, branchId = base.revision?.branchId ?? base.session.activeBranchId,
-        entries = [], variants = [], branches = [], actionRequest = null, taskRecord = null, taskResolution = null, lifecycleReceipt = null, pendingIntentId = null, pendingRealmIntentId = null, sharedPublication = false, authorityPrepared = false, authorityBudget = null, runAction = 'write', illustrationHead = undefined, commitId, requestFingerprint, effectPolicy } = {}) {
+        entries = [], variants = [], branches = [], actionRequest = null, taskRecord = null, taskResolution = null, lifecycleReceipt = null, pendingIntentId = null, pendingRealmIntentId = null, sharedPublication = false, authorityPrepared = false, authorityBudget = null, runAction = 'write', illustrationHead = undefined, commitId, requestFingerprint, effectPolicy, deferred = null, revisionEntropy } = {}) {
         const control = await this.runs.assert(handle, base.session.sessionId, runAction);
         if (states[RUN_NAMESPACE]) {
             const run = assertRunState(states[RUN_NAMESPACE]);
@@ -455,7 +455,7 @@ export class SessionCore {
         validateWorldState(states, base.manifest, base.entryPoint);
         validateWorldKnowledgeBindings(selectedWorlds(states, base.manifest, base.entryPoint), knowledge);
         validateParticipants({ ...base, states, timeline });
-        const revisionId = createNativeId('revision');
+        const revisionId = createNativeId('revision', revisionEntropy ? () => revisionEntropy : undefined);
         states = publishSubjects(base, states, revisionId, branchId);
         if (sharedPublication) for (const turn of Object.values(states.atri_shared?.turns ?? {})) {
             if (turn.expectedRevisionId === null || turn.expectedRevisionId === base.revision?.revisionId) turn.expectedRevisionId = revisionId;
@@ -465,9 +465,11 @@ export class SessionCore {
                 ...(record.consumptions ? { consumptions: record.consumptions.map(item => item.applicationRevisionId !== null ? item : { ...item, applicationRevisionId: revisionId }) } : {}),
             })),
         } };
+        let publicationCopy = false;
         if (taskRecord) {
             if (lifecycleDefinition(base)) {
                 states = cloneNativeDocument(states);
+                publicationCopy = true;
                 compactLifecycle({ ...base, states }, states.atri_lifecycle, { reserveTask: true });
             }
             const records = states[TASK_STATE_NAMESPACE]?.records ?? [];
@@ -494,7 +496,7 @@ export class SessionCore {
             const acquisitions = validateCognitionTransition(base, { ...base, states }, { taskId: taskRecord?.kind === 'task' ? taskRecord.taskId : null,
                 taskInvocationId: taskRecord?.kind === 'task' ? taskRecord.invocationId : null,
                 appraisalEvidence: taskRecord?.authorityReceipt?.decision === 'cognition.appraise' ? taskRecord.appraisalEvidence : null });
-            states = cloneNativeDocument(states);
+            if (!publicationCopy) states = cloneNativeDocument(states);
             publishMemoryAcquisitions(states, acquisitions, revisionId);
             for (const item of states.atri_lifecycle.outbox) {
                 if (!base.states.atri_lifecycle?.outbox.some(previous => previous.invocationId === item.invocationId)) {
@@ -527,7 +529,7 @@ export class SessionCore {
         const appendOnly = timeline.length >= base.timeline.length && base.timeline.every((item, index) => {
             const next = timeline[index]; return item.messageId === next.messageId && item.activeVariantId === next.activeVariantId;
         });
-        const timelineRoot = await this._sessions.prepareTimelineIndex(handle, base.session.sessionId,
+        const timelineRoot = appendOnly && timeline.length === base.timeline.length && base.timelineRoot ? base.timelineRoot : await this._sessions.prepareTimelineIndex(handle, base.session.sessionId,
             appendOnly ? base.timelineRoot : null, (appendOnly ? timeline.slice(base.timeline.length) : timeline).map(timelineSelection));
         const documents = { ...states,
             [SESSION_CORE_NAMESPACE]: core,
@@ -545,7 +547,7 @@ export class SessionCore {
             updatedAt: Math.max(Date.now(), base.session.updatedAt) });
         const snapshot = await this._sessions.commitSnapshot(handle, { session, revision, states: documents,
             entries, variants, branches, expectedRevisionId: base.session.headRevisionId, historyCheckpoint: Boolean(checkpoint), runProof: runPublicationProof(), runAction, illustrationHead, commitId, requestFingerprint });
-        if (effectPolicy !== 'no-background-model') requestVisualWake(this, handle, session.sessionId);
+        if (!deferred && effectPolicy !== 'no-background-model') requestVisualWake(this, handle, session.sessionId);
         if (branchId !== base.session.activeBranchId) invalidateFrontendEpoch(handle, session.sessionId);
         if (snapshot.states[RUN_NAMESPACE]?.status === 'dead' && snapshot.states[RUN_NAMESPACE].mode === 'ironman') {
             invalidateFrontendEpoch(handle, session.sessionId);
@@ -554,10 +556,11 @@ export class SessionCore {
             }
             // Terminal ironman Sessions remain durable read-only history roots.
         }
-        if (taskRecord?.kind === 'turn') {
+        if (taskRecord?.kind === 'turn' && deferred) deferred.push({ snapshot, now: Date.now() });
+        if (taskRecord?.kind === 'turn' && !deferred) {
             try { await this._saves.maybeAutomatic(handle, snapshot); } catch (error) { snapshot.autoSaveDiagnostic = { saved: false, code: error.code ?? 'native_auto_save_failed' }; }
         }
-        if (taskRecord?.kind === 'turn') requestSessionMaintenance(this._sessions, handle, session.sessionId, this._packages._assetStore);
+        if (taskRecord?.kind === 'turn' && !deferred) requestSessionMaintenance(this._sessions, handle, session.sessionId, this._packages._assetStore);
         const continuity = continuityDefinition(base) ? await this._continuity.load(handle, base.session.packageId) : null;
         return loadRealm(this, handle, { ...snapshot, manifest: packageKnowledgeManifest(base.manifest, documents[KNOWLEDGE_NAMESPACE]), entryPoint: base.entryPoint,
             ...(continuityDefinition(base) ? { externalEffects: continuityEffects(continuity, base.session.sessionId), continuityRevisionId: continuity?.revisionId ?? null, continuityViews: continuityDisplay(base, continuity) } : {}),
@@ -721,42 +724,68 @@ export class SessionCore {
     async applyAuthorityAction(handle, sessionId, { transactionId, input, invocationId }, { expectedRevisionId } = {}) {
         if (!expectedRevisionId || typeof invocationId !== 'string' || !/^[a-zA-Z0-9._:-]{1,128}$/.test(invocationId)) throw new TypeError('Authority action anchor and invocation required');
         return this._sessions.withRunLock(handle, sessionId, async () => {
-            const { base, installed } = await this.#loadWithPackage(handle, sessionId);
-            await this.runs.assert(handle, sessionId, 'write');
-            const catalog = await authorityCatalog(base, installed);
-            const selection = authoritySelection(catalog, { transactionId, input });
-            if (transactionId === base.manifest.runtime?.experienceContract?.storyStart?.transactionId) throw runFailure('native_story_start_only');
-            const requestHash = hashNativeDocument(selection);
-            const previous = actionReceipts(base).find(item => item.idempotencyKey === 'authority:' + invocationId);
-            if (previous) {
-                if (previous.branchId !== base.revision.branchId || previous.baseRevisionId !== expectedRevisionId
-                    || previous.requestHash !== requestHash) throw authorityFailure('native_authority_invocation_conflict');
-                return base;
+            const fs = this._sessions._engine.kind === 'fs', deferred = fs ? [] : null;
+            const run = async () => {
+                const started = performance.now(), identity = hashNativeDocument({ sessionId, expectedRevisionId, invocationId });
+                let result = await this.#applyAuthorityAction(handle, sessionId, { transactionId, input, invocationId }, expectedRevisionId, deferred, fs ? identity.slice(0, 32) : undefined);
+                for (let step = 1; fs && result.more && !result.replayed && step < 8 && performance.now() - started < 250; step++) {
+                    const next = 'continue:' + identity + ':' + step;
+                    result = await this.#applyAuthorityAction(handle, sessionId, { transactionId, input, invocationId: next }, result.snapshot.revision.revisionId, deferred,
+                        hashNativeDocument({ identity, step }).slice(0, 32), { base: result.snapshot, installed: result.installed });
+                }
+                return result;
+            };
+            const result = fs ? await this._sessions._engine.withTransaction(handle, run) : await run();
+            // Preserve every logical Revision. Save anchors and background wakes
+            // run only after the enclosing durable publication has completed.
+            for (const item of deferred ?? []) {
+                try { await this._saves.maybeAutomatic(handle, item.snapshot, { now: item.now }); } catch (error) { result.snapshot.autoSaveDiagnostic = { saved: false, code: error.code ?? 'native_auto_save_failed' }; }
             }
-            if (base.revision.revisionId !== expectedRevisionId) throw new ConflictError('native_session_head_conflict', { sessionId });
-            if (retiredInvocation(base.states.atri_lifecycle?.history, invocationId)) throw authorityFailure('native_authority_invocation_expired');
-            const lastInput = base.timeline.at(-1);
-            const repeated = catalog.find(item => item.id === transactionId).coalesceInput && lastInput?.role === 'user'
+            if (deferred?.length) {
+                requestVisualWake(this, handle, sessionId);
+                requestSessionMaintenance(this._sessions, handle, sessionId, this._packages._assetStore);
+            }
+            return result.snapshot;
+        });
+    }
+
+    async #applyAuthorityAction(handle, sessionId, { transactionId, input, invocationId }, expectedRevisionId, deferred, revisionEntropy, loaded = null) {
+        const { base, installed } = loaded ?? await this.#loadWithPackage(handle, sessionId);
+        await this.runs.assert(handle, sessionId, 'write');
+        const catalog = await authorityCatalog(base, installed);
+        const selection = authoritySelection(catalog, { transactionId, input });
+        if (transactionId === base.manifest.runtime?.experienceContract?.storyStart?.transactionId) throw runFailure('native_story_start_only');
+        const requestHash = hashNativeDocument(selection);
+        const previous = actionReceipts(base).find(item => item.idempotencyKey === 'authority:' + invocationId);
+        if (previous) {
+            if (previous.branchId !== base.revision.branchId || previous.baseRevisionId !== expectedRevisionId
+                    || previous.requestHash !== requestHash) throw authorityFailure('native_authority_invocation_conflict');
+            return { snapshot: base, more: false, replayed: true };
+        }
+        if (base.revision.revisionId !== expectedRevisionId) throw new ConflictError('native_session_head_conflict', { sessionId });
+        if (retiredInvocation(base.states.atri_lifecycle?.history, invocationId)) throw authorityFailure('native_authority_invocation_expired');
+        const lastInput = base.timeline.at(-1);
+        const repeated = catalog.find(item => item.id === transactionId).coalesceInput && lastInput?.role === 'user'
                 && lastInput.metadata?.atri_authority_input && equalNativeDocuments(lastInput.metadata.atri_authority_input, selection)
                 && equalNativeDocuments(lastInput.metadata.atri_player_identity ?? null, personaIdentity(base.states[PERSONA_NAMESPACE]?.solo) ?? null);
             // Repeated internal input shares its anchor, never its execution.
-            const player = repeated ? null : authorityPlayerEntry(this, base, selection, catalog);
-            // Reuse the already opened package within this locked action.
-            await this.runs.assert(handle, sessionId, 'generation');
-            const { prepared } = await prepareAuthorityTurn(this, handle, base, installed, selection, player);
-            const candidate = prepared.candidate;
-            const runPolicy = base.manifest.runtime.experienceContract.runPolicy;
-            let states = candidate.states;
-            if (states[RUN_NAMESPACE] && runPolicy?.deathTransactions.includes(selection.transactionId) && prepared.outcome === runPolicy.deathOutcome) {
-                states = { ...states, [RUN_NAMESPACE]: { ...states[RUN_NAMESPACE], status: 'dead' } };
-            }
-            const spoken = (prepared.speeches ?? []).map((draft, index) => this._newEntry(candidate, draft, candidate.timeline.length + index));
-            return this._publish(handle, base, { states, timeline: [...candidate.timeline, ...spoken.map(item => item.entry)],
-                entries: [...(player ? [player.entry] : []), ...spoken.map(item => item.entry)], variants: [...(player ? [player.variant] : []), ...spoken.map(item => item.variant)], authorityPrepared: true,
-                actionRequest: { ...authorityActionRequest(prepared, selection, invocationId, expectedRevisionId, player), source: 'frontend', requestHash },
-                taskRecord: { kind: 'turn', invocationId, fingerprint: requestHash, requestHash, provenance: [], anchorRevisionId: expectedRevisionId,
-                    branchId: base.revision.branchId, outcomes: [], status: 'applied', authorityReceipt: { kind: 'authority', authorityId: prepared.identity, inputHash: prepared.inputHash } } });
-        });
+        const player = repeated ? null : authorityPlayerEntry(this, base, selection, catalog);
+        // Reuse the already opened package within this locked action.
+        await this.runs.assert(handle, sessionId, 'generation');
+        const { prepared } = await prepareAuthorityTurn(this, handle, base, installed, selection, player);
+        const candidate = prepared.candidate;
+        const runPolicy = base.manifest.runtime.experienceContract.runPolicy;
+        let states = candidate.states;
+        if (states[RUN_NAMESPACE] && runPolicy?.deathTransactions.includes(selection.transactionId) && prepared.outcome === runPolicy.deathOutcome) {
+            states = { ...states, [RUN_NAMESPACE]: { ...states[RUN_NAMESPACE], status: 'dead' } };
+        }
+        const spoken = (prepared.speeches ?? []).map((draft, index) => this._newEntry(candidate, draft, candidate.timeline.length + index));
+        const snapshot = await this._publish(handle, base, { states, timeline: [...candidate.timeline, ...spoken.map(item => item.entry)],
+            entries: [...(player ? [player.entry] : []), ...spoken.map(item => item.entry)], variants: [...(player ? [player.variant] : []), ...spoken.map(item => item.variant)], authorityPrepared: true,
+            actionRequest: { ...authorityActionRequest(prepared, selection, invocationId, expectedRevisionId, player), source: 'frontend', requestHash },
+            taskRecord: { kind: 'turn', invocationId, fingerprint: requestHash, requestHash, provenance: [], anchorRevisionId: expectedRevisionId,
+                branchId: base.revision.branchId, outcomes: [], status: 'applied', authorityReceipt: { kind: 'authority', authorityId: prepared.identity, inputHash: prepared.inputHash } }, deferred, revisionEntropy });
+        return { snapshot, installed, more: prepared.more, replayed: false };
     }
 
     async finalizeTurn(handle, sessionId, { envelope: raw, invocationId, requestHash = null, provenance = [], authorityProof = null, knowledgeProof = null }, { expectedRevisionId, effectPolicy } = {}) {

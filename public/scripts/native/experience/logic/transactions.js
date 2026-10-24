@@ -138,10 +138,11 @@ export function compileTransactionDeclarations(raw, options) {
     // Count the entire hook, not just each publication in isolation.
     budget(publications.reduce((sum, item) => sum + item.reads.length, 0), publications.flatMap(item => item.effects), authority);
     const transactions = list(raw.transactions, LIMITS.transactions, transaction => {
-        fields(transaction, ['id', 'origin', 'verb', 'inputSchema', 'intent', 'reads', 'validators', 'resolution', 'effects', 'derivedPublications', 'receipt', 'history', 'lifetimes', 'computation', 'artifacts', 'savePointBefore', 'coalesceInput', 'subjects'], 'Transaction');
+        fields(transaction, ['id', 'origin', 'verb', 'inputSchema', 'intent', 'reads', 'validators', 'resolution', 'effects', 'derivedPublications', 'receipt', 'history', 'lifetimes', 'computation', 'artifacts', 'savePointBefore', 'coalesceInput', 'continuationCondition', 'subjects'], 'Transaction');
         if (transaction.savePointBefore !== undefined && typeof transaction.savePointBefore !== 'boolean') throw new TypeError('Invalid pre-choice SavePoint declaration');
         if (transaction.coalesceInput !== undefined && typeof transaction.coalesceInput !== 'boolean') throw new TypeError('Invalid input coalescing declaration');
         if (transaction.coalesceInput && (transaction.intent?.expose !== false || transaction.origin || transaction.savePointBefore)) throw new TypeError('Input coalescing requires a hidden player Transaction without pre-choice SavePoint');
+        if (transaction.continuationCondition !== undefined && !transaction.coalesceInput) throw new TypeError('Continuation requires a coalesced internal Transaction');
         taskId(transaction.id); taskId(transaction.verb);
         if (transaction.origin !== undefined && (transaction.origin !== 'simulation' || !contract.simulationRuntime)) throw new TypeError('Unknown or undeclared Transaction origin');
         if (transaction.origin === 'simulation' && transaction.intent?.expose !== false) throw new TypeError('Simulation Transaction cannot be player-exposed');
@@ -193,6 +194,7 @@ export function compileTransactionDeclarations(raw, options) {
         }
         const result = resolution(transaction.resolution, { ...before, ...computed });
         const resolved = { ...before, ...computed, resolution: result };
+        if (transaction.continuationCondition !== undefined) predicate(transaction.continuationCondition, resolved);
         const context = { ...resolved, subjects: subjects(transaction.subjects, resolved, lifecycle) };
         if (transaction.subjects?.length && !transaction.effects.length) throw new TypeError('Subject admission requires Domain effects');
         if (transaction.history !== undefined) {
