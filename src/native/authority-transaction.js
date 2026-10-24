@@ -20,7 +20,7 @@ import { createRulesEngine } from '../../public/scripts/native/experience/logic/
 import { assertNativeId } from './identity.js';
 import { hashNativeDocument } from './repositories/common.js';
 import { createTaskWorld } from './task-authority.js';
-import { prepareLifecycle, validateLifecycle } from './lifecycle-authority.js';
+import { applyLifecycleCandidate, validateLifecycle } from './lifecycle-authority.js';
 import { packageKnowledgeManifest } from './session-knowledge.js';
 
 // Internal preparation API only. No repository, provider, scheduler or commit
@@ -201,7 +201,7 @@ export function simulationPrivateContext(base, contract, job, budget, tick, targ
     return context;
 }
 async function applyLifecycle(candidate, installed, action, budget) {
-    const prepared = await prepareLifecycle(candidate, installed, action, budget);
+    const prepared = await applyLifecycleCandidate(candidate, installed, action, budget);
     Object.assign(candidate.states, prepared.states);
 }
 async function publications(candidate, installed, contract, logic, budget) {
@@ -265,9 +265,11 @@ async function executeTransaction(candidate, installed, contract, logic, world, 
         const input = { args, reads, artifacts, seed: identity, anchor: { ...snapshotAnchor(candidate),
             scopeEpochs: Object.fromEntries(Object.entries(candidate.states.atri_lifecycle.scopes)
                 .filter(([, scope]) => scope.status === 'active').map(([id, scope]) => [id, scope.epoch])) } };
-        const checked = await runPackageComputation(installed, transaction.computation.source, 'precondition', input);
-        if (checked.value !== true) throw new TypeError('Domain precondition rejected');
-        execution.push(checked.evidence);
+        if (transaction.computation.precondition !== false) {
+            const checked = await runPackageComputation(installed, transaction.computation.source, 'precondition', input);
+            if (checked.value !== true) throw new TypeError('Domain precondition rejected');
+            execution.push(checked.evidence);
+        }
         const prepared = await runPackageComputation(installed, transaction.computation.source, 'compute', input);
         computed = assertTaskValue(budget.value(prepared.value), compileComputationSchema(transaction.computation.outputSchema));
         execution.push(prepared.evidence);
@@ -324,7 +326,7 @@ async function checkComputation(candidate, installed, contract, transaction, bud
     const available = { ...state, reads };
     const input = transaction.computation.invariantContext === undefined ? available
         : Object.fromEntries(transaction.computation.invariantContext.map(key => [key, available[key]]));
-    const checked = await runPackageComputation(installed, transaction.computation.source, 'invariant', input);
+    const checked = await runPackageComputation(installed, transaction.computation.invariantSource ?? transaction.computation.source, 'invariant', input);
     if (checked.value !== true) throw new TypeError('Domain invariant rejected');
     evidence.push(checked.evidence);
 }

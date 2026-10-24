@@ -76,7 +76,10 @@ export function validateExperienceResources(manifest, files, assets, { lower = f
         compileDeclarativeLogic(lowered, { data: {}, experienceContract: contract });
         logicByPath.set(path, lowered);
         for (const transaction of lowered.transactions ?? []) {
-            if (transaction.computation) compilePackageComputation(transaction.computation.source, files);
+            if (transaction.computation) {
+                compilePackageComputation(transaction.computation.source, files);
+                if (transaction.computation.invariantSource) compilePackageComputation(transaction.computation.invariantSource, files);
+            }
         }
         for (const mapping of lowered.interpretations ?? []) {
             if (!mapping.appCommand) continue;

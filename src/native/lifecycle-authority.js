@@ -226,9 +226,15 @@ export function addOutbox(state, action, scopeId, occurrence, workflowId = null)
 }
 
 export async function prepareLifecycle(base, installed, action, authority = null) {
-    const def = lifecycleDefinition(base);
+    return applyLifecycleCandidate({ ...base, states: copy(base.states) }, installed, action, authority);
+}
+
+// Only an isolated, unpublished Authority candidate may use this entrypoint.
+export async function applyLifecycleCandidate(candidate, installed, action, authority = null) {
+    const base = candidate;
+    const def = lifecycleDefinition(candidate);
     if (!def) throw new TypeError('Package lifecycle contract required');
-    const candidate = { ...base, states: copy(base.states) }; const state = candidate.states[NS];
+    const state = candidate.states[NS];
     const events = []; let budget = 32; let taskResolution = null; const drafts = [];
     const queue = (...args) => {
         const item = addOutbox(...args);

@@ -3,9 +3,12 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { durableWriteAsync, durableRemoveAsync, syncDirectoryAsync } from '../durable-file.js';
 import { isNativeStorageKind, normalizeNativeResourceKey, encodeNativeResourceKey, nativeResourceMatchesFilter, sortAndLimitNativeRecords } from './native-resource-key.js';
+import { NATIVE_RESOURCE_KINDS as K } from '../../native/contracts.js';
+import { prepareIndependent } from '../../../public/shared/native-independent-preparation.js';
 
 const identity = key => key.kind + '\0' + encodeNativeResourceKey(key);
 const digest = text => createHash('sha256').update(text).digest('hex');
+const dependencies = new Set([K.sessionState, K.sessionRevision, K.timelineEntry, K.timelineVariant, K.branch]);
 
 // One committed redo journal per user. Engine isolation excludes readers while
 // installation is partial. Recovery finishes installation before any read/ACK.
@@ -57,12 +60,24 @@ export class FsNativeJournal {
         return sortAndLimitNativeRecords([...rows.values()], filter);
     }
     async install(items) {
-        for (let i = 0; i < items.length; i++) {
-            const item = items[i]; this.checkedKey(item.key);
+        const install = async ({ item, index }) => {
+            this.checkedKey(item.key);
             if (item.record) await this.base.putResource(item.key, item.record);
             else await this.base.deleteResource(item.key);
-            await this.fault('install', i);
+            await this.fault('install', index);
+        };
+        let batch = [];
+        for (let index = 0; index < items.length; index++) {
+            const item = items[index];
+            if (item.record && dependencies.has(item.key.kind)) batch.push({ item, index });
+            else {
+                // Independent files may sync together; mutable roots and
+                // deletions remain ordered barriers after all siblings settle.
+                await prepareIndependent(batch, install, { concurrency: 4 }); batch = [];
+                await install({ item, index });
+            }
         }
+        await prepareIndependent(batch, install, { concurrency: 4 });
     }
     async recover() {
         let raw;

@@ -734,9 +734,13 @@ export class SessionCore {
                 return base;
             }
             if (base.revision.revisionId !== expectedRevisionId) throw new ConflictError('native_session_head_conflict', { sessionId });
-            if (retiredInvocation(base.states.atri_lifecycle?.history, invocationId)
-                || retiredInvocation(base.states.atri_lifecycle?.history, 'authority:' + invocationId)) throw authorityFailure('native_authority_invocation_expired');
-            const player = authorityPlayerEntry(this, base, selection, catalog);
+            if (retiredInvocation(base.states.atri_lifecycle?.history, invocationId)) throw authorityFailure('native_authority_invocation_expired');
+            const lastInput = base.timeline.at(-1);
+            const repeated = catalog.find(item => item.id === transactionId).coalesceInput && lastInput?.role === 'user'
+                && lastInput.metadata?.atri_authority_input && equalNativeDocuments(lastInput.metadata.atri_authority_input, selection)
+                && equalNativeDocuments(lastInput.metadata.atri_player_identity ?? null, personaIdentity(base.states[PERSONA_NAMESPACE]?.solo) ?? null);
+            // Repeated internal input shares its anchor, never its execution.
+            const player = repeated ? null : authorityPlayerEntry(this, base, selection, catalog);
             // Reuse the already opened package within this locked action.
             await this.runs.assert(handle, sessionId, 'generation');
             const { prepared } = await prepareAuthorityTurn(this, handle, base, installed, selection, player);
@@ -748,8 +752,8 @@ export class SessionCore {
             }
             const spoken = (prepared.speeches ?? []).map((draft, index) => this._newEntry(candidate, draft, candidate.timeline.length + index));
             return this._publish(handle, base, { states, timeline: [...candidate.timeline, ...spoken.map(item => item.entry)],
-                entries: [player.entry, ...spoken.map(item => item.entry)], variants: [player.variant, ...spoken.map(item => item.variant)], authorityPrepared: true,
-                actionRequest: { ...authorityActionRequest(prepared, selection, invocationId, expectedRevisionId, player), requestHash },
+                entries: [...(player ? [player.entry] : []), ...spoken.map(item => item.entry)], variants: [...(player ? [player.variant] : []), ...spoken.map(item => item.variant)], authorityPrepared: true,
+                actionRequest: { ...authorityActionRequest(prepared, selection, invocationId, expectedRevisionId, player), source: 'frontend', requestHash },
                 taskRecord: { kind: 'turn', invocationId, fingerprint: requestHash, requestHash, provenance: [], anchorRevisionId: expectedRevisionId,
                     branchId: base.revision.branchId, outcomes: [], status: 'applied', authorityReceipt: { kind: 'authority', authorityId: prepared.identity, inputHash: prepared.inputHash } } });
         });

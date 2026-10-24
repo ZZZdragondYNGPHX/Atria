@@ -170,6 +170,7 @@ export function compileProjectFrontends(packageSource, inputFiles) {
         for (const transaction of logic.transactions ?? []) if (transaction.computation) {
             const artifact = compilePackageComputation(transaction.computation.source, inputFiles);
             artifact.modules.forEach(module => retained.add(module.id));
+            if (transaction.computation.invariantSource) compilePackageComputation(transaction.computation.invariantSource, inputFiles).modules.forEach(module => retained.add(module.id));
         }
     }
     consumed.forEach(path => { if (!retained.has(path)) files.delete(path); });

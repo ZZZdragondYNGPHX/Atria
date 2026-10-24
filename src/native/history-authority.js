@@ -234,24 +234,37 @@ export function validateHistory(snapshot) {
         if (snapshot.states.atri_lifecycle.lifetimes && artifact.provenance.at(-1)?.holderId !== artifact.holderId) throw new TypeError('Artifact custody contradiction');
         if (!h.anchors[artifact.origin] || (artifact.parentId && !h.artifacts[artifact.parentId]) || artifact.provenance.some((p, i, rows) => !h.anchors[p.eventId] || (i && p.tick < rows[i - 1].tick))) throw new TypeError('Artifact provenance');
     }
-    const indexed = copy(h); const expectedIndex = historyIndex(indexed);
+    const indexed = { ...h }; const expectedIndex = historyIndex(indexed);
     if (!same(h.index, expectedIndex) || !same(h.positions, indexed.positions) || !same(h.yearRanges, indexed.yearRanges)) throw new TypeError('History index mismatch');
     if (h.retired && (!/^[0-9a-f]{65536}$/.test(h.retired))) throw new TypeError('History replay filter');
+    if (h.retiredKeys && (!Array.isArray(h.retiredKeys) || h.retiredKeys.length > 64
+        || h.retiredKeys.some(chunk => typeof chunk !== 'string' || chunk.length > 32768 || chunk.length % 16 || !/^[0-9a-f]*$/.test(chunk)))) throw new TypeError('History retired invocation index');
 }
-// Bounded fail-closed replay fence. False positives reject; never double-apply.
-// Exact recent retries retain their receipts. Archived retries explicitly expire.
+// Keep old saved filters readable, but do not keep saturating them with new
+// work. Compact signatures avoid routine false positives during long advances.
 function positions(key) {
     const digest = createHash('sha256').update(key).digest();
     return Array.from({ length: 8 }, (_, i) => digest.readUInt32BE(i * 4) % (32768 * 8));
 }
 export function retiredInvocation(h, key) {
-    if (!h?.retired) return false; const bits = Buffer.from(h.retired, 'hex');
-    return positions(key).every(p => (bits[p >> 3] & (1 << (p % 8))) !== 0);
+    if (!h) return false;
+    const signature = retiredKey(key);
+    if (h.retiredKeys?.some(chunk => hasRetiredKey(chunk, signature))) return true;
+    if (!h.retired) return false; const bits = Buffer.from(h.retired, 'hex');
+    return [key, 'authority:' + key].some(legacy => positions(legacy).every(p => (bits[p >> 3] & (1 << (p % 8))) !== 0));
+}
+const retiredKey = key => createHash('sha256').update(key).digest('hex').slice(0, 16);
+function hasRetiredKey(chunk, signature) {
+    for (let at = chunk.indexOf(signature); at >= 0; at = chunk.indexOf(signature, at + 1)) if (at % 16 === 0) return true;
+    return false;
 }
 export function retireInvocation(h, key) {
-    const bits = h.retired ? Buffer.from(h.retired, 'hex') : Buffer.alloc(32768);
-    for (const p of positions(key)) bits[p >> 3] |= 1 << (p % 8);
-    h.retired = bits.toString('hex'); h.retiredCount++;
+    const signature = retiredKey(key); h.retiredKeys ??= [];
+    if (!h.retiredKeys.some(chunk => hasRetiredKey(chunk, signature))) {
+        if (!h.retiredKeys.length || h.retiredKeys.at(-1).length >= 32768) h.retiredKeys.push('');
+        h.retiredKeys[h.retiredKeys.length - 1] += signature;
+    }
+    h.retiredCount++;
 }
 // Portable checkpoints sever only linear ancestry. Branch graphs/save points are
 // retained by SaveSystem; never rewrite/delete an existing revision or branch.
@@ -282,7 +295,7 @@ export function checkpointHistory(base, states, timeline, taskRecord) {
     const receipts = states.atri_action_receipts;
     if (receipts) receipts.receipts = receipts.receipts.filter(r => {
         if (!r.authorityId) return true;
-        retireInvocation(h, r.idempotencyKey); return false;
+        retireInvocation(h, r.idempotencyKey.replace(/^authority:/, '')); return false;
     });
     if (states.atri_game_runtime) states.atri_game_runtime.events = [];
     // Compact derived model/task state only. Original dialogue and Revision

@@ -138,8 +138,10 @@ export function compileTransactionDeclarations(raw, options) {
     // Count the entire hook, not just each publication in isolation.
     budget(publications.reduce((sum, item) => sum + item.reads.length, 0), publications.flatMap(item => item.effects), authority);
     const transactions = list(raw.transactions, LIMITS.transactions, transaction => {
-        fields(transaction, ['id', 'origin', 'verb', 'inputSchema', 'intent', 'reads', 'validators', 'resolution', 'effects', 'derivedPublications', 'receipt', 'history', 'lifetimes', 'computation', 'artifacts', 'savePointBefore', 'subjects'], 'Transaction');
+        fields(transaction, ['id', 'origin', 'verb', 'inputSchema', 'intent', 'reads', 'validators', 'resolution', 'effects', 'derivedPublications', 'receipt', 'history', 'lifetimes', 'computation', 'artifacts', 'savePointBefore', 'coalesceInput', 'subjects'], 'Transaction');
         if (transaction.savePointBefore !== undefined && typeof transaction.savePointBefore !== 'boolean') throw new TypeError('Invalid pre-choice SavePoint declaration');
+        if (transaction.coalesceInput !== undefined && typeof transaction.coalesceInput !== 'boolean') throw new TypeError('Invalid input coalescing declaration');
+        if (transaction.coalesceInput && (transaction.intent?.expose !== false || transaction.origin || transaction.savePointBefore)) throw new TypeError('Input coalescing requires a hidden player Transaction without pre-choice SavePoint');
         taskId(transaction.id); taskId(transaction.verb);
         if (transaction.origin !== undefined && (transaction.origin !== 'simulation' || !contract.simulationRuntime)) throw new TypeError('Unknown or undeclared Transaction origin');
         if (transaction.origin === 'simulation' && transaction.intent?.expose !== false) throw new TypeError('Simulation Transaction cannot be player-exposed');
@@ -162,7 +164,8 @@ export function compileTransactionDeclarations(raw, options) {
         validators(transaction.validators, before);
         let computed = {};
         if (transaction.computation !== undefined) {
-            fields(transaction.computation, ['source', 'outputSchema', 'invariantContext', 'invariantReads'], 'Transaction computation');
+            fields(transaction.computation, ['source', 'precondition', 'outputSchema', 'invariantSource', 'invariantContext', 'invariantReads'], 'Transaction computation');
+            if (transaction.computation.precondition !== undefined && typeof transaction.computation.precondition !== 'boolean') throw new TypeError('Invalid computation precondition declaration');
             if (transaction.computation.invariantReads !== undefined) {
                 list(transaction.computation.invariantReads, LIMITS.readGrants, selection => {
                     fields(selection, ['id', 'fields'], 'Invariant read selection');
@@ -182,6 +185,10 @@ export function compileTransactionDeclarations(raw, options) {
             }
             resourcePath(transaction.computation.source);
             if (!/\.(js|ts)$/.test(transaction.computation.source)) throw new TypeError('Computation requires exact JS/TS source');
+            if (transaction.computation.invariantSource !== undefined) {
+                resourcePath(transaction.computation.invariantSource);
+                if (!/\.(js|ts)$/.test(transaction.computation.invariantSource)) throw new TypeError('Invariant requires exact JS/TS source');
+            }
             computed = { computed: compileComputationSchema(transaction.computation.outputSchema) };
         }
         const result = resolution(transaction.resolution, { ...before, ...computed });

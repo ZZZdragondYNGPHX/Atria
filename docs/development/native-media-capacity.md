@@ -46,7 +46,9 @@ retain their own limits. Use local binary Work import for larger packages.
 Archive memoization includes encoded archive bytes, decoded file bytes and an
 estimate of metadata size in its budget. Runtime cache hits check the owning
 installation and the blob's device/file identity, size, modification/change and
-creation stamps, then return isolated mutable byte copies. Cold, changed and
+creation stamps, then return byte maps that copy each payload on its first read.
+Returned buffers, including their backing stores, remain caller-owned; keys and
+metadata reads do not copy the scene library. Cold, changed and
 export reads verify the complete archive. This lightweight runtime path assumes
 host-managed immutable blobs; it is not a fresh cryptographic verification of
 every byte on each action. A deliberately external rewrite preserving all file
@@ -67,3 +69,6 @@ freezing the bounded transaction input and executing the handler. UI controllers
 retain their 40 ms budget. Deep input immutability, 8 MiB guest heap, stack,
 input/output and overall Authority work budgets still apply. Slow or unbounded
 rules are interrupted, with no partial transaction publication.
+
+For hidden continuation inputs and smaller invariant modules, see
+[Native transactions](native-transactions.md).

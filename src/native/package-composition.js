@@ -41,6 +41,25 @@ function copyPackageBytes(bytes) {
     return copy;
 }
 
+const unreadBytes = Symbol('unread Package bytes');
+class PackageByteMap extends Map {
+    #source;
+    constructor(source) {
+        super(); this.#source = source;
+        for (const key of source.keys()) super.set(key, unreadBytes);
+    }
+    get(key) {
+        const value = super.get(key);
+        if (value !== unreadBytes) return value;
+        const bytes = copyPackageBytes(this.#source.get(key));
+        super.set(key, bytes); return bytes;
+    }
+    * entries() { for (const key of super.keys()) yield [key, this.get(key)]; }
+    * values() { for (const key of super.keys()) yield this.get(key); }
+    [Symbol.iterator]() { return this.entries(); }
+    forEach(callback, thisArg) { for (const [key, value] of this) callback.call(thisArg, value, key, this); }
+}
+
 function copyParsedJson(value) {
     if (value === null || typeof value !== 'object') return value;
     const copy = Array.isArray(value) ? value.map(copyParsedJson)
@@ -55,10 +74,12 @@ function parsedJsonBytes(value) {
         : 64 + Object.entries(value).reduce((bytes, [key, item]) => bytes + 32 + key.length * 2 + parsedJsonBytes(item), 0);
 }
 
-function copyParsedArchive(inspected) {
+function copyParsedArchive(inspected, lazy = false) {
+    // Runtime rules never read scene media. Copy bytes on first access while
+    // keeping every returned Buffer and its backing store caller-owned.
+    const copyMap = map => lazy ? new PackageByteMap(map) : new Map([...map].map(([key, bytes]) => [key, copyPackageBytes(bytes)]));
     return Object.freeze({ manifest: copyParsedJson(inspected.manifest), preflight: copyParsedJson(inspected.preflight),
-        sourceFiles: new Map([...inspected.sourceFiles].map(([key, bytes]) => [key, copyPackageBytes(bytes)])),
-        assets: new Map([...inspected.assets].map(([key, bytes]) => [key, copyPackageBytes(bytes)])) });
+        sourceFiles: copyMap(inspected.sourceFiles), assets: copyMap(inspected.assets) });
 }
 
 function parsedArchiveBytes(archive, inspected) {
@@ -376,7 +397,7 @@ export class PackageInstaller {
                 this.#parsedArchiveBytes += bytes;
             }
         }
-        const opened = copyParsedArchive(inspected);
+        const opened = copyParsedArchive(inspected, true);
         return Object.freeze({
             packageVersion: version,
             ...opened,
