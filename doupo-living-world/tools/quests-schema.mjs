@@ -1,0 +1,7 @@
+import {publicQuestSchemas} from '../source/rules/quest-public.js';
+export function questSchemas({S,I,B,O,A}) {
+ const evidence=O({kind:S(),target:S(),place:S(),at:I(),text:S(256)});
+ const instance=O({id:S(),seed:S(),issuer:S(),target:S(),place:S(),status:S(),owner:S(),created:I(),observedAt:I(),source:S(128),tracked:B,version:I(1),reward:I(),due:I(),alternative:S(),stage:I(),progress:S(512),choice:S(),cost:I(),earned:I(),paid:I(),escrow:I(),custody:O({item:S(),qty:I(),gold:I(),owner:S(),holder:S()}),evidence:A(evidence,8),helper:S(),assignment:S(),workDue:I(),workRemaining:I(),workPlace:S(),deliveryPlace:S(),notice:S(512),agreement:S(),period:I(),nextDue:I(),cycle:I()});
+ const option=O({label:S(96),detail:S(),item:S(),qty:I(),text:S(128)});
+ return {state:O({publicOffers:publicQuestSchemas(S,I,B,O,A).state,serial:I(),page:I(),skipped:B,instances:A(instance,48),totals:A(O({seed:S(),completed:I(),paid:I(),lastAt:I(),choice:S()}),64),history:A(O({id:S(),seed:S(),status:S(),at:I(),paid:I(),text:S(256)}),24)}),view:O({known:A(O({id:S(),seed:S(),title:S(128),status:S(),due:I(),source:S(128),observedAt:I(),place:S(),issuer:S(),terms:S(512),progress:S(768),tracked:B,alternatives:A(O({id:S(),label:S(128)}),4),options:A(option,16)}),12),guide:O({skipped:B,text:S(256)}),counts:O({active:I(),completed:I()}),warnings:A(S(256),8),page:I(),pages:I(1),deadlines:A(O({id:S(),title:S(128),due:I()}),12)})};
+}

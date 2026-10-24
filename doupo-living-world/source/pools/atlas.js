@@ -1,0 +1,52 @@
+// Public atlas, not character knowledge or a second travel graph. Coordinates
+// are an original schematic layout, never asserted to be surveyed canon.
+const node=(id,name,parent,source='atlas-locations',region='')=>({id,weight:1,status:region?'ready':'reserve',conditions:{},source,value:{id,name,parent,region,unlocked:!!region}});
+export const ATLAS_SECTORS=[
+ {id:'northwest',name:'西北大陆',className:'atlas-label northwest',note:'加玛与周边诸国'},
+ {id:'blackcorner',name:'黑角域',className:'atlas-label blackcorner',note:'未解锁'},
+ {id:'central',name:'中州',className:'atlas-label central',note:'未解锁'},
+ {id:'beast',name:'兽域',className:'atlas-label beast',note:'未解锁'},
+ {id:'frontiers',name:'大陆远疆',className:'atlas-label frontiers',note:'未解锁'},
+ {id:'spaces',name:'独立空间',className:'atlas-label spaces',note:'未解锁'},
+];
+export const atlas={id:'world.atlas',version:1,entries:[
+ node('atlas.wutan','乌坦城','northwest','jiama','wutan'),
+ node('atlas.qingshan','青山镇','northwest','qingshan','qingshan'),
+ node('atlas.mountain','魔兽山脉','northwest','jiama','mountain'),
+ node('atlas.blackrock','黑岩城','northwest','blackrock','blackrock'),
+ node('atlas.shimo','石漠城','northwest','xiao-brothers','shimo'),
+ node('atlas.tager','塔戈尔外缘','northwest','jiama','tager'),
+ node('atlas.jiama-capital','加玛帝都','northwest','jiama'),
+ node('atlas.yunlan','云岚山','northwest'),
+ node('atlas.tager-inner','塔戈尔腹地','northwest','jiama'),
+ node('atlas.chuyun','出云帝国','northwest'),
+ node('atlas.luoyan','落雁帝国','northwest'),
+ node('atlas.mulan','慕兰帝国','northwest'),
+ node('atlas.tianshe','天蛇帝国','northwest'),
+ node('atlas.tianxin','天心帝国','northwest'),
+ node('atlas.northwest-other','西北诸国边疆','northwest','original'),
+ node('atlas.black-plains','黑域大平原','blackcorner','atlas-blackcorner'),
+ node('atlas.jianan','迦南学院','blackcorner','atlas-blackcorner'),
+ node('atlas.blackcorner-cities','黑角域诸城','blackcorner','atlas-blackcorner'),
+ node('atlas.central-core','中州中域','central'),
+ node('atlas.central-east','中州东域','central'),
+ node('atlas.central-west','中州西域','central'),
+ node('atlas.central-south','中州南域','central'),
+ node('atlas.central-north','中州北域','central'),
+ node('atlas.pill-region','丹域','central'),
+ node('atlas.starfall','星陨阁所在山域','central'),
+ node('atlas.windlightning','风雷阁所在山域','central'),
+ node('atlas.flower','花宗所在山域','central'),
+ node('atlas.burningflame','焚炎谷','central'),
+ node('atlas.ice-river','冰河谷','central'),
+ node('atlas.beast-range','兽域山川','beast','atlas-dragon'),
+ node('atlas.dragon-island','古龙岛','spaces','atlas-dragon'),
+ node('atlas.clan-realms','远古族界','spaces','original'),
+ node('atlas.other-realms','其它独立空间','spaces','original'),
+ node('atlas.far-north','北部远疆','frontiers','original'),
+ node('atlas.far-east','东部远疆','frontiers','original'),
+ node('atlas.far-south','南部远疆','frontiers','original'),
+ node('atlas.far-west','西部远疆','frontiers','original'),
+]};
+export const WORLD_ATLAS=atlas.entries.map(e=>e.value);
+export const isLockedAtlas=id=>WORLD_ATLAS.some(n=>n.id===id&&!n.unlocked);

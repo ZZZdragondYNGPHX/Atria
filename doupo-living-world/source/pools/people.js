@@ -20,6 +20,14 @@ const rows=[
  ['charcoal','artisan','烧炭匠','为药炉提供燃料，避免空耗材料',25,52,3,7,4,0,2,'fire-breath'],
  ['boat-hand','porter','渡口帮工','照顾渡客行李，攒钱供养家人',23,45,3,6,2,0,2,'stone-breath'],
  ['settler','cultivator','迁居散修','离开旧居重新谋生，愿结识守信之人',24,48,4,10,2,0,3,'steady'],
+ ['guild-copyist','cultivator','公会抄录员','抄录药材账目换取求学资用，不自称已获药师认证',20,40,4,9,3,1,4,'wood-breath',['blackrock']],
+ ['furnace-hand','herbalist','药院炉工','在药材处理院辨药备料，节省每一炉材料',24,48,5,10,4,1,4,'fire-breath',['blackrock','qingshan']],
+ ['forge-hand','artisan','修器铺学徒','修补磨损器具，攒钱置办自己的炉台',20,36,4,9,3,0,3,'stone-breath',['wutan','qingshan','blackrock']],
+ ['convoy-hand','porter','候场货工','核对包裹、靠装卸谋生，尚未取得任何飞行资格',22,45,4,8,2,0,2,'short-fist',['blackrock']],
+ ['sand-escort','mercenary','沙路护卫','在城边商道护送往来旅人，出发前备足补给',24,45,7,13,2,0,3,'wind-breath',['shimo','tager']],
+ ['oasis-harvester','gatherer','绿洲采药人','采收普通耐旱药草，送往石漠城诊舍维持生计',22,48,6,12,2,1,3,'wood-breath',['shimo','tager']],
+ ['clinic-hand','healer','诊舍医者','照护眼前病人，先确认伤处和可用药草',25,55,5,11,2,1,4,'wood-breath',['shimo','qingshan']],
+ ['sand-trader','merchant','沙路粮商','照看商道补给与家中收支，不轻信异火传闻',28,57,5,10,2,0,3,'steady',['shimo','tager']],
  ['child','child','本地孩子','尚需照护，在家庭环境中逐渐成长',0,0,1,1,2,0,2,'']
 ];
-export const people={id:'people.templates',version:1,entries:rows.map(([id,role,origin,plan,minAge,maxAge,minRank,maxRank,fire,wood,soul,art])=>({id,weight:1,status:'ready',conditions:{source:{in:id==='child'?['birth']:['initial','immigration']}},value:{role,origin,plan,minAge,maxAge,minRank,maxRank,fire,wood,soul,art}}))};
+export const people={id:'people.templates',version:2,entries:rows.map(([id,role,origin,plan,minAge,maxAge,minRank,maxRank,fire,wood,soul,art,regions])=>({id,weight:1,status:'ready',conditions:{source:{in:id==='child'?['birth']:['initial','immigration']},...(regions?{region:{in:regions}}:{})},value:{role,origin,plan,minAge,maxAge,minRank,maxRank,fire,wood,soul,art}}))};

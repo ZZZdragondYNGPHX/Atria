@@ -1,0 +1,23 @@
+// Small factual summaries only. Full interpretation and uncertainty: SOURCES.md.
+export const SOURCES=[
+ {id:'cultivation',kind:'wiki',url:'https://battle-through-the-heavens.fandom.com/wiki/Cultivation',claim:'2026-10-24可读正文核对斗气境界与纱衣、铠甲、凝物、化翼的分层。星级映射和玩法参数由本作实现。'},
+ {id:'frank-realm',kind:'wiki',url:'https://battle-through-the-heavens.fandom.com/wiki/Fu_Lan_Ke',claim:'2026-10-24可读人物正文列斗王、四品炼药师；不将药师品阶换算为战力，未标星级以一星配置。'},
+ {id:'aotuo-realm',kind:'wiki',url:'https://battle-through-the-heavens.fandom.com/wiki/Ao_Tuo',claim:'2026-10-24可读人物正文列斗灵、四品炼药师；未标星级以一星配置，后续历史不导入开局。'},
+ {id:'atlas-locations',kind:'wiki',url:'https://battle-through-the-heavens.fandom.com/wiki/Locations',claim:'西北诸国与中州五域及主要势力名称；只用可读检索正文，地图位置为原创示意。'},
+ {id:'atlas-blackcorner',kind:'wiki',url:'https://battle-through-the-heavens.fandom.com/wiki/Black-Corner_Region',claim:'黑角域、黑域大平原、迦南学院的地域关联，不预设后期势力变化。'},
+ {id:'atlas-dragon',kind:'wiki',url:'https://battle-through-the-heavens.fandom.com/wiki/Northern_Dragon_Island',claim:'兽域、古龙岛及独立空间联系；不导入后期战争和统治结果。'},
+ {id:'original',kind:'original',url:'',claim:'原创居民、设施细节、路线、库存和规则参数。'},
+ {id:'opening',kind:'novel',url:'https://www.webnovel.com/book/battle-through-the-heavens_8093990805004205/the-fallen-genius_21770745583562580',claim:'开篇萧家测试及既有主要人物，续用原有前三章核实记录。'},
+ {id:'jiama',kind:'encyclopedia',url:'https://wapbaike.baidu.com/item/加玛帝国/6926230',claim:'加玛帝国与乌坦城、魔兽山脉、塔戈尔沙漠的地理背景。'},
+ {id:'blackrock',kind:'wiki',url:'https://battle-through-the-heavens.fandom.com/wiki/Black_Rock_City',claim:'黑岩城、炼药师公会、飞行运输设施；采用检索可见正文节选。'},
+ {id:'qingshan',kind:'wiki',url:'https://battle-through-the-heavens.fandom.com/wiki/Qingshan_Town',claim:'青山镇邻近魔兽山脉，有佣兵活动；采用检索正文节选。'},
+ {id:'yafei',kind:'wiki',url:'https://battle-through-the-heavens.fandom.com/wiki/Ya_Fei',claim:'雅妃与乌坦城米特尔拍卖行的身份联系；不预置后期合作。'},
+ {id:'xiao-brothers',kind:'encyclopedia',url:'https://bkso.baidu.com/item/萧鼎/16392157',claim:'萧鼎、萧厉是萧炎的兄长，在石漠城建立漠铁佣兵团。'},
+ {id:'xiao-li',kind:'encyclopedia',url:'https://bkso.baidu.com/item/萧厉/10555076',claim:'萧厉是萧炎二哥、漠铁佣兵团二团长，辅证兄弟关系。'},
+ {id:'linfei',kind:'encyclopedia',url:'https://bkso.baidu.com/item/琳菲/65361189',claim:'琳菲师从黑岩城炼药师奥托；不预置考核结果。'},
+ {id:'xuemei',kind:'encyclopedia',url:'https://baike.sogou.com/v194539767.htm',claim:'雪魅师从黑岩城炼药师公会会长弗兰克。'},
+ {id:'alchemists',kind:'encyclopedia',url:'https://bkso.baidu.com/item/炼药师/10823622',claim:'弗兰克担任黑岩城炼药师公会会长；不将药师品阶当作当前技能数值。'},
+ {id:'little-fairy',kind:'encyclopedia',url:'https://baike.sogou.com/m/fullLemma?lid=23132026',claim:'小医仙是医者，与万药斋有关；加入时间未明确。'},
+ {id:'xiao-mei',kind:'encyclopedia',url:'https://baike.sogou.com/v34894437.htm',claim:'萧媚为萧家同辈角色，不采用后期关系结果。'},
+ {id:'xiao-ning',kind:'wiki',url:'https://battle-through-the-heavens.fandom.com/wiki/Xiao_Ning',claim:'萧宁为小说角色；本轮没有核实精确年龄和开篇实力，数值为游戏假定。'},
+];

@@ -1,0 +1,1295 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#172A30">
+<title>斗破苍穹·众生行 — 视觉与交互方向（离线原型 · 未接后端）</title>
+<!--
+  性质：设计参考原型。全部内容为静态演示数据；不连接后端、不请求模型、不读写真实存档、不索取凭证。
+  演示计时、字段与函数名都不是已实现契约。正式接线见 doupo-function-presentation.md 的“接线缺口”。
+  素材：assets/ 中本项目生成的场景、人物与物品图片；来源见 assets/sources.json。SVG 仅作缺图时的路径调试底板。
+-->
+<style>
+:root{
+  color-scheme:dark;
+  --xuanqing:#172A30; --shenshi:#263E44; --shenshi-2:#304C53; --line:#3D5A60;
+  --shibai:#F1EBDD; --wuqing:#B5C9C8; --wuqing-2:#94ACAB;
+  --gujin:#CBA568; --gujin-2:#E2C58E; --yanchi:#E77C55; --yanchi-2:#F29C7B;
+  --shiqing:#6FA58F; --zhusha:#B9533A;
+  --paper:#E8DDC4; --ink:#2A2824;
+  --ok:#8FC4A4; --warn:#E6B566;
+  --f-title:"Noto Serif SC","Source Han Serif SC","Source Han Serif CN","Songti SC","STSong","SimSun",serif;
+  --f-body:"Noto Sans SC","Source Han Sans SC","Source Han Sans CN","PingFang SC","Microsoft YaHei","Hiragino Sans GB",sans-serif;
+  --r:6px; --gap:12px;
+  --t-fast:120ms; --t-mid:200ms;
+  --topbar:52px;
+  --left-w:248px; --right-w:316px;
+  font-size:16px;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--xuanqing);color:var(--shibai);font-family:var(--f-body);line-height:1.6;overflow:hidden}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--gujin-2);outline-offset:2px}
+.sr-only{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.reduced *, .reduced *::before, .reduced *::after{transition:none!important;animation:none!important}
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
+
+/* ---------- App frame ---------- */
+.app{display:grid;grid-template-rows:var(--topbar) minmax(0,1fr) auto;height:100vh;height:100dvh}
+.topbar{display:flex;align-items:center;gap:14px;padding:0 14px;background:linear-gradient(#1b3137,#172A30);border-bottom:1px solid var(--line);min-width:0}
+.seal{display:inline-grid;place-items:center;width:30px;height:30px;border:1.5px solid var(--zhusha);color:var(--zhusha);font-family:var(--f-title);font-weight:700;border-radius:4px;flex:none;background:rgba(185,83,58,.08)}
+.place-title{font-family:var(--f-title);font-size:1.12rem;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.place-sub{color:var(--wuqing);font-size:.85rem;white-space:nowrap}
+.clock{display:flex;align-items:center;gap:8px;padding:3px 10px;border:1px solid var(--line);border-radius:999px;background:rgba(0,0,0,.18);white-space:nowrap}
+.clock b{font-family:var(--f-title);font-weight:600;letter-spacing:.03em}
+.clock .state{font-size:.8rem;color:var(--wuqing)}
+.clock .state[data-s="run"]{color:var(--gujin-2)}
+.activity{font-size:.88rem;color:var(--wuqing);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.spacer{flex:1}
+.proto-flag{font-size:.78rem;color:#1c1a16;background:var(--gujin);padding:2px 8px;border-radius:3px;white-space:nowrap;font-weight:600}
+.tb-btn{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:4px 11px;border:1px solid var(--line);border-radius:var(--r);background:var(--shenshi);white-space:nowrap}
+.tb-btn:hover{border-color:var(--gujin)}
+.tb-btn .k{font-size:.72rem;color:var(--wuqing-2)}
+.host{position:relative}
+.menu{position:absolute;right:0;top:calc(100% + 6px);min-width:260px;background:var(--shenshi);border:1px solid var(--line);border-radius:var(--r);padding:6px;z-index:60;box-shadow:0 12px 30px rgba(0,0,0,.4)}
+.menu[hidden]{display:none}
+.menu button{display:block;width:100%;text-align:left;padding:7px 10px;border:0;background:none;border-radius:4px}
+.menu button:hover,.menu button:focus-visible{background:var(--shenshi-2)}
+.menu .note{font-size:.78rem;color:var(--wuqing);padding:6px 10px;border-top:1px solid var(--line);margin-top:4px}
+
+.main{position:relative;display:grid;grid-template-columns:var(--left-w) minmax(0,1fr) var(--right-w);min-height:0}
+.main.left-collapsed{grid-template-columns:44px minmax(0,1fr) var(--right-w)}
+
+/* ---------- Side panels ---------- */
+.side{background:var(--xuanqing);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.side.right{border-right:0;border-left:1px solid var(--line)}
+.side-h{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px 6px;font-family:var(--f-title);color:var(--gujin-2);font-size:.95rem}
+.side-scroll{overflow:auto;padding:0 12px 12px;min-height:0;flex:1}
+.icon-btn{display:inline-grid;place-items:center;min-width:32px;min-height:32px;border:1px solid transparent;border-radius:var(--r);background:none;color:var(--wuqing)}
+.icon-btn:hover{border-color:var(--line);color:var(--shibai)}
+.left-collapsed .side.left .side-scroll,.left-collapsed .side.left .side-h span{display:none}
+.left-collapsed .side.left .side-h{justify-content:center;padding:10px 4px}
+.group-t{font-size:.78rem;color:var(--wuqing-2);margin:12px 0 4px;letter-spacing:.06em}
+.list{list-style:none;margin:0;padding:0}
+.list li+li{margin-top:2px}
+.li-btn{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:6px 8px;border:1px solid transparent;border-radius:var(--r);background:none;min-height:36px}
+.li-btn:hover{background:var(--shenshi)}
+.li-btn[aria-pressed="true"],.li-btn[aria-current="true"]{border-color:var(--gujin);background:rgba(203,165,104,.1)}
+.li-btn .meta{margin-left:auto;font-size:.76rem;color:var(--wuqing-2);white-space:nowrap}
+.li-btn .dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--wuqing-2)}
+.dot.npc{background:var(--shiqing)} .dot.obj{background:var(--gujin)} .dot.exit{background:var(--wuqing)} .dot.gone{background:transparent;border:1px solid var(--wuqing-2)}
+.tag{display:inline-block;font-size:.72rem;line-height:1.5;padding:0 6px;border-radius:3px;border:1px solid var(--line);color:var(--wuqing);white-space:nowrap}
+.tag.gold{border-color:var(--gujin);color:var(--gujin-2)}
+.tag.fire{border-color:var(--yanchi);color:var(--yanchi-2)}
+.tag.ok{border-color:#5f8f75;color:var(--ok)}
+.tag.dash{border-style:dashed}
+.tag.solid-gold{background:var(--gujin);color:#1a1814;border-color:var(--gujin)}
+
+/* ---------- Scene ---------- */
+.stage{position:relative;display:flex;flex-direction:column;min-width:0;min-height:0;background:#0f1d21}
+.view-tabs{position:absolute;left:10px;top:10px;z-index:8;display:flex;gap:4px;background:rgba(23,42,48,.86);border:1px solid var(--line);border-radius:var(--r);padding:3px}
+.view-tabs button{border:0;background:none;padding:3px 10px;border-radius:4px;min-height:30px;font-size:.88rem;color:var(--wuqing)}
+.view-tabs button[aria-pressed="true"]{background:var(--shenshi-2);color:var(--shibai);box-shadow:inset 0 -2px 0 var(--gujin)}
+.scene-wrap{position:relative;flex:1;min-height:0;container-type:size;display:grid;place-items:center;overflow:hidden}
+.scene{position:relative;width:min(100cqw,calc(100cqh * 20 / 14));aspect-ratio:20/14;user-select:none;touch-action:manipulation}
+.scene svg.art,.scene svg.overlay,.scene .fallback{position:absolute;inset:0;width:100%;height:100%}
+.scene svg.overlay{pointer-events:none}
+.scene .fallback{display:none;background:
+  linear-gradient(rgba(181,201,200,.18) 1px,transparent 1px) 0 0/5% 7.142857%,
+  linear-gradient(90deg,rgba(181,201,200,.18) 1px,transparent 1px) 0 0/5% 7.142857%,#22383d}
+.scene.no-art svg.art{display:none}
+.scene.no-art .fallback{display:block}
+.scene.no-art .blk-fb{display:block}
+.blk-fb{display:none}
+.scene .hit{position:absolute;inset:0;cursor:crosshair}
+.token{position:absolute;width:5%;height:auto;transform:translate(-50%,-78%);border:0;background:none;padding:0;z-index:3}
+.token .fig{display:block;width:100%;height:auto;filter:drop-shadow(0 1px 0 rgba(0,0,0,.35))}
+.token .nm{position:absolute;left:50%;top:100%;transform:translate(-50%,2px);font-size:12.5px;line-height:1.3;white-space:nowrap;padding:0 5px;border-radius:3px;background:rgba(23,42,48,.82);color:var(--shibai);pointer-events:none}
+.scene.names-hover .token:not(:hover):not(:focus-visible):not([aria-pressed="true"]) .nm{opacity:0}
+.token .ring{position:absolute;left:50%;bottom:-6%;width:130%;height:34%;transform:translateX(-50%);border:2px solid var(--gujin);border-radius:50%;opacity:0;pointer-events:none}
+.token[aria-pressed="true"] .ring{opacity:1;box-shadow:0 0 10px rgba(226,197,142,.6)}
+.token.player .ring{border-color:var(--wuqing);opacity:.7;border-style:dashed}
+.token.obj{transform:translate(-50%,-50%);width:4.4%}
+.token.obj .mk{display:grid;place-items:center;aspect-ratio:1;border-radius:50%;background:rgba(23,42,48,.78);border:1.5px solid var(--gujin);color:var(--gujin-2);font-family:var(--f-title);font-size:clamp(10px,1.1cqw,15px)}
+.token.obj .ring{bottom:-14%;height:40%}
+.token.enemy .nm{background:rgba(120,40,20,.85)}
+.token.leaving{opacity:.35}
+.scene-banner{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);z-index:9;display:flex;align-items:center;gap:10px;max-width:calc(100% - 24px);padding:7px 12px;border-radius:var(--r);background:rgba(23,42,48,.92);border:1px solid var(--line);box-shadow:0 8px 20px rgba(0,0,0,.35)}
+.scene-banner[hidden]{display:none}
+.scene-banner.warn{border-color:var(--warn)}
+.scene-banner.fire{border-color:var(--yanchi)}
+.scene-hint{position:absolute;right:10px;top:10px;z-index:8;font-size:.78rem;color:var(--wuqing);background:rgba(23,42,48,.8);border:1px solid var(--line);border-radius:var(--r);padding:3px 8px;max-width:46%}
+.hover-tip{position:absolute;z-index:7;pointer-events:none;font-size:12.5px;background:rgba(23,42,48,.92);border:1px solid var(--line);border-radius:4px;padding:2px 7px;white-space:nowrap;transform:translate(10px,-130%)}
+.empty-scene{position:absolute;inset:auto 0 50% 0;text-align:center;z-index:6;color:var(--wuqing)}
+
+/* ---------- Right: target ---------- */
+.target-card{border:1px solid var(--line);border-radius:var(--r);background:var(--shenshi);overflow:hidden}
+.target-head{display:flex;gap:10px;padding:10px}
+.portrait{width:86px;flex:none;border-radius:4px;overflow:hidden;background:#d9ccb0;position:relative}
+.portrait svg{display:block;width:100%;height:auto}
+.portrait .ph{position:absolute;left:3px;bottom:3px;font-size:10px;color:#3c3427;background:rgba(232,221,196,.85);padding:0 3px;border-radius:2px}
+.t-name{font-family:var(--f-title);font-size:1.18rem;line-height:1.3}
+.t-role{color:var(--wuqing);font-size:.85rem}
+.t-sec{padding:8px 10px;border-top:1px solid var(--line);font-size:.9rem}
+.t-sec h4{margin:0 0 4px;font-size:.78rem;color:var(--wuqing-2);font-weight:500;letter-spacing:.05em}
+.t-sec p{margin:0}
+.src{font-size:.75rem;color:var(--wuqing-2)}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:10px}
+.act{display:flex;flex-direction:column;align-items:flex-start;gap:0;padding:6px 9px;border:1px solid var(--line);border-radius:var(--r);background:var(--xuanqing);text-align:left;min-height:44px}
+.act:hover:not([aria-disabled="true"]){border-color:var(--gujin)}
+.act small{font-size:.72rem;color:var(--wuqing-2);line-height:1.35}
+.act[aria-disabled="true"]{opacity:.62;cursor:not-allowed;border-style:dashed}
+.act.primary{border-color:var(--gujin);background:rgba(203,165,104,.12)}
+
+/* ---------- Bottom ---------- */
+.bottom{border-top:1px solid var(--line);background:linear-gradient(#18303a,#152a30);display:grid;grid-template-columns:minmax(0,1fr);min-width:0}
+.log-wrap{position:relative;height:150px;min-height:72px;overflow:auto;padding:8px 14px 4px;border-bottom:1px solid rgba(61,90,96,.6)}
+.bottom.expanded .log-wrap{height:min(46vh,420px)}
+.log{list-style:none;margin:0;padding:0;max-width:980px}
+.log li{margin:0 0 6px;font-size:.95rem}
+.log .who{font-family:var(--f-title);color:var(--gujin-2);margin-right:6px}
+.log .me .who{color:var(--wuqing)}
+.log .sys{color:var(--wuqing);font-size:.85rem}
+.log .divider{color:var(--wuqing-2);font-size:.8rem;text-align:center;border-top:1px dashed var(--line);padding-top:4px}
+.log .old{opacity:.55}
+.fact{display:inline-block;border-left:3px solid var(--gujin);background:rgba(203,165,104,.08);padding:4px 10px;border-radius:0 var(--r) var(--r) 0}
+.fact.reject{border-color:var(--wuqing-2);background:rgba(181,201,200,.07)}
+.fact.danger{border-color:var(--yanchi);background:rgba(231,124,85,.08)}
+.fact .h{font-size:.75rem;color:var(--wuqing-2);display:block}
+.gen{color:var(--wuqing);font-style:normal}
+.indet{display:inline-block;width:46px;height:4px;border-radius:2px;background:linear-gradient(90deg,transparent,var(--gujin),transparent) 0 0/50% 100% no-repeat,rgba(181,201,200,.2);vertical-align:middle;margin:0 6px}
+
+.log-tools{position:sticky;top:0;float:right;display:flex;gap:4px;z-index:2}
+.composer{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:end;padding:8px 14px}
+.bind{display:flex;flex-direction:column;gap:4px;min-width:178px;max-width:260px}
+.bind-chip{display:flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid var(--gujin);border-radius:var(--r);background:rgba(203,165,104,.08);font-size:.88rem;min-height:34px}
+.bind-chip.none{border-color:var(--line);border-style:dashed;background:none}
+.bind-chip.stale{border-color:var(--yanchi)}
+.bind-chip b{font-family:var(--f-title);font-weight:600}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.seg button{border:0;background:none;padding:2px 10px;font-size:.84rem;min-height:28px;color:var(--wuqing)}
+.seg button[aria-pressed="true"]{background:var(--shenshi-2);color:var(--shibai)}
+.input-col{display:flex;flex-direction:column;gap:4px;min-width:0}
+.mismatch{font-size:.84rem;padding:5px 8px;border:1px solid var(--warn);border-radius:var(--r);background:rgba(230,181,102,.08);display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.mismatch[hidden]{display:none}
+textarea#draft{width:100%;min-height:44px;max-height:30vh;resize:none;padding:9px 11px;border:1px solid var(--line);border-radius:var(--r);background:#10222a;line-height:1.55}
+textarea#draft:focus{border-color:var(--gujin)}
+.hintline{display:flex;gap:10px;flex-wrap:wrap;font-size:.76rem;color:var(--wuqing-2)}
+.hintline .err{color:var(--yanchi-2)}
+.send-col{display:flex;flex-direction:column;gap:6px;align-items:stretch;min-width:112px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:40px;padding:6px 14px;border-radius:var(--r);border:1px solid var(--line);background:var(--shenshi)}
+.btn:hover:not(:disabled){border-color:var(--gujin)}
+.btn.primary{background:var(--gujin);color:#1a1712;border-color:var(--gujin);font-weight:600}
+.btn.primary:hover:not(:disabled){background:var(--gujin-2)}
+.btn.danger{border-color:var(--yanchi);color:var(--yanchi-2)}
+.btn.small{min-height:30px;padding:2px 10px;font-size:.85rem}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.fn-tabs{display:flex;gap:4px;padding:4px 14px 8px;overflow-x:auto}
+.fn{display:inline-flex;align-items:center;gap:7px;padding:4px 12px 4px 5px;min-height:36px;border:1px solid var(--line);border-radius:var(--r);background:var(--xuanqing);white-space:nowrap}
+.fn:hover{border-color:var(--gujin)}
+.fn[aria-expanded="true"]{border-color:var(--gujin);background:rgba(203,165,104,.12)}
+.fn .glyph{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:4px;border:1px solid var(--gujin);color:var(--gujin-2);font-family:var(--f-title);font-size:.9rem}
+.fn kbd{font-size:.7rem;color:var(--wuqing-2);font-family:inherit}
+
+/* ---------- Drawer panels ---------- */
+.drawer{position:absolute;top:0;right:0;bottom:0;width:min(460px,100%);z-index:20;background:var(--xuanqing);border-left:1px solid var(--gujin);box-shadow:-18px 0 40px rgba(0,0,0,.35);display:flex;flex-direction:column}
+.drawer[hidden]{display:none}
+.drawer-h{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.drawer-h h2{margin:0;font-family:var(--f-title);font-size:1.15rem;font-weight:600}
+.drawer-b{overflow:auto;padding:12px 14px 18px;flex:1;min-height:0}
+.subtabs{display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap}
+.subtabs button{border:1px solid var(--line);background:none;border-radius:999px;padding:2px 12px;font-size:.85rem;min-height:30px;color:var(--wuqing)}
+.subtabs button[aria-pressed="true"]{border-color:var(--gujin);color:var(--shibai);background:rgba(203,165,104,.12)}
+.card{border:1px solid var(--line);border-radius:var(--r);background:var(--shenshi);padding:10px 12px;margin-bottom:10px}
+.card h3{margin:0 0 4px;font-family:var(--f-title);font-size:1rem;font-weight:600}
+.card p{margin:4px 0}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:.92rem}
+.kv dt{color:var(--wuqing-2)}
+.kv dd{margin:0}
+.meter{position:relative;height:8px;border-radius:4px;background:rgba(181,201,200,.18);overflow:hidden;min-width:120px}
+.meter i{position:absolute;inset:0 auto 0 0;background:var(--shiqing)}
+.meter.qi i{background:var(--gujin)}
+.meter.hp i{background:var(--yanchi)}
+table.tbl{width:100%;border-collapse:collapse;font-size:.9rem}
+.tbl th,.tbl td{text-align:left;padding:6px 6px;border-bottom:1px solid rgba(61,90,96,.6);vertical-align:top}
+.tbl th{font-weight:500;color:var(--wuqing-2);font-size:.8rem}
+.tbl td.num{text-align:right;font-variant-numeric:tabular-nums}
+.callout{border:1px solid var(--line);border-left:3px solid var(--wuqing-2);border-radius:var(--r);padding:8px 10px;font-size:.88rem;color:var(--wuqing);margin:8px 0;background:rgba(0,0,0,.12)}
+.callout.warn{border-left-color:var(--warn)}
+.callout.fire{border-left-color:var(--yanchi)}
+.callout.gold{border-left-color:var(--gujin)}
+.status-line{display:flex;align-items:center;gap:8px;font-size:.9rem;padding:6px 0}
+
+/* ---------- Map ---------- */
+.map{position:relative;width:min(100cqw,calc(100cqh * 16 / 10));aspect-ratio:16/10}
+.map svg{position:absolute;inset:0;width:100%;height:100%}
+.map .pin{position:absolute;transform:translate(-50%,-50%);border:0;background:none;padding:0;display:flex;flex-direction:column;align-items:center;gap:2px}
+.map .pin .mk{width:30px;height:30px;display:grid;place-items:center;border-radius:4px;background:#efe4cb;border:2px solid var(--ink);color:var(--ink);font-family:var(--f-title);font-weight:700}
+.map .pin .lb{font-family:var(--f-title);font-size:14px;color:var(--ink);background:rgba(239,228,203,.88);padding:0 6px;border-radius:3px;white-space:nowrap}
+.map .pin.here .mk{border-color:var(--zhusha);color:var(--zhusha)}
+.map .pin.unmade .mk{border-style:dashed;opacity:.65}
+.map .pin.unmade .lb{opacity:.75}
+.map .pin[aria-pressed="true"] .mk{box-shadow:0 0 0 3px var(--gujin)}
+
+/* ---------- Dialogs ---------- */
+dialog{border:1px solid var(--gujin);border-radius:8px;background:var(--xuanqing);color:var(--shibai);padding:0;max-width:min(980px,calc(100vw - 24px));max-height:calc(100vh - 24px);box-shadow:0 30px 80px rgba(0,0,0,.55)}
+dialog::backdrop{background:rgba(6,14,16,.66)}
+.dlg-h{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.dlg-h h2{margin:0;font-family:var(--f-title);font-size:1.2rem}
+.dlg-b{padding:14px 16px;overflow:auto;max-height:calc(100vh - 150px)}
+.dlg-f{display:flex;gap:8px;justify-content:flex-end;padding:10px 16px;border-top:1px solid var(--line);flex-wrap:wrap}
+.create{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.field label,.field .lbl{font-size:.86rem;color:var(--wuqing)}
+.field input[type=text]{padding:8px 10px;border:1px solid var(--line);border-radius:var(--r);background:#10222a;min-height:40px}
+.field .err{color:var(--yanchi-2);font-size:.82rem}
+.choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.choice{display:block;text-align:left;padding:9px 11px;border:1px solid var(--line);border-radius:var(--r);background:var(--shenshi)}
+.choice[aria-checked="true"]{border-color:var(--gujin);background:rgba(203,165,104,.12)}
+.choice b{font-family:var(--f-title);font-weight:600;display:block}
+.choice small{color:var(--wuqing);font-size:.8rem;line-height:1.45;display:block}
+.pips{display:flex;gap:3px}
+.pips i{width:14px;height:8px;border-radius:2px;background:rgba(181,201,200,.22)}
+.pips i.on{background:var(--gujin)}
+.alloc{display:grid;grid-template-columns:6.5em 1fr auto auto;gap:6px 8px;align-items:center;font-size:.9rem}
+.alloc button{width:28px;height:28px;border:1px solid var(--line);border-radius:4px;background:var(--shenshi)}
+
+/* ---------- Loading / toast / demo ---------- */
+.loading{position:fixed;inset:0;z-index:100;display:grid;place-items:center;background:var(--xuanqing)}
+.loading[hidden]{display:none}
+.loading .box{text-align:center}
+.loading .title{font-family:var(--f-title);font-size:1.6rem;letter-spacing:.2em;color:var(--gujin-2)}
+.toast-zone{position:fixed;left:50%;top:60px;transform:translateX(-50%);z-index:90;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none}
+.toast{pointer-events:auto;background:var(--shenshi);border:1px solid var(--line);border-left:3px solid var(--gujin);border-radius:var(--r);padding:6px 12px;font-size:.9rem;box-shadow:0 8px 20px rgba(0,0,0,.35);max-width:min(560px,92vw)}
+.toast.err{border-left-color:var(--yanchi)}
+.demo{position:fixed;left:12px;bottom:12px;z-index:80}
+.demo>button{background:#2b2418;border:1px dashed var(--gujin);color:var(--gujin-2);border-radius:var(--r);padding:5px 10px;font-size:.84rem}
+.demo-panel{position:absolute;left:0;bottom:calc(100% + 6px);width:min(400px,calc(100vw - 24px));max-height:min(74vh,640px);overflow:auto;background:#1d1a14;border:1px dashed var(--gujin);border-radius:8px;padding:10px 12px;box-shadow:0 18px 40px rgba(0,0,0,.5)}
+.demo-panel[hidden]{display:none}
+.demo-panel h3{margin:10px 0 4px;font-size:.8rem;color:var(--gujin-2);font-weight:600;letter-spacing:.05em}
+.demo-panel .opts{display:flex;flex-wrap:wrap;gap:4px}
+.demo-panel .opts button{font-size:.8rem;border:1px solid #4a4334;background:#2a251b;border-radius:4px;padding:2px 8px;min-height:28px;color:#e8dcc0}
+.demo-panel .opts button[aria-pressed="true"]{border-color:var(--gujin);background:#4a3c22}
+.demo-panel p{font-size:.78rem;color:#bfb293;margin:4px 0}
+
+/* ---------- Combat ---------- */
+.combat-hud{position:absolute;left:10px;bottom:10px;z-index:8;display:flex;gap:8px;flex-wrap:wrap;max-width:calc(100% - 20px)}
+.chud{background:rgba(23,42,48,.9);border:1px solid var(--line);border-radius:var(--r);padding:6px 10px;font-size:.85rem;min-width:170px}
+.chud.enemy{border-color:var(--yanchi)}
+.pause-pill{position:absolute;left:50%;top:10px;transform:translateX(-50%);z-index:8;background:rgba(23,42,48,.92);border:1px solid var(--gujin);border-radius:999px;padding:2px 12px;font-size:.82rem;color:var(--gujin-2)}
+.plan-steps{list-style:none;margin:6px 0;padding:0;counter-reset:s}
+.plan-steps li{counter-increment:s;display:flex;gap:8px;align-items:flex-start;padding:4px 0;font-size:.9rem}
+.plan-steps li::before{content:counter(s);display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;border:1px solid var(--line);font-size:.75rem;flex:none}
+.plan-steps li.done::before{background:var(--shiqing);border-color:var(--shiqing);color:#10201a;content:"✓"}
+.plan-steps li.cut::before{border-color:var(--yanchi);color:var(--yanchi-2);content:"止"}
+.plan-steps li.cut{color:var(--wuqing-2);text-decoration:line-through}
+
+/* ---------- Responsive ---------- */
+@media (max-width:1500px){:root{--left-w:224px;--right-w:296px}}
+@media (max-width:1240px){
+  .main{grid-template-columns:44px minmax(0,1fr) var(--right-w)}
+  .main .side.left .side-scroll,.main .side.left .side-h span{display:none}
+  .main .side.left .side-h{justify-content:center;padding:10px 4px}
+  .main.left-open .side.left{position:absolute;left:0;top:0;bottom:0;width:260px;z-index:25;box-shadow:12px 0 30px rgba(0,0,0,.4)}
+  .main.left-open .side.left .side-scroll,.main.left-open .side.left .side-h span{display:block}
+  .main.left-open .side.left .side-h{justify-content:space-between;padding:10px 12px 6px}
+  .activity{display:none}
+}
+@media (max-width:1000px){
+  .main{grid-template-columns:44px minmax(0,1fr)}
+  .side.right{position:absolute;right:0;top:0;bottom:0;width:min(320px,90%);z-index:24;box-shadow:-12px 0 30px rgba(0,0,0,.4);display:none}
+  .main.right-open .side.right{display:flex}
+  .right-toggle{display:inline-flex!important}
+  .place-sub,.tb-btn .k{display:none}
+  .composer{grid-template-columns:minmax(0,1fr) auto}
+  .bind{grid-column:1 / -1;flex-direction:row;flex-wrap:wrap;max-width:none;align-items:center}
+  .create{grid-template-columns:1fr}
+}
+@media (max-width:760px){
+  :root{--topbar:46px}
+  .topbar{gap:8px;padding:0 8px}
+  .tb-btn .lbl-long{display:none}
+  .proto-flag{display:none}
+  .log-wrap{height:96px}
+  .fn .lbl{display:none}
+  .fn{padding:4px}
+  .fn kbd{display:none}
+  .scene-hint{display:none}
+  .choice-grid{grid-template-columns:1fr}
+}
+@media (max-height:620px){
+  .log-wrap{height:72px}
+  .fn-tabs{padding-bottom:4px}
+}
+.right-toggle{display:none}
+/* 本次补全：常用控件即时响应；短视口允许页面滚动。 */
+[hidden]{display:none!important}
+.token{transition:none}
+.indet{animation:none;background:var(--gujin);opacity:.65}
+button:active:not(:disabled){outline:1px solid var(--gujin-2);outline-offset:-3px}
+.li-btn{flex-wrap:wrap}.li-btn .meta{white-space:normal}
+.demo{position:relative;left:auto;bottom:auto;flex:none;z-index:40}
+.demo-panel{position:fixed;left:auto;right:12px;bottom:60px;max-height:70dvh}
+.fn-tabs{overflow:visible;flex-wrap:wrap}
+.drawer-b h3{color:var(--gujin-2);font-family:var(--f-title)}
+.drawer-b>.row{margin:10px 0}
+.field{display:grid;gap:5px;margin:12px 0}
+.field input,.field select{background:var(--xuanqing);border:1px solid var(--line);padding:8px;border-radius:4px}
+.drawer-b,.dlg-b,.side-scroll{overscroll-behavior:contain;overflow-wrap:anywhere}
+.log li{overflow-wrap:anywhere}
+.skip-link{position:fixed;top:-100px;left:12px;z-index:100;background:var(--xuanqing);padding:8px;color:var(--shibai)}
+.skip-link:focus{top:8px}
+.scene-hint{max-width:43%;font-size:12px}
+@media(max-width:760px){
+ body{overflow:auto}.app{height:auto;min-height:100dvh;grid-template-rows:auto minmax(260px,45dvh) auto}
+ .topbar{flex-wrap:wrap;padding:8px}.clock{order:2;flex-basis:100%;justify-content:center}
+ .proto-flag{display:inline-block;font-size:11px}.topbar>.seal,.place-sub{display:none}
+ .fn .lbl{display:inline}.fn{padding:5px}.fn-tabs{gap:6px}
+ .composer{padding:8px;gap:6px}.bind{min-width:0}.bind-chip{flex-wrap:wrap}
+ .main,.main.left-collapsed{grid-template-columns:38px minmax(0,1fr)}
+ .send-col{min-width:70px}.log-wrap{height:100px}
+ .view-tabs{top:4px;left:4px}.scene-hint{display:none}
+}
+@media(max-height:650px) and (min-width:761px){
+ body{overflow:auto}.app{height:auto;min-height:100dvh;grid-template-rows:auto minmax(300px,52dvh) auto}
+ .topbar{min-height:52px;flex-wrap:wrap}.drawer{min-height:260px}
+}
+@media(forced-colors:active){button,.token .nm,.bind-chip,.card,.callout{border:1px solid CanvasText}.token[aria-pressed="true"]{outline:2px solid Highlight}}
+/* 图片主视觉：地区总览 → 最末级设施 → 场景中的人物大图。 */
+.main,.main.left-collapsed{grid-template-columns:220px minmax(0,1fr)}
+.side{background:#172a30f2}.side.right{display:none}
+.main.right-open .side.right{display:flex;position:absolute;right:0;top:0;bottom:0;width:300px;z-index:26}
+.right-toggle{display:inline-flex}
+.stage{background:#132126;border:1px solid #695b43;border-top:0}
+.scene,.overview{width:min(100cqw,calc(100cqh * 16 / 9));aspect-ratio:16/9;position:relative}
+.overview img,.scene-image{width:100%;height:100%;position:absolute;inset:0;object-fit:contain}
+.scene svg.art{display:none}.scene.no-art .scene-image{display:none}
+.facility-pin{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;gap:8px;background:#172a30ed;border:1px solid #d0b17b;color:var(--shibai);padding:7px 13px;box-shadow:0 3px 12px #0008;font-family:var(--f-title);font-size:18px;min-height:44px}
+.facility-pin::before{content:'◇';color:var(--gujin-2)}
+.facility-pin small{font-family:var(--f-body);font-size:11px;color:var(--wuqing)}
+.facility-pin:hover{background:#304c53}.facility-pin:focus-visible{outline:3px solid white}
+.overview-caption{position:absolute;left:24px;bottom:20px;background:#132126e8;border-left:2px solid var(--gujin);padding:10px 16px;max-width:70%;font-size:13px;color:var(--wuqing)}
+.overview-caption strong{display:block;color:var(--shibai);font-family:var(--f-title);font-size:20px;letter-spacing:.12em}
+.view-tabs{background:#172a30ec}.view-tabs button{min-height:36px}
+.scene-hint{top:auto;bottom:12px;right:12px;max-width:55%;font-size:11px}
+.token{width:38px;height:38px;transform:translate(-50%,-50%)}
+.token-face{display:block;width:38px;height:38px;border:2px solid #d2b67d;border-radius:50%;overflow:hidden;background:var(--xuanqing)}
+.token-face img{width:100%;height:100%;object-fit:cover;object-position:50% 20%}
+.token.player{width:30px;height:30px}.token.player .token-face{width:30px;height:30px;display:grid;place-items:center;color:var(--gujin-2);background:var(--xuanqing);font-family:var(--f-title)}
+.token .nm{top:100%;font-size:11px}.token.obj{width:30px}
+.near-avatar{width:42px;height:48px;object-fit:cover;object-position:50% 20%;border:1px solid var(--gujin);flex:none;border-radius:2px}
+.near-info{display:flex;flex-direction:column;min-width:0}.near-info small{font-size:11px;color:var(--wuqing);font-family:var(--f-body)}
+.li-btn{padding:8px 6px;font-family:var(--f-title);font-size:16px;gap:9px}
+.li-btn .meta{width:100%;padding-left:51px;text-align:left;font-family:var(--f-body)}
+.facility-thumb{width:58px;height:39px;object-fit:cover;border:1px solid #6c614e}
+.person-view{position:absolute;inset:52px 4% 24px;z-index:12;display:grid;place-items:center;pointer-events:none}
+.person-sheet{pointer-events:auto;position:relative;display:grid;grid-template-columns:minmax(200px,.95fr) minmax(280px,1fr);width:min(790px,100%);height:min(560px,100%);background:#14282ef5;border:1px solid #bea574;box-shadow:0 18px 50px #0009}
+.person-art{min-width:0;min-height:0;position:relative;background:#d5c9ae;overflow:hidden}
+.person-art img{width:100%;height:100%;object-fit:cover;object-position:center 22%;display:block}
+.person-name{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,#13272bef);padding:35px 20px 16px;color:white}
+.person-name strong{font:28px var(--f-title);letter-spacing:.16em;display:block}.person-name small{font-size:13px;color:#e9dfca}
+.person-info{overflow:auto;padding:22px 22px 12px;overscroll-behavior:contain}
+.person-info h3{font-family:var(--f-title);font-weight:500;color:var(--gujin-2);margin:0 0 8px;font-size:21px}
+.person-info p{font-size:14px;line-height:1.7;margin:8px 0}.person-info .actions{padding:10px 0;gap:8px}
+.person-info .act{min-height:54px;background:#243d43}.person-info .act span{font-family:var(--f-title);font-size:18px}
+.person-close{position:absolute;right:8px;top:8px;background:#16292ee8;z-index:3;color:white}
+.person-view~.scene-banner{z-index:18}
+.drawer{z-index:32}
+.person-view{grid-template-rows:minmax(0,1fr);overflow:hidden}
+.person-sheet{min-height:0;height:100%;max-height:560px;grid-template-rows:minmax(0,1fr)}
+.person-info{min-height:0}
+.overview-caption{pointer-events:none}
+@media(max-width:520px){.overview-caption{display:none}}
+.log-wrap{height:80px}.bottom{background:#142a30}.log li{font-size:14px}
+.composer{padding-top:6px;padding-bottom:6px}.fn-tabs{padding-top:2px}
+.item-picture{width:52px;height:52px;object-fit:cover;border:1px solid #7a6a4d;border-radius:3px;vertical-align:middle;margin-right:8px}
+.portrait img{width:100%;height:100%;object-fit:cover;object-position:50% 20%}
+.asset-note{font-size:11px;color:var(--wuqing)}
+@media(max-width:1240px){.main,.main.left-collapsed{grid-template-columns:44px minmax(0,1fr)}}
+@media(max-width:760px){
+ .main,.main.left-collapsed{grid-template-columns:38px minmax(0,1fr)}
+ .app{grid-template-rows:auto minmax(300px,50dvh) auto}.person-view{inset:44px 6px 6px}
+ .person-sheet{grid-template-columns:minmax(100px,.8fr) minmax(180px,1fr)}.person-info{padding:14px 9px}.person-info p{font-size:12px}
+ .person-info .act{padding:4px;min-height:40px}.person-info .act span{font-size:14px}.person-info .act small{font-size:10px}
+ .person-name{padding:20px 8px 10px}.person-name strong{font-size:21px}.person-name small{font-size:10px}
+ .facility-pin{font-size:13px;padding:3px 7px;min-height:36px}.facility-pin small{display:none}.facility-pin::before{display:none}
+ .overview-caption{left:8px;bottom:4px;font-size:10px;padding:4px 8px}.overview-caption strong{font-size:14px}
+ .token-face,.token{width:28px;height:28px}.token .nm{font-size:10px}.log-wrap{height:80px}
+}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#draft">跳到自由文字输入</a>
+<div class="app" id="app">
+  <header class="topbar">
+    <span class="seal" aria-hidden="true">斗</span>
+    <div style="min-width:0">
+      <div class="place-title" id="placeTitle">乌坦城·坊市药铺街</div>
+    </div>
+    <span class="place-sub" id="placeSub">乌坦城 · 首批可玩区域</span>
+    <div class="clock" role="group" aria-label="游戏时间">
+      <b id="clockText">第1日 · 申时 15:20</b>
+      <span class="state" id="clockState" data-s="pause" aria-live="polite">世界暂停</span>
+    </div>
+    <div class="activity" id="activityText">当前活动：在坊市闲逛</div>
+    <div class="spacer"></div>
+    <span class="proto-flag" title="本页所有数据与结果均为离线演示，不连接后端或模型">演示数据 · 未接后端</span>
+    <button class="tb-btn right-toggle" id="rightToggle" aria-controls="sideRight" aria-expanded="false">当前对象</button>
+    <button class="tb-btn" data-act="quickSave" title="手动存档（演示）"><span>存档</span><span class="k lbl-long">快速</span></button>
+    <button class="tb-btn" data-act="openPanel" data-panel="save" aria-expanded="false" data-fn="save"><span>读档</span></button>
+    <div class="host">
+      <button class="tb-btn" id="hostBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="hostMenu">宿主<span class="lbl-long">通道</span> ▾</button>
+      <div class="menu" id="hostMenu" role="menu" hidden>
+        <button role="menuitem" data-act="host" data-h="退出作品界面">退出作品界面</button>
+        <button role="menuitem" data-act="host" data-h="停止当前生成">停止当前生成</button>
+        <button role="menuitem" data-act="host" data-h="宿主保存">宿主保存</button>
+        <button role="menuitem" data-act="host" data-h="诊断">诊断</button>
+        <button role="menuitem" data-act="host" data-h="重载作品界面">重载作品界面</button>
+        <div class="note">宿主通道由 Atria 提供并始终可达；此处只示意边界，原型不执行任何真实操作，也不展示凭证或费用授权。</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="main" id="main">
+    <aside class="side left" id="sideLeft" aria-label="已知地点、联系与场景对象">
+      <div class="side-h"><span id="nearTitle">乌坦城 · 城中设施</span><button class="icon-btn" id="leftToggle" aria-expanded="true" aria-controls="sideLeft" title="折叠/展开侧栏">⟨</button></div>
+      <div class="side-scroll">
+        <div class="group-t" id="nearHint">点击建筑或下方设施进入</div>
+        <ul class="list" id="objList"></ul>
+        <div class="group-t">已知地点</div>
+        <ul class="list" id="placeList"></ul>
+        <div class="group-t">联系人（你所知的近况）</div>
+        <ul class="list" id="contactList"></ul>
+      </div>
+    </aside>
+
+    <section class="stage" aria-label="场景">
+      <div class="view-tabs" role="group" aria-label="视图">
+        <button data-act="backLayer" id="backLayer">乌坦城总览</button>
+        <button data-act="view" data-v="scene" aria-pressed="true">当前场所</button>
+        <button data-act="view" data-v="map" aria-pressed="false">世界地图 <kbd class="sr-only">M</kbd></button>
+        <button data-act="view" data-v="combat" aria-pressed="false" id="combatTab" hidden>交锋</button>
+      </div>
+      <div class="scene-hint" id="sceneHint">点击地面移动 · 点击人物自动接近 · 悬停预览路线（不耗时）</div>
+      <div class="scene-wrap" id="sceneWrap">
+        <div class="overview" id="overview"></div>
+        <div class="scene" id="scene" role="application" aria-label="二维俯视场景；可用左侧“场景对象”列表进行等价操作">
+          <img class="scene-image" id="sceneImage" width="1672" height="941" alt="当前设施的手绘场景">
+          <svg class="art" id="art" viewBox="0 0 200 140" preserveAspectRatio="none" aria-hidden="true"></svg>
+          <div class="fallback" aria-hidden="true"></div>
+          <div class="hit" id="hit" aria-hidden="true"></div>
+          <svg class="overlay" id="overlay" viewBox="0 0 20 14" preserveAspectRatio="none" aria-hidden="true"></svg>
+          <div id="tokens"></div>
+          <div class="hover-tip" id="hoverTip" hidden></div>
+        </div>
+        <div class="map" id="mapView" hidden></div>
+      </div>
+      <section class="person-view" id="personView" aria-label="人物交互" hidden></section>
+      <div class="scene-banner" id="banner" role="status" aria-live="polite" hidden></div>
+      <div class="combat-hud" id="combatHud" hidden></div>
+      <div class="pause-pill" id="pausePill" hidden>思考期间世界暂停 · 本段尚未提交</div>
+    </section>
+
+    <aside class="side right" id="sideRight" aria-label="当前对象与行动">
+      <div class="side-h"><span>当前对象</span><button class="icon-btn" data-act="clearSel" title="取消选中（Esc）">✕</button></div>
+      <div class="side-scroll" id="targetPane"></div>
+    </aside>
+
+    <section class="drawer" id="drawer" role="dialog" aria-modal="false" aria-labelledby="drawerTitle" hidden>
+      <div class="drawer-h"><span class="seal" id="drawerSeal" aria-hidden="true">人</span><h2 id="drawerTitle">人物</h2><div class="spacer"></div><button class="icon-btn" data-act="closePanel" title="关闭（Esc）">✕</button></div>
+      <div class="drawer-b" id="drawerBody"></div>
+    </section>
+  </div>
+
+  <footer class="bottom" id="bottom">
+    <div class="log-wrap" id="logWrap" tabindex="0" aria-label="交流与行动记录（可滚动）">
+      <div class="log-tools"><button class="btn small" id="expandLog" aria-expanded="false">展开记录</button></div>
+      <ol class="log" id="log" aria-live="polite"></ol>
+    </div>
+    <div class="composer">
+      <div class="bind">
+        <div class="bind-chip none" id="bindChip" aria-live="polite">对：<b>周围</b><span class="src">（未选对象）</span></div>
+        <div class="seg" role="group" aria-label="输入方式">
+          <button data-act="mode" data-m="say" aria-pressed="true">说话</button>
+          <button data-act="mode" data-m="do" aria-pressed="false">行动</button>
+        </div>
+      </div>
+      <div class="input-col">
+        <div class="mismatch" id="mismatch" role="alert" hidden></div>
+        <label for="draft" class="sr-only">自由文字输入</label>
+        <textarea id="draft" name="draft" autocomplete="off" rows="1" maxlength="2000" placeholder="写下你要说的话或想做的事…" aria-describedby="hintline"></textarea>
+        <div class="hintline" id="hintline"><span>思考暂停 · Enter 执行 / Shift+Enter 换行</span><span id="draftState">草稿未提交</span><span id="sendReason" class="err"></span></div>
+      </div>
+      <div class="send-col">
+        <button class="btn primary" id="sendBtn" data-act="send">执行</button>
+        <button class="btn small" id="stopBtn" data-act="stopGen" hidden>停止生成</button>
+      </div>
+    </div>
+    <nav class="fn-tabs" aria-label="功能">
+      <button class="fn" data-act="openPanel" data-panel="self" data-fn="self" aria-expanded="false"><span class="glyph">人</span><span class="lbl">人物</span><kbd>C</kbd></button>
+      <button class="fn" data-act="openPanel" data-panel="bag" data-fn="bag" aria-expanded="false"><span class="glyph">囊</span><span class="lbl">行囊交易</span><kbd>B</kbd></button>
+      <button class="fn" data-act="openPanel" data-panel="cult" data-fn="cult" aria-expanded="false"><span class="glyph">修</span><span class="lbl">功法修炼</span><kbd>K</kbd></button>
+      <button class="fn" data-act="openPanel" data-panel="rel" data-fn="rel" aria-expanded="false"><span class="glyph">家</span><span class="lbl">关系家庭</span><kbd>R</kbd></button>
+      <button class="fn" data-act="openPanel" data-panel="news" data-fn="news" aria-expanded="false"><span class="glyph">闻</span><span class="lbl">见闻机缘</span><kbd>J</kbd></button>
+      <button class="fn" data-act="view" data-v="map" data-fn="map"><span class="glyph">图</span><span class="lbl">世界地图</span><kbd>M</kbd></button>
+      <button class="fn" data-act="openPanel" data-panel="save" data-fn="save" aria-expanded="false"><span class="glyph">档</span><span class="lbl">存档</span><kbd>L</kbd></button>
+      <button class="fn" data-act="openPanel" data-panel="help" data-fn="help" aria-expanded="false"><span class="glyph">?</span><span class="lbl">操作说明</span><kbd>?</kbd></button>
+    </nav>
+  </footer>
+</div>
+
+<!-- Character creation (F01) -->
+<dialog id="dlgCreate" aria-labelledby="createTitle">
+  <div class="dlg-h"><span class="seal" aria-hidden="true">始</span><h2 id="createTitle">此生 · 创建角色</h2><div class="spacer"></div><span class="tag gold">演示 · 不会创建真实存档</span></div>
+  <div class="dlg-b" id="createBody"></div>
+  <div class="dlg-f">
+    <span class="src" style="margin-right:auto;align-self:center">开局切点：小说开篇附近（精确时点待资料核对，原型不显示年份）</span>
+    <button class="btn" data-act="createDemo">使用演示角色</button>
+    <button class="btn primary" data-act="createSubmit">以此身份开始</button>
+  </div>
+</dialog>
+
+<!-- Generic confirm / flow dialog -->
+<dialog id="dlg" aria-labelledby="dlgTitle">
+  <div class="dlg-h"><span class="seal" id="dlgSeal" aria-hidden="true">档</span><h2 id="dlgTitle"></h2></div>
+  <div class="dlg-b" id="dlgBody"></div>
+  <div class="dlg-f" id="dlgFoot"></div>
+</dialog>
+
+<div class="loading" id="loading" role="status" aria-live="polite">
+  <div class="box">
+    <div class="title">斗破苍穹 · 众生行</div>
+    <p id="loadingText" style="color:var(--wuqing)">正在载入世界…<span class="indet" aria-hidden="true"></span></p>
+    <p class="src">离线视觉原型 · 演示数据 · 未接后端</p>
+  </div>
+</div>
+
+<div class="toast-zone" id="toasts" aria-live="polite"></div>
+
+<div class="demo">
+  <button id="demoBtn" aria-expanded="false" aria-controls="demoPanel">演示状态</button>
+  <div class="demo-panel" id="demoPanel" hidden role="region" aria-label="演示状态切换（原型控制，非游戏功能）"></div>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+   离线演示脚本。所有数据、计时和结果均为演示内容，不代表后端契约。
+   规则结算、叙事生成、保存恢复全部是本地模拟；没有任何网络请求。
+   ===================================================================== */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const W = 20, H = 14;
+const sleep = ms => new Promise(r => setTimeout(r, S.reduced ? Math.min(ms, 220) : ms));
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clone = o => JSON.parse(JSON.stringify(o));
+let uidN = 0; const uid = p => (p || 'e') + (++uidN);
+function rng(seed){ let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+
+/* ---------------- 演示数据 ---------------- */
+const SCENES = {
+  'wutan.market': {
+    name: '乌坦城·坊市药铺街', region: '乌坦城', art: 'town',
+    blocks: [
+      {x:0,y:0,w:6,h:4,label:'回春堂药铺',kind:'house',roof:'#3b4a4c'},
+      {x:7,y:0,w:6,h:3,label:'布庄',kind:'house',roof:'#4a3b36'},
+      {x:14,y:0,w:6,h:4,label:'歇马客栈',kind:'house',roof:'#2f4148'},
+      {x:4,y:9,w:3,h:2,label:'菜摊',kind:'stall'},
+      {x:12,y:9,w:3,h:2,label:'杂货摊',kind:'stall'},
+      {x:0,y:12,w:8,h:2,label:'民居后墙',kind:'wall'},
+      {x:16,y:12,w:4,h:2,label:'柴垛',kind:'wood'},
+      {x:17,y:9,w:2,h:2,label:'老槐树',kind:'tree'}
+    ]
+  },
+  'mountain.valley': {
+    name: '魔兽山脉·药谷（演示交锋）', region: '魔兽山脉外缘', art: 'mountain',
+    blocks: [
+      {x:7,y:3,w:3,h:3,label:'巨石',kind:'rock'},
+      {x:12,y:9,w:3,h:2,label:'乱石',kind:'rock'},
+      {x:0,y:0,w:4,h:3,label:'松林',kind:'pines'},
+      {x:16,y:0,w:4,h:4,label:'崖壁',kind:'cliff'},
+      {x:0,y:11,w:5,h:3,label:'溪石',kind:'rock'}
+    ]
+  }
+};
+const ORIGINS = [
+  {id:'smallclan', name:'城中小户子弟', start:'乌坦城·东巷居所', base:'低阶修炼基础（段位待校准）', res:'少量家用银两 · 家传基础吐纳法', contacts:'家人、街坊（如歇马客栈的燕宁）', duty:'分担家用与家事', opp:'求学、谋生、地方事务', rec:true},
+  {id:'apprentice', name:'药铺学徒', start:'乌坦城·回春堂', base:'低阶修炼基础 · 识药入门', res:'工作工具 · 少量工钱', contacts:'掌柜、苏晚禾、常客', duty:'每日工时', opp:'进货送货、求药线索；识药不等于已有炼药资格'},
+  {id:'trader', name:'行商随行者', start:'乌坦城·旅居客栈', base:'低阶修炼基础', res:'少量货物与旅费', contacts:'商队熟人', duty:'交货与分账', opp:'价格与路线消息；远方经历只给合理所知'},
+  {id:'merc', name:'佣兵新人', start:'青山镇·佣兵集结处', base:'低阶修炼基础 · 山地经验', res:'基本行装', contacts:'队友、向导何照川', duty:'同行约定与分配', opp:'山中机会；乌坦城生活可随后旅行进入'}
+];
+const APT = [['修炼适性','cult'],['属性倾向','attr'],['灵魂潜质','soul'],['体魄','body'],['生活技艺','craft']];
+const FACILITIES=[
+ {id:'herbal',name:'回春堂',desc:'药材 · 问诊 · 苏晚禾',image:'scene-wutan-herbal.webp',x:28,y:64},
+ {id:'market',name:'坊市',desc:'物资 · 传闻 · 行商',image:'scene-wutan-market.webp',x:57,y:51},
+ {id:'inn',name:'歇马客栈',desc:'歇脚 · 旧识 · 燕宁',image:'scene-wutan-inn.webp',x:28,y:28},
+ {id:'clan',name:'族宅',desc:'住处 · 家庭往来',image:'scene-wutan-clan.webp',x:73,y:22},
+ {id:'gate',name:'乌坦城门',desc:'出城 · 山川行旅',image:'scene-wutan-gate.webp',x:81,y:64}
+];
+const ACTOR_IMAGES={su:'local-su.webp',chen:'local-chen.webp',lu:'local-lu.webp',yan:'local-yan.webp'};
+function actorImage(e){return 'assets/'+ACTOR_IMAGES[e.id];}
+for(const f of FACILITIES){SCENES['wutan.'+f.id]={name:'乌坦城·'+f.name,region:'乌坦城',image:f.image,art:'town',blocks:[{x:0,y:0,w:20,h:3,label:'建筑与陈设',kind:'wall'},{x:0,y:3,w:3,h:7,label:'左侧陈设',kind:'wall'},{x:17,y:3,w:3,h:7,label:'右侧陈设',kind:'wall'}]};}
+SCENES['mountain.valley'].image='scene-mountain-valley.webp';
+
+function initialState(){
+  return {
+    epoch: 0, time: 15*60 + 20, view: 'scene', layer:'overview', facility:'market', personOpen:false, sceneId: 'wutan.market', created: false, dead: false,
+    player: {name:'云禾', sex:'female', ident:'native', origin:'smallclan', x:9, y:11, gold:86, rank:'斗之气 · 四段', xp:42, qi:70, hp:100, injury:'无伤', apt:{cult:2,attr:1,soul:1,body:1,craft:1}},
+    sel: null, mapSel: null,
+    draft: {text:'', bound:false, target:null, mode:'say', ackSel:undefined},
+    pending: null, moving: null, stopGen: false,
+    people: [
+      {id:'su', location:'wutan.herbal',name:'苏晚禾', role:'回春堂药铺帮手', x:12, y:6, here:true, alive:true, color:'#4f7d6d', hair:'bun', activity:'在柜台前分拣药草', rel:'略识 · 两次交谈', facts:['苏守义之女（她亲口所说）'], known:[['三日前在药铺见过一面','亲见'],['她提过父亲有旧伤','她亲口所说']], trade:true, adult:true},
+      {id:'chen', location:'wutan.market', name:'陈槐', role:'坊市杂货摊主', x:13, y:8, here:true, alive:true, color:'#86643f', hair:'cap', activity:'守着杂货摊吆喝', rel:'面熟', facts:[], known:[['家中开销紧','街坊传闻']], trade:true, adult:true},
+      {id:'lu', location:'wutan.market', name:'陆青', role:'外来修炼者', x:11, y:4, here:true, alive:true, color:'#3d5a78', hair:'tail', activity:'在告示栏前抄录消息', rel:'未曾交谈', facts:[], known:[['在打听赤叶药材','亲见他抄录告示']], trade:false, adult:true},
+      {id:'yan', location:'wutan.inn', name:'燕宁', role:'歇马客栈伙计', x:12, y:5, here:true, alive:true, color:'#94564a', hair:'bun2', activity:'正在招呼住店的客人', rel:'熟络 · 常有往来', facts:[], known:[['你在客栈住过两晚','亲历'],['她说过想去青山镇看看','她亲口所说']], trade:false, adult:true}
+    ],
+    objects: [
+      {id:'counter',location:'wutan.herbal', name:'回春堂柜台', x:13, y:6, glyph:'药', kind:'trade', desc:'询价与购买药材（库存有限）'},
+      {id:'notice',location:'wutan.market', name:'坊市告示栏', x:10, y:3, glyph:'告', kind:'investigate', desc:'查阅不耗时；抄录或打听需要时间'},
+      {id:'well',location:'wutan.market', name:'歇脚处', x:9, y:7, glyph:'歇', kind:'look', desc:'行商停步闲谈之处'},
+      {id:'exit',location:'wutan.gate', name:'跨地区行旅', x:14, y:9, glyph:'行', kind:'exit', desc:'跨地区旅行在世界地图安排，不再进入子场景'}
+    ],
+    tempBlocks: [],
+    inventory: [
+      {item:'干粮', qty:4, src:'出身初始', use:'旅行/闭关消耗'},
+      {item:'基础疗伤散', qty:1, src:'出身初始', use:'轻伤可用；同日重复服用无效'},
+      {item:'黄阶碎石掌抄本', qty:1, src:'三日前于坊市购得', use:'需修习后才算学会'}
+    ],
+    famInv: [{item:'家用银两', qty:120, src:'共同收入'},{item:'米粮', qty:30, src:'共同采买'},{item:'孩子的冬衣布料', qty:2, src:'燕宁购入'}],
+    stock: [{item:'常用药草', qty:12, price:8},{item:'赤叶药材', qty:3, price:35},{item:'基础疗伤散', qty:2, price:22}],
+    quoteAt: '申时',
+    family: 'none',
+    clues: [
+      {id:'c1', kind:'rumor', text:'乌坦城与青山镇有药材来往，山脉外缘的赤叶药材有人在争。', src:'坊市传闻', at:'第1日 · 午时'},
+      {id:'c2', kind:'seen', text:'陆青在告示栏前抄录了一则收购赤叶药材的消息。', src:'亲见', at:'第1日 · 申时'},
+      {id:'c3', kind:'told', text:'苏晚禾说回春堂的赤叶只剩三株。', src:'苏晚禾亲口所说', at:'第1日 · 未时'}
+    ],
+    opp: {state:'rumor', owner:null, history:[['传闻','坊市传闻：药谷北坡有赤叶生境','第1日']]},
+    promises: [{text:'答应燕宁：月底前帮客栈修好后院篱笆', due:'第30日', status:'进行中'},{text:'欠陈槐 6 两货钱', due:'第10日', status:'未还'}],
+    log: [],
+    saves: [], branch: 1, saveSeq: 0,
+    combat: null,
+    sc: {approach:'normal', path:'normal', submit:'ok', trade:'ok', save:'ok', load:'ok', combat:'edge', pop:true, noObjects:false},
+    reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
+    noArt: false, namesHover: false,
+    tradeDone: null, panel: null, panelTab: {}
+  };
+}
+let S = initialState();
+
+/* ---------------- 时间显示（演示计时） ---------------- */
+const SHICHEN = ['子','丑','丑','寅','寅','卯','卯','辰','辰','巳','巳','午','午','未','未','申','申','酉','酉','戌','戌','亥','亥','子'];
+function fmtTime(t){ const d = Math.floor(t / 1440) + 1, m = t % 1440, h = Math.floor(m / 60), mm = m % 60;
+  return `第${d}日 · ${SHICHEN[h]}时 ${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}`; }
+function shortTime(t){ const d = Math.floor(t / 1440) + 1, h = Math.floor((t % 1440) / 60); return `第${d}日 · ${SHICHEN[h]}时`; }
+function setClock(state){ const el = $('#clockState');
+  const map = {pause:'世界暂停', typing:'世界暂停 · 正在输入', run:'世界推进中', settle:'规则结算中', gen:'事实已定 · 叙述生成中', load:'正在恢复'};
+  el.dataset.s = (state === 'run' || state === 'settle') ? 'run' : 'pause'; el.textContent = map[state] || map.pause; }
+function renderClock(){ $('#clockText').textContent = fmtTime(S.time); }
+
+/* ---------------- 美术：内联 SVG 原创占位 ---------------- */
+const DEFS = `<defs>
+ <filter id="paper" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="3" seed="7"/><feColorMatrix values="0 0 0 0 .45  0 0 0 0 .40  0 0 0 0 .32  0 0 0 .22 0"/><feComposite in2="SourceGraphic" operator="in"/></filter>
+ <filter id="rough" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency=".35" numOctaves="2" seed="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="1.6"/></filter>
+ <filter id="soft"><feGaussianBlur stdDeviation="1.2"/></filter>
+ <pattern id="tiles" width="2.2" height="3" patternUnits="userSpaceOnUse"><path d="M1.1 0V3" stroke="#11100e" stroke-width=".45" opacity=".55"/></pattern>
+ <pattern id="slab" width="10" height="7" patternUnits="userSpaceOnUse"><path d="M0 7H10M5 0V3.5M0 3.5H10M2 3.5V7M8 3.5V7" stroke="#a8977a" stroke-width=".35" fill="none" opacity=".55"/></pattern>
+ <radialGradient id="wash" cx="50%" cy="45%" r="65%"><stop offset="0" stop-color="#efe5cf"/><stop offset="1" stop-color="#d9cbaa"/></radialGradient>
+ <radialGradient id="washG" cx="50%" cy="50%" r="70%"><stop offset="0" stop-color="#dfe0c6"/><stop offset="1" stop-color="#b9bf9d"/></radialGradient>
+</defs>`;
+function house(b){ const x=b.x*10, y=b.y*10, w=b.w*10, h=b.h*10, wt=y+h*.48, cx=x+w/2;
+  let s = `<rect x="${x+2}" y="${y+h-3}" width="${w-2}" height="5" fill="#000" opacity=".16" filter="url(#soft)"/>`;
+  s += `<rect x="${x+2.5}" y="${wt}" width="${w-5}" height="${h*.52-1.5}" fill="#cdb38a" stroke="#3a3128" stroke-width=".6"/>`;
+  for (let px = x+3.5; px <= x+w-3.5; px += (w-7)/Math.max(2,Math.round(w/12))) s += `<line x1="${px}" y1="${wt}" x2="${px}" y2="${y+h-1.5}" stroke="#5a3c29" stroke-width="1.1"/>`;
+  s += `<rect x="${cx-4}" y="${y+h-9}" width="8" height="7.5" fill="#3a2a20"/><path d="M${cx-4} ${y+h-9}h8" stroke="#a8763f" stroke-width=".8"/>`;
+  s += `<rect x="${x+4}" y="${y+h-8}" width="5" height="4" fill="#e9d9b0" stroke="#5a3c29" stroke-width=".5"/><path d="M${x+6.5} ${y+h-8}v4M${x+4} ${y+h-6}h5" stroke="#5a3c29" stroke-width=".35"/>`;
+  const roof = `M${x-2.5} ${wt+3} Q${x+1.5} ${wt-.5} ${x+4} ${y+3.5} L${x+w-4} ${y+3.5} Q${x+w-1.5} ${wt-.5} ${x+w+2.5} ${wt+3} Q${cx} ${wt+.5} ${x-2.5} ${wt+3}Z`;
+  s += `<g filter="url(#rough)"><path d="${roof}" fill="${b.roof}" stroke="#1d1b18" stroke-width=".8"/><path d="${roof}" fill="url(#tiles)"/>`;
+  s += `<path d="M${x+2.5} ${y+3.5} L${x+w-2.5} ${y+3.5}" stroke="#141310" stroke-width="2.2" stroke-linecap="round"/><path d="M${x+1.6} ${y+3.4}q-1.4 -1.8 .4 -2.6M${x+w-1.6} ${y+3.4}q1.4 -1.8 -.4 -2.6" stroke="#141310" stroke-width=".9" fill="none"/></g>`;
+  const pw = Math.min(w-8, b.label.length*4.2+4);
+  s += `<rect x="${cx-pw/2}" y="${wt+1.2}" width="${pw}" height="5.4" rx=".6" fill="#2a2420" stroke="#a8763f" stroke-width=".4"/><text x="${cx}" y="${wt+5.1}" text-anchor="middle" font-size="3.7" fill="#e3c88f" font-family="serif" letter-spacing=".3">${esc(b.label)}</text>`;
+  s += `<circle cx="${x+3}" cy="${wt+4}" r="1.5" fill="#b4513a"/><circle cx="${x+w-3}" cy="${wt+4}" r="1.5" fill="#b4513a"/>`;
+  return s; }
+function stall(b){ const x=b.x*10, y=b.y*10, w=b.w*10, h=b.h*10; const r = rng(b.x*31+b.y);
+  let s = `<rect x="${x+1}" y="${y+h-3}" width="${w-2}" height="4" fill="#000" opacity=".14" filter="url(#soft)"/>`;
+  s += `<rect x="${x+2}" y="${y+h*.45}" width="${w-4}" height="${h*.5}" fill="#8a6440" stroke="#2e2219" stroke-width=".6"/>`;
+  for (let i=0;i<10;i++) s += `<circle cx="${x+4+r()*(w-8)}" cy="${y+h*.5+r()*h*.35}" r="${1+r()*1.2}" fill="${['#7a9a54','#c8873c','#a8442f','#d6c36b'][i%4]}" stroke="#2e2219" stroke-width=".25"/>`;
+  s += `<g filter="url(#rough)"><path d="M${x} ${y+h*.42} L${x+2} ${y+2} L${x+w-2} ${y+2} L${x+w} ${y+h*.42}Z" fill="#e7dcc4" stroke="#2e2219" stroke-width=".6"/>`;
+  for (let i=0;i<w/5;i++) s += `<path d="M${x+2+i*5} ${y+2} L${x+i*5+.6} ${y+h*.42} L${x+i*5+3.1} ${y+h*.42} L${x+4.5+i*5} ${y+2}Z" fill="#9b4f37" opacity=".85"/>`;
+  s += `</g><text x="${x+w/2}" y="${y+h*.36}" text-anchor="middle" font-size="3.2" fill="#1d1b18" font-family="serif">${esc(b.label)}</text>`;
+  return s; }
+function tree(cx, cy, r, seed){ const g = rng(seed); let s = `<ellipse cx="${cx+1}" cy="${cy+r*.9}" rx="${r}" ry="${r*.35}" fill="#000" opacity=".15" filter="url(#soft)"/><path d="M${cx} ${cy+r*.9}L${cx-.6} ${cy}L${cx+.8} ${cy}Z" fill="#4a3424"/><g filter="url(#rough)">`;
+  for (let i=0;i<7;i++){ const a=g()*6.28, d=g()*r*.55; s += `<circle cx="${cx+Math.cos(a)*d}" cy="${cy-r*.2+Math.sin(a)*d*.7}" r="${r*(.42+g()*.25)}" fill="${['#55715d','#4a6553','#647f68'][i%3]}" stroke="#1f2a22" stroke-width=".35" opacity=".92"/>`; }
+  return s + '</g>'; }
+function townArt(blocks){
+  let s = DEFS + `<rect width="200" height="140" fill="url(#wash)"/><rect width="200" height="140" filter="url(#paper)" fill="#fff"/>`;
+  s += `<g filter="url(#rough)"><path d="M0 42 C40 39 80 46 120 41 S180 44 200 40 L200 96 C160 99 120 92 80 98 S20 94 0 98Z" fill="#d3c3a0"/><path d="M0 42 C40 39 80 46 120 41 S180 44 200 40" stroke="#8d7c5e" stroke-width=".7" fill="none"/><path d="M0 98 C20 94 60 96 80 98 S160 99 200 96" stroke="#8d7c5e" stroke-width=".7" fill="none"/></g>`;
+  s += `<rect x="0" y="42" width="200" height="56" fill="url(#slab)" opacity=".8"/>`;
+  s += `<path d="M90 98 Q94 112 92 140" stroke="#cbb994" stroke-width="12" fill="none" opacity=".7"/>`;
+  for (const b of blocks){
+    if (b.kind==='house') s += house(b);
+    else if (b.kind==='stall') s += stall(b);
+    else if (b.kind==='wall') s += `<g filter="url(#rough)"><rect x="${b.x*10}" y="${b.y*10+4}" width="${b.w*10}" height="${b.h*10-4}" fill="#b9a789" stroke="#3a3128" stroke-width=".6"/><rect x="${b.x*10-1}" y="${b.y*10+2}" width="${b.w*10+2}" height="4" fill="#3d4a4b" stroke="#1d1b18" stroke-width=".5"/><rect x="${b.x*10-1}" y="${b.y*10+2}" width="${b.w*10+2}" height="4" fill="url(#tiles)"/></g>`;
+    else if (b.kind==='wood'){ let w=''; for(let i=0;i<14;i++){ w += `<circle cx="${b.x*10+4+(i%7)*5.2}" cy="${b.y*10+6+Math.floor(i/7)*6}" r="2.6" fill="#a47a4c" stroke="#3b2a1c" stroke-width=".5"/><circle cx="${b.x*10+4+(i%7)*5.2}" cy="${b.y*10+6+Math.floor(i/7)*6}" r="1" fill="none" stroke="#5a412a" stroke-width=".3"/>`; } s += w; }
+    else if (b.kind==='tree') s += tree(b.x*10+10, b.y*10+9, 10, 11);
+  }
+  s += `<g filter="url(#rough)"><circle cx="95" cy="75" r="6.5" fill="#9aa09a" stroke="#2f302d" stroke-width=".8"/><circle cx="95" cy="75" r="3.6" fill="#22312f"/><path d="M90 69 L100 69" stroke="#4a3424" stroke-width="1"/></g>`;
+  s += tree(196, 58, 6, 4) + tree(3, 104, 6, 8) + tree(120, 120, 5, 9);
+  s += `<g opacity=".6"><path d="M186 66 h12 M186 78 h12" stroke="#6a5a43" stroke-width=".6"/><text x="192" y="74" text-anchor="middle" font-size="3.2" fill="#3a3128" font-family="serif">城门</text></g>`;
+  s += `<text x="4" y="137" font-size="3" fill="#6b5d47" font-family="serif">原创占位美术 · 非小说地图</text>`;
+  return s; }
+function mountainArt(blocks){
+  let s = DEFS + `<rect width="200" height="140" fill="url(#washG)"/><rect width="200" height="140" filter="url(#paper)" fill="#fff"/>`;
+  s += `<g filter="url(#rough)"><path d="M0 118 C30 104 60 124 96 112 S160 96 200 104 L200 120 C160 112 120 128 92 126 S30 120 0 132Z" fill="#9fb2ad" opacity=".85"/><path d="M0 118 C30 104 60 124 96 112 S160 96 200 104" stroke="#55706b" stroke-width=".6" fill="none"/></g>`;
+  s += `<path d="M30 0 C40 30 60 50 70 80 S110 110 140 140" stroke="#c9c2a0" stroke-width="10" fill="none" opacity=".6" stroke-dasharray="2 2.5"/>`;
+  for (const b of blocks){ const x=b.x*10, y=b.y*10, w=b.w*10, h=b.h*10;
+    if (b.kind==='rock'||b.kind==='cliff'){ s += `<g filter="url(#rough)"><path d="M${x+1} ${y+h} L${x} ${y+h*.5} L${x+w*.25} ${y+1} L${x+w*.7} ${y} L${x+w} ${y+h*.45} L${x+w-1} ${y+h}Z" fill="${b.kind==='cliff'?'#7d817a':'#8e918a'}" stroke="#2a2b28" stroke-width=".8"/>`;
+      for (let i=1;i<5;i++) s += `<path d="M${x+w*i/5} ${y+h*.25} l-${w*.08} ${h*.6}" stroke="#2a2b28" stroke-width=".4" opacity=".6"/>`;
+      s += `</g>`; }
+    else if (b.kind==='pines'){ for (let i=0;i<6;i++){ const px=x+5+(i%3)*12, py=y+8+Math.floor(i/3)*12; s += `<g filter="url(#rough)"><path d="M${px} ${py-9} L${px-6} ${py+3} L${px+6} ${py+3}Z" fill="#3f5a48" stroke="#1b261f" stroke-width=".5"/><path d="M${px} ${py-13} L${px-4.5} ${py-3} L${px+4.5} ${py-3}Z" fill="#4c6a55" stroke="#1b261f" stroke-width=".5"/></g>`; } }
+  }
+  const g = rng(5); for (let i=0;i<18;i++){ const x=g()*200, y=40+g()*60; s += `<path d="M${x} ${y}q1.5 -3 3 0M${x+2} ${y}q1.2 -2.4 2.4 0" stroke="#5e7a5a" stroke-width=".6" fill="none"/>`; }
+  s += `<g><circle cx="152" cy="62" r="2" fill="#b4462f"/><circle cx="155" cy="64" r="1.6" fill="#c25a3a"/><circle cx="150" cy="65" r="1.4" fill="#a83d2a"/></g>`;
+  s += `<text x="4" y="137" font-size="3" fill="#3f4a40" font-family="serif">原创占位美术 · 非小说地图</text>`;
+  return s; }
+function figure(p, kind){
+  if (kind==='wolf') return `<svg class="fig" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="21" rx="9" ry="2" fill="#000" opacity=".25"/><path d="M3 16 Q5 10 11 11 L16 9 L19 6 L20 9 L22 10 L19 13 L18 18 L15 18 L14 15 L9 15 L8 18 L5 18 L5 15 Q3 16 3 16Z" fill="#5b5a55" stroke="#1d1b18" stroke-width=".8"/><circle cx="19.2" cy="9.6" r=".7" fill="#e77c55"/><path d="M6 12 l2 -2 l2 2" stroke="#2a2925" stroke-width=".6" fill="none"/></svg>`;
+  const c = p.color || '#6c7c7a';
+  const hair = {bun:'<circle cx="10" cy="3.6" r="1.8" fill="#1d1b18"/>', bun2:'<circle cx="7.5" cy="4.6" r="1.4" fill="#1d1b18"/><circle cx="12.5" cy="4.6" r="1.4" fill="#1d1b18"/>', tail:'<path d="M12.6 7 q2.6 2 1 5" stroke="#1d1b18" stroke-width="1.1" fill="none"/>', cap:'<path d="M6.2 6.8 Q10 2.4 13.8 6.8Z" fill="#3a3128"/>', crown:'<rect x="8.8" y="2.6" width="2.4" height="1.8" fill="#cba568" stroke="#1d1b18" stroke-width=".3"/>'}[p.hair] || '';
+  return `<svg class="fig" viewBox="0 0 20 28" aria-hidden="true"><ellipse cx="10" cy="26" rx="6" ry="1.8" fill="#000" opacity=".28"/><path d="M4 25.5 L6 13.2 Q10 10.6 14 13.2 L16 25.5 Z" fill="${c}" stroke="#1d1b18" stroke-width=".8"/><path d="M10 13 L10 25.5 M6.6 17.5 h6.8" stroke="#efe2c4" stroke-width=".7" opacity=".7"/><circle cx="10" cy="8.6" r="3.6" fill="#f0dcc0" stroke="#1d1b18" stroke-width=".7"/><path d="M6.4 8 Q10 3.4 13.6 8 Q12 6 10 6.2 Q8 6 6.4 8Z" fill="#1d1b18"/>${hair}</svg>`; }
+function portrait(p){ const c = p.color || '#6c7c7a';
+  const hair = {bun:'<circle cx="43" cy="20" r="8" fill="#1d1b18"/>', bun2:'<circle cx="32" cy="24" r="6.5" fill="#1d1b18"/><circle cx="54" cy="24" r="6.5" fill="#1d1b18"/>', tail:'<path d="M55 40 q10 14 2 30" stroke="#1d1b18" stroke-width="5" fill="none"/>', cap:'<path d="M27 38 Q43 14 59 38Z" fill="#3a3128"/>'}[p.hair] || '<circle cx="43" cy="22" r="7" fill="#1d1b18"/>';
+  return `<svg viewBox="0 0 86 104" aria-hidden="true"><defs><radialGradient id="pw${p.id}" cx="50%" cy="40%" r="60%"><stop offset="0" stop-color="#efe5cf"/><stop offset="1" stop-color="#cbbd9c"/></radialGradient></defs><rect width="86" height="104" fill="url(#pw${p.id})"/><circle cx="62" cy="26" r="16" fill="${c}" opacity=".18"/><path d="M8 104 Q12 72 43 70 Q74 72 78 104Z" fill="${c}" stroke="#1d1b18" stroke-width="1.4"/><path d="M33 72 L43 92 L53 72" stroke="#efe2c4" stroke-width="2" fill="none"/><rect x="38" y="58" width="10" height="14" fill="#ead3b4" stroke="#1d1b18" stroke-width="1"/><ellipse cx="43" cy="46" rx="15" ry="17" fill="#f0dcc0" stroke="#1d1b18" stroke-width="1.3"/><path d="M28 44 Q30 24 43 26 Q56 24 58 44 Q54 34 43 33 Q32 34 28 44Z" fill="#1d1b18"/>${hair}<path d="M35 47 q3 -1.6 6 0 M45 47 q3 -1.6 6 0" stroke="#1d1b18" stroke-width="1.2" fill="none"/><path d="M40 56 q3 1.4 6 0" stroke="#7a3a2c" stroke-width="1" fill="none"/></svg>`; }
+
+/* ---------------- 场景几何 ---------------- */
+function scene(){ return SCENES[S.sceneId]; }
+function blockAt(x, y){ for (const b of [...scene().blocks, ...S.tempBlocks]) if (x>=b.x && x<b.x+b.w && y>=b.y && y<b.y+b.h) return b; return null; }
+function objAt(x, y){ return visibleObjects().find(o => o.x===x && o.y===y) || null; }
+function walkable(x, y){ return x>=0 && y>=0 && x<W && y<H && !blockAt(x,y) && !objAt(x,y); }
+function visiblePeople(){ return S.view==='combat'||S.layer==='overview' ? [] : S.people.filter(p => p.here && p.alive && p.location===S.sceneId); }
+function visibleObjects(){ return (S.view==='combat' || S.sc.noObjects || S.layer==='overview') ? [] : S.objects.filter(o=>o.location===S.sceneId); }
+function entity(id){ return S.people.find(p => p.id===id) || S.objects.find(o => o.id===id) || null; }
+function isPerson(e){ return e && 'role' in e; }
+function dist(a, b){ return Math.max(Math.abs(a.x-b.x), Math.abs(a.y-b.y)); }
+function bfs(sx, sy, goal){ // goal(x,y) -> bool ; 返回不含起点的路径
+  const key = (x,y) => y*W+x, prev = new Map([[key(sx,sy), null]]), q = [[sx,sy]];
+  while (q.length){ const [x,y] = q.shift(); if (goal(x,y) && !(x===sx && y===sy && !goal.allowStart)) { const path=[]; let k=key(x,y); while (k!==key(sx,sy)){ path.unshift([k%W, Math.floor(k/W)]); k=prev.get(k); } return path; }
+    for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ const nx=x+dx, ny=y+dy; if (!walkable(nx,ny) || prev.has(key(nx,ny))) continue; prev.set(key(nx,ny), key(x,y)); q.push([nx,ny]); } }
+  return null; }
+function pathTo(x, y){ if (!walkable(x,y)) return null; if (S.player.x===x && S.player.y===y) return []; return bfs(S.player.x, S.player.y, (a,b)=>a===x&&b===y); }
+function pathNear(e){ if (dist(S.player, e) <= 1) return []; return bfs(S.player.x, S.player.y, (a,b)=>Math.max(Math.abs(a-e.x),Math.abs(b-e.y))<=1); }
+
+/* ---------------- 渲染：场景 ---------------- */
+function renderArt(){ const sc = scene();$('#sceneImage').src='assets/'+sc.image;$('#sceneImage').alt=sc.name+'手绘环境；人物位置与路线为演示叠加';renderFallbackBlocks(); }
+function renderFallbackBlocks(){ const bl = [...scene().blocks, ...S.tempBlocks];
+  $('#overlay').innerHTML = bl.map(b => `<g class="blk-fb"><rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" fill="rgba(203,165,104,.12)" stroke="#cba568" stroke-width=".04" stroke-dasharray=".15 .1"/><text x="${b.x+b.w/2}" y="${b.y+b.h/2+.15}" font-size=".42" text-anchor="middle" fill="#e2c58e">${esc(b.label)}</text></g>`).join('')
+   + S.tempBlocks.map(b => `<g><rect x="${b.x+.1}" y="${b.y+.15}" width=".8" height=".7" rx=".08" fill="#7a5532" stroke="#1d1b18" stroke-width=".05"/><circle cx="${b.x+.25}" cy="${b.y+.88}" r=".14" fill="#1d1b18"/><circle cx="${b.x+.75}" cy="${b.y+.88}" r=".14" fill="#1d1b18"/></g>`).join('')
+   + '<g id="pathLayer"></g>'; }
+function tokenStyle(x, y){ return `left:${(x+.5)/W*100}%;top:${(y+.5)/H*100}%`; }
+function renderTokens(){
+  const focused=document.activeElement;
+  const box = $('#tokens'); let h = '';
+  for (const o of visibleObjects()) h += `<button class="token obj" data-ent="${o.id}" style="${tokenStyle(o.x,o.y)}" aria-pressed="${S.sel===o.id}" aria-label="${esc(o.name)}：${esc(o.desc)}"><span class="mk">${o.glyph}</span><span class="ring"></span><span class="nm">${esc(o.name)}</span></button>`;
+  for (const p of visiblePeople()) h += `<button class="token${p.leaving?' leaving':''}" data-ent="${p.id}" style="${tokenStyle(p.x,p.y)}" aria-pressed="${S.sel===p.id}" aria-label="${esc(p.name)}，${esc(p.role)}，${esc(p.activity)}"><span class="token-face"><img src="${actorImage(p)}" alt="" width="38" height="38"></span><span class="ring"></span><span class="nm">${esc(p.name)}</span></button>`;
+  if (S.view==='combat' && S.combat){ const e = S.combat.enemy; if (e.alive) h += `<button class="token enemy" data-ent="enemy" style="${tokenStyle(e.x,e.y)}" aria-pressed="${S.sel==='enemy'}" aria-label="铁背狼（原创占位魔兽），相距约 ${dist(S.player,e)} 步">${figure(null,'wolf')}<span class="ring"></span><span class="nm">铁背狼</span></button>`; }
+  h += `<button class="token player" data-ent="me" style="${tokenStyle(S.player.x,S.player.y)}" aria-pressed="false" aria-label="你（${esc(S.player.name)}）"><span class="token-face">你</span><span class="ring"></span></button>`;
+  box.innerHTML = h;
+  $('#scene').classList.toggle('no-art', S.noArt);
+  $('#scene').classList.toggle('names-hover', S.namesHover);
+  drawEmpty();
+  restoreFocus(focused);
+}
+function drawEmpty(){ const ex = $('#emptyScene'); const none = S.view==='scene' && visiblePeople().length===0 && visibleObjects().length===0;
+  if (none && !ex){ const d = document.createElement('div'); d.id='emptyScene'; d.className='empty-scene'; d.innerHTML='<span class="tag">此处暂无可交互的人物或物件 · 仍可点击地面移动或打开世界地图</span>'; $('#scene').appendChild(d); }
+  else if (!none && ex) ex.remove(); }
+function drawPath(path, mode){ const g = $('#pathLayer'); if (!g) return;
+  if (!path || !path.length){ g.innerHTML=''; return; }
+  const pts = [[S.player.x, S.player.y], ...path].map(([x,y]) => `${x+.5},${y+.5}`).join(' ');
+  const end = path[path.length-1];
+  g.innerHTML = mode==='commit'
+    ? `<polyline points="${pts}" fill="none" stroke="#e2c58e" stroke-width=".12" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${end[0]+.5}" cy="${end[1]+.5}" r=".22" fill="#e2c58e"/>`
+    : `<polyline points="${pts}" fill="none" stroke="#f1ebdd" stroke-width=".09" stroke-dasharray=".22 .18" stroke-linecap="round" opacity=".9"/><circle cx="${end[0]+.5}" cy="${end[1]+.5}" r=".2" fill="none" stroke="#f1ebdd" stroke-width=".07"/>`; }
+
+/* ---------------- 渲染：侧栏与对象 ---------------- */
+function distLabel(e){ const d = dist(S.player, e); return d<=1 ? '在交互距离' : `相距 ${d} 步`; }
+function renderLists(){
+  const ents = [...visiblePeople(), ...visibleObjects()];
+  $('#objList').innerHTML = ents.length ? ents.map(e => `<li><button class="li-btn" data-sel="${e.id}" aria-pressed="${S.sel===e.id}">${isPerson(e)?`<img class="near-avatar" src="${actorImage(e)}" alt="" width="42" height="48">`:`<span class="seal">${e.glyph}</span>`}<span class="near-info">${esc(e.name)}<small>${esc(e.role||e.desc)}</small></span><span class="meta">${distLabel(e)}</span></button></li>`).join('')
+    + (S.view==='combat' && S.combat && S.combat.enemy.alive ? '' : '') : '<li class="src">此处暂无可交互对象</li>';
+  if (S.view==='combat' && S.combat && S.combat.enemy.alive) $('#objList').innerHTML = `<li><button class="li-btn" data-sel="enemy" aria-pressed="${S.sel==='enemy'}"><span class="dot" style="background:var(--yanchi)"></span>铁背狼<span class="meta">相距 ${dist(S.player,S.combat.enemy)} 步</span></button></li>`;
+  if(S.layer==='overview' && S.view!=='map') $('#objList').innerHTML=FACILITIES.map(f=>`<li><button class="li-btn" data-act="enterFacility" data-id="${f.id}"><img class="facility-thumb" src="assets/${f.image}" width="58" height="39" alt=""><span class="near-info">${f.name}<small>${f.desc}</small></span></button></li>`).join('');
+  $('#nearTitle').textContent=S.layer==='overview'?'乌坦城 · 城中设施':'附近的人';
+  $('#nearHint').textContent=S.layer==='overview'?'选择一处落脚，开启今日的故事':'人物保有各自生活 · 点击后自动接近';
+  const places = [['乌坦城',S.layer==='overview'?'正在查看总览':'返回总览',true],['青山镇','约 3 日 · 行旅示例'],['魔兽山脉','部分探索'],['帝都方向','未制作 · 仅传闻']];
+  $('#placeList').innerHTML = places.map(([n,m,cur]) => `<li><button class="li-btn" data-act="${cur?'backLayer':'view'}" data-v="map" ${cur?'aria-current="true"':''}><span class="dot ${m.startsWith('未制作')?'gone':'obj'}"></span>${n}<span class="meta">${m}</span></button></li>`).join('');
+  const contacts = [['燕宁', S.family==='later' ? '配偶 · 她来信说去青山镇进货' : '歇马客栈 · 今日亲见'],['苏晚禾','回春堂 · 今日亲见'],['何照川','青山镇向导 · 五日前来信'],['林砚','族产账房 · 上月见过']];
+  if (S.flags && S.flags.popDone) contacts.push(['周衡','据传殁于兽潮（未证实）']);
+  $('#contactList').innerHTML = contacts.map(([n,m]) => `<li><button class="li-btn" data-act="openPanel" data-panel="rel"><span class="dot npc"></span>${n}<span class="meta">${m}</span></button></li>`).join('');
+}
+function actBtn(label, sub, act, data = '', disabled = '', primary = false){
+  return `<button class="act${primary?' primary':''}" data-act="${disabled ? 'blocked' : act}" ${data} ${disabled ? `aria-disabled="true" data-why="${esc(disabled)}"` : ''}><span>${label}</span><small>${esc(disabled || sub)}</small></button>`; }
+function renderTarget(){
+  const pane = $('#targetPane');
+  if (S.view==='map') return renderRouteCard(pane);
+  if (S.view==='combat') return renderCombatPane(pane);
+  const e = S.sel && entity(S.sel);
+  if (!e){
+    pane.innerHTML = `<div class="callout">未选中对象。点击场景或左侧列表中的人物会自动接近。接近不会自动开口、交易或开战。</div>
+     <div class="card"><h3>你自己 · ${esc(S.player.name)}</h3><dl class="kv"><dt>状态</dt><dd>${S.dead?'已死亡':esc(S.player.injury)} · 斗气 ${S.player.qi}/100</dd><dt>钱财</dt><dd>${S.player.gold} 金币（演示）</dd><dt>位置</dt><dd>${esc(scene().name)}</dd></dl></div>
+     <div class="actions" style="padding:0">${actBtn('四处看看','约 10 分钟 · 可能听到传闻','submitPreset','data-text="四处看看，听听街坊在议论什么" data-mode="do" data-target=""')}${actBtn('等待一阵','选择时长后推进时间','submitPreset','data-text="在原地等候半个时辰" data-mode="do" data-target=""')}${actBtn('闭关修炼','设置时长、补给与关注联系人','openLong')}${actBtn('世界地图','查看路线不耗时','view','data-v="map"')}</div>`;
+    return; }
+  if (isPerson(e)){
+    const d = dist(S.player, e), near = d <= 1, gone = !e.here || !e.alive;
+    const tradeWhy = !e.trade ? '对方没有可交易的货物' : (!near ? `需在交互距离内（相距 ${d} 步）` : '');
+    pane.innerHTML = `<div class="target-card"><div class="target-head"><div class="portrait"><img src="${actorImage(e)}" alt="${esc(e.name)}半身像" width="86" height="115"></div><div><div class="t-name">${esc(e.name)}</div><div class="t-role">${esc(e.role)}</div><div style="margin-top:6px">${gone?'<span class="tag fire">已不在此处</span>':`<span class="tag ${near?'ok':''}">${distLabel(e)}</span>`}</div></div></div>
+      <div class="t-sec"><h4>此刻所见</h4><p>${gone ? esc(e.leftNote || '已离开') : esc(e.activity)}</p></div>
+      <div class="t-sec"><h4>你所知</h4>${e.known.map(([t,s]) => `<p>${esc(t)} <span class="src">· ${esc(s)}</span></p>`).join('')}${e.facts.map(f=>`<p>${esc(f)}</p>`).join('')}</div>
+      <div class="t-sec"><h4>往来</h4><p>${esc(e.rel)}</p><p class="src">对方的私人看法不可直接查看，只能从言行判断</p></div>
+      <div class="actions">${actBtn('接近', near?'已在交互距离':`约 ${(pathNear(e)||[]).length} 分钟路程（演示）`, 'approach', `data-id="${e.id}"`, gone?'对方已离开此处':(near?'已在交互距离':''), !near)}
+        ${actBtn('交谈','在下方输入框写下要说的话','talk',`data-id="${e.id}"`, gone?'对方已离开此处':'', near)}
+        ${actBtn('交易','查看对方货物与报价','openPanel','data-panel="bag" data-tab="trade"', gone?'对方已离开此处':tradeWhy)}
+        ${actBtn('赠与','从行囊选择物品','openPanel','data-panel="bag" data-tab="mine"', gone?'对方已离开此处':(near?'':`需在交互距离内（相距 ${d} 步）`))}
+        ${actBtn('邀约同行','对方按自身安排决定','submitPreset',`data-text="邀请${esc(e.name)}改日同去青山镇" data-mode="say" data-target="${e.id}"`, gone?'对方已离开此处':(near?'':`需在交互距离内（相距 ${d} 步）`))}
+        ${actBtn('观察','约 5 分钟 · 不打扰对方','submitPreset',`data-text="【按钮】观察${esc(e.name)}在做什么" data-mode="do" data-target="${e.id}"`, gone?'对方已离开此处':'')}</div></div>`;
+  } else {
+    const d = dist(S.player, e), near = d <= 1;
+    const acts = e.kind==='exit' ? actBtn('打开世界地图','安排跨地区旅行','view','data-v="map"','',true)
+      : e.kind==='trade' ? actBtn('询价交易','查看有限库存与报价','openPanel','data-panel="bag" data-tab="trade"', near?'':`需在柜台旁（相距 ${d} 步）`, near) + actBtn('接近','走到柜台旁','approach',`data-id="${e.id}"`, near?'已在交互距离':'')
+      : e.kind==='investigate' ? actBtn('查阅告示','查阅不耗时','openPanel','data-panel="news"') + actBtn('抄录打听','约 20 分钟','submitPreset',`data-text="【按钮】仔细抄录告示并向旁人打听" data-mode="do" data-target="${e.id}"`, near?'':`需在告示栏旁（相距 ${d} 步）`)
+      : actBtn('驻足闲听','约 10 分钟','submitPreset',`data-text="【按钮】在井边歇脚，听听街坊闲谈" data-mode="do" data-target="${e.id}"`, near?'':`需走近（相距 ${d} 步）`);
+    pane.innerHTML = `<div class="target-card"><div class="target-head"><div class="portrait" style="display:grid;place-items:center;aspect-ratio:1;font-family:var(--f-title);font-size:2rem;color:#3a3128">${e.glyph}</div><div><div class="t-name">${esc(e.name)}</div><div class="t-role">${esc(e.desc)}</div><div style="margin-top:6px"><span class="tag ${near?'ok':''}">${distLabel(e)}</span></div></div></div><div class="actions">${acts}</div></div>`;
+  }
+}
+
+/* ---------------- 绑定与输入状态 ---------------- */
+function targetName(id){ if (!id) return '周围'; const e = entity(id); return e ? e.name : '（未知对象）'; }
+function draftTargetStale(){ const t = S.draft.target; if (!t) return false; const e = entity(t); return !e || e.location!==S.sceneId || (isPerson(e) && (!e.here || !e.alive)) || (S.view==='combat'); }
+function renderBind(){
+  const chip = $('#bindChip'), mm = $('#mismatch'), d = S.draft;
+  const tgt = d.bound ? d.target : S.sel;
+  const stale = d.bound && (draftTargetStale() || d.needRebind);
+  chip.className = 'bind-chip' + (tgt ? '' : ' none') + (stale ? ' stale' : '');
+  const place = S.view==='combat' ? '药谷交锋中' : scene().name.split('·').pop();
+  chip.innerHTML = S.view==='combat' ? `对：<b>交锋战术</b><span class="src">（每段结算前世界暂停）</span>`
+    : `对：<b>${esc(targetName(tgt))}</b><span class="src">· 在${esc(place)}${stale ? (d.needRebind ? ' · 读档后需重新确认' : ' · 对象已不在此处') : ''}</span>`;
+  if (d.bound && d.text && !stale && S.sel !== d.target && d.ackSel !== S.sel && S.view!=='combat'){
+    mm.hidden = false;
+    mm.innerHTML = `<span>草稿写给 <b>${esc(targetName(d.target))}</b>，当前选中 <b>${esc(targetName(S.sel))}</b>；提交仍发给草稿对象。</span><button class="btn small" data-act="rebind">改为对 ${esc(targetName(S.sel))}</button><button class="btn small" data-act="keepBind">保持 ${esc(targetName(d.target))}</button>`;
+  } else if (stale && d.text){
+    mm.hidden = false;
+    mm.innerHTML = d.needRebind ? `<span>已读档：草稿保留，但原对象需在新分支中重新确认。</span><button class="btn small" data-act="rebind">改为对 ${esc(targetName(S.sel))}</button>`
+      : `<span>草稿原对象 <b>${esc(targetName(d.target))}</b> 已离开，不会改发给他人。</span><button class="btn small" data-act="rebind">改为对 ${esc(targetName(S.sel))}</button><button class="btn small" data-act="modeDo">改为对周围行动</button>`;
+  } else mm.hidden = true;
+  $$('.seg [data-act="mode"]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.m === d.mode)));
+  const why = sendBlockReason();
+  $('#sendBtn').disabled = !!why && why !== '请先输入内容';
+  $('#sendBtn').textContent = S.view==='combat' ? '解析战术' : '执行';
+  $('#sendReason').innerHTML = why && why !== '请先输入内容' ? esc(why) + (S._approachHint ? ` <button class="btn small" data-act="approach" data-id="${S._approachHint}">先接近</button>` : '') : '';
+  $('#draftState').textContent = d.text ? (d.bound ? '草稿未提交 · 已保留' : '草稿未提交') : '无草稿';
+  $('#stopBtn').hidden = !(S.pending && S.pending.stage === 'narrate');
+}
+function sendBlockReason(){
+  S._approachHint = null;
+  const d = S.draft;
+  if (S.dead) return '角色已死亡：请读档或退出';
+  if (S.restoring) return '正在恢复存档';
+  if (S.layer==='overview' || S.view==='map') return '选择场所进入后再执行；地图上可保留草稿';
+  if (!d.text.trim()) return '请先输入内容';
+  if (S.pending && S.pending.stage !== 'unknown') return '上一行动正在结算，完成后可提交（草稿可继续编辑）';
+  if (S.pending && S.pending.stage === 'unknown') return '上一行动结果确认中，请先“重新观察”';
+  if (S.moving) return '移动中：可先停止移动，或到达后提交';
+  if (d.needRebind) return '草稿对象需重新确认';
+  if (S.view==='combat') return S.combat && S.combat.over ? '交锋已结束' : '';
+  const tgt = d.bound ? d.target : S.sel;
+  if (d.bound && (draftTargetStale() || d.needRebind)) return '草稿对象需重新确认';
+  const e = tgt && entity(tgt);
+  if (d.mode === 'say'){
+    if (!e) return '说话需要明确对象；可改为“行动”';
+    if (!isPerson(e)) return '对物件请使用“行动”';
+    if (dist(S.player, e) > 1){ S._approachHint = e.id; return `${e.name}不在交谈距离（相距 ${dist(S.player,e)} 步）`; }
+  } else if (e && dist(S.player, e) > 1 && e.kind !== 'exit'){ S._approachHint = e.id; return `需先走近${e.name}（相距 ${dist(S.player,e)} 步）`; }
+  return ''; }
+
+/* ---------------- 记录 ---------------- */
+function addLog(entry){ entry.id = entry.id || uid('l'); S.log.push(entry); renderLog(); return entry.id; }
+function updLog(id, patch){ const e = S.log.find(x => x.id===id); if (e) Object.assign(e, patch); renderLog(); }
+function renderLog(){
+  const ol = $('#log'), wrap = $('#logWrap'); const atBottom = wrap.scrollHeight - wrap.scrollTop - wrap.clientHeight < 40;
+  ol.innerHTML = S.log.map(e => {
+    if (e.type==='divider') return `<li class="divider">${esc(e.text)}</li>`;
+    if (e.type==='sys') return `<li class="sys">${e.html || esc(e.text)}</li>`;
+    if (e.type==='me') return `<li class="me"><span class="who">你${e.target?` → ${esc(targetName(e.target))}`:''}</span>${e.mode==='do'?'<span class="tag">行动</span> ':''}${esc(e.text)} <span class="tag ${e.state==='已结算'?'ok':(e.state==='未执行'?'':'gold')}">${esc(e.state)}</span></li>`;
+    if (e.type==='fact') return `<li><span class="fact ${e.cls||''}"><span class="h">${esc(e.head || '已发生（规则结算）')}</span>${e.html || esc(e.text)}</span></li>`;
+    if (e.type==='narr') return `<li>${e.who?`<span class="who">${esc(e.who)}</span>`:''}${e.html || esc(e.text)}</li>`;
+    if (e.type==='world') return `<li class="sys"><span class="tag gold">见闻</span> ${esc(e.text)} <span class="src">· ${esc(e.src)}</span></li>`;
+    return ''; }).join('');
+  if (atBottom) wrap.scrollTop = wrap.scrollHeight; }
+function sys(text, html){ return addLog({type:'sys', text, html}); }
+function toast(text, err){ const t = document.createElement('div'); t.className = 'toast' + (err ? ' err' : ''); t.setAttribute('role', err ? 'alert' : 'status'); t.textContent = text; $('#toasts').appendChild(t); setTimeout(() => t.remove(), 3600); }
+function banner(html, cls){ const b = $('#banner'); if (!html){ b.hidden = true; return; } b.className = 'scene-banner' + (cls ? ' ' + cls : ''); b.innerHTML = html; b.hidden = false; }
+
+/* ---------------- 选择与移动 ---------------- */
+function select(id){ S.sel = id; S.personOpen=isPerson(entity(id)); if (!S.draft.bound) S.draft.target = id; S.draft.ackSel = undefined;$('#main').classList.remove('left-open');renderAll(); }
+function approach(id){
+  if(guard())return;
+  const e = entity(id) || (id==='enemy' && S.combat && S.combat.enemy); if (!e) return;
+  if (isPerson(e) && (!e.here || !e.alive)) return banner(`${esc(e.name)} 已不在此处，无法接近。`, 'warn');
+  if (dist(S.player, e) <= 1){ banner(`已在 ${esc(e.name || '对象')} 的交互距离内。接近不会自动交易、开战或开口。`); setTimeout(() => banner(''), 2600); return; }
+  if (S.pending && S.pending.stage==='settle') return banner('上一行动结算中，移动稍后可用。', 'warn');
+  const p = pathNear(e); if (!p) return banner(`到 ${esc(e.name)} 的路线不可达（被建筑或摊位阻挡）。`, 'warn');
+  startMove(p, id);
+}
+function startMove(path, targetId){
+  if (S.dead || S.pending || S.restoring) return;
+  if (S.moving) clearTimeout(S.moving.timer);
+  S.moving = {path, i:0, target: targetId || null, walked:0, evented:false, detour:0};
+  setClock('run'); drawPath(path, 'commit');
+  const nm = targetId ? targetName(targetId) : '目的地';
+  banner(`<span>正在${targetId?'接近':'前往'} <b>${esc(nm)}</b> · 预计 ${path.length} 分钟（演示计时）</span><button class="btn small" data-act="cancelMove">停止移动</button>`);
+  renderBind(); stepMove(); }
+function stepMove(){
+  const m = S.moving; if (!m) return;
+  if (m.target && m.walked === 2 && !m.evented){ m.evented = true; if (moveEvent(m)) return; }
+  if (m.i >= m.path.length) return arrive();
+  const [x, y] = m.path[m.i++]; S.player.x = x; S.player.y = y; m.walked++; S.time += 1;
+  renderTokens(); renderClock(); drawPath(m.path.slice(m.i), 'commit');
+  m.timer = setTimeout(stepMove, S.reduced ? 30 : 160); }
+function moveEvent(m){
+  const e = entity(m.target);
+  if (S.sc.path === 'blocked' && m.i < m.path.length){
+    const [bx, by] = m.path[Math.min(m.i + 1, m.path.length - 1)];
+    if (!(e && bx===e.x && by===e.y)){ S.tempBlocks.push({x:bx, y:by, w:1, h:1, label:'运货板车', kind:'cart'}); renderFallbackBlocks(); }
+    const np = e ? pathNear(e) : null;
+    if (!np){ stopMove(`前方被运货板车堵住，暂时没有可走的路线。已走 ${m.walked} 步，耗时 ${m.walked} 分钟保留。`, 'warn'); return true; }
+    m.path = np; m.i = 0; banner(`<span>前方被运货板车挡住，已改走其他路线（剩余 ${np.length} 分钟）。</span><button class="btn small" data-act="cancelMove">停止移动</button>`, 'warn');
+    sys('路线受阻：运货板车停在路中（演示事件），已重新规划。'); return false; }
+  if (!e || !isPerson(e)) return false;
+  if (S.sc.approach === 'reroute'){
+    const spots = [[15,6],[6,7],[8,4]]; const sp = spots.find(([x,y]) => walkable(x,y) && dist({x,y}, e) > 2) || spots[0];
+    e.x = sp[0]; e.y = sp[1]; e.activity = '边走边看摊上的货'; renderTokens();
+    const np = pathNear(e); if (!np){ stopMove(`${e.name} 走到了无法到达的位置。`, 'warn'); return true; }
+    m.path = np; m.i = 0; banner(`<span><b>${esc(e.name)}</b> 改变了位置，路线已按最新所见重算（剩余 ${np.length} 分钟）。</span><button class="btn small" data-act="cancelMove">停止移动</button>`, 'warn');
+    sys(`${e.name} 走开了几步，接近路线已重算。`); return false; }
+  if (S.sc.approach === 'leave'){
+    e.leaving = true; e.x = 19; e.y = 6; renderTokens();
+    const epoch=S.epoch;
+    setTimeout(() => { if(epoch!==S.epoch)return; e.here = false; e.leaving = false; e.leftNote = '往城门方向离开了坊市（亲见）'; renderAll(); }, S.reduced ? 0 : 500);
+    stopMove(`<b>${esc(e.name)}</b> 往城门方向离开了坊市。接近中止；已走 ${m.walked} 步，耗时 ${m.walked} 分钟保留。`, 'warn');
+    sys(`${e.name} 离开了坊市（亲见）。`); return true; }
+  return false; }
+function stopMove(msg, cls){ const m = S.moving; if (m) clearTimeout(m.timer); S.moving = null; drawPath(null); setClock('pause'); banner(msg, cls); renderAll(); setTimeout(() => { if (!S.moving) banner(''); }, 5200); }
+function cancelMove(){ const m = S.moving; if (!m) return; stopMove(`已停止移动：已走 ${m.walked} 步、耗时 ${m.walked} 分钟保留，未走的部分取消。`); sys(`停止移动（已走 ${m.walked} 步，耗时保留）。`); }
+function arrive(){ const m = S.moving; S.moving = null; drawPath(null); setClock('pause');
+  const e = m.target && entity(m.target);
+  if (m.walked) sys(`移动 ${m.walked} 步，耗时 ${m.walked} 分钟（演示计时）。`);
+  banner(e ? `已到达 <b>${esc(e.name)}</b> 的交互距离。接近不会自动交易、开战或开口。` : '已到达。');
+  setTimeout(() => { if (!S.moving) banner(''); }, 3000);
+  if (S.view==='combat') combatAfterMove();
+  renderAll(); }
+
+/* ---------------- 指针：悬停预览与点击 ---------------- */
+function tileFromEvent(ev){ const r = $('#scene').getBoundingClientRect(); const x = Math.floor((ev.clientX - r.left) / r.width * W), y = Math.floor((ev.clientY - r.top) / r.height * H); return [Math.max(0, Math.min(W-1, x)), Math.max(0, Math.min(H-1, y))]; }
+let lastHover = '';
+function onHover(ev){
+  if (S.moving || S.dead) return;
+  const tok = ev.target.closest('.token'); const tip = $('#hoverTip'); let txt = '', path = null;
+  if (tok){ const id = tok.dataset.ent; if (id==='me'){ tip.hidden = true; drawPath(null); return; }
+    const e = id==='enemy' ? S.combat.enemy : entity(id); const key = 't' + id + S.player.x + ',' + S.player.y; if (key === lastHover) return; lastHover = key;
+    if (dist(S.player, e) <= 1) txt = '已在交互距离'; else { path = pathNear(e); txt = path ? `接近约 ${path.length} 分钟 · 预览不耗时` : '不可到达'; }
+  } else { const [x, y] = tileFromEvent(ev); const key = x + ',' + y + ':' + S.player.x + ',' + S.player.y; if (key === lastHover) return; lastHover = key;
+    const b = blockAt(x, y); if (b) txt = `不可到达：${b.label}`; else { path = pathTo(x, y); txt = path ? (path.length ? `约 ${path.length} 分钟 · 预览不耗时` : '你在这里') : '不可到达'; } }
+  drawPath(path, 'preview'); const r = $('#scene').getBoundingClientRect();
+  tip.hidden = false; tip.textContent = txt; tip.style.left = (ev.clientX - r.left) + 'px'; tip.style.top = (ev.clientY - r.top) + 'px'; }
+function onLeave(){ lastHover=''; $('#hoverTip').hidden = true; if (!S.moving) drawPath(null); }
+function onSceneClick(ev){
+  if (S.dead || S.pending || S.restoring) return;
+  const tok = ev.target.closest('.token');
+  if (tok){ const id = tok.dataset.ent; if (id==='me') return;
+    if (S.view==='combat'){ select(id); return; }
+    select(id); if (!ev.shiftKey) approach(id); return; }
+  if (!ev.target.closest('#hit')) return;
+  const [x, y] = tileFromEvent(ev); const b = blockAt(x, y);
+  if (S.pending && S.pending.stage==='settle') return banner('上一行动结算中，移动稍后可用。', 'warn');
+  if (b){ banner(`该处不可到达：${esc(b.label)}。`, 'warn'); setTimeout(() => banner(''), 2200); return; }
+  const p = pathTo(x, y); if (!p){ banner('该处不可到达。', 'warn'); return; } if (!p.length) return;
+  if (S.view==='combat') return combatMoveTo(x, y, p);
+  startMove(p, null); }
+/* ---------------- 离线流程；绝不作为真实世界 writer ---------------- */
+let panelFocus = null, dialogFocus = null;
+let composing = false;
+const panels = {self:['人','人物'],bag:['囊','行囊与交易'],cult:['修','功法与修炼'],rel:['家','关系与家庭'],news:['闻','见闻与机缘'],save:['档','保存与完整世界读档'],help:['?','操作与演示说明']};
+function restoreFocus(old){
+  if(!old||old===document.body||old.isConnected)return;
+  const candidate=old.id?document.getElementById(old.id):$$('button,input,select').find(b=>b.textContent===old.textContent&&JSON.stringify(b.dataset)===JSON.stringify(old.dataset));
+  if(candidate)candidate.focus({preventScroll:true});
+}
+function locked(){ return !!(S.pending || S.moving || S.restoring || S.dead); }
+function guard(){ if (!locked()) return false; toast(S.dead?'角色已死亡，请读档。':'当前行动尚未结束；可编辑草稿、查阅资料或停止。',true); return true; }
+function renderOverview(){
+ $('#overview').innerHTML=`<img src="assets/wutan-overview.png" alt="乌坦城鸟瞰总览：药铺在左下、客栈在左上、坊市在中央、族宅在右上、城门在右下" width="1672" height="941">${FACILITIES.map(f=>`<button class="facility-pin" style="left:${f.x}%;top:${f.y}%" data-act="enterFacility" data-id="${f.id}" aria-label="进入${f.name}">${f.name}<small>进入</small></button>`).join('')}<div class="overview-caption"><strong>乌坦城</strong>一城灯火，各有去处。<br>选择设施进入场所；图片布局与路程均为设计演示。</div>`;
+}
+function renderPerson(){
+ const e=entity(S.sel),open=S.layer==='place'&&S.view==='scene'&&S.personOpen&&isPerson(e);
+ $('#personView').hidden=!open;$('#scene').inert=!!open;if(!open)return;
+ const near=dist(S.player,e)<=1, gone=!e.here||!e.alive||e.location!==S.sceneId;
+ const infoScroll=$('#personView .person-info')?.scrollTop||0;
+ $('#personView').innerHTML=`<div class="person-sheet"><button class="icon-btn person-close" data-act="closePerson" aria-label="关闭人物交互，回到当前场所">✕</button><div class="person-art"><img src="${actorImage(e)}" alt="${esc(e.name)}的绘制半身像" width="1086" height="1448"><div class="person-name"><strong>${esc(e.name)}</strong><small>${esc(e.role)} · 原创居民</small></div></div><div class="person-info"><h3>${esc(e.rel)}</h3><span class="tag ${gone?'fire':near?'ok':'gold'}">${gone?'已离开此处':S.moving?'正在接近 · 尚未开口':distLabel(e)}</span><p>${esc(gone?e.leftNote||'此刻去向未知':e.activity)}</p><div class="actions">${actBtn('交谈','在下方写下想说的话','talk',`data-id="${e.id}"`,gone?'对象已离开':'',near)}${actBtn('交易','查看有限库存与报价','openPanel','data-panel="bag"',gone?'对象已离开':!e.trade?'此人不出售物资':!near?'需先接近':'')}${actBtn('相邀同行','对方有自己的安排','familyAsk','',gone?'对象已离开':!near?'需先接近':'')}${actBtn('关系往来','查看约定与共同经历','openPanel','data-panel="rel"')}${actBtn('接近此人','按演示路径走到身边','approach',`data-id="${e.id}"`,gone?'对象已离开':near?'已在交互距离':'')}${actBtn('回到场所','关闭大图，继续走动','closePerson')}</div><h3 style="font-size:16px">你所知的事</h3>${e.known.map(([t,s])=>`<p>${esc(t)}<br><span class="src">${esc(s)}</span></p>`).join('')}<p class="asset-note">这些见闻来自相处与亲见。她尚未说出的心事，仍要在日后的往来中了解。</p></div></div>`;
+ $('#personView .person-info').scrollTop=infoScroll;
+}
+function enterFacility(id){
+ if(guard())return;const f=FACILITIES.find(f=>f.id===id);if(!f)return;
+ if(S.sceneId!=='wutan.'+id){S.time+=5;if(S.draft.text)S.draft.needRebind=true;sys('前往'+f.name+'，演示耗时 5 分钟；真实路线与耗时待接线。');}
+ S.facility=id;S.sceneId='wutan.'+id;S.layer='place';S.view='scene';S.sel=null;S.personOpen=false;S.tempBlocks=[];S.player.x=9;S.player.y=11;
+ $('#main').classList.remove('left-open','right-open');closePanel(false);renderArt();renderAll();$('#scene').focus({preventScroll:true});
+}
+function backLayer(){
+ if(S.personOpen){S.personOpen=false;renderAll();$('#scene').focus({preventScroll:true});return;}
+ if(S.view==='combat'&&S.combat&&!S.combat.over)return toast('先选择撤退、投降或完成交锋。',true);
+ if(S.moving)cancelMove();S.view='scene';S.layer='overview';S.sel=null;closePanel(false);renderAll();$('#backLayer').focus({preventScroll:true});
+}
+function renderAll(){
+  const focused=document.activeElement;
+  renderClock(); renderTokens(); renderLists(); renderTarget(); renderBind();
+  $('#placeTitle').textContent=S.layer==='overview'?'斗破苍穹 · 乌坦城':scene().name; $('#placeSub').textContent=S.layer==='overview'?'地区总览':'最末级场所';
+  $('#activityText').textContent=S.dead?'角色已死亡':S.pending?'当前行动处理中（演示）':'当前活动：随处行走';
+  $('#scene').hidden=S.view==='map'||S.layer==='overview'; $('#mapView').hidden=S.view!=='map';$('#overview').hidden=S.view==='map'||S.layer!=='overview';
+  $('#sceneHint').hidden=S.layer==='overview'||S.view==='map';
+  $('#backLayer').textContent=S.personOpen?'返回场所':S.layer==='place'?'返回乌坦城':'乌坦城总览';renderPerson();
+  $('#combatHud').hidden=true; $('#pausePill').hidden=S.view!=='combat';
+  $$('.view-tabs button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===S.view&&(S.view!=='scene'||S.layer==='place'))));
+  $('#backLayer').setAttribute('aria-pressed',String(S.layer==='overview'&&S.view==='scene'));
+  document.body.classList.toggle('reduced',S.reduced);
+  if (S.panel) renderPanel();
+  restoreFocus(focused);
+}
+function setView(v){
+  if (S.moving) cancelMove();
+  if (v==='combat' && !S.combat) return startCombat();
+  if (S.combat && !S.combat.over && v!=='combat') return toast('交锋尚未结束；可选择撤退或投降。',true);
+  S.view=v;S.personOpen=false;if(v==='scene')S.layer='place';closePanel(false); if(v==='map') renderMap(); renderAll();
+}
+function openPanel(p){
+  if(!panels[p]) return;
+  if(!S.panel) panelFocus=document.activeElement;
+  S.panel=p; $('#drawer').hidden=false; renderPanel();
+  $$('[data-fn]').forEach(b=>b.setAttribute('aria-expanded',String(b.dataset.fn===p)));
+  $('#drawer [data-act="closePanel"]').focus();
+}
+function closePanel(focus=true){ S.panel=null; $('#drawer').hidden=true; $$('[data-fn]').forEach(b=>b.setAttribute('aria-expanded','false')); if(focus && panelFocus?.isConnected) panelFocus.focus(); }
+function modal(title,body,foot){
+  dialogFocus=document.activeElement; $('#dlgTitle').textContent=title; $('#dlgBody').innerHTML=body;
+  $('#dlgFoot').innerHTML='<button class="btn" data-act="dismiss">返回</button>'+foot;
+  if(!$('#dlg').open) $('#dlg').showModal();
+}
+function dismiss(){ $('#dlg').close(); if(dialogFocus?.isConnected) dialogFocus.focus(); }
+function itemImage(name){const map={'干粮':'item-food','基础疗伤散':'item-medicine','黄阶碎石掌抄本':'item-manual','常用药草':'item-herb','赤叶药材':'item-redleaf'};return map[name]?`<img class="item-picture" src="assets/${map[name]}.webp" alt="" width="52" height="52">`:'';}
+function button(label,act,extra=''){return `<button class="btn" data-act="${act}" ${extra}>${label}</button>`;}
+function renderPanel(){
+  const previousScroll=$('#drawerBody').scrollTop;
+  const p=S.panel; if(!p)return; $('#drawerTitle').textContent=panels[p][1]; $('#drawerSeal').textContent=panels[p][0];
+  let h='';
+  if(p==='self') h=`<h3>${esc(S.player.name)}</h3><dl class="kv"><dt>身份来源</dt><dd>${S.player.ident==='native'?'本土人':'保留原著记忆的穿越者'}</dd><dt>境界</dt><dd>${esc(S.player.rank)}（演示）</dd><dt>斗气</dt><dd>${S.player.qi}/100</dd><dt>生命</dt><dd>${S.player.hp}/100 · ${esc(S.player.injury)}</dd><dt>金币</dt><dd>${S.player.gold}</dd></dl><p>人物会有自己的谋生、关系和去处；这里仅展示你已知的情况。</p>${button('查看新局选择','createOpen')}<p class="src">新局表单只预览；确认后重置本页演示。不会建立真实 Session。</p>`;
+  if(p==='bag') h=`<h3>个人行囊</h3><table class="tbl"><thead><tr><th>物品</th><th>数量</th><th>归属</th></tr></thead><tbody>${S.inventory.map(i=>`<tr><td>${itemImage(i.item)}${esc(i.item)}<br><span class="src">${esc(i.use||i.src)}</span></td><td>${i.qty}</td><td>你</td></tr>`).join('')}</tbody></table><h3>回春堂 · 当前演示报价</h3><p class="src">购买需接近苏晚禾或柜台。金币 ${S.player.gold}；每笔只演示购买 1 份。</p>${S.stock.map((i,n)=>`<div class="row"><span>${itemImage(i.item)}${i.item} · ${i.price} 金币 · 余 ${i.qty}</span>${button('购买','buy',`data-index="${n}" ${i.qty?'':'disabled'}`)}</div>`).join('')}<div class="callout">共同物资在「关系家庭」单列。出售、赠与、交换和分配的完整流程见交互文档，本页不假装已经成交。</div>`;
+  if(p==='cult') h=`<h3>先把一门功夫练熟</h3><p>基础吐纳法 · 已学会（演示）</p><p>黄阶碎石掌 · 只有抄本，尚未学会</p><div class="callout">拥有书册不等于具备能力；突破与炼药仍需满足真实资质、材料及伤势条件。</div>${button('安排长时修炼','openLong')} ${button('休息片刻','simple', 'data-kind="rest"')}<p class="src">当前只演示修炼中断、已耗时与后果。具体公式不在前端定义。</p>`;
+  if(p==='rel') h=`<h3>${S.family==='later'?'燕宁 · 配偶（演示未来片段）':'燕宁 · 熟络的旧识'}</h3><p>${S.family==='later'?'她已自行安排去青山镇进货。你可以商量行程，不能直接替她改变意愿。':'她想去青山镇看看，也有客栈的工作。邀约是提议，不是控制。'}</p><div class="callout">亲密与婚姻只限成年角色。私人评价不显示精确分数；拒绝不会被改写为同意。</div>${button('商量同行','familyAsk')}<h3>共同生活</h3>${S.family==='later'?`<p>女儿 · 云小满：出生与成长消息来自家庭来信。尚未成年；只提供照护与教育入口。</p><table class="tbl">${S.famInv.map(i=>`<tr><td>${i.item}</td><td>${i.qty}</td></tr>`).join('')}</table><p>资源归家庭共有，不与个人行囊合并。</p>`:'<p>尚未成婚，没有共同家庭库存。</p>'}<h3>约定与往来</h3>${S.promises.map(i=>`<p>${esc(i.text)}<br><span class="src">${i.due} · ${i.status}</span></p>`).join('')}<h3>所知人物</h3>${S.people.map(i=>`<p>${esc(i.name)} · ${i.here?'最近亲见于'+SCENES[i.location].name:esc(i.leftNote||'去向未更新')}<br><span class="src">${esc(i.activity)}</span></p>`).join('')}<p class="src">本地演示人物均为原创占位。历史人物不会因死亡或离开而被隐藏删除。</p>`;
+  if(p==='news') h=`<h3>赤叶之争</h3><p>目前所知：${esc(S.opp.state)}${S.opp.owner?' · 归属 '+esc(S.opp.owner):''}</p><p>最初来自坊市传闻，并非已发现的宝物位置。其他人也会调查、采集与竞争。</p><div class="row">${button('调查线索','investigate')} ${button('尝试采集','claim')} ${button('进入交锋样例','combatStart')}</div><h3>见闻记录</h3>${S.clues.map(c=>`<article class="callout"><strong>${c.kind==='rumor'?'传闻':c.kind==='memory'?'原著记忆':'已获知'}</strong><p>${esc(c.text)}</p><span class="src">${esc(c.src)} · ${esc(c.at)}</span></article>`).join('')}<div class="callout">${S.player.ident==='transmigrator'?'原著记忆是个人知识；当前历史可能已经改写。':'本土角色没有原著记忆条目。'}</div>`;
+  if(p==='save') h=`<p>仅保存本页内存快照；刷新页面即丢失。不是 Atria SavePoint，也不证明真实完整世界恢复。</p><div class="row">${button('手动保存演示','quickSave')} ${S.saveRefreshFailed?button('仅刷新存档列表','refreshSaves'):''}</div><p role="status">${esc(S.saveStatus||'尚未进行保存')}</p>${S.saves.length?S.saves.map(s=>`<article class="card"><h3>${s.type} ${s.id}</h3><p>${fmtTime(s.snapshot.time)} · ${SCENES[s.snapshot.sceneId].name}</p><p class="src">将恢复人物、库存、关系、机会、见闻和本页记录。</p>${button('载入此时世界','loadAsk',`data-id="${s.id}"`)}</article>`).join(''):'<div class="callout">暂无存档。先保存，再发生变化，可观察恢复效果。</div>'}`;
+  if(p==='help') h=`<h3>从乌坦城开始</h3><ol><li>点击总览中的回春堂进入药铺；从左侧「附近的人」选择苏晚禾，打开人物大图并自动接近。</li><li>在下方输入，自由文字始终显示对象。Enter 执行，Shift+Enter 换行。</li><li>切换目标不会改发已有草稿；使用明确的「改为对…」重新绑定。</li><li>打开「演示状态」，切换拒绝、结果不明、叙述失败、离场或读档失败。</li></ol><p>默认使用已创建的演示角色并显示地区总览；人物 → 查看新局选择可预览创建。</p><p>保存 → 家庭未来片段 → 载入，可观察未来消息消失、草稿重新确认。所有片段和计时均为本地静态模拟。</p><h3>键盘</h3><p>Tab 选择按钮，Enter 激活。C 人物、B 行囊、K 修炼、R 家庭、J 见闻、M 地图、L 存档。Esc 关闭最上层。输入框及中文组合输入期间不触发快捷键。</p><p>方向键在场景获得焦点时移动一步。可用「场景对象」列表代替点击小人物。资料抽屉是非模态的，Tab 可返回输入。</p><h3>边界</h3><p>不联网、不使用模型、不读写真实存档。本页使用本项目实际生成的图片；需连同 assets 目录打开。人物图片为有底半身像，行走形象、真实碰撞和遮挡仍待正式制作。</p>`;
+  $('#drawerBody').innerHTML=h;
+  $('#drawerBody').scrollTop=previousScroll;
+}
+function bindDraft(target=S.sel){ S.draft.bound=true;S.draft.target=target;S.draft.needRebind=false;S.draft.ackSel=S.sel; renderBind(); }
+function preset(text,mode='do',target=null){ if(guard())return; if(S.draft.text.trim())return modal('保留当前草稿', '<p>当前已有未提交文字。请先执行或自行清空，再使用快捷行动。</p>',''); S.draft={text,mode,target,bound:true};$('#draft').value=text;renderBind(); submit(); }
+async function runLocal(label,apply,{target=null,text=label,mode='do',failure=S.sc.submit}={}){
+  if(guard())return false;
+  const epoch=S.epoch, p={stage:'settle',id:uid('req')};S.pending=p;
+  const logId=addLog({type:'me',text,target,mode,state:'正在判断（演示）'});
+  setClock('settle');renderAll();
+  await sleep(650); if(epoch!==S.epoch||S.pending!==p)return false;
+  if(failure==='reject'){ updLog(logId,{state:'未执行'});sys('行动未执行：条件已变化。输入已保留；检查对象与条件后重试。');S.pending=null;setClock('pause');renderAll();return false; }
+  if(failure==='unknown'){ p.stage='unknown';p.resolve=()=>finish();sys('结果暂不明：先重新观察，不重复提交。');banner('连接中断（演示） · 尚不能确认结果。'+button('重新观察','observe'),'warn');renderAll();return false; }
+  return finish();
+  async function finish(){
+    if(epoch!==S.epoch||S.pending!==p)return false;
+    const result=apply(); updLog(logId,{state:'已结算（演示）'});addLog({type:'fact',head:'演示事实已发生',text:result});
+    if(S.draft.text===text && S.draft.target===target){S.draft.text='';S.draft.bound=false;$('#draft').value='';}
+    p.stage='narrate';setClock('gen');renderAll();banner('');
+    await sleep(900); if(epoch!==S.epoch||S.pending!==p)return true;
+    S.pending=null;setClock('pause');
+    if(failure==='narrfail'){sys('叙述生成失败，事实保留。仅可重试表达；不会重复行动。');S.narrRetry={text:'街上的喧声渐渐回到耳边。刚才的结果仍然有效。',epoch};banner('叙述未完成 · 事实已保留。'+button('重试表达','retryNarr'),'warn');}
+    else addLog({type:'narr',text:target?`${targetName(target)}仍有自己的安排。你们的下一步，要再商量。`:'这段经历已经留下，世界在你行动的时间里继续变化。'});
+    renderAll();return true;
+  }
+}
+function submit(){
+  const reason=sendBlockReason(); if(reason)return toast(reason,true);
+  const d=clone(S.draft), target=d.bound?d.target:S.sel;
+  if(S.view==='combat')return combatAct('文字战术',d.text);
+  runLocal('自由文字',()=>{S.time+=10;return '本地样例仅演示一次交流/行动结果，耗时 10 分钟；未解析或真实执行任意文本。';},{target,text:d.text,mode:d.mode});
+}
+function stopGen(){
+  if(!S.pending)return; if(S.pending.stage!=='narrate')return toast('当前未处于叙述阶段；不能用停止表达撤回结算。',true);
+  S.pending=null;setClock('pause');sys('已停止本地叙述演示。已发生的时间、交易与关系结果保留。');renderAll();
+}
+function buy(n){
+  const item=S.stock[n], near=['su','counter'].some(id=>{const e=entity(id);return e && e.location===S.sceneId && e.here!==false && dist(S.player,e)<=1;});
+  if(!near)return toast('需先接近苏晚禾或回春堂柜台。',true);
+  if(S.sc.trade==='changed')return toast('报价已变化，未扣款。请重新查看报价后再购买。',true);
+  if(!item.qty||S.player.gold<item.price)return toast('库存或金币不足，未成交。',true);
+  runLocal('购买 '+item.item,()=>{item.qty--;S.player.gold-=item.price;S.time+=10;const own=S.inventory.find(i=>i.item===item.item);if(own)own.qty++;else S.inventory.push({item:item.item,qty:1,src:'坊市购入'});return `购入 ${item.item} 1 份，支付 ${item.price} 金币；库存与余额已更新。`;});
+}
+const routes=[['wutan','乌坦城',22,65],['qingshan','青山镇',51,50],['valley','魔兽山脉外缘',74,28],['unmade','帝都方向 · 未制作',15,20]];
+function renderMap(){
+ $('#mapView').innerHTML=`<img src="assets/map-first-regions.webp" width="1672" height="941" alt="首批地域手绘氛围图；非精确地理" style="position:absolute;width:100%;height:100%;object-fit:contain">${routes.map(([id,n,x,y])=>`<button class="pin ${id==='unmade'?'unmade':''}" style="left:${x}%;top:${y}%" data-act="route" data-id="${id}"><span class="mk">${n[0]}</span><span class="lb">${n}</span></button>`).join('')}<div class="overview-caption">只显示已知地域；路线与耗时为演示，帝都方向尚未制作。</div>`;
+}
+function renderRouteCard(pane){ pane.innerHTML=`<h3>山川可行，前路未知</h3><p>选择目的地查看路程。查看地图不耗时。</p>${routes.map(([id,n])=>button(n,'route',`data-id="${id}"`)).join('')}<div class="callout">路线、三日路程、补给和天气都是演示。帝都方向未制作，不能出发。</div>`; }
+function route(id){
+ const r=routes.find(r=>r[0]===id);if(!r)return;
+ if(id==='unmade')return modal(r[1],'<p>目前仅有远方传闻，没有可进入的场景。</p>','');
+ modal('前往 '+r[1],'<p>示例路程：3 日，干粮 2 份。山路有已知风险，同行者仍需自行同意。</p><p>离线样例将在途中收到消息并停下，不假装完整绘制青山镇。</p>',button('出发（演示）','travel',`data-id="${id}"`));
+}
+function travel(id){dismiss();runLocal('出发旅行',()=>{const f=S.inventory.find(i=>i.item==='干粮');if(f&&f.qty>=2)f.qty-=2;S.time+=1440;S.clues.push({id:uid('c'),kind:'told',text:'向导捎来消息：山路暂时封闭。你在驿站停下，尚未抵达目的地。',src:'途中向导',at:shortTime(S.time)});return '行进一日后在驿站中断；耗用干粮 2 份。未走完的路程未推进。';});}
+function openLong(){modal('安排长时修炼','<p>演示计划：修炼 30 日，遇到家庭来信时停下。查看与思考不推进时间。</p><p>以下会展示第 12 日中断与人口消息；不是实际人口模拟。</p>',button('开始修炼（演示）','longStart'));}
+function population(){
+ S.time+=12*1440;S.flags={...S.flags,popDone:true};
+ for(const [text,src,kind] of [['街坊来信：邻家添了孩子，母子平安。','街坊来信','told'],['陈槐说，有南方药商迁来；老药师的女儿接手铺子。','陈槐转述','told'],['传闻周衡未能从兽潮中归来，死讯尚未证实。','行商传闻','rumor']]) S.clues.push({id:uid('c'),kind,text,src,at:shortTime(S.time)});
+ return '修炼至第 12 日，被家庭来信中断。已耗时保留；出生、迁入与继任消息加入见闻，传闻死讯仍未证实。';
+}
+function startCombat(){
+ if(guard())return;
+ S.sceneId='mountain.valley';S.view='combat';S.layer='place';S.personOpen=false;S.sel='enemy';S.player.x=6;S.player.y=8;S.tempBlocks=[];$('#main').classList.add('right-open');
+ S.combat={enemy:{x:11,y:8,hp:65,alive:true},over:false,round:1};$('#combatTab').hidden=false;
+ if(S.draft.text)S.draft.needRebind=true;
+ closePanel(false);renderArt();renderAll();sys('进入独立交锋样例；原创铁背狼。自由战术只播放固定分段示例，不调用意图模型。');
+}
+function renderCombatPane(pane){const c=S.combat;pane.innerHTML=`<h3>药谷交锋 · 第 ${c.round} 段</h3><p>你：生命 ${S.player.hp}，斗气 ${S.player.qi}</p><p>铁背狼：生命 ${c.enemy.hp}，相距 ${dist(S.player,c.enemy)} 步</p><p>思考暂停。下一段需主动提交。</p>${c.over?button('离开交锋样例','combatExit'):`<div class="actions">${['攻击','施技','防守','撤退','投降'].map(a=>button(a,'combatAct',`data-kind="${a}"`)).join('')}</div>`}`;}
+function combatAct(kind,text=kind){
+ if(!S.combat||S.combat.over)return;
+ runLocal(kind,()=>{const c=S.combat;c.round++;S.time+=5;
+ if(kind==='撤退'||kind==='投降'){c.over=true;S.player.injury='轻伤';return kind==='撤退'?'撤退成功，已经承受的轻伤保留。':'投降后交锋结束，后果由规则决定；此处演示保留轻伤。';}
+ if(S.sc.combat==='death'){S.player.hp=0;S.dead=true;c.over=true;return '本段战败，角色死亡。可读取此前整个世界；不切换后代。';}
+ if(kind==='文字战术')return '第一段：试探已完成；第二段因距离变化取消。只保留已完成段，后续意图未执行。';
+ if(kind==='施技' && S.player.qi<20)return '斗气不足，本段施技未执行。';
+ if(kind==='施技')S.player.qi-=20;
+ if(kind!=='防守')c.enemy.hp=Math.max(0,c.enemy.hp-25);
+ S.player.hp=Math.max(1,S.player.hp-8);S.player.injury='轻伤';if(!c.enemy.hp){c.enemy.alive=false;c.over=true;}
+ return `本段${kind}已结算；你受轻伤。${c.over?'交锋结束。':'继续行动前世界暂停。'}`;
+ },{text,mode:'do',target:S.draft.bound?S.draft.target:null});
+}
+function combatMoveTo(x,y,p){if(guard())return;startMove(p,null);}
+function combatAfterMove(){sys('战术移动结束；未自动攻击。');}
+const snapshotKeys=['time','view','layer','facility','sceneId','created','dead','player','people','objects','tempBlocks','inventory','famInv','stock','family','clues','opp','promises','log','combat','flags'];
+function capture(){const o={};snapshotKeys.forEach(k=>{if(S[k]!==undefined)o[k]=clone(S[k]);});return o;}
+async function quickSave(type='手动档'){
+ if(guard())return;
+ S.pending={stage:'save'};S.saveStatus='保存中（演示）';renderAll();const epoch=S.epoch;await sleep(450);if(epoch!==S.epoch)return;
+ if(S.sc.save==='fail'){S.saveStatus='保存失败，没有新增存档。可再次保存。';S.pending=null;renderAll();return toast(S.saveStatus,true);}
+ S.saves.unshift({id:++S.saveSeq,type,snapshot:capture()});S.saveRefreshFailed=S.sc.save==='refresh';S.saveStatus=S.saveRefreshFailed?'保存已完成，但列表刷新失败；只需重新读取列表。':'保存已完成（仅本页内存）';S.pending=null;renderAll();toast(S.saveStatus);
+}
+function loadAsk(id){const s=S.saves.find(s=>s.id===Number(id));if(!s)return;modal('载入整个演示世界',`<p>返回 ${fmtTime(s.snapshot.time)}。当前时点之后的人物、关系、资源、消息与交锋将被替换。迟到的本地演示结果将被忽略。</p><p>未提交文字保留，但对象清除，需明确重新绑定。此恢复仅限本页模拟。</p>`,button('载入此时世界','load',`data-id="${id}"`));}
+async function loadSave(id){
+ const save=S.saves.find(s=>s.id===Number(id));if(!save||S.restoring)return;
+ dismiss();S.epoch++;if(S.moving)clearTimeout(S.moving.timer);S.moving=null;S.pending=null;S.restoring=true;S.narrRetry=null;
+ $('#loading').hidden=false;$('#loadingText').textContent='正在恢复演示世界…';setClock('load');renderAll();const epoch=S.epoch;await sleep(700);if(epoch!==S.epoch)return;
+ if(S.sc.load==='fail'){S.restoring=false;$('#loading').hidden=true;setClock('pause');sys('恢复失败：当前世界保留；旧请求已停止，可重新选择存档。');renderAll();return;}
+ const draft=clone(S.draft);snapshotKeys.forEach(k=>{delete S[k];});Object.assign(S,clone(save.snapshot));S.epoch=epoch;S.branch++;S.restoring=false;S.sel=null;S.personOpen=false;S.mapSel=null;S.draft={...draft,bound:!!draft.text,target:null,needRebind:!!draft.text};S.tradeDone=null;
+ $('#draft').value=draft.text;$('#combatTab').hidden=!S.combat;$('#loading').hidden=true;$('#toasts').replaceChildren();banner('');$('#demoPanel').hidden=true;$('#main').classList.toggle('right-open',S.view==='combat');
+ renderArt();if(S.view==='map')renderMap();renderLog();setClock('pause');renderAll();sys('已恢复演示世界。未来消息与记录已移除；保留文字需重新确认对象。');
+}
+function createOpen(){
+ $('#createBody').innerHTML=`<div class="field"><label for="newName">角色名</label><input id="newName" maxlength="16" value="云禾" autocomplete="off"></div><div class="field"><label for="newIdentity">身份来源</label><select id="newIdentity"><option value="native">本土人</option><option value="transmigrator">保留原著记忆的穿越者</option></select></div><div class="field"><label for="newOrigin">出身</label><select id="newOrigin"><option value="clan">家族子弟</option><option value="apprentice">药铺学徒</option><option value="mercenary">佣兵新人</option><option value="wanderer">漂泊旅人</option></select></div><div class="field"><label for="newSex">性别</label><select id="newSex"><option value="female">女</option><option value="male">男</option></select></div><p id="originPreview">家族子弟：家用资源与家族联系。此处为预览说明，不承诺初始化数值。</p><p>原型统一进入坊市样例；正式起点与资源由后端创建。原著记忆不等于本局事实。</p><p id="createError" role="alert"></p>`;
+ dialogFocus=document.activeElement;$('#dlgCreate').showModal();
+}
+function resetDemo(values){if(S.moving)clearTimeout(S.moving.timer);const epoch=S.epoch+1;S=initialState();S.epoch=epoch;S.created=true;Object.assign(S.player,values||{});$('#draft').value='';closePanel(false);$('#combatTab').hidden=true;$('#loading').hidden=true;banner('');renderArt();renderLog();renderAll();$('#main').classList.remove('right-open','left-open');sys('乌坦城，午后。点击图片中的设施进入；本页只演示交互，未接后端。');}
+function demoPanel(){
+ const groups=[['approach','接近人物',[['normal','正常'],['reroute','目标改道'],['leave','目标离场']]],['path','路线',[['normal','正常'],['blocked','板车挡路']]],['submit','下一次行动',[['ok','成功'],['reject','拒绝保稿'],['unknown','结果不明'],['narrfail','事实成功 / 叙述失败']]],['trade','报价',[['ok','有效'],['changed','报价失效']]],['save','保存',[['ok','成功'],['fail','写入失败'],['refresh','已存 / 刷新失败']]],['load','读档',[['ok','成功'],['fail','恢复失败']]],['combat','交锋',[['edge','正常'],['death','死亡后读档']]]];
+ $('#demoPanel').innerHTML='<p>以下只切换静态演示；不是游戏设置或真实能力。</p>'+groups.map(([key,label,opts])=>`<h3>${label}</h3><div class="opts">${opts.map(([v,l])=>`<button data-act="scenario" data-key="${key}" data-value="${v}" aria-pressed="${S.sc[key]===v}">${l}</button>`).join('')}</div>`).join('')+`<h3>长线片段与显示</h3><div class="opts">${button('家庭未来片段','familyFuture')}${button('长时活动 / 人口消息','openLong')}${button('空场景','empty')}${button('美术失效对照','noArt')}${button('减少运动','reduce')}${button('重新开始演示','reset')}</div><p>保存后再切未来片段，随后读档，可核对家庭与见闻恢复。刷新页面会清空本地演示。</p>`;
+}
+async function dispatch(b){const a=b.dataset.act;
+ if(a==='blocked')return toast(b.dataset.why,true);
+ if(a==='openPanel')return openPanel(b.dataset.panel);
+ if(a==='closePanel')return closePanel();
+ if(a==='dismiss')return dismiss();
+ if(a==='view')return setView(b.dataset.v);
+  if(a==='clearSel'){S.sel=null;S.personOpen=false;$('#main').classList.remove('right-open');renderAll();return;}
+  if(a==='enterFacility')return enterFacility(b.dataset.id);
+  if(a==='backLayer')return backLayer();
+  if(a==='closePerson'){S.personOpen=false;renderAll();$('#scene').focus({preventScroll:true});return;}
+ if(a==='approach')return approach(b.dataset.id);
+ if(a==='cancelMove')return cancelMove();
+ if(a==='talk'){select(b.dataset.id);if(!S.draft.text)bindDraft(b.dataset.id);$('#draft').focus();return;}
+ if(a==='mode'){S.draft.mode=b.dataset.m;renderBind();return;}
+ if(a==='modeDo'){S.sel=null;S.draft.mode='do';bindDraft(null);return;}
+  if(a==='rebind'){bindDraft();$('#draft').focus();return;}
+ if(a==='keepBind'){S.draft.ackSel=S.sel;renderBind();return;}
+ if(a==='send')return submit();
+ if(a==='submitPreset')return preset(b.dataset.text,b.dataset.mode,b.dataset.target||null);
+ if(a==='stopGen')return stopGen();
+ if(a==='observe')return S.pending?.resolve?.();
+ if(a==='retryNarr'){if(S.narrRetry?.epoch===S.epoch){addLog({type:'narr',text:S.narrRetry.text});S.narrRetry=null;banner('');}return;}
+ if(a==='buy')return buy(Number(b.dataset.index));
+ if(a==='simple')return runLocal('休息',()=>{S.time+=30;S.player.qi=Math.min(100,S.player.qi+10);return '休息半个时辰，恢复少量斗气（演示）。';});
+ if(a==='route')return route(b.dataset.id);
+ if(a==='travel'){if(S.inventory.find(i=>i.item==='干粮').qty<2)return toast('干粮不足，未出发。',true);return travel(b.dataset.id);}
+ if(a==='openLong')return openLong();
+ if(a==='longStart'){dismiss();return runLocal('长时修炼',population);}
+  if(a==='familyAsk')return runLocal('商量同行',()=>{S.time+=15;return `${S.sel?targetName(S.sel):'燕宁'}婉拒立即同行：眼下有自己的工作。拒绝是对方的决定；关系未被强制改变。`;});
+ if(a==='investigate')return runLocal('调查赤叶线索',()=>{S.time+=60;S.opp.state='已查证采集痕迹';S.opp.owner='陆青';S.clues.push({id:uid('c'),kind:'seen',text:'你亲见陆青带走最后一株赤叶。原传闻已过时。',src:'调查亲见',at:shortTime(S.time)});return '机缘已被陆青取得。调查保留了真实后果，无法再次采集唯一物。';});
+ if(a==='claim'){if(S.opp.owner)return toast('该机缘已被取走，未获得物品。',true);return toast('线索尚未查证；先调查，不能从传闻直接领取机缘。',true);}
+ if(a==='combatStart')return startCombat();
+ if(a==='combatAct')return combatAct(b.dataset.kind);
+ if(a==='combatExit'){$('#main').classList.remove('right-open');S.personOpen=false;S.sceneId='wutan.market';S.view='scene';S.combat=null;S.player.x=9;S.player.y=11;S.sel=null;$('#combatTab').hidden=true;renderArt();renderAll();return;}
+ if(a==='quickSave')return quickSave();
+ if(a==='refreshSaves'){S.saveRefreshFailed=false;S.saveStatus='存档列表已重新读取；没有重复保存。';renderPanel();return;}
+ if(a==='loadAsk')return loadAsk(b.dataset.id);
+ if(a==='load')return loadSave(b.dataset.id);
+ if(a==='host'){toast(`${b.dataset.h}：仅示意 Atria 既有通道，原型未接入。`);$('#hostMenu').hidden=true;$('#hostBtn').setAttribute('aria-expanded','false');$('#hostBtn').focus();return;}
+ if(a==='scenario'){S.sc[b.dataset.key]=b.dataset.value;demoPanel();return;}
+ if(a==='familyFuture'){if(guard())return;S.time+=900*1440;S.family='later';const y=entity('yan');y.here=false;y.leftNote='她来信说前往青山镇进货';y.activity='独自进货';S.clues.push({id:uid('c'),kind:'told',text:'燕宁来信：小满已经会叫人了，家中一切安好。',src:'家庭来信',at:shortTime(S.time)});$('#demoPanel').hidden=true;openPanel('rel');renderAll();sys('已切到静态家庭未来片段，不代表自动成婚或生育结算。');return;}
+ if(a==='empty'){if(guard())return;S.people.forEach(p=>p.here=false);S.sc.noObjects=true;S.sel=null;renderAll();return;}
+ if(a==='noArt'){S.noArt=!S.noArt;renderAll();return;}
+ if(a==='reduce'){S.reduced=!S.reduced;renderAll();toast(S.reduced?'已减少运动':'已恢复默认显示');return;}
+ if(a==='reset'){if(guard())return;resetDemo();demoPanel();return;}
+ if(a==='createOpen')return createOpen();
+ if(a==='createDemo'){$('#dlgCreate').close();return;}
+ if(a==='createSubmit'){const name=$('#newName').value.trim();if(!name){$('#createError').textContent='请输入角色名。';$('#newName').focus();return;}if(guard())return;const values={name,ident:$('#newIdentity').value,origin:$('#newOrigin').value,sex:$('#newSex').value};$('#dlgCreate').close();resetDemo(values);$('#draft').focus();return;}
+}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(b && !b.disabled){dispatch(b);return;}const s=e.target.closest('[data-sel]');if(s){select(s.dataset.sel);if(S.view!=='combat')approach(s.dataset.sel);}});
+$('#draft').addEventListener('compositionstart',()=>composing=true);
+$('#draft').addEventListener('compositionend',()=>composing=false);
+$('#draft').addEventListener('input',e=>{if(!S.draft.bound && e.target.value)bindDraft();S.draft.text=e.target.value;renderBind();});
+$('#draft').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing&&!composing&&e.keyCode!==229){e.preventDefault();submit();}});
+document.addEventListener('keydown',e=>{
+ if(e.isComposing||composing||e.keyCode===229)return;
+ if(e.key==='Escape'){
+  if($('#dlg').open||$('#dlgCreate').open)return;
+  if(!$('#demoPanel').hidden){$('#demoPanel').hidden=true;$('#demoBtn').focus();return;}
+  if(!$('#hostMenu').hidden){$('#hostMenu').hidden=true;$('#hostBtn').setAttribute('aria-expanded','false');$('#hostBtn').focus();return;}
+  if(S.panel)return closePanel();if(S.personOpen)return backLayer(); if(S.moving)return cancelMove();return backLayer();
+ }
+ if(e.target.closest('input,textarea,select,[contenteditable="true"]')||$('#dlg').open||$('#dlgCreate').open||e.ctrlKey||e.altKey||e.metaKey)return;
+ const key=e.key.toLowerCase(),p={c:'self',b:'bag',k:'cult',r:'rel',j:'news',l:'save','?':'help'}[key];
+ if(p){e.preventDefault();openPanel(p);}else if(key==='m'){e.preventDefault();setView(S.view==='map'?'scene':'map');}
+ if(e.target.closest('#scene')&&['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();if(guard())return;const [dx,dy]={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0]}[e.key];const p=pathTo(S.player.x+dx,S.player.y+dy);if(p)startMove(p,null);else toast('该方向受阻。',true);}
+});
+$('#scene').addEventListener('click',onSceneClick);$('#scene').addEventListener('pointermove',e=>{if(e.pointerType==='mouse')onHover(e);});$('#scene').addEventListener('pointerleave',onLeave);
+$('#leftToggle').onclick=()=>{const m=$('#main');m.classList.toggle(innerWidth<=1240?'left-open':'left-collapsed');$('#leftToggle').setAttribute('aria-expanded',String(innerWidth<=1240?m.classList.contains('left-open'):!m.classList.contains('left-collapsed')));};
+$('#rightToggle').onclick=()=>{const b=$('#main').classList.toggle('right-open');$('#rightToggle').setAttribute('aria-expanded',String(b));};
+$('#expandLog').onclick=()=>{const b=$('#bottom').classList.toggle('expanded');$('#expandLog').textContent=b?'收起记录':'展开记录';$('#expandLog').setAttribute('aria-expanded',String(b));};
+$('#hostBtn').onclick=()=>{const m=$('#hostMenu');m.hidden=!m.hidden;$('#hostBtn').setAttribute('aria-expanded',String(!m.hidden));if(!m.hidden)m.querySelector('button').focus();};
+$('#demoBtn').onclick=()=>{demoPanel();const m=$('#demoPanel');m.hidden=!m.hidden;$('#demoBtn').setAttribute('aria-expanded',String(!m.hidden));};
+$('#dlgCreate').addEventListener('change',()=>{$('#originPreview').textContent={clan:'家族子弟：家用资源与家族联系。',apprentice:'药铺学徒：识药工具、掌柜与常客联系；不等于具备炼药资格。',mercenary:'佣兵新人：基本行装、队友与山路经验。',wanderer:'漂泊旅人：旅费与有限旧识，需要另寻落脚处。'}[$('#newOrigin').value]+' 具体起点与数值由真实创建结果决定。';});
+$('#dlg').addEventListener('cancel',()=>{if(dialogFocus?.isConnected)setTimeout(()=>dialogFocus.focus(),0);});
+$('#dlgCreate').addEventListener('close',()=>{if(dialogFocus?.isConnected)dialogFocus.focus();});
+$('#scene').tabIndex=0;$('#scene').setAttribute('role','region');
+document.addEventListener('error',e=>{if(e.target.id==='sceneImage'){S.noArt=true;renderTokens();banner('场景图片加载失败，已显示路径对照。可继续使用左侧列表和文字操作。','warn');}},true);
+$('.fn-tabs').appendChild($('.demo'));
+renderOverview();resetDemo();
+</script>
+</body>
+</html>

@@ -16,7 +16,7 @@ export function causalLedger(w,rows){
   if(visibility==='owner'&&keys[0]==='player')current.owner=true;
   if(visibility==='scene'&&player&&keys.some(key=>{const n=rows.find(r=>r.id===key);return n&&(key==='player'||canPerceive(player,n.value));}))current.scene=true;
   for(const key of keys.filter(Boolean))if(!current.value.participants.includes(key)){
-   if(current.value.participants.length>=6)throw Error('causal participant capacity');
+   if(current.value.participants.length>=16)throw Error('causal participant capacity');
    current.value.participants.push(key);const n=rows.find(r=>r.id===key);if(n)current.value.before.push(outcome(key,n.value));
   }
   return current.id;

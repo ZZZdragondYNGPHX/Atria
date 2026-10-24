@@ -1,6 +1,48 @@
 // Paired files are one identity. Never mix a bespoke portrait and generic chibi.
 // Stable Native asset identities are authored once, never rehashed per visible NPC.
 const refs={
+
+ "yafei": [
+  "asset_ca10236f3e3bfa5e6ced1b6017735e0e",
+  "asset_7e3fe776d458c36796a0db213981d7c3"
+ ],
+ "xiaomei": [
+  "asset_55d5b19fd8ac91298a8f527ca53a4a64",
+  "asset_11e5671b34bca9aa06148d337dab5e54"
+ ],
+ "xiaoning": [
+  "asset_e33589aa033b2b5450a1f39a44153a06",
+  "asset_2dd367cc6c571375dc192044820ce389"
+ ],
+ "xiaoyixian": [
+  "asset_24902bd60de3015cca2e7fa020ab6be2",
+  "asset_13cecfc64c5195837f29f6e4abd46fd2"
+ ],
+ "frank": [
+  "asset_5705bc833ba1852e4b30ac945883bd52",
+  "asset_ca78344a1486c6fb03d310b602bfead4"
+ ],
+ "aotuo": [
+  "asset_e2ed28bb719875089589e707a5bbaeb9",
+  "asset_c0cffe6078302a8d7f78db74395bfd59"
+ ],
+ "linfei": [
+  "asset_5a192921873ae693d69ab4576f676876",
+  "asset_32a2f4ed1c8ae07bfe9e7ec9b38865bf"
+ ],
+ "xuemei": [
+  "asset_58cd207bbc31f5ef65c4c7f65bd505e6",
+  "asset_ab8980367dd137238daa441589ab037d"
+ ],
+ "xiaoding": [
+  "asset_d7d4ae6afff75e4bd61aeeca36931b93",
+  "asset_0aba6977a0ea6dd7d6d9df70d4df6fb4"
+ ],
+ "xiaoli": [
+  "asset_4b51d3c9edf50494fe6becc6e6580e6b",
+  "asset_a35775d92f6e163879024a0050e8b888"
+ ]
+,
  "xiaoyan": [
   "asset_cd65da53bc1529a25187bc52b24d2352",
   "asset_08567c58a96a47f389098030d0b696a9"
@@ -83,7 +125,10 @@ const refs={
  ]
 };
 const profile=(id,sex,min,max,key='')=>({id,weight:1,status:'ready',conditions:{sex:{in:[sex]},age:{min,max},key:{in:[key]}},value:{portraitAsset:refs[id][0],chibiAsset:refs[id][1],period:key?'opening':'ordinary',portrait:'media/pools/'+(key?'key-characters/':'ordinary/')+id+'-portrait.webp',chibi:'media/pools/'+(key?'key-characters/':'ordinary/')+id+'-chibi.webp'}});
-export const appearances={id:'appearances',version:1,entries:[
+export const appearances={id:'appearances',version:2,entries:[
+ profile('yafei','female',18,39,'yafei'),profile('xiaomei','female',13,17,'xiaomei'),profile('xiaoning','male',13,17,'xiaoning'),
+ profile('xiaoyixian','female',13,17,'xiaoyixian'),profile('frank','male',40,69,'frank'),profile('aotuo','male',40,69,'aotuo'),
+ profile('linfei','female',13,17,'linfei'),profile('xuemei','female',13,17,'xuemei'),profile('xiaoding','male',18,39,'xiaoding'),profile('xiaoli','male',18,39,'xiaoli'),
  profile('xiaoyan','male',13,17,'xiaoyan'),profile('xiaozhan','male',35,59,'xiaozhan'),profile('xuner','female',13,17,'xuner'),
  profile('su','female',18,39,'su'),profile('he','male',18,39,'he'),profile('lu','male',18,39,'lu'),profile('ning','female',18,39,'ning'),profile('su-father','male',60,89,'su-father'),
  ...['male','female'].flatMap(sex=>[

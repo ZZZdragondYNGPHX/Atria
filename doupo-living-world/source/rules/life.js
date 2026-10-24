@@ -1,13 +1,18 @@
-import {DAY,YEAR,ROUTES} from '../content/catalog.js';
+import {DAY,YEAR,ROUTES,regionOf,placeOf,routesFrom} from '../content/catalog.js';
 import {qty,add,skill,learn,age,idleActivity,freeControl,price,copy} from './state.js';
 import {capabilities,treatCondition} from './condition.js';
-import {combatAbility,wear,ward,repair,GEAR} from './equipment.js';
+import {travelWear,repair,GEAR} from './equipment.js';
 import {contentSha256 as sha} from './hash.js';
 import {canPerceive} from './perception.js';
 
 import {pool} from '../pools/index.js';
 import {eligible} from './pools.js';
-import {artByItem,artContext,learnArt,artKnown,trainingEffort,combatArt} from './progression.js';
+import {artByItem,artById,artContext,artKnown,trainingEffort,beginStudy,settleStudy,recoverQi,advanceRealm} from './progression.js';
+import {canAdvance} from './realm.js';
+import {activeEncounter,startEncounter,executeNext,nextRound,lockRound,chooseDecision,member,ROUND_MINUTES} from './combat.js';
+import {creatures} from '../pools/creatures.js';
+import {placeBody,pathTo,occupiedAt} from './spatial.js';
+import {inheritAtScene} from './remains.js';
 const active=m=>['pending','waiting'].includes(m.status);
 const bound=(list,max)=>{if(list.length>=max)return false;return true;};
 export function know(p,edge){
@@ -47,7 +52,7 @@ function settleEffort(c,r,a){
   if(productive)c.history('npc_training',[r.id],n.name+'只按已发生的修炼片段积累修为与消耗斗气。');
  }
 }
-function pauseActivity(c,r){
+export function pauseActivity(c,r){
  const a=r.value.activity;if(!a.kind||a.kind==='conflict')return;
  if(a.kind==='rest'&&r.value.suspended.kind)return;
  settleEffort(c,r,a);r.value.suspended={...copy(a),pausedAt:c.w.time};
@@ -92,11 +97,22 @@ export function endServices(c,r){
 export function routeTo(from,to){
  if(from===to)return [];
  const queue=[{place:from,path:[]}],seen=new Set([from]);
- for(let i=0;i<queue.length;i++)for(const r of ROUTES.filter(r=>r.from===queue[i].place)){
+ for(let i=0;i<queue.length;i++)for(const r of routesFrom(queue[i].place)){
   if(seen.has(r.to))continue;const path=[...queue[i].path,r];if(r.to===to)return path;
   seen.add(r.to);queue.push({place:r.to,path});
  }
  return null;
+}
+// Search real stocks along reachable roads, rather than returning forever to
+// a home with no counter. Visiting a service does not create stock or money.
+export function supplyDestination(w,place,item,gold=Number.MAX_SAFE_INTEGER){
+ const available=new Set(w.stocks.filter(s=>s.item===item&&s.qty>0&&gold>=price(item)).map(s=>s.place));
+ const queue=[place],seen=new Set(queue);
+ for(let i=0;i<queue.length;i++){
+  if(available.has(queue[i]))return queue[i];
+  for(const route of routesFrom(queue[i]))if(!seen.has(route.to)){seen.add(route.to);queue.push(route.to);}
+ }
+ return '';
 }
 export function sendMessage(c,sender,receiver,kind,target,text,source,place){
  const {w,rows,history}=c,a=rows.find(r=>r.id===sender),b=rows.find(r=>r.id===receiver);
@@ -174,16 +190,36 @@ export function refreshOrganizations(c,key){
  }
 }
 export function stepLife(c){
- const {w,rows,r,touch,event,history,appraisal}=c,n=r.value,key=r.id,at=w.time;
- const row=id=>rows.find(other=>other.id===id),ability=()=>capabilities(n);
+ const {w,rows,row,r,touch,event,history,appraisal}=c,n=r.value,key=r.id,at=w.time;
+ const ability=()=>capabilities(n);
+ if(activeEncounter(w.combat)&&member(w.combat,key)||w.conflicts.some(f=>activeEncounter(f.encounter)&&member(f.encounter,key))){n.next=at+1;return;}
+ if(n.species){
+  const spec=creatures.entries.find(e=>e.id===n.species)?.value;
+  if(!spec)throw Error('unknown creature species');
+  const previous=n.updated,days=Math.max(0,Math.floor(at/DAY)-Math.floor(previous/DAY)),food=spec.food;n.updated=at;
+  if(days&&qty(n,food)<days&&food==='herb'){const eco=ecologicalStock(w,n.place,at),eaten=Math.min(Math.max(0,days-qty(n,food)),eco?.herbs||0);if(eaten){eco.herbs-=eaten;add(n,food,eaten);}}
+  const eaten=Math.min(days,qty(n,food));if(eaten)add(n,food,-eaten);
+  if(days){n.needitem=eaten<days?food:'';n.needqty=eaten<days?1:0;}
+  else if(n.needqty&&qty(n,food)){add(n,food,-1);n.needqty=0;n.needitem='';}
+  const nourished=!n.needqty;
+  if(nourished)recoverQi(n,Math.max(0,at-previous));else if(days){n.hp=Math.max(0,n.hp-5*(days-eaten));n.injury=Math.min(100,n.injury+days-eaten);}
+  if(!n.hp){c.death(key,'生境缺食');return;}
+  n.activity={...idleActivity(),kind:'rest',started:at,due:at+180,source:'habitat:'+n.species};n.next=at+180;
+  const intruder=rows.filter(t=>!t.value.species&&t.value.alive&&!t.value.destination&&canPerceive(n,t.value)&&Math.abs(n.x-t.value.x)+Math.abs(n.y-t.value.y)<=3).sort((a,b)=>(Math.abs(n.x-a.value.x)+Math.abs(n.y-a.value.y))-(Math.abs(n.x-b.value.x)+Math.abs(n.y-b.value.y))||a.id.localeCompare(b.id))[0];
+  if(intruder&&['territorial','ambush','pack'].includes(spec.behavior))startConflict(intruder,'habitat:'+n.species);
+  return;
+ }
  const start=(kind,target='',ticks=DAY,item='',source='need:'+kind)=>{
+  if(n.activity.kind==='guard_control'&&kind!=='guard_control')for(const held of rows.filter(r=>r.value.control.holder===key))if(!w.releases.includes(held.id))w.releases.push(held.id);
   n.activity={...idleActivity(),kind,target,item,started:at,due:at+ticks,source};n.plan=labels[kind]||'处理自己的安排';
   if(kind==='train')add(n,'food',-1);
  };
  function travel(place,source){
   if(ability().move||n.destination||!place||place===n.place)return false;
   const path=routeTo(n.place,place),leg=path?.[0];if(!leg)return false;
-  if(qty(n,'food')<Math.max(1,Math.ceil(leg.ticks/DAY)))return false;
+  // Match player travel: a short walk to buy food must not require a meal
+  // already in the bag. Daily hunger still settles on the shared world clock.
+  if(qty(n,'food')<Math.floor(leg.ticks/DAY))return false;
   cancelRepairs(c,key);
   n.destination=leg.to;n.arriveAt=at+leg.ticks;n.place='route:'+leg.id;
   start('travel',place,leg.ticks,'',source);return true;
@@ -211,7 +247,7 @@ export function stepLife(c){
   if(n.activity.kind)history('activity_interrupted',[key,n.activity.kind],n.name+'的活动中止：'+reason);
   n.activity=idleActivity();
  }
- const requirement={travel:'move',gather:'gather',forage:'gather',work:'work',train:'train',learn:'learn',breakthrough:'breakthrough',refine:'refine',produce:'refine',treat:'care',repair_service:'care',watch:'communicate',guard_control:'attack',conflict:'attack'}[n.activity.kind];
+ const requirement={travel:'move',inheritance:'move',gather:'gather',forage:'gather',work:'work',train:'train',learn:'learn',switch:'learn',breakthrough:'breakthrough',refine:'refine',produce:'refine',treat:'care',repair_service:'care',watch:'communicate',guard_control:'attack',conflict:'attack'}[n.activity.kind];
  if(requirement&&ability()[requirement]){
   if(n.activity.kind==='travel'&&n.destination){
    // A traveler stays on the traversed route; loss of mobility is not arrival.
@@ -221,7 +257,7 @@ export function stepLife(c){
  }
  if(n.control.holder){
   const holder=row(n.control.holder);
-  if(!holder?.value.alive||holder.value.place!==n.place||capabilities(holder.value).attack||!['','guard_control','conflict'].includes(holder.value.activity.kind)||at>=n.control.until){n.control=freeControl();history('released',[key],'拘束条件结束，活动重新检查。');}
+  if(!holder?.value.alive||holder.value.place!==n.place||!canPerceive(holder.value,n)||Math.abs(holder.value.x-n.x)+Math.abs(holder.value.y-n.y)>3||capabilities(holder.value).attack||!['','guard_control'].includes(holder.value.activity.kind)||at>=n.control.until){n.control=freeControl();history('released',[key],'拘束条件结束，活动重新检查。');}
   else if(!ability().communicate&&n.qi>=15&&at-n.control.since>=60){n.qi-=15;if(n.rank>holder.value.rank){n.control=freeControl();history('escaped',[key,holder.id],'受控者付出斗气后挣脱拘束。');}else{n.control.since=at;n.plan='脱离尝试受阻，等待下一机会';n.next=Math.min(at+60,n.control.until);return;}}
   else {n.plan='受到拘束，等待脱离机会或协商';n.next=Math.min(at+60,n.control.until);return;}
  }
@@ -235,23 +271,34 @@ export function stepLife(c){
   const req={work:'work',gather:'gather',forage:'gather',train:'train',learn:'learn',breakthrough:'breakthrough',refine:'refine',produce:'refine',repair_service:'care',treat:'care'}[a.kind];
   if(req&&ability()[req])history('activity_failed',[key,a.kind],n.name+'因身体或拘束条件改变而没有取得活动产出。');
   else if(a.kind==='travel'){
-   n.place=n.destination;n.destination='';n.arriveAt=0;n.x=2;n.y=7;if(!n.visited.includes(n.place))n.visited.push(n.place);
+   travelWear(n,ROUTES.find(r=>'route:'+r.id===n.place)?.risk||0);n.place=n.destination;n.destination='';n.arriveAt=0;n.x=2;n.y=7;placeBody(n,rows);if(!n.visited.includes(n.place))n.visited.push(n.place);
    history('npc_arrival',[key,n.place],n.name+'沿实际路段抵达。');
+  }else if(a.kind==='inheritance'){
+   const dead=row(a.target),path=dead&&pathTo(n.place,n,dead.value,occupiedAt(rows,n.place,[key]));
+   if(path&&path.length<=Math.max(0,a.due-a.started-10)){
+    const dest=path.at(-2);if(dest){n.x=dest.x;n.y=dest.y;}
+    const count=inheritAtScene(c,a.target,key);
+    if(count)history('inheritance',[a.target,key],n.name+'实际到达现场，领取可携带的原有遗产。');
+   }
   }else if(a.kind==='buy'){buy(a.item,a.item==='food'?8:2);}
   else if(a.kind==='forage'){const e=ecologicalStock(w,n.place,at);if(e?.herbs){e.herbs--;add(n,'food',1);history('foraging',[key,n.place],'实际采得一份途中补给。');}}else if(a.kind==='work'||a.kind==='train'){
    settleEffort(c,r,a);
   }else if(a.kind==='rest'){
-   n.qi=Math.min(100,n.qi+20);if(n.injury<80)n.hp=Math.min(100,n.hp+8);
-  }else if(a.kind==='learn'){
-   const e=artByItem(a.item);if(e&&qty(n,a.item)&&eligible(e,artContext(n,at))){learnArt(n,e);history('npc_learning',[key],n.name+'通过实际学习掌握已有秘籍中的能力。');}
+   recoverQi(n,Math.max(0,at-a.started));if(n.injury<80)n.hp=Math.min(100,n.hp+8);
+   if(a.source==='cargo-unload'&&a.target===n.place)n.suspended={...n.suspended,item:'unloaded'};
+  }else if(a.kind==='learn'||a.kind==='switch'){
+   if(settleStudy(n,at)==='completed')history('npc_learning',[key],n.name+'通过实际学习掌握已有秘籍中的能力。');
   }else if(a.kind==='breakthrough'){
-   const need=n.rank*30;if(n.rank<19&&n.xp>=need&&n.qi>=40&&n.injury<=20){n.xp-=need;n.qi-=40;n.rank++;n.deathAt=Math.max(n.deathAt,at+(n.rank>=10?110:82)*YEAR);history('growth',[key],n.name+'完成准备后突破。');finishGoal(n,'growth',key);}
+   if(advanceRealm(n,at)){n.deathAt=Math.max(n.deathAt,at+(n.rank>=10?110:82)*YEAR);history('growth',[key],n.name+'完成准备后突破。');finishGoal(n,'growth',key);}
   }else if(a.kind==='gather'){
    const e=ecologicalStock(w,n.place,at),count=Math.min(3,e?.herbs||0);
    if(count){e.herbs-=count;add(n,'herb',count);history('npc_gather',[key,n.place],n.name+'从有限生境采得'+count+'份药草。');}
    const u=w.unique.find(u=>u.id==='redleaf');
    if(n.place==='mountain.valley'&&u?.status==='available'&&n.rank>=6){const receipt=c.capture('opportunity-'+sha(key+'|'+at).slice(0,40),'opportunity',[key],a.source);u.owner=key;u.status='claimed';add(n,'redleaf',1);history('opportunity',[key],n.name+'实际取得赤叶药材。');event(n,'','opportunity','我亲自采得药谷中的赤叶药材。','cause:'+receipt);finishGoal(n,'redleaf','mountain.valley');}
    n.suspended={...idleActivity(),kind:'return',target:n.home,item:'herb',started:at,due:at,source:a.source};
+   // Sorting the actual harvest occupies a finite interval at the habitat.
+   // Other residents may approach; departure is still decided by their own needs.
+   start('rest',n.place,60,'herb','harvest-sort');n.plan='整理本次采得的药材，稍后再决定返程';return schedule();
   }else if(a.kind==='refine'){
    if(qty(n,'herb')>=2&&n.qi>=20&&skill(n,'refining')&&skill(n,'formula')&&n.fire>=3&&n.wood>=1&&n.soul>=3){add(n,'herb',-2);n.qi-=20;add(n,'medicine',1);n.displayed='medicine';n.displayedAt=at;learn(n,'refining');history('npc_refining',[key],n.name+'以真实药材和斗气炼出一份基础疗伤散。');}
   }else if(a.kind==='produce'){
@@ -284,6 +331,12 @@ export function stepLife(c){
   }
  }
  const local=observe();
+ const estate=w.corpses.find(e=>e.heir===key&&canPerceive(n,e)&&row(e.id)&&
+  (row(e.id).value.gold||row(e.id).value.inventory.some(i=>i.qty>0)||row(e.id).value.gear.length));
+ if(estate&&!ability().move&&!ability().grip){
+  const path=pathTo(n.place,n,estate,occupiedAt(rows,n.place,[key]));
+  if(path){start('inheritance',estate.id,10+path.length,'','death:'+estate.id);return schedule();}
+ }
  // Recovery and daily sustenance are settled by the common clock before planning.
  if(n.injury>=20||n.condition.wounds.length){goal(n,'heal',key,95,'body:'+key);n.needitem='medicine';n.needqty=1;}
  else finishGoal(n,'heal',key);
@@ -298,8 +351,8 @@ export function stepLife(c){
  if(dependent&&n.traits.care>=35&&qty(n,'food')>=4&&!ability().care){const receipt='interaction:'+sha(key+'|'+dependent.id+'|'+at).slice(0,40);touch(dependent.id);add(n,'food',-2);add(dependent.value,'food',2);dependent.value.needqty-=2;n.interaction={kind:'support',target:dependent.id,place:n.place,at,source:receipt,relation:'family'};history('family_supply',[key,dependent.id],n.name+'从自己的行囊给家人补充两份干粮。');}
  if(qty(n,'food')<4&&!n.destination&&w.stocks.some(s=>s.place===n.place&&s.item==='food'&&s.qty&&n.gold>=price('food'))){start('buy','',30,'food');return schedule();}
  if(qty(n,'food')<2&&!ability().move&&!w.stocks.some(s=>s.place===n.place&&s.item==='food'&&s.qty)){
-  if(n.place.startsWith('mountain.')&&qty(n,'food')<1&&!ability().gather){start('forage','',180,'food','ecology:'+n.place);return schedule();}
-  const town=n.home.startsWith('mountain.')?'qingshan.herbal':n.home;if(travel(town,'need:food'))return schedule();
+  if(placeOf(n.place)?.ecology&&qty(n,'food')<1&&!ability().gather&&ecologicalStock(w,n.place,at)?.herbs){start('forage','',180,'food','ecology:'+n.place);return schedule();}
+  const town=supplyDestination(w,n.place,'food',n.gold);if(town&&travel(town,'need:food'))return schedule();
  }
  if(ability().work){start('rest','',DAY);return schedule();}
  const held=rows.find(r=>r.value.alive&&r.value.control.holder===key&&r.value.place===n.place);
@@ -331,7 +384,7 @@ export function stepLife(c){
   start('rest','',DAY);return schedule();
  }
  if(n.qi<50){start('rest','',DAY);return schedule();}
- const visibleSupply=local.find(o=>o.id!=='player'&&o.value.displayed==='medicine'&&qty(o.value,'medicine')>0);
+ const visibleSupply=local.find(o=>o.value.displayed==='medicine'&&qty(o.value,'medicine')>0);
  if(visibleSupply&&['mercenary','rival','gatherer'].includes(n.role)&&n.traits.ambition>75&&n.traits.caution<45&&n.traits.care<45&&n.injury>=10&&!qty(n,'medicine')&&n.hp>=40){
   goal(n,'obtain_medicine',visibleSupply.id,70,'seen:'+visibleSupply.id+':'+visibleSupply.value.displayedAt);
   if(startConflict(visibleSupply,'opportunity:medicine:'+visibleSupply.id))return schedule();
@@ -351,7 +404,7 @@ export function stepLife(c){
  }
  if(grievance&&n.traits.ambition>n.traits.caution){
   const knownTarget=n.social.find(e=>e.b===grievance.target&&e.confidence==='known');
-  if(knownTarget){goal(n,'confront',grievance.target,55,grievance.source);const target=local.find(o=>o.id===grievance.target&&o.id!=='player');
+  if(knownTarget){goal(n,'confront',grievance.target,55,grievance.source);const target=local.find(o=>o.id===grievance.target&&!o.value.destination);
    if(target&&at-grievance.at>=DAY&&startConflict(target,grievance.source))return schedule();
    if(at-knownTarget.at<=7*DAY&&travel(knownTarget.place,grievance.source))return schedule();
    if(at-knownTarget.at>7*DAY)grievance.intensity=Math.max(0,grievance.intensity-5);
@@ -359,12 +412,13 @@ export function stepLife(c){
  }
  const unique=w.unique.find(u=>u.id==='redleaf');
  if(['rival','gatherer'].includes(n.role)){
-  const depot=n.home.startsWith('mountain.')?'qingshan.herbal':n.home;
-  if(unique?.status==='available')goal(n,'redleaf','mountain.valley',60,'opening:herb-clue');
+  const home=regionOf(n.home),depot=home.herbal,habitat=home.habitat;
+  if(habitat==='mountain.valley'&&unique?.status==='available')goal(n,'redleaf','mountain.valley',60,'opening:herb-clue');
   const competitor=local.find(o=>o.id!=='player'&&['rival','gatherer'].includes(o.value.role)&&o.value.activity.kind==='gather');
   if(competitor&&n.traits.ambition>75&&n.traits.caution<50&&startConflict(competitor,'observed:resource-competition'))return schedule();
   if(n.suspended.kind==='return'||qty(n,'herb')>=7||qty(n,'redleaf')){
    if(n.place===depot){
+    if(n.suspended.item!=='unloaded'){start('rest',depot,60,'herb','cargo-unload');n.plan='在收购处卸货清点，货物仍由本人持有';return schedule();}
     for(const s of w.shipments.filter(s=>s.carrier===key&&s.status==='transit')){c.capture(s.id+'.receipt','shipment',[key],s.source);s.status=qty(n,s.item)>=s.qty?'arrived':'short';history('shipment_arrival',[s.id,key],'货运到达后按实际存货清点，不补刷丢失货物。');}
     const stock=w.stocks.find(s=>s.place===depot&&s.item==='herb'),count=Math.min(Math.max(0,qty(n,'herb')-1),Math.floor((stock?.gold||0)/(price('herb')*0.5)));
     if(stock&&count){const paid=count*4;add(n,'herb',-count);n.gold+=paid;stock.gold-=paid;stock.qty+=count;stock.quote++;history('npc_delivery',[key,n.home],'采药者返家交付真实携带的药草并取得货款。');}
@@ -381,8 +435,8 @@ export function stepLife(c){
     return schedule();
    }}
   }
-  if(n.place.startsWith('mountain.')&&ecologicalStock(w,n.place,at)?.herbs){start('gather','',180,'herb','ecology:'+n.place);return schedule();}
-  if(travel('mountain.valley','opening:herb-clue'))return schedule();
+  if(placeOf(n.place)?.ecology&&ecologicalStock(w,n.place,at)?.herbs){start('gather','',180,'herb','ecology:'+n.place);return schedule();}
+  if(travel(habitat,habitat==='mountain.valley'?'opening:herb-clue':'livelihood:'+n.home))return schedule();
  }
  const friendEdge=n.social.find(e=>e.a===key&&e.kind==='friend'&&e.confidence!=='refuted'),lastVisit=n.motives.find(m=>m.kind==='affiliation'&&m.target===friendEdge?.b);
  if(friendEdge&&qty(n,'medicine')>1&&n.traits.care>=40&&(!lastVisit||at-lastVisit.at>=30*DAY))goal(n,'visit',friendEdge.b,40,'sharing:'+key+':'+Math.floor(at/(30*DAY)));
@@ -395,78 +449,68 @@ export function stepLife(c){
  if(damaged&&n.gold>=6&&qty(n,'herb')){const artisan=local.find(o=>o.value.role==='artisan'&&['','rest','work'].includes(o.value.activity.kind));if(reserveRepair(c,key,damaged.id,artisan))return schedule();}
  if(skill(n,'refining')&&skill(n,'formula')&&qty(n,'herb')>=2&&qty(n,'medicine')<2&&!ability().refine){start('refine','',180,'medicine');return schedule();}
  const manual=pool('arts').entries.find(e=>e.status==='ready'&&qty(n,e.value.item)&&!artKnown(n,e)&&eligible(e,artContext(n,at)));
- if(manual&&!ability().learn){start('learn','',DAY,manual.value.item);return schedule();}
- if(n.xp>=n.rank*30&&n.rank<19&&!ability().breakthrough&&n.qi>=40){goal(n,'growth',key,60,'cultivation:'+key);start('breakthrough',key,DAY);return schedule();}
+ if(manual&&!ability().learn&&!beginStudy(n,manual,'learn',at)){start('learn','',n.study.switching.due-at,manual.value.item);return schedule();}
+ const primary=artById(n.study.cultivation),score=e=>(e.value.capacity||100)+(e.value.quality||100)+(e.value.recovery||100);
+ const alternate=n.study.library.map(k=>artById(k.id)).filter(e=>e?.value.type==='cultivation'&&e.id!==primary.id&&eligible(e,artContext(n,at))&&score(e)>score(primary)+10).sort((a,b)=>score(b)-score(a)||a.id.localeCompare(b.id))[0];
+ if(alternate&&n.traits.ambition>=55&&n.qi>=30&&qty(n,'food')>=3&&!beginStudy(n,alternate,'switch',at)){start('switch',alternate.id,n.study.switching.due-at);return schedule();}
+ if(canAdvance(n)&&!ability().breakthrough){goal(n,'growth',key,60,'cultivation:'+key);start('breakthrough',key,DAY);return schedule();}
  const workshop=w.organizations.find(o=>o.leader===key&&o.place===n.place&&o.status==='active'&&o.herbs>=2&&o.gold>=6&&o.output<4);
  if(workshop&&skill(n,'refining')&&!ability().refine){workshop.herbs-=2;workshop.gold-=6;start('produce',workshop.id,180,'medicine','organization:'+workshop.id);return schedule();}
  if(age(n,at)>=6&&skill(n,'basic')&&!ability().train&&n.gold>=18&&qty(n,'food')>=4&&(n.traits.ambition>=50||n.role==='cultivator')){start('train',key,DAY);return schedule();}
- if(age(n,at)>=18){start('work','',DAY/2);return schedule();}
+ if(age(n,at)>=18){
+  if(!w.stocks.some(s=>s.place===n.place&&s.item==='food'&&s.gold>=3)){
+   const employer=w.stocks.find(s=>s.place===regionOf(n.home)?.supply&&s.item==='food'&&s.gold>=3);
+   if(employer&&travel(employer.place,'livelihood:paid-work'))return schedule();
+  }
+  start('work','',DAY/2);return schedule();
+ }
  start('rest','',DAY);return schedule();
 
  function schedule(){n.next=Math.min(n.activity.due,(Math.floor(at/DAY)+1)*DAY);}
  function startConflict(target,source){
   if(ability().attack||target.value.control.holder||w.conflicts.some(f=>f.status==='active'&&[f.a,f.b].some(id=>id===key||id===target.id)))return false;
-  w.conflicts=w.conflicts.filter(f=>f.status==='active'||f.next>=at-30*DAY);if(!bound(w.conflicts,4))return false;
-  const id='fight-'+sha(key+'|'+target.id+'|'+at).slice(0,36);w.conflicts.push({id,a:key,b:target.id,place:n.place,started:at,next:at+5,round:0,status:'active',cause:source});
+  const pact=w.promises.find(q=>q.item==='truce'&&q.status==='fulfilled'&&[q.giver,q.receiver].includes(key)&&[q.giver,q.receiver].includes(target.id));
+  if(pact&&!n.motives.some(m=>m.kind==='grievance'&&m.target===target.id&&m.at>pact.due))return false;
+  w.conflicts=w.conflicts.filter(f=>f.status==='active'||f.next>=at-30*DAY);if(target.id!=='player'&&!bound(w.conflicts,4))return false;
+  const id='fight-'+sha(key+'|'+target.id+'|'+at).slice(0,36);
+  if(target.id==='player'&&activeEncounter(w.combat))return false;
+  if(target.id==='player')c.interruptPlayer?.();
+  const started=startEncounter({...c,pause:r=>pauseActivity(c,r)},target.id==='player'?'player':key,target.id==='player'?key:target.id,{id,reason:source,initiator:key});
+  if(started.error)return false;
+  if(target.id==='player'){w.combat=started.encounter;w.combatPage=0;c.capture(id+'.start','conflict',[key,'player'],source,'scene',true);return true;}
+  w.conflicts.push({id,a:key,b:target.id,place:n.place,started:at,next:at+ROUND_MINUTES,round:0,status:'active',cause:source,encounter:started.encounter});
   c.capture(id+'.start','conflict',[key,target.id],source,'scene',true);
-  const other=touch(target.id);pauseActivity(c,target);other.activity={...idleActivity(),kind:'conflict',target:key,item:'',started:at,due:at+5,source:id};other.next=Math.min(other.next,at+5);
-  pauseActivity(c,r);start('conflict',target.id,5,'',id);
   history('conflict_started',[key,target.id,id],'实际相遇使人物改变原活动并发生争执，尚未判定胜负。');return true;
  }
 }
 const labels={buy:'采购实际需要的补给',work:'投入时间谋生',rest:'休息与恢复',train:'运转已学功法修炼',learn:'研读持有的秘籍',breakthrough:'准备并尝试突破',travel:'沿已知路线赶路',gather:'在生境采药',refine:'以已有材料炼药',produce:'为药铺加工药材',treat:'为实际在场伤者处置伤处',repair_service:'修理器物',repair_wait:'等候器物维修',watch:'观察已知人物的交往',guard_control:'维持当前看守',conflict:'应对当前争执'};
 
 export function settleConflict(c){
- const {w,rows,touch,history,harm,death,event}=c,f=w.conflicts.filter(f=>f.status==='active'&&f.next<=w.time).sort((a,b)=>a.next-b.next||a.id.localeCompare(b.id))[0];
+ const {w,rows,touch,history,event}=c,f=w.conflicts.filter(f=>f.status==='active'&&f.next<=w.time).sort((a,b)=>a.next-b.next||a.id.localeCompare(b.id))[0];
  if(!f)return;
- const a=rows.find(r=>r.id===f.a),b=rows.find(r=>r.id===f.b);
- const receipt=c.capture(f.id+'.r'+(f.round+1),'conflict',[f.a,f.b],f.cause,'scene',true);
- if(!a?.value.alive||!b?.value.alive||a.value.place!==f.place||b.value.place!==f.place){close('separated');return;}
- touch(a.id);touch(b.id);f.round++;
- for(const [attacker,defender] of [[a,b],[b,a]]){
-  const n=attacker.value,t=defender.value;if(!n.alive||!t.alive)break;
-  if(n.hp<=30||capabilities(n).attack){
-   const leg=routeTo(n.place,n.home)?.[0];
-   if(!capabilities(n).move&&leg&&qty(n,'food')>=Math.max(1,Math.ceil(leg.ticks/DAY))){cancelRepairs(c,attacker.id);n.place='route:'+leg.id;n.destination=leg.to;n.arriveAt=w.time+leg.ticks;n.activity={...idleActivity(),kind:'travel',target:n.home,item:'',started:w.time,due:n.arriveAt,source:f.id};history('conflict_retreat',[attacker.id,f.id],'人物开始沿实际路段撤离，未获得对方物品。');close('retreated');return;}
-   if(n.rank<t.rank&&(t.traits.ambition>75||f.cause.startsWith('leverage:'))){n.control={holder:defender.id,since:w.time,until:w.time+DAY,source:'cause:'+receipt};n.activity=idleActivity();history('captured',[attacker.id,defender.id,f.id],'败者留在当前位置受到有限拘束，未被瞬移或自动搜走财物。');}
-   close('yielded',attacker.id);return;
-  }
-  if(n.hp<60&&qty(n,'medicine')&&w.time-n.lastMedicine>=60&&!capabilities(n).grip){add(n,'medicine',-1);n.lastMedicine=w.time;treatCondition(n,'medicine',w.time);continue;}
-  const art=combatArt(n),technique=art.level&&n.qi>=art.qiCost&&!capabilities(n).technique;
-  if(technique)n.qi-=art.qiCost;
-  const atk=combatAbility(n,technique),def=combatAbility(t),shield=ward(t),damage=Math.max(1,atk.attack-def.defense-shield);
-  const noticed=canPerceive(t,n);
-  wear(n,'hand',2);wear(t,'body',3);
-  const roll=parseInt(sha(f.id+'|'+f.round+'|'+attacker.id).slice(0,8),16)%100;
-  const part=roll%2?'left_arm':'left_leg',kind=damage>=35&&roll<10?'loss':damage>=16&&roll<45?'fracture':'trauma';
-  if(t.condition.wounds.length<8&&!t.condition.missing.includes(part))harm(defender.id,part,kind,Math.min(100,damage),'conflict:'+f.id+':'+f.round+':'+attacker.id);
-  else {t.hp=Math.max(0,t.hp-damage);t.injury=Math.min(100,t.injury+Math.ceil(damage/4));}
-  if(noticed){motive(t,attacker.id,'grievance','cause:'+receipt,w.time,Math.min(100,30+damage));
-   know(t,{a:defender.id,b:attacker.id,kind:'contact',place:f.place,at:w.time,source:'cause:'+receipt,confidence:'known'});
-   event(t,n.actor,'conflict','我与'+n.name+'在此发生冲突并受伤。','cause:'+receipt);
-  }
-  if(!t.hp)death(defender.id,'NPC冲突重伤');
+ const e=f.encounter;
+ if(e.phase==='world'){nextRound(c,e);if(e.phase==='world'){f.next=e.clock;return;}}
+ if(e.phase==='choice'){
+  const first=e.participants.find(m=>m.status==='active');
+  if(first)lockRound(c,e,chooseDecision(c,e,first.id));
  }
- history('conflict_round',[f.a,f.b,f.id],'双方依实际功法、斗气、身体和器物结算一个分段，消耗与伤势持续。');
- for(const observer of rows.filter(r=>r.id!==f.a&&r.id!==f.b&&r.value.alive&&r.value.place===f.place&&canPerceive(r.value,a.value)&&canPerceive(r.value,b.value)).slice(0,1)){
-  touch(observer.id);event(observer.value,a.value.actor,'witnessed_conflict','我目击'+a.value.name+'与'+b.value.name+'发生冲突。','cause:'+receipt);
-  know(observer.value,{a:f.a,b:f.b,kind:'conflict',place:f.place,at:w.time,source:'cause:'+receipt,confidence:'known'});
- }
- if(!a.value.alive||!b.value.alive){close('ended');return;}
- if(f.round>=4&&a.value.traits.caution+b.value.traits.caution>80){close('disengaged');return;}
- f.next=w.time+5;for(const r of [a,b]){r.value.activity.due=f.next;r.value.next=f.next;}
- function close(status,yielding=''){
-  f.status=status;f.next=w.time;
-  if(yielding){const loser=yielding===f.a?a:b,winner=yielding===f.a?b:a;if(loser&&winner)motive(loser.value,winner.id,'fear','cause:'+receipt,w.time,65);}
-  if(status==='yielded'&&yielding===f.b&&f.cause.startsWith('opportunity:medicine:')&&a?.value.alive&&b?.value.alive&&a.value.place===b.value.place&&!capabilities(a.value).grip&&qty(b.value,'medicine')){
-   add(b.value,'medicine',-1);add(a.value,'medicine',1);a.value.displayed='medicine';a.value.displayedAt=w.time;
-   history('seizure',[f.a,f.b,f.id],'败者让出实际持有的一份疗伤散，后续赠送与自用从同一库存检查。');event(b.value,a.value.actor,'seizure','冲突中失去一份实际持有的疗伤散。','cause:'+receipt);finishGoal(a.value,'obtain_medicine',f.b);
+ if(['collecting','resolving','cleanup'].includes(e.phase))executeNext(c,e);
+ f.round=e.round;
+ if(e.phase!=='closed'){f.next=e.phase==='world'?e.clock:w.time;return;}
+ f.status=e.result;f.next=w.time;
+ history('conflict_closed',[f.id],'当前接触已按统一战斗核心结束，后果继续进入生活。');
+}
+export function settleBattleAftermath(c,e,r){
+ const n=r.value,m=member(e,r.id),source=c.capture(e.id+'.after.'+r.id,'conflict',[r.id],e.id,r.id==='player'?'owner':'scene',true);
+ const offender=m.harmFrom.map(id=>c.row(id)).find(Boolean);
+ c.event(n,offender?.value.actor||'','conflict:'+e.id,'我亲历了这次接触，伤势、消耗和已经目击的责任仍在。','cause:'+source);
+ if(offender){
+  know(n,{a:r.id,b:offender.id,kind:'contact',place:e.place,at:c.w.time,source:'cause:'+source,confidence:'known'});
+  if(r.id!=='player'&&!n.species){
+   if(e.reason!=='spar')motive(n,offender.id,'grievance','cause:'+source,c.w.time,35);
+   c.appraisal(n,offender.value,e.reason==='spar'?'respect':'trust',e.reason==='spar'?3:-12,e.reason==='spar'?'在双方同意的约定演武中看到了对方的实际行动。':'本人在交锋中受到对方的实际伤害，责任依据来自亲历。');
   }
-  for(const r of [a,b].filter(Boolean)){
-   const n=touch(r.id);if(!n.alive)continue;if(!n.destination)n.activity=idleActivity();n.next=n.destination?n.arriveAt:w.time+60;
-   if(n.suspended.kind&&n.suspended.kind!=='conflict'){n.plan='争执之后重新检查原计划';}
-   for(const edge of n.social.filter(e=>e.a===r.id&&e.kind==='family').slice(0,1))sendMessage(c,r.id,edge.b,'harm',r.id===f.a?f.b:f.a,n.name+'在冲突后需要帮助；责任归因仍是发信者的说法。','cause:'+receipt,edge.place);
-  }
-  history('conflict_closed',[f.id],'冲突当前接触结束：'+status+'；后果继续进入生活。');
+  if(e.reason!=='spar')for(const edge of n.social.filter(k=>k.a===r.id&&k.kind==='family').slice(0,1))sendMessage(c,r.id,edge.b,'harm',offender.id,n.name+'在交锋后需要帮助；归因仍是发信者的个人说法。','cause:'+source,edge.place);
  }
+ c.history('conflict_aftermath',[r.id,e.id],'当事人的亲历、实际伤势与个人评价分别接续，远方亲属等待真实消息。');
 }

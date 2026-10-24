@@ -1,8 +1,10 @@
+import {CANON_KEYS} from '../pools/cast.js';
 import {pool} from '../pools/index.js';
 import {eligible,draw} from './pools.js';
 export const assetId=(id,kind)=>appearanceEntry(id)?.value[kind+'Asset']||'';
 export const appearanceEntry=id=>pool('appearances').entries.find(e=>e.id===id);
 export function assignAppearance(key,p,years,seed,used=[]){
+ if(CANON_KEYS.includes(key)&&!pool('appearances').entries.some(e=>e.conditions.key.in.includes(key))){p.appearance='';return;}
  const context={key:pool('appearances').entries.some(e=>e.conditions.key.in.includes(key))?key:'',sex:p.sex,age:years};
  const old=appearanceEntry(p.appearance);if(old&&eligible(old,context))return;
  const available=pool('appearances').entries.filter(e=>eligible(e,context));

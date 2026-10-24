@@ -1,0 +1,222 @@
+<main node-id="doupo-root" bind:class="component.stage" tabindex="-1">
+
+ <!-- ============ 入世 ============ -->
+ <section node-id="creation" class="creation" aria-label="创建角色">
+  <img node-id="creation-image" class="creation-image" asset="wutan-overview" alt="乌坦城街巷总览" />
+  <div node-id="creation-sheet" class="creation-sheet paper">
+   <p node-id="creation-kicker" class="kicker">斗破苍穹 · 众生行</p>
+   <h1 node-id="creation-title">入世</h1>
+   <label node-id="create-name-label" for="doupo-name">姓名</label>
+   <input node-id="create-name" id="doupo-name" bind:value="component.createName" autocomplete="off" placeholder="写下你的名字" />
+   <h2 node-id="background-label" class="field-title">出身</h2>
+   <div node-id="create-bg-events" class="bg-cards"><button node-id="create-bg" each="component.rowsB" item-key="k" bind:class="item.c" bind:data-value="item.v"><strong node-id="create-bg-name" bind:text="item.t" /><span node-id="create-bg-note" bind:text="item.s" /></button></div>
+   <div node-id="create-pairs" class="create-pairs">
+    <div node-id="origin-group"><h2 node-id="origin-label" class="field-title">来处</h2><div node-id="origin-row" class="seg"><button node-id="origin-native" class="seg-btn">本土人</button><button node-id="origin-transmigrator" class="seg-btn">穿越者</button></div></div>
+    <div node-id="sex-group"><h2 node-id="sex-label" class="field-title">性别</h2><div node-id="sex-row" class="seg"><button node-id="sex-female" class="seg-btn">女</button><button node-id="sex-male" class="seg-btn">男</button></div></div>
+   </div>
+   <p node-id="creation-summary" class="creation-summary" bind:text="component.bigNote" />
+   <div node-id="creation-actions" class="creation-actions"><button node-id="create-submit" class="seal big" bind:disabled="component.busy"><span node-id="create-seal-text">入世</span><small node-id="create-seal-note">以此身份开始</small></button></div>
+  </div>
+ </section>
+
+ <!-- ============ 世界 ============ -->
+ <section node-id="playing" class="playing">
+  <div node-id="scene" class="scene" aria-label="当前场所">
+   <div node-id="scene-art" bind:class="component.artClass">
+    <img node-id="scene-background" class="scene-background" bind:media="component.sceneImage" alt="当前地区或场所的手绘景色；人物与去处另见下方列表" />
+    <p node-id="scene-missing" class="scene-missing" bind:text="component.sceneNote" />
+    <div node-id="ground-events" class="ground" aria-label="地面：点击行走"><button node-id="cell" each="component.cells" item-key="k" bind:class="item.c" bind:data-value="item.k" bind:aria-label="item.l" bind:disabled="item.d" tabindex="-1" /></div>
+    <div node-id="piece-events" class="pieces"><button node-id="piece" each="component.pieces" item-key="k" bind:class="item.c" bind:data-value="item.v" bind:disabled="item.d" bind:title="item.s"><img node-id="piece-img" bind:media="item.m" alt="" /><span node-id="piece-name" bind:text="item.t" /><small node-id="piece-note" bind:text="item.x" /></button></div>
+   </div>
+  </div>
+
+  <header node-id="hud" class="hud">
+   <div node-id="plaque" class="plaque">
+    <div node-id="plaque-text"><p node-id="plaque-region" class="plaque-region" bind:text="component.region" /><h1 node-id="plaque-place" bind:text="component.place" /></div>
+    <button node-id="plaque-back" class="plaque-back" bind:text="component.back" />
+   </div>
+   <div node-id="dial" class="dial" title="世界时间只随行动推进">
+    <div node-id="dial-face" class="dial-face"><span node-id="dial-hand" class="dial-hand" style:dialTurn="component.dial" /><span node-id="dial-pin" class="dial-pin" /></div>
+    <div node-id="dial-copy"><strong node-id="dial-time" bind:text="component.clock" /><span node-id="dial-day" bind:text="component.day" /></div>
+    <p node-id="dial-doing" class="dial-doing" bind:text="component.doing" />
+   </div>
+   <button node-id="self-badge" class="self-badge" aria-label="打开己身">
+    <span node-id="self-face" class="self-face"><img node-id="self-face-img" bind:media="component.face" alt="" /></span>
+    <span node-id="self-copy" class="self-copy">
+     <span node-id="self-name" class="self-name" bind:text="component.name" />
+     <span node-id="hp-row" class="vital hp"><span node-id="hp-label">气血</span><span node-id="hp-track" class="track"><span node-id="hp-fill" class="fill" style:hpWidth="component.hpPct" /></span><span node-id="hp-text" class="num" bind:text="component.hpText" /></span>
+     <span node-id="qi-row" class="vital qi"><span node-id="qi-label">斗气</span><span node-id="qi-track" class="track"><span node-id="qi-fill" class="fill" style:qiWidth="component.qiPct" /></span><span node-id="qi-text" class="num" bind:text="component.qiText" /></span>
+    </span>
+    <span node-id="self-purse" class="self-purse" bind:text="component.purse" />
+   </button>
+   <button node-id="menu-open" class="menu-open" aria-label="歇息：存档与设置">歇息</button>
+  </header>
+
+  <nav node-id="rail" class="rail" aria-label="四卷">
+   <button node-id="rail-self" class="tab">己身<small node-id="rail-self-key">C</small></button>
+   <button node-id="rail-people" class="tab">人间<small node-id="rail-people-key">R</small></button>
+   <button node-id="rail-journal" class="tab">江湖录<small node-id="rail-journal-key">J</small></button>
+   <button node-id="rail-atlas" class="tab">山河<small node-id="rail-atlas-key">M</small></button>
+  </nav>
+
+  <section node-id="dock" class="dock">
+   <div node-id="present" class="present">
+    <div node-id="present-head" class="present-head"><h2 node-id="present-title" bind:text="component.presentTitle" /><button node-id="present-switch" bind:text="component.presentSwitch" /></div>
+    <p node-id="present-empty" class="present-empty" bind:text="component.presentEmpty" />
+    <div node-id="dock-events" class="faces"><button node-id="face" each="component.dock" item-key="k" bind:class="item.c" bind:data-value="item.v" bind:disabled="item.d" bind:title="item.s"><span node-id="face-frame" class="face-frame"><img node-id="face-img" bind:media="item.m" alt="" /></span><span node-id="face-name" class="face-name" bind:text="item.t" /><small node-id="face-note" bind:text="item.x" /></button></div>
+    <div node-id="present-pager" class="pager"><button node-id="present-prev" class="pg-prev" bind:disabled="component.busy">‹</button><span node-id="present-page" bind:text="component.presentPage" /><button node-id="present-next" class="pg-next" bind:disabled="component.busy">›</button></div>
+   </div>
+   <div node-id="recent" class="recent" aria-live="polite">
+    <p node-id="recent-meta" class="recent-meta" bind:text="component.recentMeta" />
+    <p node-id="recent-text" class="recent-text" bind:text="component.recentText" />
+    <div node-id="recent-narration" class="recent-narration" bind:prose="component.narration" />
+   </div>
+   <div node-id="act" class="act">
+    <div node-id="act-who" class="act-who"><span node-id="act-who-label">对</span><b node-id="act-target" bind:text="component.target" /><button node-id="draft-retarget" class="retarget">改为当前对象</button></div>
+    <textarea node-id="draft" id="doupo-draft" bind:value="component.draft" rows="2" aria-label="自由行事" placeholder="写下你想说的话或打算做的事" />
+    <button node-id="submit-draft" class="seal" bind:disabled="component.submitDisabled"><span node-id="submit-seal-text">行事</span><small node-id="submit-seal-note">Ctrl+Enter</small></button>
+   </div>
+  </section>
+
+  <aside node-id="status" class="status" aria-live="polite">
+   <span node-id="status-text" class="status-text" bind:text="component.status" />
+   <button node-id="refresh-screen">看看结果</button><button node-id="resolve-pending" class="unresolved-only">核对原提交</button><button node-id="stop-generation" class="busy-only">停止表达</button>
+  </aside>
+
+  <!-- ============ 相处 ============ -->
+  <section node-id="talk" class="layer talk" aria-label="相处">
+   <div node-id="talk-portrait" class="talk-portrait paper">
+    <img node-id="talk-image" bind:media="component.portrait" alt="人物半身像" />
+    <p node-id="talk-fallback" class="talk-fallback" bind:text="component.talkName" />
+    <div node-id="nameplate" class="nameplate"><h2 node-id="talk-name" bind:text="component.talkName" /><p node-id="talk-info" bind:text="component.talkInfo" /></div>
+   </div>
+   <div node-id="talk-page" class="talk-page paper">
+    <header node-id="talk-head" class="page-head"><h3 node-id="talk-where" bind:text="component.talkWhere" /><button node-id="talk-close" class="close">离开 Esc</button></header>
+    <div node-id="talk-log" class="talk-log"><p node-id="talk-line" each="component.log" item-key="k" bind:class="item.c"><b node-id="talk-who" bind:text="item.t" /><span node-id="talk-said" bind:text="item.s" /></p></div>
+    <div node-id="talk-hear-row" class="talk-hear"><button node-id="talk-hear" bind:disabled="component.busy">听对方说完</button></div>
+    <div node-id="talk-opt-events" class="options"><button node-id="talk-opt" each="component.rowsA" item-key="k" bind:class="item.c" bind:data-value="item.v" bind:disabled="item.d" bind:title="item.s"><span node-id="talk-opt-label" bind:text="item.t" /><small node-id="talk-opt-note" bind:text="item.s" /></button></div>
+    <div node-id="talk-teach" class="sub-form teach-form"><label node-id="teach-label" for="doupo-teach">传授</label><select node-id="teach-skill" id="doupo-teach" bind:value="component.teachSkill"><option node-id="teach-basic" value="basic">基础功法</option><option node-id="teach-palm" value="palm">碎石掌</option><option node-id="teach-formula" value="formula">基础丹方</option><option node-id="teach-refining" value="refining">炼药控火</option></select><button node-id="teach-submit" class="seal small" bind:disabled="component.busy"><span node-id="teach-seal">传授</span><small node-id="teach-seal-note">一日</small></button></div>
+    <div node-id="talk-letter" class="sub-form letter-form"><label node-id="letter-label" for="doupo-letter">书信</label><textarea node-id="letter-text" id="doupo-letter" bind:value="component.letter" rows="3" placeholder="写给对方的话……" /><button node-id="letter-submit" class="seal small" bind:disabled="component.busy"><span node-id="letter-seal">寄出</span><small node-id="letter-seal-note">邮资一金</small></button></div>
+    <p node-id="talk-reason" class="talk-reason" bind:text="component.talkReason" />
+    <div node-id="talk-input" class="talk-input"><textarea node-id="talk-draft" bind:value="component.draft" rows="2" aria-label="对此人说" placeholder="说点什么……" /><button node-id="talk-submit" class="seal" bind:disabled="component.submitDisabled"><span node-id="talk-seal-text">说</span><small node-id="talk-seal-note">Ctrl+Enter</small></button></div>
+   </div>
+  </section>
+
+  <!-- ============ 交易 ============ -->
+  <section node-id="trade" class="layer trade paper" aria-label="交易">
+   <header node-id="trade-head" class="page-head"><h2 node-id="trade-title" bind:text="component.tradeTitle" /><label node-id="trade-qty-label" for="doupo-qty">每次</label><input node-id="trade-qty" id="doupo-qty" class="qty" inputmode="numeric" autocomplete="off" bind:value="component.qty" /><span node-id="trade-qty-unit">份</span><button node-id="trade-close" class="close">离开 Esc</button></header>
+   <p node-id="trade-note" class="hint" bind:text="component.tradeNote" />
+   <div node-id="trade-cols" class="trade-cols">
+    <section node-id="trade-shelf"><h3 node-id="shelf-title">货架</h3><div node-id="shelf-events" class="goods"><article node-id="good" each="component.rowsA" item-key="k" bind:class="item.c"><img node-id="good-img" bind:media="item.m" alt="" /><h4 node-id="good-name" bind:text="item.t" /><p node-id="good-meta" bind:text="item.x" /><button node-id="good-act" bind:data-value="item.v" bind:disabled="item.d" bind:text="item.b" /></article></div></section>
+    <section node-id="trade-bag"><h3 node-id="bag-title">行囊</h3><div node-id="bag-events" class="goods"><article node-id="bagitem" each="component.rowsB" item-key="k" bind:class="item.c"><img node-id="bagitem-img" bind:media="item.m" alt="" /><h4 node-id="bagitem-name" bind:text="item.t" /><p node-id="bagitem-meta" bind:text="item.x" /><button node-id="bagitem-act" bind:data-value="item.v" bind:disabled="item.d" bind:text="item.b" /></article></div></section>
+   </div>
+  </section>
+
+  <!-- ============ 卷 ============ -->
+  <section node-id="scroll" class="layer scroll paper" bind:aria-label="component.scrollTitle">
+   <header node-id="scroll-head" class="scroll-head"><h2 node-id="scroll-title" bind:text="component.scrollTitle" /><button node-id="scroll-close" class="close">合上 Esc</button></header>
+   <nav node-id="subtab-events" class="subtabs"><button node-id="subtab" each="component.tabs" item-key="k" bind:class="item.c" bind:data-value="item.v" bind:text="item.t" /></nav>
+   <div node-id="scroll-body" class="scroll-body">
+    <p node-id="scroll-error" class="scroll-error" bind:text="component.scrollError" />
+    <div node-id="guide" class="guide"><p node-id="guide-text" bind:text="component.barText" /><button node-id="guide-skip" bind:disabled="component.busy">收起引导</button></div>
+    <div node-id="big" class="big"><div node-id="big-name" class="big-name"><strong node-id="big-title" bind:text="component.bigTitle" /><span node-id="big-note" bind:text="component.bigNote" /></div><div node-id="big-prog" class="big-prog"><span node-id="big-track" class="track ink"><span node-id="big-fill" class="fill" style:barWidth="component.barPct" /></span><span node-id="big-text" bind:text="component.barText" /></div></div>
+    <div node-id="stat-events" class="stats"><div node-id="stat" each="component.rowsD" item-key="k" bind:class="item.c"><strong node-id="stat-value" bind:text="item.t" /><span node-id="stat-label" bind:text="item.s" /></div></div>
+    <div node-id="chip-events" class="chips loose"><button node-id="chip" each="component.rowsC" item-key="k" bind:class="item.c" bind:data-value="item.v" bind:disabled="item.d" bind:title="item.x"><span node-id="chip-label" bind:text="item.t" /><small node-id="chip-note" bind:text="item.s" /></button></div>
+    <div node-id="filter-row" class="filter-row"><label node-id="quest-filter-label" for="doupo-quest-filter">筛选</label><select node-id="quest-filter" id="doupo-quest-filter" bind:value="component.questFilter"><option node-id="qf-all" value="all">全部已知</option><option node-id="qf-nearby" value="nearby">最后核实在附近</option><option node-id="qf-active" value="active">承接中</option><option node-id="qf-tracked" value="tracked">已追踪</option></select></div>
+    <div node-id="figure" class="figure"><span node-id="fig-head" class="fig head" /><span node-id="fig-torso" class="fig torso" /><span node-id="fig-larm" class="fig larm" /><span node-id="fig-rarm" class="fig rarm" /><span node-id="fig-lleg" class="fig lleg" /><span node-id="fig-rleg" class="fig rleg" /><div node-id="dot-events" class="dots"><button node-id="dot" each="component.rowsB" item-key="k" bind:class="item.c" bind:data-value="item.v" bind:title="item.t" bind:aria-label="item.t" /></div></div>
+    <div node-id="atlas-map" class="atlas-map"><img node-id="atlas-image" bind:media="component.mapImage" alt="地区或大陆的手绘地图；可去之处另见下方列表" /><div node-id="pin-events" class="pins"><button node-id="pin" each="component.rowsB" item-key="k" bind:class="item.c" bind:data-value="item.v" bind:disabled="item.d"><strong node-id="pin-name" bind:text="item.t" /><small node-id="pin-note" bind:text="item.s" /></button></div></div>
+    <div node-id="work" class="work">
+     <div node-id="collection-events" class="collection"><button node-id="col" each="component.rowsB" item-key="k" bind:class="item.c" bind:data-value="item.v" bind:disabled="item.d" bind:title="item.x"><span node-id="col-frame" class="col-frame"><img node-id="col-img" bind:media="item.m" alt="" /></span><span node-id="col-seal" class="src" bind:text="item.p" /><strong node-id="col-name" bind:text="item.t" /><small node-id="col-sub" bind:text="item.s" /><small node-id="col-meta" class="col-meta" bind:text="item.x" /></button></div>
+     <article node-id="detail" class="detail">
+      <span node-id="detail-stamp" class="stamp" bind:text="component.dStamp" />
+      <h3 node-id="detail-title" bind:text="component.dTitle" />
+      <p node-id="detail-meta" class="meta" bind:text="component.dMeta" />
+      <p node-id="detail-text" class="detail-text" bind:text="component.dText" />
+      <div node-id="detail-events" class="options"><button node-id="detail-act" each="component.rowsD" item-key="k" bind:class="item.c" bind:data-value="item.v" bind:disabled="item.d" bind:title="item.s"><span node-id="detail-act-label" bind:text="item.t" /><small node-id="detail-act-note" bind:text="item.s" /></button></div>
+      <div node-id="negotiate" class="sub-form grid neg-form">
+       <label node-id="neg-amount-label" for="doupo-quest-amount">提议报酬（金）</label><input node-id="neg-amount" id="doupo-quest-amount" class="qty" inputmode="numeric" autocomplete="off" bind:value="component.questAmount" />
+       <label node-id="neg-days-label" for="doupo-quest-days">提议期限（天）</label><input node-id="neg-days" id="doupo-quest-days" class="qty" inputmode="numeric" autocomplete="off" bind:value="component.questDays" />
+       <label node-id="neg-alt-label" for="doupo-quest-alt">成果方案</label><select node-id="neg-alt" id="doupo-quest-alt" bind:value="component.questAlternative"><option node-id="neg-alt-empty" value="">沿用提议</option><option node-id="neg-alt-option" each="component.optsA" item-key="k" bind:value="item.v" bind:text="item.t" /></select>
+       <label node-id="neg-helper-label" for="doupo-quest-person">协作 / 委托对象</label><select node-id="neg-helper" id="doupo-quest-person" bind:value="component.questPerson"><option node-id="neg-helper-empty" value="">选择在场人物</option><option node-id="neg-helper-option" each="component.optsB" item-key="k" bind:value="item.v" bind:text="item.t" /></select>
+      </div>
+     </article>
+    </div>
+    <div node-id="plan" class="plan">
+     <h3 node-id="plan-title">安排时日</h3>
+     <div node-id="plan-events" class="chips"><button node-id="plan-chip" each="component.rowsA" item-key="k" bind:class="item.c" bind:data-value="item.v" bind:disabled="item.d"><span node-id="plan-chip-label" bind:text="item.t" /><small node-id="plan-chip-note" bind:text="item.s" /></button></div>
+     <div node-id="plan-days-row" class="plan-days"><label node-id="plan-days-label" for="doupo-days">天数</label><input node-id="plan-days" id="doupo-days" class="qty" inputmode="numeric" autocomplete="off" bind:value="component.days" /></div>
+     <p node-id="plan-warn" class="warn" bind:text="component.planWarn" />
+     <button node-id="plan-submit" class="seal" bind:disabled="component.busy"><span node-id="plan-seal" bind:text="component.planSeal" /><small node-id="plan-note" bind:text="component.planNote" /></button>
+    </div>
+    <div node-id="activity-form" class="sub-form grid act-form">
+     <label node-id="act-amount-label" for="doupo-amount">出价 / 预算（金）；寄售时为数量</label><input node-id="act-amount" id="doupo-amount" class="qty" inputmode="numeric" autocomplete="off" bind:value="component.amount" />
+     <label node-id="act-item-label" for="doupo-act-item">寄售物品</label><select node-id="act-item" id="doupo-act-item" bind:value="component.activityItem"><option node-id="ai-herb" value="herb">常用药草</option><option node-id="ai-medicine" value="medicine">基础疗伤散</option><option node-id="ai-manual" value="manual">基础纳气抄本</option><option node-id="ai-formula" value="formula">疗伤散丹方</option><option node-id="ai-food" value="food">干粮</option><option node-id="ai-redleaf" value="redleaf">赤叶药材</option></select>
+     <label node-id="act-person-label" for="doupo-act-person">代拍委托人</label><select node-id="act-person" id="doupo-act-person" bind:value="component.questPerson"><option node-id="ap-empty" value="">选择在场人物</option><option node-id="ap-option" each="component.optsB" item-key="k" bind:value="item.v" bind:text="item.t" /></select>
+    </div>
+    <div node-id="note-events" class="notes"><article node-id="note" each="component.rowsA" item-key="k" bind:class="item.c"><span node-id="note-seal" class="src" bind:text="item.p" /><h4 node-id="note-title" bind:text="item.t" /><p node-id="note-text" bind:text="item.s" /><small node-id="note-meta" bind:text="item.x" /><button node-id="note-act" bind:data-value="item.v" bind:disabled="item.d" bind:text="item.b" /></article></div>
+    <p node-id="scroll-empty" class="empty" bind:text="component.emptyText" />
+    <div node-id="scroll-pager" class="pager"><button node-id="scroll-prev" class="pg-prev" bind:disabled="component.busy">上一页</button><span node-id="scroll-page" bind:text="component.pageText" /><button node-id="scroll-next" class="pg-next" bind:disabled="component.busy">下一页</button></div>
+   </div>
+  </section>
+
+  <!-- ============ 交锋 ============ -->
+  <section node-id="battle" class="layer battle" aria-label="交锋">
+   <header node-id="battle-head" class="battle-head"><span node-id="battle-head-text" bind:text="component.battleHead" /></header>
+   <div node-id="battle-bar" class="battle-bar">
+    <div node-id="battle-choose" class="battle-choose">
+     <p node-id="battle-line" class="bline" bind:text="component.battleLine" />
+     <div node-id="bact-events" class="bacts"><button node-id="bact" each="component.rowsA" item-key="k" bind:class="item.c" bind:data-value="item.v" bind:disabled="item.d" bind:title="item.s"><strong node-id="bact-name" bind:text="item.t" /><small node-id="bact-note" bind:text="item.x" /></button></div>
+     <div node-id="bline2" class="bselects">
+      <label node-id="blib-label" for="doupo-battle-skill">书架</label><select node-id="battle-skill" id="doupo-battle-skill" bind:value="component.battleSkill"><option node-id="blib-empty" value="">全部已学斗技</option><option node-id="blib-option" each="component.optsA" item-key="k" bind:value="item.v" bind:text="item.t" /></select>
+      <label node-id="ally-label" for="doupo-ally">同伴</label><select node-id="battle-ally" id="doupo-ally" bind:value="component.battleAlly"><option node-id="ally-empty" value="">选择同场同伴</option><option node-id="ally-option" each="component.optsB" item-key="k" bind:value="item.v" bind:text="item.t" /></select><select node-id="battle-order" aria-label="短令" bind:value="component.battleOrder"><option node-id="order-focus" value="focus">牵制所选目标</option><option node-id="order-action" value="action">对所选目标施所选斗技</option><option node-id="order-retreat" value="retreat">沿路撤离</option></select><button node-id="battle-command" bind:disabled="component.busy">传令</button>
+     </div>
+     <div node-id="boffer" class="sub-form offer-form"><label node-id="offer-label" for="doupo-offer">投降随附金币（留空为无条件；对方接受前不扣）</label><input node-id="offer-gold" id="doupo-offer" class="qty" inputmode="numeric" autocomplete="off" bind:value="component.offerGold" /></div>
+     <p node-id="battle-reason" class="breason" bind:text="component.battleReason" />
+     <button node-id="battle-seal" class="seal big" bind:disabled="component.sealDisabled"><span node-id="battle-seal-text">本轮</span><small node-id="battle-seal-note">落印锁定</small></button>
+    </div>
+    <div node-id="battle-locked" class="battle-locked"><p node-id="battle-locked-text" bind:text="component.battleLine" /><button node-id="battle-pause" bind:disabled="component.stopQueued">暂停后续结算</button><button node-id="battle-resume" class="resume">继续结算</button></div>
+    <div node-id="battle-ended" class="battle-ended">
+     <p node-id="battle-result" class="bresult" bind:text="component.dTitle" />
+     <div node-id="remains-events" class="notes"><article node-id="remain" each="component.rowsB" item-key="k" bind:class="item.c"><h4 node-id="remain-title" bind:text="item.t" /><p node-id="remain-text" bind:text="item.s" /><small node-id="remain-meta" bind:text="item.x" /><button node-id="remain-act" bind:data-value="item.v" bind:disabled="item.d" bind:text="item.b" /></article></div>
+     <div node-id="remains-pager" class="pager"><button node-id="remains-prev" class="r-prev">上一页</button><span node-id="remains-page" bind:text="component.pageText" /><button node-id="remains-next" class="r-next">下一页</button><label node-id="loot-qty-label" for="doupo-loot-qty">每次取</label><input node-id="loot-qty" id="doupo-loot-qty" class="qty" inputmode="numeric" autocomplete="off" bind:value="component.qty" /></div>
+     <button node-id="battle-leave" class="seal small"><span node-id="battle-leave-text">离开</span><small node-id="battle-leave-note">回到场景</small></button>
+    </div>
+    <div node-id="blog" class="blog"><p node-id="blog-line" each="component.log" item-key="k" bind:class="item.c" bind:text="item.s" /></div>
+   </div>
+  </section>
+
+  <!-- ============ 光阴流转 ============ -->
+  <section node-id="passage" class="layer passage paper" aria-label="光阴流转">
+   <p node-id="passage-kicker" class="kicker">光阴流转</p>
+   <h2 node-id="passage-title" bind:text="component.bigTitle" />
+   <div node-id="passage-way" class="way"><span node-id="passage-from" bind:text="component.passFrom" /><span node-id="passage-track" class="track ink"><span node-id="passage-fill" class="fill" style:barWidth="component.barPct" /></span><span node-id="passage-to" bind:text="component.passTo" /></div>
+   <p node-id="passage-eta" class="meta" bind:text="component.bigNote" />
+   <p node-id="passage-status" class="passage-status" role="status" bind:text="component.barText" />
+   <div node-id="drop-list" class="drops"><article node-id="drop" each="component.rowsA" item-key="k" bind:class="item.c"><span node-id="drop-seal" class="src" bind:text="item.p" /><small node-id="drop-meta" bind:text="item.x" /><p node-id="drop-text" bind:text="item.s" /></article></div>
+   <footer node-id="passage-actions" class="passage-actions"><button node-id="passage-stop" class="seal" bind:disabled="component.stopQueued"><span node-id="passage-stop-text">停手</span><small node-id="passage-stop-note">已发生的保留</small></button><button node-id="passage-continue" class="ghost p-continue">继续</button><button node-id="passage-hide" class="ghost">回到场景</button></footer>
+  </section>
+
+  <section node-id="death" class="layer death"><h2 node-id="death-title">此身已逝</h2><p node-id="death-copy">打开命册，可以让整个世界回到存档那一刻——人物、家庭与历史一同恢复。</p><button node-id="death-saves" class="seal"><span node-id="death-seal">命册</span><small node-id="death-seal-note">读档</small></button></section>
+
+  <!-- ============ 歇息 ============ -->
+  <section node-id="menu" class="layer menu paper" aria-label="歇息">
+   <header node-id="menu-head" class="scroll-head"><h2 node-id="menu-title">歇息</h2><button node-id="menu-close" class="close">回到世界 Esc</button></header>
+   <h3 node-id="saves-title">命册</h3>
+   <div node-id="save-row" class="sub-form"><label node-id="save-name-label" for="doupo-save-name">为此刻题名</label><input node-id="save-name" id="doupo-save-name" bind:value="component.saveName" placeholder="可留空" /><button node-id="save-now" class="seal small" bind:disabled="component.busy"><span node-id="save-seal">存档</span><small node-id="save-seal-note">整个世界</small></button></div>
+   <p node-id="menu-note" class="meta" bind:text="component.menuNote" />
+   <div node-id="save-events" class="notes"><article node-id="save" each="component.rowsA" item-key="k" bind:class="item.c"><h4 node-id="save-title" bind:text="item.t" /><small node-id="save-meta" bind:text="item.x" /><button node-id="save-act" bind:data-value="item.v" bind:disabled="item.d" bind:text="item.b" /></article></div>
+   <div node-id="save-pager" class="pager"><button node-id="saves-refresh">刷新命册</button><button node-id="saves-more" class="menu-more">更早的存档</button></div>
+   <h3 node-id="settings-title">字号</h3>
+   <div node-id="font-row" class="seg"><button node-id="font-normal" class="seg-btn">标准</button><button node-id="font-large" class="seg-btn">放大</button></div>
+   <h3 node-id="host-title">宿主</h3>
+   <div node-id="host-row" class="options"><button node-id="host-stop">停止表达</button><button node-id="host-refresh">看看结果</button><button node-id="host-reload">重新载入画面</button><button node-id="host-recover">恢复宿主</button><button node-id="host-exit">退出作品</button></div>
+   <p node-id="host-note" class="meta">模型、声音与账户在 Atria 系统设置中。</p>
+  </section>
+
+  <section node-id="confirm" class="confirm paper" role="dialog" aria-labelledby="doupo-confirm-title">
+   <h3 node-id="confirm-title" id="doupo-confirm-title" bind:text="component.cTitle" />
+   <p node-id="confirm-text" bind:text="component.cText" />
+   <div node-id="confirm-actions" class="confirm-actions"><button node-id="confirm-back" class="ghost">再想想</button><button node-id="confirm-accept" class="seal" bind:disabled="component.confirmDisabled"><span node-id="confirm-seal" bind:text="component.cSeal" /><small node-id="confirm-seal-note">此事当真</small></button></div>
+  </section>
+ </section>
+</main>

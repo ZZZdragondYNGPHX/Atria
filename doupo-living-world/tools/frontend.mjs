@@ -5,7 +5,7 @@ import { createRequire } from 'node:module';
 import { createHash } from 'node:crypto';
 import { O } from './schema.mjs';
 import { bridgeSource } from './interfaces.mjs';
-import { PLACES, ROUTES, BACKGROUNDS, ITEMS } from '../source/content/catalog.js';
+import { PLACES, ROUTES, BACKGROUNDS, ITEMS, REGIONS, BINDINGS, WORLD_ATLAS, ATLAS_SECTORS } from '../source/content/catalog.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -54,14 +54,11 @@ export async function frontend({ core, load, files, manifest, contract, logic })
     const bridge = await frontendBindings(load, logic, contract);
     files.set('frontend/bridge.json', Buffer.from(JSON.stringify(bridge)));
     const uiRoot = path.join(root, 'frontend');
-    const modules = await Promise.all(['scene-state.mjs', 'panels-state.mjs', 'controller-state.mjs']
+    const modules = await Promise.all(['state.mjs']
         .map(name => import(pathToFileURL(path.join(uiRoot, name)).href)));
     const state = mergeDeclarations(modules, 'state');
     const dynamicStyles = mergeDeclarations(modules, 'dynamicStyles');
-    const scene = await fs.readFile(path.join(uiRoot, 'Scene.aui'), 'utf8');
-    const panels = await fs.readFile(path.join(uiRoot, 'Panels.aui'), 'utf8');
-    if (scene.split('<!-- PANELS -->').length !== 2) throw new Error('Scene.aui must contain exactly one PANELS insertion point');
-    const template = scene.replace('<!-- PANELS -->', panels);
+    const template = await fs.readFile(path.join(uiRoot, 'Game.aui'), 'utf8');
     const { parseAui } = await load('src/native/frontend/aui-parser.js');
     const nodeRefs = new Set(modules.flatMap(module => module.nodeRefs || []));
     function visit(node, repeated = false) {
@@ -81,15 +78,15 @@ export async function frontend({ core, load, files, manifest, contract, logic })
     for (const name of await fs.readdir(uiRoot)) if (name.endsWith('.js')) files.set('frontend/' + name, await fs.readFile(path.join(uiRoot, name)));
     // Only static, public authoring metadata enters the browser. Never include
     // CAST, individual motives, starting memories, policy or rule records.
-    const catalog = { PLACES, ROUTES, BACKGROUNDS, ITEMS };
+    const catalog = { PLACES, ROUTES, BACKGROUNDS, ITEMS, REGIONS, BINDINGS, WORLD_ATLAS, ATLAS_SECTORS };
     files.set('frontend/catalog.js', Buffer.from(Object.entries(catalog)
         .map(([name, value]) => 'export const ' + name + ' = ' + JSON.stringify(value) + ';').join('\n')));
     const styles = [];
-    for (const name of ['theme.css', 'panels.css']) {
+    for (const name of ['game.css']) {
         files.set('frontend/' + name, await fs.readFile(path.join(uiRoot, name)));
         styles.push({ id: name.slice(0, -4), source: name });
     }
-    // The native graph limits each resource to 2 MiB. Encode a delivery copy
+    // Encode a delivery copy within the selected core's media budget,
     // using the core's installed Apache-2.0 jsquash codecs, preserving pixels'
     // dimensions and leaving all original design-reference files untouched.
     const require = createRequire(path.join(core, 'package.json'));
@@ -101,6 +98,8 @@ export async function frontend({ core, load, files, manifest, contract, logic })
     await png.init(await fs.readFile(require.resolve('@jsquash/png/codec/pkg/squoosh_png_bg.wasm')));
     await webpDecode.init({ wasmBinary: await fs.readFile(require.resolve('@jsquash/webp/codec/dec/webp_dec.wasm')) });
     await webpEncode.init({ wasmBinary: await fs.readFile(require.resolve('@jsquash/webp/codec/enc/' + (await simd() ? 'webp_enc_simd.wasm' : 'webp_enc.wasm'))) });
+    const { FRONTEND_LIMITS } = await load('public/shared/native-frontend-contract.js');
+    const quality = 90;
     const assets = [], delivery = [], sources = new Map();
     for (const folder of ['frontend/assets']) {
         for (const name of (await fs.readdir(path.join(root, folder))).sort()) {
@@ -116,6 +115,15 @@ export async function frontend({ core, load, files, manifest, contract, logic })
             sources.set(id, { name, path: folder + '/' + name, original, sha256 });
         }
     }
+    const atlasMedia = JSON.parse(await fs.readFile(path.join(uiRoot, 'assets/atlas-sources.json'), 'utf8'));
+    for (const asset of atlasMedia.assets) {
+        const source = sources.get(asset.id);
+        if (!source || source.path !== asset.file || source.sha256 !== asset.sha256) throw new Error('Atlas media provenance mismatch: ' + asset.id);
+    }
+    for (const place of PLACES) if (!sources.has(place.scene)) throw new Error('Missing place artwork: ' + place.id);
+    for (const region of REGIONS) if (!sources.has(region.overview)) throw new Error('Missing region overview: ' + region.id);
+    if (!sources.has('map-douqi-world')) throw new Error('Missing world atlas artwork');
+    files.set('integration/atlas-media.json', Buffer.from(JSON.stringify(atlasMedia)));
     for (const asset of manifest.assets.filter(a => a.logicalName.startsWith('media/pools/'))) {
         const original = await fs.readFile(path.join(root, asset.logicalName));
         sources.set(asset.assetId, {name: asset.logicalName, path: asset.logicalName, original, sha256: asset.contentHash});
@@ -126,20 +134,20 @@ export async function frontend({ core, load, files, manifest, contract, logic })
         // Optional author-only cache lives outside the package. Its key includes
         // source bytes and encoding settings; corrupt entries are regenerated.
         const cache = process.env.ATRIA_MEDIA_CACHE;
-        const cachePath = cache && path.join(cache, asset.sha256 + '-q90-m6.webp');
+        const cachePath = cache && path.join(cache, asset.sha256 + '-q' + quality + '-m6.webp');
         let bytes;
         if (cachePath) {
             try { bytes = await fs.readFile(cachePath); await webpDecode.default(bytes); }
             catch (error) { if (error.code && error.code !== 'ENOENT') throw error; bytes = null; }
         }
         if (!bytes) {
-            bytes = Buffer.from(await webpEncode.default(bitmap, { quality: 90, method: 6 }));
+            bytes = Buffer.from(await webpEncode.default(bitmap, { quality, method: 6 }));
             if (cachePath) { await fs.mkdir(cache, {recursive:true}); await fs.writeFile(cachePath,bytes); }
         }
-        if (bytes.length > 2 * 1024 * 1024) throw new Error('Delivery image exceeds native per-resource budget: ' + name);
+        if (bytes.length > FRONTEND_LIMITS.assetBytes) throw new Error('Delivery image exceeds native per-resource budget: ' + name);
         files.set('frontend/' + source, bytes);
         assets.push({ id, source, mediaType: 'image/webp' });
-        delivery.push({ id, original: asset.path, originalSha256: asset.sha256, width: bitmap.width, height: bitmap.height, originalBytes: original.length, deliveryBytes: bytes.length, quality: 90 });
+        delivery.push({ id, original: asset.path, originalSha256: asset.sha256, width: bitmap.width, height: bitmap.height, originalBytes: original.length, deliveryBytes: bytes.length, quality });
     }
     files.set('frontend/media-delivery.json', Buffer.from(JSON.stringify(delivery)));
     const index = { format: 'atria-frontend-source', version: 3, primaryView: 'main', bridge: 'bridge.json',

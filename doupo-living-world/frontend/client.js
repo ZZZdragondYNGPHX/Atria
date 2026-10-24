@@ -1,6 +1,6 @@
 // Only the native, component-scoped Bridge is available here. These helpers
 // never retry/rebase writes and never turn an Action receipt into world state.
-export const put = (c, key, value) => c.set('component.' + key, value);
+export const put = (c, key, value) => c.set('component.' + (/^(quest|activity|battle)[A-Z]/.test(key)?'questUi.':'') + key, value);
 
 export function ok(receipt) {
     if (!receipt?.ok) {

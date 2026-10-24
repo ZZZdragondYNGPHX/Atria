@@ -1,0 +1,437 @@
+{
+  "version": 1,
+  "assets": [
+    {
+      "id": "scene-wutan-workshop",
+      "kind": "scene",
+      "file": "frontend/assets/scene-wutan-workshop.webp",
+      "sha256": "bb612a628d1366889b6183d0f7b5b50c38fbe9a98908bc7d1020c0bdc9bd5952",
+      "width": 1672,
+      "height": 941,
+      "prompt": "Use case: stylized-concept. One landscape 16:9 game location background. Image 1 is STYLE AND CAMERA REFERENCE only; draw a DIFFERENT location specified below, do not copy the medicine shop. Refined Chinese painterly realism, detailed timber/stone/textile materials, muted warm mineral colors, subtle ink contour and sunlit atmospheric gouache, matching existing game. Elevated three-quarter TOP-DOWN playable scene with broad uncluttered walkable center and props at perimeter. Subject: Wutan city repair workshop courtyard: slate floor, wooden repair benches and tools on the outer edges, small forge at back, bamboo baskets, muted russet and indigo cloth awning, no weapons being used. Entire environment edge-to-edge, no people, no characters, no written signs, no text, no UI/grid/markers/borders/watermark. No photorealistic lens blur or 3D game render.",
+      "generator": "image_gen",
+      "sourceSha256": "da5f21a0a6ec9aa27ac7b0f58ebc36e4a3162a1ece4c006d30044f6346aa430d",
+      "reference": "frontend/assets/scene-wutan-herbal.webp",
+      "referenceSha256": "4fff7cc29b8e13c445881ff76f193dfc0b4734dd017ac00d1bcf4e4d64f5db1b",
+      "qa": {
+        "reviewed": true,
+        "losslessRgbaVerified": true,
+        "opaque": true
+      }
+    },
+    {
+      "id": "scene-wutan-teahouse",
+      "kind": "scene",
+      "file": "frontend/assets/scene-wutan-teahouse.webp",
+      "sha256": "37fea9582ff60eb0090010d8085fffe39c8e07ae5aa5025e01ac5c06943a766d",
+      "width": 1672,
+      "height": 941,
+      "prompt": "Use case: stylized-concept. One landscape 16:9 game location background. Image 1 is STYLE AND CAMERA REFERENCE only; draw a DIFFERENT location specified below, do not copy the medicine shop. Refined Chinese painterly realism, detailed timber/stone/textile materials, muted warm mineral colors, subtle ink contour and sunlit atmospheric gouache, matching existing game. Elevated three-quarter TOP-DOWN playable scene with broad uncluttered walkable center and props at perimeter. Subject: Wutan city tea house: open timber veranda, small tea tables around outer edge, copper kettle, bamboo screens, a view of a calm old street, sunbeams across empty stone floor. Entire environment edge-to-edge, no people, no characters, no written signs, no text, no UI/grid/markers/borders/watermark. No photorealistic lens blur or 3D game render.",
+      "generator": "image_gen",
+      "sourceSha256": "79f37cfd1677903de397cbaea950ecafbc6cd54cc1de71b23f5ca857429656fa",
+      "reference": "frontend/assets/scene-wutan-herbal.webp",
+      "referenceSha256": "4fff7cc29b8e13c445881ff76f193dfc0b4734dd017ac00d1bcf4e4d64f5db1b",
+      "qa": {
+        "reviewed": true,
+        "losslessRgbaVerified": true,
+        "opaque": true
+      }
+    },
+    {
+      "id": "scene-wutan-depot",
+      "kind": "scene",
+      "file": "frontend/assets/scene-wutan-depot.webp",
+      "sha256": "d90c99054028e0a0cf4f4c5625c7230586075c19469b3bf85ab8ad30f3edf112",
+      "width": 1672,
+      "height": 941,
+      "prompt": "Use case: stylized-concept. One landscape 16:9 game location background. Image 1 is STYLE AND CAMERA REFERENCE only; draw a DIFFERENT location specified below, do not copy the medicine shop. Refined Chinese painterly realism, detailed timber/stone/textile materials, muted warm mineral colors, subtle ink contour and sunlit atmospheric gouache, matching existing game. Elevated three-quarter TOP-DOWN playable scene with broad uncluttered walkable center and props at perimeter. Subject: Wutan city caravan depot: sheltered stable yard, timber wagons parked along far edge, tied burlap sacks, wooden crane beam, large wall gate on left, no animals or people. Entire environment edge-to-edge, no people, no characters, no written signs, no text, no UI/grid/markers/borders/watermark. No photorealistic lens blur or 3D game render.",
+      "generator": "image_gen",
+      "sourceSha256": "53fae8610332a035749c34e3bc1e91902e3bdfe89d872af46dd574ccdc758cf0",
+      "reference": "frontend/assets/scene-wutan-herbal.webp",
+      "referenceSha256": "4fff7cc29b8e13c445881ff76f193dfc0b4734dd017ac00d1bcf4e4d64f5db1b",
+      "qa": {
+        "reviewed": true,
+        "losslessRgbaVerified": true,
+        "opaque": true
+      }
+    },
+    {
+      "id": "scene-qingshan-wanyao",
+      "kind": "scene",
+      "file": "frontend/assets/scene-qingshan-wanyao.webp",
+      "sha256": "4e58074fc0cd6ebc10748403fb6c78798a6dbf04542257891468d6e18d6b9e38",
+      "width": 1672,
+      "height": 941,
+      "prompt": "Use case: stylized-concept. One landscape 16:9 game location background. Image 1 is STYLE AND CAMERA REFERENCE only; draw a DIFFERENT location specified below, do not copy the medicine shop. Refined Chinese painterly realism, detailed timber/stone/textile materials, muted warm mineral colors, subtle ink contour and sunlit atmospheric gouache, matching existing game. Elevated three-quarter TOP-DOWN playable scene with broad uncluttered walkable center and props at perimeter. Subject: Qingshan Wanyao clinic and apothecary: humble timber medicine hall with herb drying racks, small linen treatment couch behind a folding screen, mortar and medicine cabinet at back, open flagstone foreground. Entire environment edge-to-edge, no people, no characters, no written signs, no text, no UI/grid/markers/borders/watermark. No photorealistic lens blur or 3D game render.",
+      "generator": "image_gen",
+      "sourceSha256": "563b8e9def379f7bd7669946cfba049d316702f276f67f097a7cb5e7aca92f90",
+      "reference": "frontend/assets/scene-wutan-herbal.webp",
+      "referenceSha256": "4fff7cc29b8e13c445881ff76f193dfc0b4734dd017ac00d1bcf4e4d64f5db1b",
+      "qa": {
+        "reviewed": true,
+        "losslessRgbaVerified": true,
+        "opaque": true
+      }
+    },
+    {
+      "id": "scene-qingshan-smithy",
+      "kind": "scene",
+      "file": "frontend/assets/scene-qingshan-smithy.webp",
+      "sha256": "36b7cb2e80d31835ac22220eff01c7d9545a7566660940b0176fa50ea04b09d4",
+      "width": 1672,
+      "height": 940,
+      "prompt": "Use case: stylized-concept. One landscape 16:9 game location background. Image 1 is STYLE AND CAMERA REFERENCE only; draw a DIFFERENT location specified below, do not copy the medicine shop. Refined Chinese painterly realism, detailed timber/stone/textile materials, muted warm mineral colors, subtle ink contour and sunlit atmospheric gouache, matching existing game. Elevated three-quarter TOP-DOWN playable scene with broad uncluttered walkable center and props at perimeter. Subject: Qingshan foothill smithy: rugged small stone forge, charcoal baskets, anvil and repair bench along upper right, timber roof, tools on peg wall, central empty dirt and flagstone work yard. Entire environment edge-to-edge, no people, no characters, no written signs, no text, no UI/grid/markers/borders/watermark. No photorealistic lens blur or 3D game render.",
+      "generator": "image_gen",
+      "sourceSha256": "f74e01ed748114d49b7ac5e82e83486c1666f1460b73c530f9c4fe5b5b2d8456",
+      "reference": "frontend/assets/scene-wutan-herbal.webp",
+      "referenceSha256": "4fff7cc29b8e13c445881ff76f193dfc0b4734dd017ac00d1bcf4e4d64f5db1b",
+      "qa": {
+        "reviewed": true,
+        "losslessRgbaVerified": true,
+        "opaque": true
+      }
+    },
+    {
+      "id": "scene-qingshan-trail",
+      "kind": "scene",
+      "file": "frontend/assets/scene-qingshan-trail.webp",
+      "sha256": "b1760c2bf65f7cc30a9274403f53556fcf972c888fee9d79df62f16cbdb463f7",
+      "width": 1672,
+      "height": 941,
+      "prompt": "Use case: stylized-concept. One landscape 16:9 game location background. Image 1 is STYLE AND CAMERA REFERENCE only; draw a DIFFERENT location specified below, do not copy the medicine shop. Refined Chinese painterly realism, detailed timber/stone/textile materials, muted warm mineral colors, subtle ink contour and sunlit atmospheric gouache, matching existing game. Elevated three-quarter TOP-DOWN playable scene with broad uncluttered walkable center and props at perimeter. Subject: Qingshan mountain trailhead: worn dirt path broad in foreground, forest edge, small unlettered wooden waymarkers, rope rail, mossy stone steps beyond, green foothills and filtered sunlight. Entire environment edge-to-edge, no people, no characters, no written signs, no text, no UI/grid/markers/borders/watermark. No photorealistic lens blur or 3D game render.",
+      "generator": "image_gen",
+      "sourceSha256": "72c467a62cbddda3cd3bdd249524a87bd3dbd846f055e7a4d9c0bd3f9c797c56",
+      "reference": "frontend/assets/scene-wutan-herbal.webp",
+      "referenceSha256": "4fff7cc29b8e13c445881ff76f193dfc0b4734dd017ac00d1bcf4e4d64f5db1b",
+      "qa": {
+        "reviewed": true,
+        "losslessRgbaVerified": true,
+        "opaque": true
+      }
+    },
+    {
+      "id": "scene-blackrock-gate",
+      "kind": "scene",
+      "file": "frontend/assets/scene-blackrock-gate.webp",
+      "sha256": "4dec2e1b1bf6709e3b4f97acfa6e00d8a7b91bd6c65e14b389f0bdd6a00e3eb9",
+      "width": 1672,
+      "height": 941,
+      "prompt": "Use case: stylized-concept. One landscape 16:9 Chinese cultivation RPG location background. Reference image is STYLE/CAMERA only, create specified new architecture. Refined handpainted realism, visible gouache stone/wood texture, muted mineral color, warm lantern accents and soft daylight. Elevated three-quarter TOP-DOWN view with large open walkable center, scenery props around perimeter. Subject: Black Rock City main gate: monumental dark basalt wall with traditional Chinese gatehouse, ochre lanterns, merchants' waiting stone forecourt without people, distant slate roofs, weathered volcanic rock. Entire environment edge-to-edge. No people/characters/animals, no text/sign lettering/UI/grid/borders/watermark, no flashy magic effects. High craft matching reference, not photorealistic or 3D.",
+      "generator": "image_gen",
+      "sourceSha256": "ea6d8a580c6d913c0ba5c0972e472cb1dbdd160ac9b72dde35703040cf96620b",
+      "reference": "frontend/assets/scene-wutan-herbal.webp",
+      "referenceSha256": "4fff7cc29b8e13c445881ff76f193dfc0b4734dd017ac00d1bcf4e4d64f5db1b",
+      "qa": {
+        "reviewed": true,
+        "losslessRgbaVerified": true,
+        "opaque": true
+      }
+    },
+    {
+      "id": "scene-blackrock-inn",
+      "kind": "scene",
+      "file": "frontend/assets/scene-blackrock-inn.webp",
+      "sha256": "2f0569b67e7327453a589aac0cd8d37e0f5d8b35214eff71e24059da51568af8",
+      "width": 1672,
+      "height": 941,
+      "prompt": "Use case: stylized-concept. One landscape 16:9 Chinese cultivation RPG location background. Reference image is STYLE/CAMERA only, create specified new architecture. Refined handpainted realism, visible gouache stone/wood texture, muted mineral color, warm lantern accents and soft daylight. Elevated three-quarter TOP-DOWN view with large open walkable center, scenery props around perimeter. Subject: Black Rock City inn courtyard: dark stone paving, elegant dark timber balconies, cool slate walls, warm lanterns, covered resting benches, potted pine, empty center. Entire environment edge-to-edge. No people/characters/animals, no text/sign lettering/UI/grid/borders/watermark, no flashy magic effects. High craft matching reference, not photorealistic or 3D.",
+      "generator": "image_gen",
+      "sourceSha256": "10274281a4a0d2cad444be96fba9353348bbec874d19875c9b37e3544c5d5cb8",
+      "reference": "frontend/assets/scene-wutan-herbal.webp",
+      "referenceSha256": "4fff7cc29b8e13c445881ff76f193dfc0b4734dd017ac00d1bcf4e4d64f5db1b",
+      "qa": {
+        "reviewed": true,
+        "losslessRgbaVerified": true,
+        "opaque": true
+      }
+    },
+    {
+      "id": "scene-blackrock-guild",
+      "kind": "scene",
+      "file": "frontend/assets/scene-blackrock-guild.webp",
+      "sha256": "98bd0e388dbf7c1383248ece098f62b765e3aa0bcc22a8b2042dbe8513defb97",
+      "width": 1672,
+      "height": 941,
+      "prompt": "Use case: stylized-concept. One landscape 16:9 Chinese cultivation RPG location background. Reference image is STYLE/CAMERA only, create specified new architecture. Refined handpainted realism, visible gouache stone/wood texture, muted mineral color, warm lantern accents and soft daylight. Elevated three-quarter TOP-DOWN view with large open walkable center, scenery props around perimeter. Subject: Black Rock alchemist guild reception court: elegant charcoal basalt and dark wood Chinese hall, restrained bronze brazier, polished medicine cabinets on edges, raised back desk, empty open stone center. No magical floating objects. Entire environment edge-to-edge. No people/characters/animals, no text/sign lettering/UI/grid/borders/watermark, no flashy magic effects. High craft matching reference, not photorealistic or 3D.",
+      "generator": "image_gen",
+      "sourceSha256": "40e7ce3b8c7e4b4dd0c48176a9d227417314fff00f1aa21628d1479f0f85330d",
+      "reference": "frontend/assets/scene-wutan-herbal.webp",
+      "referenceSha256": "4fff7cc29b8e13c445881ff76f193dfc0b4734dd017ac00d1bcf4e4d64f5db1b",
+      "qa": {
+        "reviewed": true,
+        "losslessRgbaVerified": true,
+        "opaque": true
+      }
+    },
+    {
+      "id": "scene-blackrock-herbal",
+      "kind": "scene",
+      "file": "frontend/assets/scene-blackrock-herbal.webp",
+      "sha256": "0c0ca1bdf2fe330322f90c7801fe671c159709a2a03859a859cd60b21d7d5037",
+      "width": 1672,
+      "height": 940,
+      "prompt": "Use case: stylized-concept. One landscape 16:9 Chinese cultivation RPG location background. Reference image is STYLE/CAMERA only, create specified new architecture. Refined handpainted realism, visible gouache stone/wood texture, muted mineral color, warm lantern accents and soft daylight. Elevated three-quarter TOP-DOWN view with large open walkable center, scenery props around perimeter. Subject: Black Rock medicinal supply street shop: black stone shopfront, orderly drawers, covered baskets of roots and leaves along edge, mineral green ceramic jars, awning, empty central paving. Entire environment edge-to-edge. No people/characters/animals, no text/sign lettering/UI/grid/borders/watermark, no flashy magic effects. High craft matching reference, not photorealistic or 3D.",
+      "generator": "image_gen",
+      "sourceSha256": "d34e21023f63ffd3c518061190bd99de5527e5a4565fd9e5057524db5e04d45d",
+      "reference": "frontend/assets/scene-wutan-herbal.webp",
+      "referenceSha256": "4fff7cc29b8e13c445881ff76f193dfc0b4734dd017ac00d1bcf4e4d64f5db1b",
+      "qa": {
+        "reviewed": true,
+        "losslessRgbaVerified": true,
+        "opaque": true
+      }
+    },
+    {
+      "id": "scene-blackrock-forge",
+      "kind": "scene",
+      "file": "frontend/assets/scene-blackrock-forge.webp",
+      "sha256": "2de7470008e6f890acd65f6410117954efc63c3d9977750e23c689f0b2ca3749",
+      "width": 1672,
+      "height": 941,
+      "prompt": "Use case: stylized-concept. One landscape 16:9 Chinese cultivation RPG location background. Reference image is STYLE/CAMERA only, create specified new architecture. Refined handpainted realism, visible gouache stone/wood texture, muted mineral color, warm lantern accents and soft daylight. Elevated three-quarter TOP-DOWN view with large open walkable center, scenery props around perimeter. Subject: Black Rock repair street forge: charcoal stone alcoves, smith tools and cold armor parts along edges, sturdy basalt workbench, ember glow small and controlled in back, open square paving. Entire environment edge-to-edge. No people/characters/animals, no text/sign lettering/UI/grid/borders/watermark, no flashy magic effects. High craft matching reference, not photorealistic or 3D.",
+      "generator": "image_gen",
+      "sourceSha256": "cae984afe843c66f3657d56384aead92d48a25adc6ba491521af0f3311d8944f",
+      "reference": "frontend/assets/scene-wutan-herbal.webp",
+      "referenceSha256": "4fff7cc29b8e13c445881ff76f193dfc0b4734dd017ac00d1bcf4e4d64f5db1b",
+      "qa": {
+        "reviewed": true,
+        "losslessRgbaVerified": true,
+        "opaque": true
+      }
+    },
+    {
+      "id": "scene-blackrock-airfield",
+      "kind": "scene",
+      "file": "frontend/assets/scene-blackrock-airfield.webp",
+      "sha256": "b9dc9b7a05c817c1a1d06abc94f78e17eb51499ecec7c0f8aea9a4b0afd6e195",
+      "width": 1672,
+      "height": 941,
+      "prompt": "Use case: stylized-concept. One landscape 16:9 Chinese cultivation RPG location background. Reference image is STYLE/CAMERA only, create specified new architecture. Refined handpainted realism, visible gouache stone/wood texture, muted mineral color, warm lantern accents and soft daylight. Elevated three-quarter TOP-DOWN view with large open walkable center, scenery props around perimeter. Subject: Black Rock flying transport waiting grounds: elevated cliffside landing terrace with traditional timber pavilion, secured cargo crates at sides, empty enormous landing platform, mountains in mist. No flying creatures or vehicles, no implied active transport. Entire environment edge-to-edge. No people/characters/animals, no text/sign lettering/UI/grid/borders/watermark, no flashy magic effects. High craft matching reference, not photorealistic or 3D.",
+      "generator": "image_gen",
+      "sourceSha256": "47809e3c02414dc83e35e98e0a1d81094ce4e3d534ffa244c4cee53c47b38b00",
+      "reference": "frontend/assets/scene-wutan-herbal.webp",
+      "referenceSha256": "4fff7cc29b8e13c445881ff76f193dfc0b4734dd017ac00d1bcf4e4d64f5db1b",
+      "qa": {
+        "reviewed": true,
+        "losslessRgbaVerified": true,
+        "opaque": true
+      }
+    },
+    {
+      "id": "scene-shimo-gate",
+      "kind": "scene",
+      "file": "frontend/assets/scene-shimo-gate.webp",
+      "sha256": "10cc37b7640ad9a53c2805d5a22b3600e3ff4873956268bda2b3e0206b04dbd1",
+      "width": 1672,
+      "height": 941,
+      "prompt": "Use case: stylized-concept. One landscape 16:9 Chinese cultivation RPG location background. Reference is painterly STYLE and elevated CAMERA only. Create a different DESERT location with pale sandstone and earthen walls, arid warm light, not the reference's autumn trees and lush plants. Refined Chinese handpainted realism, visible gouache wood/stone/textile textures, muted ochre, sand and sage colors. Elevated three-quarter TOP-DOWN playable scene, large uncluttered central ground and useful props around edges. Subject: Shimo desert city gate forecourt: pale sandstone wall and Chinese timber gatehouse adapted to arid climate, windswept golden sand, cloth shade, water jars and freight bundles at edges, clear open foreground. Edge-to-edge environment, no people/characters/animals, no text/signs/letters, no UI/grid/borders/watermark. No magic effects, not 3D or photorealistic.",
+      "generator": "image_gen",
+      "sourceSha256": "1c7e2e64b80386e6fa394e8b55d7b41ce5c03ca78abafdcab444be00ca060703",
+      "reference": "frontend/assets/scene-wutan-herbal.webp",
+      "referenceSha256": "4fff7cc29b8e13c445881ff76f193dfc0b4734dd017ac00d1bcf4e4d64f5db1b",
+      "qa": {
+        "reviewed": true,
+        "losslessRgbaVerified": true,
+        "opaque": true
+      }
+    },
+    {
+      "id": "scene-shimo-inn",
+      "kind": "scene",
+      "file": "frontend/assets/scene-shimo-inn.webp",
+      "sha256": "aa5c9072509dfddde5f7619562a7cbf9d0bd3f518fd229d92887bfc67d49a45e",
+      "width": 1672,
+      "height": 941,
+      "prompt": "Use case: stylized-concept. One landscape 16:9 Chinese cultivation RPG location background. Reference is painterly STYLE and elevated CAMERA only. Create a different DESERT location with pale sandstone and earthen walls, arid warm light, not the reference's autumn trees and lush plants. Refined Chinese handpainted realism, visible gouache wood/stone/textile textures, muted ochre, sand and sage colors. Elevated three-quarter TOP-DOWN playable scene, large uncluttered central ground and useful props around edges. Subject: Shimo desert caravan inn courtyard: sun-bleached earthen walls, dark timber balcony, ochre linen canopy, water cistern and resting benches along edges, warm reflected sunlight, empty sandy flagstone center. Edge-to-edge environment, no people/characters/animals, no text/signs/letters, no UI/grid/borders/watermark. No magic effects, not 3D or photorealistic.",
+      "generator": "image_gen",
+      "sourceSha256": "089f00fae412cc8431e6481b54a2c8e36b4cd8d59e63364d37d421a1807301cb",
+      "reference": "frontend/assets/scene-wutan-herbal.webp",
+      "referenceSha256": "4fff7cc29b8e13c445881ff76f193dfc0b4734dd017ac00d1bcf4e4d64f5db1b",
+      "qa": {
+        "reviewed": true,
+        "losslessRgbaVerified": true,
+        "opaque": true
+      }
+    },
+    {
+      "id": "scene-shimo-market",
+      "kind": "scene",
+      "file": "frontend/assets/scene-shimo-market.webp",
+      "sha256": "0e6a7af0c2845a881af7af1e14ebe6a0d1c276e14919943bc45c65ff240c830d",
+      "width": 1672,
+      "height": 941,
+      "prompt": "Use case: stylized-concept. One landscape 16:9 Chinese cultivation RPG location background. Reference is painterly STYLE and elevated CAMERA only. Create a different DESERT location with pale sandstone and earthen walls, arid warm light, not the reference's autumn trees and lush plants. Refined Chinese handpainted realism, visible gouache wood/stone/textile textures, muted ochre, sand and sage colors. Elevated three-quarter TOP-DOWN playable scene, large uncluttered central ground and useful props around edges. Subject: Shimo desert market: sandstone street court, faded sage and rust fabric stalls around perimeter, sacks of grain and bundles of medicinal herbs, ceramic water urns, empty central space, no people. Edge-to-edge environment, no people/characters/animals, no text/signs/letters, no UI/grid/borders/watermark. No magic effects, not 3D or photorealistic.",
+      "generator": "image_gen",
+      "sourceSha256": "63cacd8e7785c1a746704361100bca12bd52969b638f354eda4beb3dbdec2cce",
+      "reference": "frontend/assets/scene-wutan-herbal.webp",
+      "referenceSha256": "4fff7cc29b8e13c445881ff76f193dfc0b4734dd017ac00d1bcf4e4d64f5db1b",
+      "qa": {
+        "reviewed": true,
+        "losslessRgbaVerified": true,
+        "opaque": true
+      }
+    },
+    {
+      "id": "scene-shimo-motie",
+      "kind": "scene",
+      "file": "frontend/assets/scene-shimo-motie.webp",
+      "sha256": "2d91ae8fa64c301b6ef4021276132735affa5c84a0c5d963ef55f867bbd08d57",
+      "width": 1672,
+      "height": 941,
+      "prompt": "Use case: stylized-concept. One landscape 16:9 Chinese cultivation RPG location background. Reference is painterly STYLE and elevated CAMERA only. Create a different DESERT location with pale sandstone and earthen walls, arid warm light, not the reference's autumn trees and lush plants. Refined Chinese handpainted realism, visible gouache wood/stone/textile textures, muted ochre, sand and sage colors. Elevated three-quarter TOP-DOWN playable scene, large uncluttered central ground and useful props around edges. Subject: Desert Iron mercenary company front courtyard in Shimo: practical sandstone compound, dark timber hall, training posts, travel packs and spear racks along edges, muted iron-grey pennants with NO symbols or text, open exercise yard. Edge-to-edge environment, no people/characters/animals, no text/signs/letters, no UI/grid/borders/watermark. No magic effects, not 3D or photorealistic.",
+      "generator": "image_gen",
+      "sourceSha256": "d837b3c80554b5d12aff90eab526ba032e9a2c0baf89bbe1090cecd129e94c1b",
+      "reference": "frontend/assets/scene-wutan-herbal.webp",
+      "referenceSha256": "4fff7cc29b8e13c445881ff76f193dfc0b4734dd017ac00d1bcf4e4d64f5db1b",
+      "qa": {
+        "reviewed": true,
+        "losslessRgbaVerified": true,
+        "opaque": true
+      }
+    },
+    {
+      "id": "scene-shimo-clinic",
+      "kind": "scene",
+      "file": "frontend/assets/scene-shimo-clinic.webp",
+      "sha256": "bd41be691067aea0e697596a64777d848ca796841611ea696d247c5ad4941384",
+      "width": 1672,
+      "height": 941,
+      "prompt": "Use case: stylized-concept. One landscape 16:9 Chinese cultivation RPG location background. Reference is painterly STYLE and elevated CAMERA only. Create a different DESERT location with pale sandstone and earthen walls, arid warm light, not the reference's autumn trees and lush plants. Refined Chinese handpainted realism, visible gouache wood/stone/textile textures, muted ochre, sand and sage colors. Elevated three-quarter TOP-DOWN playable scene, large uncluttered central ground and useful props around edges. Subject: Shimo desert travel clinic: cool shaded earthen interior opening to courtyard, linen medical cot along side, herbs drying under awning, clay jars, clean woven bandages on wooden desk, generous empty stone floor. Edge-to-edge environment, no people/characters/animals, no text/signs/letters, no UI/grid/borders/watermark. No magic effects, not 3D or photorealistic.",
+      "generator": "image_gen",
+      "sourceSha256": "040edaefe9eacfd85751f88e8aef49b7bf803b6ccef46ec507b3c294dada0674",
+      "reference": "frontend/assets/scene-wutan-herbal.webp",
+      "referenceSha256": "4fff7cc29b8e13c445881ff76f193dfc0b4734dd017ac00d1bcf4e4d64f5db1b",
+      "qa": {
+        "reviewed": true,
+        "losslessRgbaVerified": true,
+        "opaque": true
+      }
+    },
+    {
+      "id": "scene-tager-pass",
+      "kind": "scene",
+      "file": "frontend/assets/scene-tager-pass.webp",
+      "sha256": "e7b3e17819376280bee79465050f46b7ae642a2b63788232556509a1b7cf9f1b",
+      "width": 1672,
+      "height": 941,
+      "prompt": "Use case: stylized-concept. One landscape 16:9 Chinese cultivation RPG location background. Reference is painterly STYLE and elevated CAMERA only. Create a different DESERT location with pale sandstone and earthen walls, arid warm light, not the reference's autumn trees and lush plants. Refined Chinese handpainted realism, visible gouache wood/stone/textile textures, muted ochre, sand and sage colors. Elevated three-quarter TOP-DOWN playable scene, large uncluttered central ground and useful props around edges. Subject: Tagore Desert outer trade-road rest slope: wind-sculpted sandstone rocks offer shelter, broad sandy track curves through center, a plain unlettered wooden marker on edge, sparse dry grasses and amber late afternoon light. Edge-to-edge environment, no people/characters/animals, no text/signs/letters, no UI/grid/borders/watermark. No magic effects, not 3D or photorealistic.",
+      "generator": "image_gen",
+      "sourceSha256": "358b1ca6e3bf98c372f03db6110f31c78bebd88556cd204904b7e175b581545d",
+      "reference": "frontend/assets/scene-wutan-herbal.webp",
+      "referenceSha256": "4fff7cc29b8e13c445881ff76f193dfc0b4734dd017ac00d1bcf4e4d64f5db1b",
+      "qa": {
+        "reviewed": true,
+        "losslessRgbaVerified": true,
+        "opaque": true
+      }
+    },
+    {
+      "id": "scene-tager-oasis",
+      "kind": "scene",
+      "file": "frontend/assets/scene-tager-oasis.webp",
+      "sha256": "faa200aa29c13f5d2e4192251442ef509e4413b413fde609dc24c96293145ca1",
+      "width": 1672,
+      "height": 941,
+      "prompt": "Tagore Desert outer traveler oasis: small turquoise spring and reeds on upper right edge, date palms and low scrub, a modest linen supply tent on far edge, broad open sandy shore foreground, surrounding golden dunes. No people.\nCreate a standalone landscape game background. Match the attached project's existing Chinese fantasy hand-painted art, fine ink contours and warm natural light, muted jade/slate/ochre palette, detailed painterly materials, no photorealism. Use elevated isometric 3/4 camera, clear open walkable central ground, props along perimeter. Wide 16:9, edge-to-edge artwork, no people, no characters, no lettering, no captions, no logo, no watermark, no UI.",
+      "generator": "image_gen",
+      "sourceSha256": "bb11b08653a4a7e4a75064f3fa4efbbffddc0eae8582908646cd4500a1e929d1",
+      "reference": "frontend/assets/scene-wutan-herbal.webp",
+      "referenceSha256": "4fff7cc29b8e13c445881ff76f193dfc0b4734dd017ac00d1bcf4e4d64f5db1b",
+      "qa": {
+        "reviewed": true,
+        "losslessRgbaVerified": true,
+        "opaque": true
+      }
+    },
+    {
+      "id": "scene-tager-watch",
+      "kind": "scene",
+      "file": "frontend/assets/scene-tager-watch.webp",
+      "sha256": "a37c965b9d7ea0e8c11716b8aeb793b7ac588d37c538f7eb6f5498391596525d",
+      "width": 1672,
+      "height": 941,
+      "prompt": "Tagore Desert dune lookout: elevated dune ridge with weathered rock shelves, distant rolling golden dunes, a small unlettered marker and rope on edge, open ochre sand plateau, clear visibility, no buildings.\nCreate a standalone landscape game background. Match the attached project's existing Chinese fantasy hand-painted art, fine ink contours and warm natural light, muted jade/slate/ochre palette, detailed painterly materials, no photorealism. Use elevated isometric 3/4 camera, clear open walkable central ground, props along perimeter. Wide 16:9, edge-to-edge artwork, no people, no characters, no lettering, no captions, no logo, no watermark, no UI.",
+      "generator": "image_gen",
+      "sourceSha256": "06c9d7ce0adc75a1904421b9e6c2c5cb636e4594119c86b381a4b4776b3c65b5",
+      "reference": "frontend/assets/scene-wutan-herbal.webp",
+      "referenceSha256": "4fff7cc29b8e13c445881ff76f193dfc0b4734dd017ac00d1bcf4e4d64f5db1b",
+      "qa": {
+        "reviewed": true,
+        "losslessRgbaVerified": true,
+        "opaque": true
+      }
+    },
+    {
+      "id": "blackrock-overview",
+      "kind": "overview",
+      "file": "frontend/assets/blackrock-overview.webp",
+      "sha256": "5d87c125ce8b7039ef96db6e34ceaeaf09d087c167d153e79d6bd7858a7bc46c",
+      "width": 1672,
+      "height": 941,
+      "prompt": "BIRD'S EYE panoramic overview of Black Rock City, large basalt fortified city among rocky hills, dense traditional Chinese slate-roof buildings, alchemist guild hall recognizable by restrained bronze furnace courtyard, cliffside cargo landing terrace, dark stone streets. This is a whole town overview, not an interior.\nCreate a standalone landscape game background. Match the attached project's existing Chinese fantasy hand-painted art, fine ink contours and warm natural light, muted jade/slate/ochre palette, detailed painterly materials, no photorealism. Wide aerial regional overview, carefully readable town/terrain silhouettes, atmospheric distant landscape. Wide 16:9, edge-to-edge artwork, no people, no characters, no lettering, no captions, no logo, no watermark, no UI.",
+      "generator": "image_gen",
+      "sourceSha256": "383210c3c90c595895a4883a0ae73cbf5d092016ea67e959911d9b3c9d826d32",
+      "reference": "frontend/assets/wutan-overview.png",
+      "referenceSha256": "50073bc39a4aedd85703c49885f55270115dfa7e0557bad840d8dfee44668cd9",
+      "qa": {
+        "reviewed": true,
+        "losslessRgbaVerified": true,
+        "opaque": true
+      }
+    },
+    {
+      "id": "shimo-overview",
+      "kind": "overview",
+      "file": "frontend/assets/shimo-overview.webp",
+      "sha256": "342b004f50c71e1cd07915d9aca4bd51071d5720a769542802108a7e25023b89",
+      "width": 1672,
+      "height": 941,
+      "prompt": "BIRD'S EYE panoramic overview of Shimo, a fortified sandstone city on the desert edge, traditional Chinese timber courtyards mixed with pale earthen walls, linen-shaded bazaar, caravan gate, a practical mercenary compound, sparse palm trees, immense golden dunes beyond. Whole town overview.\nCreate a standalone landscape game background. Match the attached project's existing Chinese fantasy hand-painted art, fine ink contours and warm natural light, muted jade/slate/ochre palette, detailed painterly materials, no photorealism. Wide aerial regional overview, carefully readable town/terrain silhouettes, atmospheric distant landscape. Wide 16:9, edge-to-edge artwork, no people, no characters, no lettering, no captions, no logo, no watermark, no UI.",
+      "generator": "image_gen",
+      "sourceSha256": "b0acadbbd64a84eb57aecb952cec8706f324ab3bf0e01cc53f3ab37ba57ac1e2",
+      "reference": "frontend/assets/wutan-overview.png",
+      "referenceSha256": "50073bc39a4aedd85703c49885f55270115dfa7e0557bad840d8dfee44668cd9",
+      "qa": {
+        "reviewed": true,
+        "losslessRgbaVerified": true,
+        "opaque": true
+      }
+    },
+    {
+      "id": "tager-overview",
+      "kind": "overview",
+      "file": "frontend/assets/tager-overview.webp",
+      "sha256": "a3fa79974ffc3149b6581866df33e2eb067b56eeb65f305dc08fd506d9cd5ece",
+      "width": 1672,
+      "height": 941,
+      "prompt": "BIRD'S EYE panoramic overview of the outer Tagore Desert: sweeping golden dunes, sheltered caravan rest rocks on left, small turquoise oasis and palms near center-right, elevated lookout ridge far back, a subtle winding sandy footpath, no city and no people. Whole regional landscape.\nCreate a standalone landscape game background. Match the attached project's existing Chinese fantasy hand-painted art, fine ink contours and warm natural light, muted jade/slate/ochre palette, detailed painterly materials, no photorealism. Wide aerial regional overview, carefully readable town/terrain silhouettes, atmospheric distant landscape. Wide 16:9, edge-to-edge artwork, no people, no characters, no lettering, no captions, no logo, no watermark, no UI.",
+      "generator": "image_gen",
+      "sourceSha256": "ae1bf9580e380f7b64a32d166d7bfb99de39935792f8b0f3cdb2969418db307d",
+      "reference": "frontend/assets/wutan-overview.png",
+      "referenceSha256": "50073bc39a4aedd85703c49885f55270115dfa7e0557bad840d8dfee44668cd9",
+      "qa": {
+        "reviewed": true,
+        "losslessRgbaVerified": true,
+        "opaque": true
+      }
+    },
+    {
+      "id": "map-douqi-world",
+      "kind": "atlas",
+      "file": "frontend/assets/map-douqi-world.webp",
+      "sha256": "2d3844191854b2e68a1ca89670d0c3280fed3a68e67c40ed38b9b77f7db26ce3",
+      "width": 1672,
+      "height": 941,
+      "prompt": "An expansive ORIGINAL SCHEMATIC fantasy continent atlas painting, top-down cartographic aerial view, wide 16:9. A single huge connected landmass fills image: arid northwest upper left with tiny walled settlements and amber dunes, dark jagged corridor west of center, broad lush central plains with rivers and mountain basins, forested southern uplands, far northern snowy mountains, misty eastern highlands and coast. Small isolated cloud-wrapped mountainous islands at lower right suggest independent realms, no portal effects. Plenty of open terrain areas for readable interface labels to be placed later. Muted jade, slate, parchment cream and warm ochre, refined Chinese handpainted landscape cartography with ink contours, atmospheric depth, river networks. Not a map of Earth, no exact canonical geography claim. No text, lettering, numbers, labels, compass letters, border, icons, pins, UI or watermark.",
+      "generator": "image_gen",
+      "sourceSha256": "f78f1962c0e953191c4f0a7aa83c121aa9a914c6233d90a6c4c3dd99d1430873",
+      "reference": null,
+      "referenceSha256": null,
+      "qa": {
+        "reviewed": true,
+        "losslessRgbaVerified": true,
+        "opaque": true
+      }
+    }
+  ]
+}

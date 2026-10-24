@@ -1192,6 +1192,726 @@
         "visualIdentity": "Genuinely old male broad oval face, deep smile and forehead lines, gray mustache and short beard; weary kind eyes, slightly stooped shoulders and relaxed aged hands.",
         "origin": "authored-local"
       }
+    },
+    {
+      "id": "frank:portrait",
+      "file": "media/pools/key-characters/frank-portrait.webp",
+      "width": 1086,
+      "height": 1448,
+      "bytes": 2026502,
+      "sha256": "3215e53f4d465a4993bbf84ae05071bc9a7642750e5bacab4f42b9d0dd07a327",
+      "alpha": false,
+      "alphaRange": [
+        255,
+        255
+      ],
+      "visibleBounds": [
+        0,
+        0,
+        1086,
+        1448
+      ],
+      "qa": "Visually inspected: individual identity and age, matching portrait/chibi clothing, full chibi figure and transparent exterior; static pose.",
+      "steps": [
+        {
+          "mode": "generate",
+          "generator": "image_gen built-in",
+          "prompt": "Use case: stylized-concept. Asset type: one dedicated half-body character portrait for Doupo Living World Chinese cultivation RPG. Match this project's refined painterly realism: visible gouache and dry brush texture, restrained ink contours, tactile woven cloth, warm muted mineral colors, softly mottled ivory paper background. Portrait 3:4. Subject: Frank (弗兰克), male alchemist guild master age 58, long rectangular face with pronounced cheekbones, deep-set discerning eyes, heavy grey eyebrows, long straight grey beard, grey-black hair tied into a tidy topknot. Calm upright scholarly posture; ink-blue layered robe with dull silver edging, muted ochre underrobe, bronze herbal clasp. One hand rests on a small closed prescription folio. Distinct older male face, actual age creases, not a young handsome face. Original project interpretation, no anime/film likeness, no magic effects, no text, logos, border or watermark. Waist-up, both hands anatomically clear, clothing modest.",
+          "sourceSha256": "21de98320785018795cf6b74092fd995ba62378dbe5c0715e8938aeac4e8bf54",
+          "references": []
+        }
+      ]
+    },
+    {
+      "id": "aotuo:portrait",
+      "file": "media/pools/key-characters/aotuo-portrait.webp",
+      "width": 1086,
+      "height": 1448,
+      "bytes": 1956456,
+      "sha256": "c593e74ce85f6b79bf0245f1464e96dfff58687b28c92306cada01f5798d2842",
+      "alpha": false,
+      "alphaRange": [
+        255,
+        255
+      ],
+      "visibleBounds": [
+        0,
+        0,
+        1086,
+        1448
+      ],
+      "qa": "Visually inspected: individual identity and age, matching portrait/chibi clothing, full chibi figure and transparent exterior; static pose.",
+      "steps": [
+        {
+          "mode": "generate",
+          "generator": "image_gen built-in",
+          "prompt": "Use case: stylized-concept. One dedicated half-body character portrait, 3:4, for Doupo Living World Chinese cultivation RPG. Refined painterly realism with visible gouache/dry-brush cloth texture, restrained ink contours, warm muted mineral colors, softly mottled ivory paper background; match existing handcrafted realistic portraits, not smooth 3D/anime. Subject: Ao Tuo (奥托), male alchemist age 56, broad round face, wide flattened nose, gently smiling narrow eyes, sparse short grey moustache and square chin beard, receding silver-grey hair in a modest bun. Stocky build, brick-brown layered robe with sage collar, rolled sleeve cuffs, a small brass weighing spoon held carefully. Warm practical master, very distinct from long-faced Frank. Waist-up, face and both hands clear. Original project interpretation, no film/celebrity likeness, no magic effects, no text/logo/border/watermark.",
+          "sourceSha256": "8db6f78bc5dda9c99e11c4172a999f3c6ea975f3019ce2c36a0e5d951d1a693e",
+          "references": []
+        }
+      ]
+    },
+    {
+      "id": "linfei:portrait",
+      "file": "media/pools/key-characters/linfei-portrait.webp",
+      "width": 1086,
+      "height": 1448,
+      "bytes": 2066754,
+      "sha256": "2436c252074e21317d48038bc50d3502bf68ce6e47ca2972222eb28af6f57d6a",
+      "alpha": false,
+      "alphaRange": [
+        255,
+        255
+      ],
+      "visibleBounds": [
+        0,
+        0,
+        1086,
+        1448
+      ],
+      "qa": "Visually inspected: individual identity and age, matching portrait/chibi clothing, full chibi figure and transparent exterior; static pose.",
+      "steps": [
+        {
+          "mode": "generate",
+          "generator": "image_gen built-in",
+          "prompt": "Use case: stylized-concept. One dedicated half-body character portrait, 3:4, for Doupo Living World Chinese cultivation RPG. Refined painterly realism with visible gouache/dry-brush cloth texture, restrained ink contours, warm muted mineral colors, softly mottled ivory paper background; match existing handcrafted realistic portraits, not smooth 3D/anime. Subject: Lin Fei (琳菲), apprentice girl age 17. Youthful round-square face, short straight nose, thick lively eyebrows, curious dark eyes, warm tan skin, dark brown hair in a high practical ponytail with muted red ribbon. Modest fully covered russet and cream apprentice robe, narrow leather belt, small herb pouch in hands. Confident and spirited expression, age appropriate, no adult glamour. Waist-up, face and both hands clear. Original project interpretation, no film/celebrity likeness, no magic effects, no text/logo/border/watermark.",
+          "sourceSha256": "2b1ce13f9e4d5b641f4c462df4d1fc61bbbe5b7112609bf293e4d49489c69302",
+          "references": []
+        }
+      ]
+    },
+    {
+      "id": "xuemei:portrait",
+      "file": "media/pools/key-characters/xuemei-portrait.webp",
+      "width": 1086,
+      "height": 1448,
+      "bytes": 2011880,
+      "sha256": "2aa928f46078d09ff789d653c5f9878bed639a49b2aa2ab5d1dc7564a0b4e46c",
+      "alpha": false,
+      "alphaRange": [
+        255,
+        255
+      ],
+      "visibleBounds": [
+        0,
+        0,
+        1086,
+        1448
+      ],
+      "qa": "Visually inspected: individual identity and age, matching portrait/chibi clothing, full chibi figure and transparent exterior; static pose.",
+      "steps": [
+        {
+          "mode": "generate",
+          "generator": "image_gen built-in",
+          "prompt": "Use case: stylized-concept. One dedicated half-body character portrait, 3:4, for Doupo Living World Chinese cultivation RPG. Refined painterly realism with visible gouache/dry-brush cloth texture, restrained ink contours, warm muted mineral colors, softly mottled ivory paper background; match existing handcrafted realistic portraits, not smooth 3D/anime. Subject: Xue Mei (雪魅), apprentice girl age 17. Youthful narrow oval face, straight fine eyebrows, calm grey-brown almond eyes, cool pale skin, long silver hair half tied with a small dark jade pin. Modest fully covered ice-grey and muted blue alchemist apprentice robe with minimal silver piping. Holds a simple rolled prescription. Reserved expression, age appropriate, distinct from round-faced Lin Fei. Waist-up, face and both hands clear. Original project interpretation, no film/celebrity likeness, no magic effects, no text/logo/border/watermark.",
+          "sourceSha256": "48c52879bb7a00b2aff2ece9bd6caa987147f45c830c586546d74b34b17197d1",
+          "references": []
+        }
+      ]
+    },
+    {
+      "id": "xiaoyixian:portrait",
+      "file": "media/pools/key-characters/xiaoyixian-portrait.webp",
+      "width": 1086,
+      "height": 1448,
+      "bytes": 1997968,
+      "sha256": "8959342a55217ae8de1ed82173a8d73261a89b546927d8a8d8e16d86ff7aa636",
+      "alpha": false,
+      "alphaRange": [
+        255,
+        255
+      ],
+      "visibleBounds": [
+        0,
+        0,
+        1086,
+        1448
+      ],
+      "qa": "Visually inspected: individual identity and age, matching portrait/chibi clothing, full chibi figure and transparent exterior; static pose.",
+      "steps": [
+        {
+          "mode": "generate",
+          "generator": "image_gen built-in",
+          "prompt": "Use case: stylized-concept. One dedicated half-body character portrait, 3:4, for Doupo Living World Chinese cultivation RPG. Refined painterly realism with visible gouache/dry-brush cloth texture, restrained ink contours, warm muted mineral colors, softly mottled ivory paper background; match existing handcrafted realistic portraits, not smooth 3D/anime. Subject: Little Fairy Doctor (小医仙), healer girl age 16 in her EARLY Qingshan Town period. Long BLACK hair loosely tied, no white hair or poison-power imagery. Youthful oval face, rounded nose, gentle dark eyes and a small reassuring smile. Fully covered plain ivory linen robe, faded sage sash and tiny herb embroidery. Carries a small cloth medicine pouch in both hands. Slender ordinary young healer, not glamorous, no cleavage. Waist-up, face and both hands clear. Original project interpretation, no film/celebrity likeness, no magic effects, no text/logo/border/watermark.",
+          "sourceSha256": "76946b2f80688efd9935bc40f15e5055158e62b061f406163cb5b8d1ca330d87",
+          "references": []
+        }
+      ]
+    },
+    {
+      "id": "yafei:chibi",
+      "file": "media/pools/key-characters/yafei-chibi.webp",
+      "width": 1086,
+      "height": 1448,
+      "bytes": 1200002,
+      "sha256": "3039e9d4489dd10f9b620b2c4ca961d2a261b3965012d62ca8f177b0b00f0e20",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        255
+      ],
+      "visibleBounds": [
+        0,
+        0,
+        1070,
+        1448
+      ],
+      "qa": "Visually inspected: individual identity and age, matching portrait/chibi clothing, full chibi figure and transparent exterior; static pose.",
+      "steps": [
+        {
+          "mode": "generate",
+          "generator": "image_gen built-in",
+          "prompt": "Create a NEW CHIBI GAME SPRITE. Reference 1 defines the EXACT exaggerated head-to-body proportions and transparent cutout presentation to follow. Reference 2 defines ONLY the new character identity, face, hair, red and gold robe and closed fan: adult woman Ya Fei. Replace the boy from reference 1 with this woman. HEAD MUST BE ONE THIRD of the total standing figure height, short small body and legs like reference 1. A very large head, visibly tiny body. Do not draw a normally proportioned adult. Preserve painterly textile texture and facial identity from reference 2. Entire figure from crown to shoes inside frame, modest fully clothed robe. Plain truly transparent alpha background, all space outside silhouette fully transparent, no light bloom, no colored halo, no shadow, no backdrop, no gradient, no text, no watermark. Single static standing three-quarter-view chibi figure.",
+          "sourceSha256": "c482f06e0d2fd9d5dd540123aa93f6242c253c349cc0e71a546455f8f48812cf",
+          "references": [
+            {
+              "sha256": "f1d4685351ef213e601a86816fb35674cc4efb406f9ca1c878a6b034caf7bb41",
+              "name": "xiaoyan-chibi.webp"
+            },
+            {
+              "sha256": "34020c578f7eaf2cfde946777161004ae88aa8870c3e7765ab8ce9f41ba1c45e",
+              "name": "yafei.webp"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "xiaomei:chibi",
+      "file": "media/pools/key-characters/xiaomei-chibi.webp",
+      "width": 1086,
+      "height": 1448,
+      "bytes": 1349786,
+      "sha256": "db0f91a1a989b026a97dea0fc9f34cf440dff98f97f5f937b7869f662c905933",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        255
+      ],
+      "visibleBounds": [
+        0,
+        0,
+        1083,
+        1448
+      ],
+      "qa": "Visually inspected: individual identity and age, matching portrait/chibi clothing, full chibi figure and transparent exterior; static pose.",
+      "steps": [
+        {
+          "mode": "generate",
+          "generator": "image_gen built-in",
+          "prompt": "Create a NEW CHIBI GAME SPRITE. Reference 1 defines the EXACT exaggerated head-to-body proportions and transparent cutout presentation to follow. Reference 2 defines ONLY the new character identity: young girl Xiao Mei, age 14, peach and cream robe. Replace the boy from reference 1 with this character. HEAD MUST BE ONE THIRD of the total standing figure height, short small body and legs like reference 1. Very large head, visibly tiny body. Do not draw a normally proportioned person. Preserve reference 2 facial structure, hair and costume, painterly textile texture. Entire figure and accessories from crown to shoes inside frame with clear empty margin. Modest fully clothed outfit. Plain truly transparent alpha background, all space outside silhouette fully transparent, no light bloom, no colored halo, no shadow, no backdrop, no gradient, no text, no watermark. Single static standing three-quarter-view chibi figure.",
+          "sourceSha256": "49d4a6519d4cd1245ab26154766ddac65790abee921e1373dde2815a47b9f92b",
+          "references": [
+            {
+              "sha256": "f1d4685351ef213e601a86816fb35674cc4efb406f9ca1c878a6b034caf7bb41",
+              "name": "xiaoyan-chibi.webp"
+            },
+            {
+              "sha256": "384b9104b899876167e596461fa6a022bd4dd096b7f28dd980e236d78efeb8a6",
+              "name": "xiaomei.webp"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "xiaoning:chibi",
+      "file": "media/pools/key-characters/xiaoning-chibi.webp",
+      "width": 1086,
+      "height": 1448,
+      "bytes": 1029582,
+      "sha256": "ebaa8217f7eb18e8f986ff271943cf10624c0bf44f3cc8017f577cda73052412",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        255
+      ],
+      "visibleBounds": [
+        0,
+        0,
+        1074,
+        1448
+      ],
+      "qa": "Visually inspected: individual identity and age, matching portrait/chibi clothing, full chibi figure and transparent exterior; static pose.",
+      "steps": [
+        {
+          "mode": "generate",
+          "generator": "image_gen built-in",
+          "prompt": "Create a NEW CHIBI GAME SPRITE. Reference 1 defines the EXACT exaggerated head-to-body proportions and transparent cutout presentation to follow. Reference 2 defines ONLY the new character identity: boy Xiao Ning, age 16, proud brows and taupe teal training robe. Replace the boy from reference 1 with this character. HEAD MUST BE ONE THIRD of the total standing figure height, short small body and legs like reference 1. Very large head, visibly tiny body. Do not draw a normally proportioned person. Preserve reference 2 facial structure, hair and costume, painterly textile texture. Entire figure and accessories from crown to shoes inside frame with clear empty margin. Modest fully clothed outfit. Plain truly transparent alpha background, all space outside silhouette fully transparent, no light bloom, no colored halo, no shadow, no backdrop, no gradient, no text, no watermark. Single static standing three-quarter-view chibi figure.",
+          "sourceSha256": "bb767250f42426922581008988ef86cf4248c68302c410b73f5d9def222b2667",
+          "references": [
+            {
+              "sha256": "f1d4685351ef213e601a86816fb35674cc4efb406f9ca1c878a6b034caf7bb41",
+              "name": "xiaoyan-chibi.webp"
+            },
+            {
+              "sha256": "1aa17116b7987d027f3e190cdc56079647beaa6ce73368a8d39ea3886e7aadad",
+              "name": "xiaoning.webp"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "xiaoding:chibi",
+      "file": "media/pools/key-characters/xiaoding-chibi.webp",
+      "width": 1086,
+      "height": 1448,
+      "bytes": 1245332,
+      "sha256": "8fc530afb5be2f00d1e6821527e2f3098b4661294bab0d7e1be986125eecaed4",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        255
+      ],
+      "visibleBounds": [
+        25,
+        0,
+        1066,
+        1448
+      ],
+      "qa": "Visually inspected: individual identity and age, matching portrait/chibi clothing, full chibi figure and transparent exterior; static pose.",
+      "steps": [
+        {
+          "mode": "generate",
+          "generator": "image_gen built-in",
+          "prompt": "Create a NEW CHIBI GAME SPRITE. Reference 1 defines the EXACT exaggerated head-to-body proportions and transparent cutout presentation to follow. Reference 2 defines ONLY the new character identity: adult man Xiao Ding age 22, green cloak, short goatee and scroll. Replace the boy from reference 1 with this character. HEAD MUST BE ONE THIRD of the total standing figure height, short small body and legs like reference 1. Very large head, visibly tiny body. Do not draw a normally proportioned person. Preserve reference 2 facial structure, hair and costume, painterly textile texture. Entire figure and accessories from crown to shoes inside frame with clear empty margin. Modest fully clothed outfit. Plain truly transparent alpha background, all space outside silhouette fully transparent, no light bloom, no colored halo, no shadow, no backdrop, no gradient, no text, no watermark. Single static standing three-quarter-view chibi figure.",
+          "sourceSha256": "7918f4485cacafc124272c015f5be795edada2eebd015e40202e1fcdf42027da",
+          "references": [
+            {
+              "sha256": "f1d4685351ef213e601a86816fb35674cc4efb406f9ca1c878a6b034caf7bb41",
+              "name": "xiaoyan-chibi.webp"
+            },
+            {
+              "sha256": "65b89b9d80b085b7850ce6abe00a1c3f8fd59a00f7ae25659142efca3aa3653e",
+              "name": "xiaoding.webp"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "xiaoli:chibi",
+      "file": "media/pools/key-characters/xiaoli-chibi.webp",
+      "width": 1086,
+      "height": 1448,
+      "bytes": 1403820,
+      "sha256": "a9598c085ffbba1ff75d0c058af9c9facbc8706d4579e35dcdb8a30c7f9fb0c5",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        255
+      ],
+      "visibleBounds": [
+        0,
+        0,
+        1070,
+        1448
+      ],
+      "qa": "Visually inspected: individual identity and age, matching portrait/chibi clothing, full chibi figure and transparent exterior; static pose.",
+      "steps": [
+        {
+          "mode": "generate",
+          "generator": "image_gen built-in",
+          "prompt": "Create a NEW CHIBI GAME SPRITE. Reference 1 defines the EXACT exaggerated head-to-body proportions and transparent cutout presentation to follow. Reference 2 defines ONLY the new character identity: adult man Xiao Li age 21, ochre scarf, spear and dark robe. Replace the boy from reference 1 with this character. HEAD MUST BE ONE THIRD of the total standing figure height, short small body and legs like reference 1. Very large head, visibly tiny body. Do not draw a normally proportioned person. Preserve reference 2 facial structure, hair and costume, painterly textile texture. Entire figure and accessories from crown to shoes inside frame with clear empty margin. Modest fully clothed outfit. Plain truly transparent alpha background, all space outside silhouette fully transparent, no light bloom, no colored halo, no shadow, no backdrop, no gradient, no text, no watermark. Single static standing three-quarter-view chibi figure.",
+          "sourceSha256": "f00511c20c52541816fa6ffdd601d966917c695db2155c730efcbb628b37dcfc",
+          "references": [
+            {
+              "sha256": "f1d4685351ef213e601a86816fb35674cc4efb406f9ca1c878a6b034caf7bb41",
+              "name": "xiaoyan-chibi.webp"
+            },
+            {
+              "sha256": "35f93e2c6b74f222d3552010e0dfa843df61bea0d59bca3bb43138488df17e6a",
+              "name": "xiaoli.webp"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "frank:chibi",
+      "file": "media/pools/key-characters/frank-chibi.webp",
+      "width": 1086,
+      "height": 1448,
+      "bytes": 1119072,
+      "sha256": "c1f8443ab69fc0fa21007d94fb9a42857d3182a2c46f00aeec8929657c7cf395",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        255
+      ],
+      "visibleBounds": [
+        0,
+        0,
+        1070,
+        1448
+      ],
+      "qa": "Visually inspected: individual identity and age, matching portrait/chibi clothing, full chibi figure and transparent exterior; static pose.",
+      "steps": [
+        {
+          "mode": "generate",
+          "generator": "image_gen built-in",
+          "prompt": "Create a NEW CHIBI GAME SPRITE. Reference 1 defines the EXACT exaggerated head-to-body proportions and transparent cutout presentation to follow. Reference 2 defines ONLY the new character identity frank: preserve its exact facial age, hairstyle, hair color, face structure, clothing and accessories. Replace the boy from reference 1 with the person from reference 2. HEAD MUST BE ONE THIRD of the total standing figure height, short small body and legs like reference 1. Very large head, visibly tiny body. Do not draw normal proportions, do not copy the boy's face. Preserve painterly textile texture. Entire figure and accessories from crown to cloth shoes inside frame with clear empty margin. Modest fully clothed outfit. Plain truly transparent alpha background, all space outside silhouette fully transparent, no light bloom, no colored halo, no shadow, no backdrop, no gradient, no text, no watermark. Single static standing three-quarter-view chibi figure.",
+          "sourceSha256": "209e084d2e39072a07598a0f1d949805a7ed84f405b3c472f35ce0c368ef490a",
+          "references": [
+            {
+              "sha256": "f1d4685351ef213e601a86816fb35674cc4efb406f9ca1c878a6b034caf7bb41",
+              "name": "xiaoyan-chibi.webp"
+            },
+            {
+              "sha256": "21de98320785018795cf6b74092fd995ba62378dbe5c0715e8938aeac4e8bf54",
+              "name": "exec-ae242549-02cd-4133-b2a8-aabdf339a4b3.png"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "aotuo:chibi",
+      "file": "media/pools/key-characters/aotuo-chibi.webp",
+      "width": 1086,
+      "height": 1448,
+      "bytes": 1179904,
+      "sha256": "eca6fab968ded07888f2da8a039fe15ec92d6fca7cc37b1665e481f15ed78687",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        255
+      ],
+      "visibleBounds": [
+        0,
+        1,
+        1070,
+        1448
+      ],
+      "qa": "Visually inspected: individual identity and age, matching portrait/chibi clothing, full chibi figure and transparent exterior; static pose.",
+      "steps": [
+        {
+          "mode": "generate",
+          "generator": "image_gen built-in",
+          "prompt": "Create a NEW CHIBI GAME SPRITE. Reference 1 defines the EXACT exaggerated head-to-body proportions and transparent cutout presentation to follow. Reference 2 defines ONLY the new character identity aotuo: preserve its exact facial age, hairstyle, hair color, face structure, clothing and accessories. Replace the boy from reference 1 with the person from reference 2. HEAD MUST BE ONE THIRD of the total standing figure height, short small body and legs like reference 1. Very large head, visibly tiny body. Do not draw normal proportions, do not copy the boy's face. Preserve painterly textile texture. Entire figure and accessories from crown to cloth shoes inside frame with clear empty margin. Modest fully clothed outfit. Plain truly transparent alpha background, all space outside silhouette fully transparent, no light bloom, no colored halo, no shadow, no backdrop, no gradient, no text, no watermark. Single static standing three-quarter-view chibi figure.",
+          "sourceSha256": "010dd44291068be3a6fb8d6402566e22a43a94f66721f46b43d4754e52d9f678",
+          "references": [
+            {
+              "sha256": "f1d4685351ef213e601a86816fb35674cc4efb406f9ca1c878a6b034caf7bb41",
+              "name": "xiaoyan-chibi.webp"
+            },
+            {
+              "sha256": "8db6f78bc5dda9c99e11c4172a999f3c6ea975f3019ce2c36a0e5d951d1a693e",
+              "name": "exec-28bcb417-2176-4ae4-a40c-a55e85725f7a.png"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "linfei:chibi",
+      "file": "media/pools/key-characters/linfei-chibi.webp",
+      "width": 1086,
+      "height": 1448,
+      "bytes": 1259186,
+      "sha256": "0287fdd6a6e32a51edba8dee6d4025b4061ddf64f5be5b329623726d7f719a0d",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        255
+      ],
+      "visibleBounds": [
+        0,
+        0,
+        1072,
+        1448
+      ],
+      "qa": "Visually inspected: individual identity and age, matching portrait/chibi clothing, full chibi figure and transparent exterior; static pose.",
+      "steps": [
+        {
+          "mode": "generate",
+          "generator": "image_gen built-in",
+          "prompt": "Create a NEW CHIBI GAME SPRITE. Reference 1 defines the EXACT exaggerated head-to-body proportions and transparent cutout presentation to follow. Reference 2 defines ONLY the new character identity linfei: preserve its exact facial age, hairstyle, hair color, face structure, clothing and accessories. Replace the boy from reference 1 with the person from reference 2. HEAD MUST BE ONE THIRD of the total standing figure height, short small body and legs like reference 1. Very large head, visibly tiny body. Do not draw normal proportions, do not copy the boy's face. Preserve painterly textile texture. Entire figure and accessories from crown to cloth shoes inside frame with clear empty margin. Modest fully clothed outfit. Plain truly transparent alpha background, all space outside silhouette fully transparent, no light bloom, no colored halo, no shadow, no backdrop, no gradient, no text, no watermark. Single static standing three-quarter-view chibi figure.",
+          "sourceSha256": "0245b553056a12a1c66797e54ea208a94617a29575488d3bb5443f129c35320c",
+          "references": [
+            {
+              "sha256": "f1d4685351ef213e601a86816fb35674cc4efb406f9ca1c878a6b034caf7bb41",
+              "name": "xiaoyan-chibi.webp"
+            },
+            {
+              "sha256": "2b1ce13f9e4d5b641f4c462df4d1fc61bbbe5b7112609bf293e4d49489c69302",
+              "name": "exec-04bca392-55bf-469c-8807-7fa53571294a.png"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "xuemei:chibi",
+      "file": "media/pools/key-characters/xuemei-chibi.webp",
+      "width": 1086,
+      "height": 1448,
+      "bytes": 1273864,
+      "sha256": "e01c5935d92e3c126802128cbe065f6395cc24dd02a97a5d10a1ae728185c8bd",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        255
+      ],
+      "visibleBounds": [
+        0,
+        15,
+        1073,
+        1448
+      ],
+      "qa": "Visually inspected: individual identity and age, matching portrait/chibi clothing, full chibi figure and transparent exterior; static pose.",
+      "steps": [
+        {
+          "mode": "generate",
+          "generator": "image_gen built-in",
+          "prompt": "Create a NEW CHIBI GAME SPRITE. Reference 1 defines the EXACT exaggerated head-to-body proportions and transparent cutout presentation to follow. Reference 2 defines ONLY the new character identity xuemei: preserve its exact facial age, hairstyle, hair color, face structure, clothing and accessories. Replace the boy from reference 1 with the person from reference 2. HEAD MUST BE ONE THIRD of the total standing figure height, short small body and legs like reference 1. Very large head, visibly tiny body. Do not draw normal proportions, do not copy the boy's face. Preserve painterly textile texture. Entire figure and accessories from crown to cloth shoes inside frame with clear empty margin. Modest fully clothed outfit. Plain truly transparent alpha background, all space outside silhouette fully transparent, no light bloom, no colored halo, no shadow, no backdrop, no gradient, no text, no watermark. Single static standing three-quarter-view chibi figure.",
+          "sourceSha256": "cb55cda016519c813ad5e9a31ce95d837a175c34432892695054e13e86c1e654",
+          "references": [
+            {
+              "sha256": "f1d4685351ef213e601a86816fb35674cc4efb406f9ca1c878a6b034caf7bb41",
+              "name": "xiaoyan-chibi.webp"
+            },
+            {
+              "sha256": "48c52879bb7a00b2aff2ece9bd6caa987147f45c830c586546d74b34b17197d1",
+              "name": "exec-ac0c5029-33a4-402f-82d7-e06cb5c6fe92.png"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "xiaoyixian:chibi",
+      "file": "media/pools/key-characters/xiaoyixian-chibi.webp",
+      "width": 1086,
+      "height": 1448,
+      "bytes": 1210222,
+      "sha256": "8f58d5c1c0e7321a5045904adf80e05badbb730d6856e3ebb433faaf88edf458",
+      "alpha": true,
+      "alphaRange": [
+        0,
+        255
+      ],
+      "visibleBounds": [
+        0,
+        16,
+        1072,
+        1448
+      ],
+      "qa": "Visually inspected: individual identity and age, matching portrait/chibi clothing, full chibi figure and transparent exterior; static pose.",
+      "steps": [
+        {
+          "mode": "generate",
+          "generator": "image_gen built-in",
+          "prompt": "Create a NEW CHIBI GAME SPRITE. Reference 1 defines the EXACT exaggerated head-to-body proportions and transparent cutout presentation to follow. Reference 2 defines ONLY the new character identity xiaoyixian: preserve its exact facial age, hairstyle, hair color, face structure, clothing and accessories. Replace the boy from reference 1 with the person from reference 2. HEAD MUST BE ONE THIRD of the total standing figure height, short small body and legs like reference 1. Very large head, visibly tiny body. Do not draw normal proportions, do not copy the boy's face. Preserve painterly textile texture. Entire figure and accessories from crown to cloth shoes inside frame with clear empty margin. Modest fully clothed outfit. Plain truly transparent alpha background, all space outside silhouette fully transparent, no light bloom, no colored halo, no shadow, no backdrop, no gradient, no text, no watermark. Single static standing three-quarter-view chibi figure.",
+          "sourceSha256": "77d73acb8de8cf70a8398f0b7fedc793eeec9fd1d414ce7c8ddce6498201f3c1",
+          "references": [
+            {
+              "sha256": "f1d4685351ef213e601a86816fb35674cc4efb406f9ca1c878a6b034caf7bb41",
+              "name": "xiaoyan-chibi.webp"
+            },
+            {
+              "sha256": "76946b2f80688efd9935bc40f15e5055158e62b061f406163cb5b8d1ca330d87",
+              "name": "exec-1ad6dc8d-7280-413d-a4a5-517f45605eb9.png"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "yafei:portrait",
+      "file": "media/pools/key-characters/yafei-portrait.webp",
+      "width": 1086,
+      "height": 1448,
+      "bytes": 1781706,
+      "sha256": "34020c578f7eaf2cfde946777161004ae88aa8870c3e7765ab8ce9f41ba1c45e",
+      "alpha": false,
+      "alphaRange": [
+        255,
+        255
+      ],
+      "visibleBounds": [
+        0,
+        0,
+        1086,
+        1448
+      ],
+      "qa": "Visually inspected: individual identity and age, matching portrait/chibi clothing, full chibi figure and transparent exterior; static pose.",
+      "steps": [
+        {
+          "mode": "reuse",
+          "generator": "existing project image_gen portrait",
+          "prompt": "Reused existing project portrait; original author catalog attached.",
+          "sourceSha256": "34020c578f7eaf2cfde946777161004ae88aa8870c3e7765ab8ce9f41ba1c45e",
+          "references": [],
+          "originalCatalog": {
+            "id": "yafei",
+            "kind": "character",
+            "name": "雅妃",
+            "period": "jia-ma",
+            "origin": "novel-interpretation",
+            "runtime": "reserve-only-unless-already-in-cast",
+            "prompt": "Use case: stylized-concept. Create ONE finished original game art asset for Doupo Living World / Battle Through the Heavens. Maintain a coherent series style in refined painterly realism, restrained ink contours, tactile gouache texture, warm stone/ivory and muted jade teal, antique gold accents. This is an original visual interpretation of novel characters, NOT a copy of any film, anime, game or celebrity likeness. No lettering, title, labels, watermark, UI or decorative frame. Clear silhouette and distinct identity. Single half-body dialogue portrait, anatomically clean hands if shown, three-quarter view, ample headroom and shoulders fully in frame. Opaque softly mottled ivory-paper background, no scenery. Natural Chinese facial proportions, subtle expression, detailed cloth rather than glossy plastic. Character-specific design below determines the individual subject. Portrait 3:4. Younger characters wear modest fully covered loose long-sleeved clothes appropriate to their stated age, in a simple natural upright pose. Subject: 雅妃. Adult female auction-house professional, intelligent warm confident smile, layered dark wine-red formal robe with antique gold trim, neatly pinned dark hair, elegant fan held closed, dignified businesslike and fully clothed. Character differentiation is essential: individual anatomy, hairstyle, age, costume and pose; do not repeat a stock face or pose from previous images. Painted illustration with visible fine brush texture, not a glossy 3D render. Mature professional woman with a broader softly rounded face, confident long dark eyes, smiling full lips and a small beauty mark near the left cheek. Hair neatly swept back, chin held slightly raised, fan resting low in one hand. REQUIRED INDIVIDUAL FACIAL AND POSTURE DESIGN: Broader soft oval face, full smiling lips, long confident eyes, a small authored beauty mark near left cheek; chin lifted and one shoulder angled back. Do not homogenize this into a fashion-model face. Preserve believable age and build. Keep decorative facial makeup minimal.",
+            "visualIdentity": "Broader soft oval face, full smiling lips, long confident eyes, a small authored beauty mark near left cheek; chin lifted and one shoulder angled back."
+          }
+        }
+      ]
+    },
+    {
+      "id": "xiaomei:portrait",
+      "file": "media/pools/key-characters/xiaomei-portrait.webp",
+      "width": 1086,
+      "height": 1448,
+      "bytes": 1817246,
+      "sha256": "384b9104b899876167e596461fa6a022bd4dd096b7f28dd980e236d78efeb8a6",
+      "alpha": false,
+      "alphaRange": [
+        255,
+        255
+      ],
+      "visibleBounds": [
+        0,
+        0,
+        1086,
+        1448
+      ],
+      "qa": "Visually inspected: individual identity and age, matching portrait/chibi clothing, full chibi figure and transparent exterior; static pose.",
+      "steps": [
+        {
+          "mode": "reuse",
+          "generator": "existing project image_gen portrait",
+          "prompt": "Reused existing project portrait; original author catalog attached.",
+          "sourceSha256": "384b9104b899876167e596461fa6a022bd4dd096b7f28dd980e236d78efeb8a6",
+          "references": [],
+          "originalCatalog": {
+            "id": "xiaomei",
+            "kind": "character",
+            "name": "萧媚",
+            "period": "opening",
+            "origin": "novel-interpretation",
+            "runtime": "reserve-only-unless-already-in-cast",
+            "prompt": "Use case: stylized-concept. Create ONE finished original game art asset for Doupo Living World / Battle Through the Heavens. Maintain a coherent series style in refined painterly realism, restrained ink contours, tactile gouache texture, warm stone/ivory and muted jade teal, antique gold accents. This is an original visual interpretation of novel characters, NOT a copy of any film, anime, game or celebrity likeness. No lettering, title, labels, watermark, UI or decorative frame. Clear silhouette and distinct identity. Single half-body dialogue portrait, anatomically clean hands if shown, three-quarter view, ample headroom and shoulders fully in frame. Opaque softly mottled ivory-paper background, no scenery. Natural Chinese facial proportions, subtle expression, detailed cloth rather than glossy plastic. Character-specific design below determines the individual subject. Portrait 3:4. Younger characters wear modest fully covered loose long-sleeved clothes appropriate to their stated age, in a simple natural upright pose. Subject: 萧媚. Adolescent female clan trainee, lively youthful eyes, tidy dark hair, modest peach-gray and cream loose practice clothes, simple ribbon, natural non-glamorous face. Character differentiation is essential: individual anatomy, hairstyle, age, costume and pose; do not repeat a stock face or pose from previous images. Painted illustration with visible fine brush texture, not a glossy 3D render. Let the specific age, gender, facial build and personality above strongly determine the face, with a pose naturally suited to the role. REQUIRED INDIVIDUAL FACIAL AND POSTURE DESIGN: Youthful softly triangular face, lively upturned eyes, small rounded nose, gentle smile; light tilted head with modest relaxed posture. Do not homogenize this into a fashion-model face. Preserve believable age and build. Keep decorative facial makeup minimal.",
+            "visualIdentity": "Youthful softly triangular face, lively upturned eyes, small rounded nose, gentle smile; light tilted head with modest relaxed posture."
+          }
+        }
+      ]
+    },
+    {
+      "id": "xiaoning:portrait",
+      "file": "media/pools/key-characters/xiaoning-portrait.webp",
+      "width": 1086,
+      "height": 1448,
+      "bytes": 1783942,
+      "sha256": "1aa17116b7987d027f3e190cdc56079647beaa6ce73368a8d39ea3886e7aadad",
+      "alpha": false,
+      "alphaRange": [
+        255,
+        255
+      ],
+      "visibleBounds": [
+        0,
+        0,
+        1086,
+        1448
+      ],
+      "qa": "Visually inspected: individual identity and age, matching portrait/chibi clothing, full chibi figure and transparent exterior; static pose.",
+      "steps": [
+        {
+          "mode": "reuse",
+          "generator": "existing project image_gen portrait",
+          "prompt": "Reused existing project portrait; original author catalog attached.",
+          "sourceSha256": "1aa17116b7987d027f3e190cdc56079647beaa6ce73368a8d39ea3886e7aadad",
+          "references": [],
+          "originalCatalog": {
+            "id": "xiaoning",
+            "kind": "character",
+            "name": "萧宁",
+            "period": "opening",
+            "origin": "novel-interpretation",
+            "runtime": "reserve-only-unless-already-in-cast",
+            "prompt": "Use case: stylized-concept. Create ONE finished original game art asset for Doupo Living World / Battle Through the Heavens. Maintain a coherent series style in refined painterly realism, restrained ink contours, tactile gouache texture, warm stone/ivory and muted jade teal, antique gold accents. This is an original visual interpretation of novel characters, NOT a copy of any film, anime, game or celebrity likeness. No lettering, title, labels, watermark, UI or decorative frame. Clear silhouette and distinct identity. Single half-body dialogue portrait, anatomically clean hands if shown, three-quarter view, ample headroom and shoulders fully in frame. Opaque softly mottled ivory-paper background, no scenery. Natural Chinese facial proportions, subtle expression, detailed cloth rather than glossy plastic. Character-specific design below determines the individual subject. Portrait 3:4. Younger characters wear modest fully covered loose long-sleeved clothes appropriate to their stated age, in a simple natural upright pose. Subject: 萧宁. Adolescent male clan trainee, slightly proud youthful face, tied black hair, modest brown-gray clan practice robes, simple wrist wraps, no adult armor. Character differentiation is essential: individual anatomy, hairstyle, age, costume and pose; do not repeat a stock face or pose from previous images. Painted illustration with visible fine brush texture, not a glossy 3D render. Let the specific age, gender, facial build and personality above strongly determine the face, with a pose naturally suited to the role. REQUIRED INDIVIDUAL FACIAL AND POSTURE DESIGN: Youthful broad forehead, rounded chin, slightly thick brows and a short nose; tight proud mouth and stiff trainee shoulders. Do not homogenize this into a fashion-model face. Preserve believable age and build. Keep decorative facial makeup minimal.",
+            "visualIdentity": "Youthful broad forehead, rounded chin, slightly thick brows and a short nose; tight proud mouth and stiff trainee shoulders."
+          }
+        }
+      ]
+    },
+    {
+      "id": "xiaoding:portrait",
+      "file": "media/pools/key-characters/xiaoding-portrait.webp",
+      "width": 1086,
+      "height": 1448,
+      "bytes": 1898766,
+      "sha256": "65b89b9d80b085b7850ce6abe00a1c3f8fd59a00f7ae25659142efca3aa3653e",
+      "alpha": false,
+      "alphaRange": [
+        255,
+        255
+      ],
+      "visibleBounds": [
+        0,
+        0,
+        1086,
+        1448
+      ],
+      "qa": "Visually inspected: individual identity and age, matching portrait/chibi clothing, full chibi figure and transparent exterior; static pose.",
+      "steps": [
+        {
+          "mode": "reuse",
+          "generator": "existing project image_gen portrait",
+          "prompt": "Reused existing project portrait; original author catalog attached.",
+          "sourceSha256": "65b89b9d80b085b7850ce6abe00a1c3f8fd59a00f7ae25659142efca3aa3653e",
+          "references": [],
+          "originalCatalog": {
+            "id": "xiaoding",
+            "kind": "character",
+            "name": "萧鼎",
+            "period": "desert",
+            "origin": "novel-interpretation",
+            "runtime": "reserve-only-unless-already-in-cast",
+            "prompt": "Use case: stylized-concept. Create ONE finished original game art asset for Doupo Living World / Battle Through the Heavens. Maintain a coherent series style in refined painterly realism, restrained ink contours, tactile gouache texture, warm stone/ivory and muted jade teal, antique gold accents. This is an original visual interpretation of novel characters, NOT a copy of any film, anime, game or celebrity likeness. No lettering, title, labels, watermark, UI or decorative frame. Clear silhouette and distinct identity. Single half-body dialogue portrait, anatomically clean hands if shown, three-quarter view, ample headroom and shoulders fully in frame. Opaque softly mottled ivory-paper background, no scenery. Natural Chinese facial proportions, subtle expression, detailed cloth rather than glossy plastic. Character-specific design below determines the individual subject. Portrait 3:4. Younger characters wear modest fully covered loose long-sleeved clothes appropriate to their stated age, in a simple natural upright pose. Subject: 萧鼎. Adult male mercenary leader, composed strategic eyes, neat tied dark hair, sand-beige and dark green travel robes, practical leather straps, a rolled route scroll without writing. Character differentiation is essential: individual anatomy, hairstyle, age, costume and pose; do not repeat a stock face or pose from previous images. Painted illustration with visible fine brush texture, not a glossy 3D render. Let the specific age, gender, facial build and personality above strongly determine the face, with a pose naturally suited to the role. REQUIRED INDIVIDUAL FACIAL AND POSTURE DESIGN: Long rectangular male face, narrow thoughtful eyes, smooth high forehead, neat small goatee; restrained smile and relaxed strategic pose. Do not homogenize this into a fashion-model face. Preserve believable age and build. Keep decorative facial makeup minimal.",
+            "visualIdentity": "Long rectangular male face, narrow thoughtful eyes, smooth high forehead, neat small goatee; restrained smile and relaxed strategic pose."
+          }
+        }
+      ]
+    },
+    {
+      "id": "xiaoli:portrait",
+      "file": "media/pools/key-characters/xiaoli-portrait.webp",
+      "width": 1086,
+      "height": 1448,
+      "bytes": 1992814,
+      "sha256": "35f93e2c6b74f222d3552010e0dfa843df61bea0d59bca3bb43138488df17e6a",
+      "alpha": false,
+      "alphaRange": [
+        255,
+        255
+      ],
+      "visibleBounds": [
+        0,
+        0,
+        1086,
+        1448
+      ],
+      "qa": "Visually inspected: individual identity and age, matching portrait/chibi clothing, full chibi figure and transparent exterior; static pose.",
+      "steps": [
+        {
+          "mode": "reuse",
+          "generator": "existing project image_gen portrait",
+          "prompt": "Reused existing project portrait; original author catalog attached.",
+          "sourceSha256": "35f93e2c6b74f222d3552010e0dfa843df61bea0d59bca3bb43138488df17e6a",
+          "references": [],
+          "originalCatalog": {
+            "id": "xiaoli",
+            "kind": "character",
+            "name": "萧厉",
+            "period": "desert",
+            "origin": "novel-interpretation",
+            "runtime": "reserve-only-unless-already-in-cast",
+            "prompt": "Use case: stylized-concept. Create ONE finished original game art asset for Doupo Living World / Battle Through the Heavens. Maintain a coherent series style in refined painterly realism, restrained ink contours, tactile gouache texture, warm stone/ivory and muted jade teal, antique gold accents. This is an original visual interpretation of novel characters, NOT a copy of any film, anime, game or celebrity likeness. No lettering, title, labels, watermark, UI or decorative frame. Clear silhouette and distinct identity. Single half-body dialogue portrait, anatomically clean hands if shown, three-quarter view, ample headroom and shoulders fully in frame. Opaque softly mottled ivory-paper background, no scenery. Natural Chinese facial proportions, subtle expression, detailed cloth rather than glossy plastic. Character-specific design below determines the individual subject. Portrait 3:4. Younger characters wear modest fully covered loose long-sleeved clothes appropriate to their stated age, in a simple natural upright pose. Subject: 萧厉. Adult male mercenary, rugged energetic face, slightly unruly dark hair, charcoal and ochre traveling clothes, spear shaft just behind shoulder, subtle violet lightning accent. Character differentiation is essential: individual anatomy, hairstyle, age, costume and pose; do not repeat a stock face or pose from previous images. Painted illustration with visible fine brush texture, not a glossy 3D render. Let the specific age, gender, facial build and personality above strongly determine the face, with a pose naturally suited to the role. REQUIRED INDIVIDUAL FACIAL AND POSTURE DESIGN: Broad angular male face, slightly uneven rugged brows, strong nose, short stubble; energetic half-smile and forward confident shoulders. Do not homogenize this into a fashion-model face. Preserve believable age and build. Keep decorative facial makeup minimal.",
+            "visualIdentity": "Broad angular male face, slightly uneven rugged brows, strong nose, short stubble; energetic half-smile and forward confident shoulders."
+          }
+        }
+      ]
     }
   ]
 }
