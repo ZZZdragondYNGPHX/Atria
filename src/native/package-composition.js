@@ -327,7 +327,7 @@ export class PackageInstaller {
             throw new Error('Installed PackageVersion metadata does not match exact Package reference');
         }
         let cached = this.#parsedArchives.get(version.packageContentHash);
-        const stamp = await this._assetStore.blobStamp?.(handle, version.packageContentHash);
+        const stamp = await this._assetStore.blobStamp(handle, version.packageContentHash);
         const reusable = !includeArchive && !!stamp && cached?.owner === handle && cached.blobStamp === stamp;
         const archive = reusable ? cached.archive : await this._assetStore.readBlob(handle, version.packageContentHash);
         if (stamp === null || !archive) {
@@ -335,7 +335,7 @@ export class PackageInstaller {
             error.code = 'native_package_content_missing';
             throw error;
         }
-        if (!reusable && stamp !== undefined && stamp !== await this._assetStore.blobStamp(handle, version.packageContentHash)) {
+        if (!reusable && stamp !== await this._assetStore.blobStamp(handle, version.packageContentHash)) {
             throw new Error('Installed Package content changed during read');
         }
         // Installed blobs are immutable in the host. Normal runtime opens use
