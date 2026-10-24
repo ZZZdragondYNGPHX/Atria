@@ -1,0 +1,5 @@
+doupo-living-world-*-atlas.*.atria filter=lfs diff=lfs merge=lfs -text
+doupo-living-world-*-content.*.atria filter=lfs diff=lfs merge=lfs -text
+doupo-living-world-*-quests.*.atria filter=lfs diff=lfs merge=lfs -text
+doupo-living-world-*-world.*.atria filter=lfs diff=lfs merge=lfs -text
+doupo-living-world-*-combat.*.atria filter=lfs diff=lfs merge=lfs -text
