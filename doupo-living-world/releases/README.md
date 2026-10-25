@@ -1,5 +1,7 @@
 # 版本化构建
 
+> 本文是发行说明；历史测试和摘要仅为旧版记录，不是运行时或后续开发的验证要求。当前规则见 `docs:README.md` §12.2。
+
 本目录保留历代 `.atria`，禁止覆盖旧版本。早期 be 版本为后端验证构建；content.1 包含 fe.2 原生前端、既有配对美术及本轮内容扩充。归档含随机盐/nonce，重建核对明文内容和版本。
 
 | 版本 | 所需 Atria main | PackageVersion ID | Bytes | SHA-256 |
@@ -37,4 +39,4 @@ combat.1正式接入统一回合战斗、独立功法成长、六主修／三辅
 
 combat.2整合“墨框纸卷”前端重构与combat.1规则，282个编译文件。已完成真实Native浏览器新局、购买／委托发现、法门、三轮演武、暂停存档／恢复原队列和桌面／窄屏验证；最终归档直接安装与新局通过。继承原规则与历史验证边界，未重验全部任务、真实模型或长期容量。旧归档原样保留。
 
-atlas、content、quests、world与combat系列归档使用本目录`.gitattributes`声明的Git LFS保存；克隆后需使用Git LFS取得成品字节。早期be／fe归档不改写历史。
+atlas、content、quests、world与combat系列归档使用本目录`.gitattributes`声明的Git LFS保存；克隆后需使用Git LFS取得成品字节。早期be／fe归档仍使用普通Git对象；源码历史已清理，所有发行包字节保留。

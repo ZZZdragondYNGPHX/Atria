@@ -1,5 +1,7 @@
 # Releases
 
+> 本文是发行说明；历史测试和摘要仅为旧版记录，不是运行时或后续开发的验证要求。当前规则见 `docs:README.md` §12.2。
+
 Historical .atria releases are retained and never overwritten.
 
 | Version | Artifact | Bytes ||

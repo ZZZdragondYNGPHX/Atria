@@ -1,5 +1,7 @@
 # Releases
 
+> 本文是发行说明；历史测试和摘要仅为旧版记录，不是运行时或后续开发的验证要求。当前规则见 `docs:README.md` §12.2。
+
 此目录用于保存 Native Heavy-Frontend Reference Package 的历代 `.atria` 成品。
 
 Phase 3 迁移时，受审计源中没有已跟踪的历史 `.atria` 文件，因此当前没有可迁移的 release artifact。
