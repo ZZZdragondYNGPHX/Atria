@@ -77,11 +77,6 @@ export const BUILTIN_THEMES = Object.freeze([
         'fill-hover': '#1e2330', 'fill-pressed': '#262c3a', ink: '#f1ece2', 'ink-hover': '#f4d9ae', 'ink-pressed': '#ddd6c9', 'text-on-ink': '#15120d',
     }),
     builtin('serene', 'Serene Canvas', 'light', '#f9f8f6', '#ffffff', '#1c1c1e', '#67676d', '#ff5a36'),
-    builtin('azure', 'Azure', 'dark', '#11191e', '#1b2730', '#abc6df', '#9eafc0', '#8b9eff'),
-    builtin('cappuccino', 'Cappuccino', 'dark', '#201c19', '#2d2723', '#f0e1cb', '#c0af9c', '#d4ac87'),
-    builtin('celestial', 'Celestial Macaron', 'dark', '#11192b', '#1d2840', '#f2d2da', '#b9acc4', '#96dac3'),
-    builtin('dark-lite', 'Dark Lite', 'dark', '#171717', '#242424', '#eee9e2', '#b5b0aa', '#ff936d'),
-    builtin('dark-v', 'Dark V 1.0', 'dark', '#171d24', '#252e38', '#eeeae2', '#b2bac2', '#c2cb91'),
 ]);
 export const THEME_COLOR_ROLES = Object.freeze(Object.keys(BUILTIN_THEMES[0].colors));
 
@@ -148,7 +143,7 @@ export function resolveThemeSelection(selection, themes, systemDark = false) {
 }
 
 /** Originals stay in NamedDocRepo; the snapshot also preserves unsaved legacy values. */
-export function planThemeMigration(settings, documents, originals = []) {
+export function planThemeMigration(settings, documents) {
     if (settings.power_user?.atria_theme?.version === 1) return null;
     // New accounts receive an explicit theme contract in default settings.
     // A historical firstRun flag only means onboarding is unfinished.
@@ -157,19 +152,13 @@ export function planThemeMigration(settings, documents, originals = []) {
     let night = DEFAULT_NIGHT;
     const selected = documents.find(item => item.name === prefs.theme);
     if (selected) {
-        const shipped = originals.find(item => item.name === selected.name);
-        const equal = shipped && sameThemeDocument(shipped, selected);
-        const built = BUILTIN_THEMES.find(item => item.name === selected.name && item.appearance === 'dark');
-        if (equal && built) night = built.id;
-        else {
-            try {
-                const converted = convertLegacyTheme(selected, { id: 'migration:night' });
-                if (converted.appearance === 'dark') {
-                    converted.name = uniqueThemeName(`${selected.name} · migrated`, documents);
-                    assets.push(converted); night = converted.id;
-                }
-            } catch { /* Original remains available; use the deterministic fallback. */ }
-        }
+        try {
+            const converted = convertLegacyTheme(selected, { id: 'migration:night' });
+            if (converted.appearance === 'dark') {
+                converted.name = uniqueThemeName(`${selected.name} · migrated`, documents);
+                assets.push(converted); night = converted.id;
+            }
+        } catch { /* User-owned original remains available. */ }
     }
     let day = DEFAULT_DAY;
     if (!fresh && typeof prefs.custom_css === 'string' && prefs.custom_css) {

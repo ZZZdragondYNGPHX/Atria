@@ -1,11 +1,8 @@
 import express from 'express';
-import { readdir, readFile } from 'node:fs/promises';
-import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { InvalidArgumentError, NotFoundError } from '../storage/errors.js';
 import { getNamedDocRepo, getSettingsRepo } from '../storage/index.js';
 import { assertSafeRepoName } from '../storage/name-validation.js';
-import { serverDirectory } from '../server-directory.js';
 import { validateNativeTheme } from '../../public/scripts/atria-shell/theme-model.js';
 
 export const router = express.Router();
@@ -16,11 +13,9 @@ const nativeThemeKey = id => `Atria Theme ${createHash('sha256').update(id).dige
 router.post('/list', async (request, response) => {
     try {
         const handle = request.user.profile.handle;
-        const directory = path.join(serverDirectory, 'default/content/themes');
-        const originals = await Promise.all((await readdir(directory)).filter(name => name.endsWith('.json')).map(async name => JSON.parse(await readFile(path.join(directory, name), 'utf8'))));
         const entries = await getNamedDocRepo().listWithDocs(handle, 'themes');
         const settings = await getSettingsRepo().get(handle);
-        response.set('Cache-Control', 'private, no-store').json({ themes: entries.map(({ name, doc }) => ({ ...doc, name: doc.format === 'atria-theme' ? doc.name : name })), originals, selection: settings?.power_user?.atria_theme ?? null });
+        response.set('Cache-Control', 'private, no-store').json({ themes: entries.map(({ name, doc }) => ({ ...doc, name: doc.format === 'atria-theme' ? doc.name : name })), selection: settings?.power_user?.atria_theme ?? null });
     } catch (error) {
         console.error('Error reading themes:', error);
         response.sendStatus(500);

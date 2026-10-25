@@ -6,7 +6,7 @@ const fallback = () => ({ version: 1, mode: 'light', day: DEFAULT_DAY, night: DE
 /** Coordinates the existing settings authority and NamedDocRepo theme API.
  * Only preview and request status are transient; no second persistent store.
  */
-export function createAtriaThemeService({ prefs, documents = [], originals = [], settings = {}, saveSettings, writeAsset, deleteAsset, readState, notify = () => {}, createId = () => globalThis.crypto.randomUUID() }) {
+export function createAtriaThemeService({ prefs, documents = [], settings = {}, saveSettings, writeAsset, deleteAsset, readState, notify = () => {}, createId = () => globalThis.crypto.randomUUID() }) {
     let docs = copy(documents), saved = copy(prefs.atria_theme || fallback());
     let preview = null, busy = false, error = '', migration = null, notice = '';
     let pendingImport = null;
@@ -74,7 +74,7 @@ export function createAtriaThemeService({ prefs, documents = [], originals = [],
         },
         subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); },
         async initialize() {
-            migration = planThemeMigration(settings, docs, originals);
+            migration = planThemeMigration(settings, docs);
             if (!migration) { saved = selection(prefs.atria_theme); emit(); return; }
             // Reuse assets from a previous partial upgrade by their stable IDs.
             for (const asset of migration.assets) {

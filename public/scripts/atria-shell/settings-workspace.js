@@ -13,7 +13,7 @@ export const SETTINGS_CATEGORIES = Object.freeze([
 ]);
 const SETTINGS_INDEX = [
     ['theme-mode', 'appearance', 'Appearance mode', 'Light dark system 浅色 深色 跟随系统 明暗'],
-    ['themes', 'appearance', 'Theme gallery', 'Theme day night Folio Nocturne Azure Cappuccino Celestial Macaron Dark Lite Dark V 1.0 Serene Canvas 主题 日间 夜间'],
+    ['themes', 'appearance', 'Theme gallery', 'Theme day night Folio Nocturne Serene Canvas 主题 日间 夜间'],
     ['theme-accent', 'appearance', 'Accent color', '强调色 accent'],
     ['theme-colors', 'appearance', 'Edit colors and theme details', 'accent surface text 强调色 配色 文字 颜色'],
     ['theme-css', 'appearance', 'Advanced theme CSS', 'Custom CSS 自定义 样式'],

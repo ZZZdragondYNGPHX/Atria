@@ -114,7 +114,7 @@ export function loadKoboldSettings(data, preset, settings) {
     });
 
     kai_settings.preset_settings = preset.preset_settings ?? settings.preset_settings;
-    kai_settings.api_server = preset.api_server ?? settings.api_server;
+    kai_settings.api_server = preset.api_server ?? settings.api_server ?? kai_settings.api_server;
 
     if (kai_settings.preset_settings == 'gui') {
         selectKoboldGuiPreset();

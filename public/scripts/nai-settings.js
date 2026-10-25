@@ -29,11 +29,6 @@ import { withRetry } from './request-retry.js';
 const default_preamble = '[ Style: chat, complex, sensory, visceral ]';
 const default_order = [1, 5, 0, 2, 3, 4];
 const maximum_output_length = 150;
-const default_presets = {
-    'clio-v1': 'Talker-Chat-Clio',
-    'kayra-v1': 'Carefree-Kayra',
-    'llama-3-erato-v1': 'Erato-Dragonfruit',
-};
 
 export let novelai_settings;
 export let novelai_setting_names;
@@ -56,7 +51,7 @@ export const nai_settings = {
     math1_quad_entropy_scale: 0,
     min_length: 1,
     model_novel: 'clio-v1',
-    preset_settings_novel: 'Talker-Chat-Clio',
+    preset_settings_novel: '',
     streaming_novel: false,
     preamble: default_preamble,
     prefix: '',
@@ -232,8 +227,8 @@ export function loadNovelSettings(data, settings) {
         $('#settings_preset_novel').append(`<option value=${novelai_setting_names[item]}>${item}</option>`);
     });
 
-    //load the rest of the Novel settings without any checks
-    nai_settings.model_novel = settings.model_novel;
+    // Omitted settings use the runtime defaults, without a bundled preset file.
+    nai_settings.model_novel = settings.model_novel ?? nai_settings.model_novel;
     $('#model_novel_select').val(nai_settings.model_novel);
     $(`#model_novel_select option[value=${nai_settings.model_novel}]`).prop('selected', true);
 
@@ -241,25 +236,25 @@ export function loadNovelSettings(data, settings) {
         nai_settings.preamble = settings.nai_preamble;
         delete settings.nai_preamble;
     }
-    nai_settings.preset_settings_novel = settings.preset_settings_novel;
-    nai_settings.temperature = settings.temperature;
-    nai_settings.repetition_penalty = settings.repetition_penalty;
-    nai_settings.repetition_penalty_range = settings.repetition_penalty_range;
-    nai_settings.repetition_penalty_slope = settings.repetition_penalty_slope;
-    nai_settings.repetition_penalty_frequency = settings.repetition_penalty_frequency;
-    nai_settings.repetition_penalty_presence = settings.repetition_penalty_presence;
-    nai_settings.tail_free_sampling = settings.tail_free_sampling;
-    nai_settings.top_k = settings.top_k;
-    nai_settings.top_p = settings.top_p;
-    nai_settings.top_a = settings.top_a;
-    nai_settings.typical_p = settings.typical_p;
-    nai_settings.min_length = settings.min_length;
-    nai_settings.phrase_rep_pen = settings.phrase_rep_pen;
-    nai_settings.mirostat_lr = settings.mirostat_lr;
-    nai_settings.mirostat_tau = settings.mirostat_tau;
+    nai_settings.preset_settings_novel = settings.preset_settings_novel ?? nai_settings.preset_settings_novel;
+    nai_settings.temperature = settings.temperature ?? nai_settings.temperature;
+    nai_settings.repetition_penalty = settings.repetition_penalty ?? nai_settings.repetition_penalty;
+    nai_settings.repetition_penalty_range = settings.repetition_penalty_range ?? nai_settings.repetition_penalty_range;
+    nai_settings.repetition_penalty_slope = settings.repetition_penalty_slope ?? nai_settings.repetition_penalty_slope;
+    nai_settings.repetition_penalty_frequency = settings.repetition_penalty_frequency ?? nai_settings.repetition_penalty_frequency;
+    nai_settings.repetition_penalty_presence = settings.repetition_penalty_presence ?? nai_settings.repetition_penalty_presence;
+    nai_settings.tail_free_sampling = settings.tail_free_sampling ?? nai_settings.tail_free_sampling;
+    nai_settings.top_k = settings.top_k ?? nai_settings.top_k;
+    nai_settings.top_p = settings.top_p ?? nai_settings.top_p;
+    nai_settings.top_a = settings.top_a ?? nai_settings.top_a;
+    nai_settings.typical_p = settings.typical_p ?? nai_settings.typical_p;
+    nai_settings.min_length = settings.min_length ?? nai_settings.min_length;
+    nai_settings.phrase_rep_pen = settings.phrase_rep_pen ?? nai_settings.phrase_rep_pen;
+    nai_settings.mirostat_lr = settings.mirostat_lr ?? nai_settings.mirostat_lr;
+    nai_settings.mirostat_tau = settings.mirostat_tau ?? nai_settings.mirostat_tau;
     nai_settings.streaming_novel = !!settings.streaming_novel;
     nai_settings.preamble = settings.preamble || default_preamble;
-    nai_settings.prefix = settings.prefix;
+    nai_settings.prefix = settings.prefix ?? nai_settings.prefix;
     nai_settings.banned_tokens = settings.banned_tokens || '';
     nai_settings.order = settings.order || default_order;
     nai_settings.logit_bias = settings.logit_bias || [];
@@ -960,12 +955,6 @@ export function initNovelAISettings() {
     $('#model_novel_select').on('change', function () {
         nai_settings.model_novel = String($('#model_novel_select').find(':selected').val());
         saveSettingsDebounced();
-
-        // Update the selected preset to something appropriate
-        const default_preset = default_presets[nai_settings.model_novel];
-        $('#settings_preset_novel').val(novelai_setting_names[default_preset]);
-        $(`#settings_preset_novel option[value=${novelai_setting_names[default_preset]}]`).attr('selected', 'true');
-        $('#settings_preset_novel').trigger('change');
     });
 
     $('#nai_prefix').on('change', function () {

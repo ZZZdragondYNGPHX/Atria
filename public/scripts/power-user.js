@@ -14,8 +14,8 @@ export async function initializeAtriaThemes(settings) {
         return endpoint === 'list' ? result.json() : true;
     };
     let state;
-    try { state = await request('list'); } catch { state = { themes, originals: [] }; }
-    atriaThemes = createAtriaThemeService({ prefs: power_user, settings, documents: state.themes, originals: state.originals,
+    try { state = await request('list'); } catch { state = { themes }; }
+    atriaThemes = createAtriaThemeService({ prefs: power_user, settings, documents: state.themes,
         createId: uuidv4, saveSettings: () => saveSettings(), writeAsset: theme => request('save', theme), deleteAsset: (name, id) => request('delete', { name, id }), readState: () => request('list'),
         notify: () => document.dispatchEvent(new CustomEvent('atria-theme-changed')),
     });

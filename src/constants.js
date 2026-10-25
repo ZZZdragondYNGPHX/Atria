@@ -390,16 +390,8 @@ export const OPENAI_KEYS = [
 
 export const AVATAR_WIDTH = 512;
 export const AVATAR_HEIGHT = 768;
-// Absolute path anchored at the server directory. Historically this was
-// './public/img/ai4.png' — a CWD-relative literal — and every consumer
-// that read it as-is (byaf.js, characters.js getInputImage / fallback,
-// characters.js writeCharacterData default-icon calls) crashed with
-// ENOENT whenever process.cwd() wasn't the repo root (jest, unit tests,
-// containers with a different WORKDIR). content-manager.js worked
-// around this locally with `path.join(serverDirectory, ...)`; folding
-// the anchor into the constant fixes every consumer at once without
-// requiring each caller to remember the pattern.
-export const DEFAULT_AVATAR_PATH = path.join(serverDirectory, 'public', 'img', 'ai4.png');
+// Character-card imports need a raster fallback, independent of the launch directory.
+export const DEFAULT_AVATAR_PATH = path.join(serverDirectory, 'public', 'img', 'avatar-default.png');
 
 export const OPENROUTER_HEADERS = {
     'HTTP-Referer': 'https://sillytavern.app',

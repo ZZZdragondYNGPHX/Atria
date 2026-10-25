@@ -705,7 +705,7 @@ function renderAtriaRecoveryPreview(text, status = 'running') {
         const charName = name2 || (characters[this_chid]?.name) || '';
         const charAvatar = characters[this_chid]?.avatar
             ? getThumbnailUrl('avatar', characters[this_chid].avatar)
-            : 'img/ai4.png';
+            : 'img/avatar-default.png';
         const escapeAttr = (s) => String(s).replace(/[<>&"']/g, c => ({
             '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', '\'': '&#39;',
         })[c] || c);
@@ -921,10 +921,10 @@ let primedCharacters = null;
  */
 export let this_chid;
 let saveCharactersPage = 0;
-export const default_avatar = 'img/ai4.png';
+export const default_avatar = 'img/avatar-default.png';
 export const system_avatar = 'img/logo.png';
-export const comment_avatar = 'img/quill.png';
-export const default_user_avatar = 'img/user-default.png';
+export const comment_avatar = 'img/note.svg';
+export const default_user_avatar = 'img/avatar-default.png';
 export let CLIENT_VERSION = 'Atria:UNKNOWN:Cohee#1207'; // For Horde header
 export let EXTENSIONS_CLIENT_VERSION = 'Atria:1.18.0:Cohee#1207';
 let optionsPopper = Popper.createPopper(document.getElementById('options_button'), document.getElementById('options'), {
@@ -11289,7 +11289,7 @@ export async function saveReply({ type, getMessage, fromStreaming = false, title
 
         if (selected_group) {
             console.debug('entering chat update for groups');
-            let avatarImg = 'img/ai4.png';
+            let avatarImg = 'img/avatar-default.png';
             if (characters[this_chid].avatar != 'none') {
                 avatarImg = getThumbnailUrl('avatar', characters[this_chid].avatar);
             }
@@ -15669,7 +15669,7 @@ export async function getSettings(options = {}) {
         await eventSource.emit(event_types.SETTINGS_LOADED_BEFORE, settings);
 
         //Load AI model config settings
-        amount_gen = settings.amount_gen;
+        amount_gen = settings.amount_gen ?? amount_gen;
         if (settings.max_context !== undefined)
             max_context = parseInt(settings.max_context);
 
