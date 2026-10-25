@@ -18,7 +18,7 @@ import { compileFormula, evaluateFormulaAst } from '../../public/scripts/native/
 import { createDeterministicRng } from '../../public/scripts/native/experience/logic/rng.js';
 import { createRulesEngine } from '../../public/scripts/native/experience/logic/rules.js';
 import { assertNativeId } from './identity.js';
-import { hashNativeDocument, equalNativeDocuments } from './repositories/common.js';
+import { cloneAdmittedDocument, hashNativeDocument, equalNativeDocuments } from './repositories/common.js';
 import { createTaskWorld, loadTaskLogic } from './task-authority.js';
 import { applyLifecycleCandidate, validateLifecycle } from './lifecycle-authority.js';
 import { packageKnowledgeManifest } from './session-knowledge.js';
@@ -99,7 +99,7 @@ export function template(raw, context) {
         if (Object.hasOwn(raw, 'computed')) {
             let value = context.computed;
             for (const key of raw.computed.split('.')) value = value[key];
-            return structuredClone(value);
+            return cloneAdmittedDocument(value);
         }
         if (Object.hasOwn(raw, 'formula')) return expression(raw.formula, context);
         if (Array.isArray(raw)) return raw.map(item => template(item, context));
@@ -133,7 +133,11 @@ function budgetFor(policy, rngSeed) {
         typed(value, schema) { return assertTaskValue(context.value(value), compileDataSchema(schema)); },
         read(records) { add('readGrants', 1, policy.maxReadGrants); add('recordScans', records, AUTHORITY_EXECUTION_LIMITS.recordScans); },
         scan(records) { add('recordScans', records, AUTHORITY_EXECUTION_LIMITS.recordScans); },
-        readValue(value) { add('readBytes', bytes(context.value(value)), AUTHORITY_EXECUTION_LIMITS.readBytes); },
+        readValue(value) {
+            const safe = context.value(value);
+            add('readBytes', bytes(safe), AUTHORITY_EXECUTION_LIMITS.readBytes);
+            return safe;
+        },
         validateEvents(drafts, reducers) {
             if (!Array.isArray(drafts) || counts.worldEvents + drafts.length > policy.maxWorldEvents
                 || counts.effects + drafts.length > policy.maxEffects) throw new TypeError('Expanded World Event limit');
@@ -164,8 +168,11 @@ export function privateReads(candidate, contract, grants, args, budget) {
                     if (!value || !Object.hasOwn(value, part)) throw new TypeError('Private field unavailable');
                     value = value[part];
                 }
-                for (const part of parts.slice(0, -1)) { output[part] ??= {}; output = output[part]; }
-                output[parts.at(-1)] = structuredClone(value);
+                for (const part of parts.slice(0, -1)) {
+                    output[part] = Array.isArray(output[part]) ? output[part].slice() : { ...output[part] };
+                    output = output[part];
+                }
+                output[parts.at(-1)] = value;
             }
             return selected;
         };
@@ -183,7 +190,9 @@ export function privateReads(candidate, contract, grants, args, budget) {
             selected = { records: [...matching].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
                 .map(record => ({ id: record.id, value: select(record), ...(grant.collection.recordHash ? { hash: hashNativeDocument(record.value) } : {}) })) };
         } else selected = select(records.find(item => item.id === taskId(template(grant.recordId, { args }))));
-        budget.readValue(selected); result[grant.id] = selected;
+        // Admission already returns an isolated immutable copy. Retain it
+        // instead of copying once here and discarding a second copy below.
+        result[grant.id] = budget.readValue(selected);
     }
     return freeze(result);
 }
@@ -310,10 +319,10 @@ async function executeTransaction(candidate, installed, contract, logic, world, 
 
     if (Object.keys(subjects).length && !applied) throw new TypeError('Subject admission requires an applied Domain effect');
     const computationState = transaction.computation ? { args, beforeReads: reads, computed, resolution, seed: identity, artifacts } : null;
-    await checkComputation(candidate, installed, contract, transaction, budget, computationState, execution);
+    const invariantStable = await checkComputation(candidate, installed, contract, transaction, budget, computationState, execution);
     for (const item of consumed) markTaskArtifactConsumption(candidate, item, identity);
     const more = transaction.continuationCondition !== undefined && predicate(transaction.continuationCondition, resolved);
-    return { resolution, computationState, execution, artifacts: consumed.map(item => item.evidence), speeches, more };
+    return { resolution, computationState, invariantStable, execution, artifacts: consumed.map(item => item.evidence), speeches, more };
 }
 
 async function checkComputation(candidate, installed, contract, transaction, budget, state, evidence) {
@@ -330,6 +339,9 @@ async function checkComputation(candidate, installed, contract, transaction, bud
     const checked = await runPackageComputation(installed, transaction.computation.invariantSource ?? transaction.computation.source, 'invariant', input);
     if (checked.value !== true) throw new TypeError('Domain invariant rejected');
     evidence.push(checked.evidence);
+    // Derived publications can only change candidate reads. A pure invariant
+    // that observes no such reads has exactly the same admitted input afterward.
+    return grants.length === 0 || transaction.computation.invariantContext?.includes('reads') === false;
 }
 
 export async function prepareAuthorityTransaction(base, installed, rawRequest) {
@@ -397,7 +409,7 @@ export async function prepareAuthorityTransaction(base, installed, rawRequest) {
             budget.counts.historyLogicalBytes = bytes(candidate.states.atri_lifecycle.history);
         }
         await publications(candidate, installed, contract, logic, budget);
-        await checkComputation(candidate, installed, contract, transaction, budget, executed.computationState, executed.execution);
+        if (!executed.invariantStable) await checkComputation(candidate, installed, contract, transaction, budget, executed.computationState, executed.execution);
         validateCandidate(candidate, contract);
         const projection = budget.typed(template(transaction.receipt.projection, { args, resolution }), transaction.receipt.schema);
         const receipt = bounded({ schemaVersion: 1, authorityId: identity, transactionId: transaction.id, verb: transaction.verb,

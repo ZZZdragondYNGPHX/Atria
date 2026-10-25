@@ -30,7 +30,7 @@ import {
 import { createNativeId, assertNativeId } from './identity.js';
 import { resolveSessionKnowledge, validateKnowledgeBindingSet, packageKnowledgeManifest, validateWorldKnowledgeBindings } from './session-knowledge.js';
 import { assertSpeechDraft, validateParticipants } from './participant-authority.js';
-import { equalNativeDocuments, cloneNativeDocument, hashNativeDocument } from './repositories/common.js';
+import { equalNativeDocuments, cloneNativeDocument, cloneAdmittedDocument, hashNativeDocument } from './repositories/common.js';
 import {
     SESSION_CORE_NAMESPACE, TIMELINE_NAMESPACE, KNOWLEDGE_NAMESPACE, RESERVED_SESSION_NAMESPACES,
 } from './session-snapshot.js';
@@ -78,6 +78,25 @@ function normalizeMessageDraft(draft, allowOutcomes = false) {
 function timelineSelection(entry) {
     return { messageId: entry.messageId, branchId: entry.branchId,
         variantIds: entry.variantIds, activeVariantId: entry.activeVariantId };
+}
+
+function copyPublicationState(states) {
+    // Publication changes lifecycle bookkeeping and record envelopes. Domain
+    // values have already been prepared; the memory acquisition writer replaces
+    // its affected value/basis path rather than mutating a shared value.
+    const { atri_lifecycle: lifecycle, ...other } = states;
+    const copy = cloneAdmittedDocument(other);
+    if (!lifecycle) return copy;
+    const { domains, ...metadata } = lifecycle;
+    copy.atri_lifecycle = { ...cloneAdmittedDocument(metadata), domains: {} };
+    for (const [id, domain] of Object.entries(domains)) {
+        const { records, ...metadata } = domain;
+        copy.atri_lifecycle.domains[id] = { ...cloneAdmittedDocument(metadata), records: records.map(record => {
+            const { value, ...envelope } = record;
+            return { ...cloneAdmittedDocument(envelope), value };
+        }) };
+    }
+    return copy;
 }
 
 function validateWorldState(states, manifest, entryPoint) {
@@ -433,7 +452,7 @@ export class SessionCore {
             await this._sessions.realm.load(handle, base.session.packageId), { publication: true, pendingIntentId: pendingRealmIntentId });
         const completedTask = taskRecord ? states.atri_lifecycle?.outbox.find(item => item.invocationId === taskRecord.invocationId) : null;
         if (completedTask?.status === 'pending') {
-            states = cloneNativeDocument(states);
+            states = cloneAdmittedDocument(states);
             states.atri_lifecycle.outbox.find(item => item.invocationId === taskRecord.invocationId).status = 'completed';
         }
         if (hasAuthorityTransactions(base) && !authorityPrepared && base.revision && states !== base.states
@@ -444,7 +463,7 @@ export class SessionCore {
             const installed = await this._openPackage(handle, base.session.packageId, base.session.packageVersionId, base.session.entryPointId);
             states = (await prepareAuthorityPublications({ ...base, states }, installed, authorityBudget, { excludeJobId: completedTask?.simulation?.jobId ?? null })).candidate.states;
             if (base.states.atri_lifecycle?.ready && states.atri_lifecycle?.ready && states.atri_lifecycle.history) {
-                states = cloneNativeDocument(states);
+                states = cloneAdmittedDocument(states);
                 prepareLifetimes(base, { ...base, states });
                 prepareHistory(base, { ...base, states }, { id: 'host.lifecycle', verb: 'host_lifecycle' }, { outcome: 'automatic' }, null, { countTurn: false });
             }
@@ -468,7 +487,7 @@ export class SessionCore {
         let publicationCopy = false;
         if (taskRecord) {
             if (lifecycleDefinition(base)) {
-                states = cloneNativeDocument(states);
+                states = copyPublicationState(states);
                 publicationCopy = true;
                 compactLifecycle({ ...base, states }, states.atri_lifecycle, { reserveTask: true });
             }
@@ -496,7 +515,7 @@ export class SessionCore {
             const acquisitions = validateCognitionTransition(base, { ...base, states }, { taskId: taskRecord?.kind === 'task' ? taskRecord.taskId : null,
                 taskInvocationId: taskRecord?.kind === 'task' ? taskRecord.invocationId : null,
                 appraisalEvidence: taskRecord?.authorityReceipt?.decision === 'cognition.appraise' ? taskRecord.appraisalEvidence : null });
-            if (!publicationCopy) states = cloneNativeDocument(states);
+            if (!publicationCopy) states = copyPublicationState(states);
             publishMemoryAcquisitions(states, acquisitions, revisionId);
             for (const item of states.atri_lifecycle.outbox) {
                 if (!base.states.atri_lifecycle?.outbox.some(previous => previous.invocationId === item.invocationId)) {

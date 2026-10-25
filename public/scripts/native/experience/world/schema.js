@@ -20,6 +20,7 @@ function matchesType(value, expected) {
 }
 
 function sameJsonValue(left, right) {
+    if (left === right && (left === null || typeof left === 'string' || typeof left === 'number' || typeof left === 'boolean')) return true;
     return JSON.stringify(left) === JSON.stringify(right);
 }
 
@@ -86,7 +87,9 @@ function validateNode(value, schema, path, errors, depth) {
             errors.push(path + ': more than maxItems ' + schema.maxItems);
         }
         if (schema.items && typeof schema.items === 'object') {
-            value.forEach((item, index) => validateNode(item, schema.items, path + '[' + index + ']', errors, depth + 1));
+            for (let index = 0; index < value.length; index++) {
+                if (index in value) validateNode(value[index], schema.items, path === null ? null : path + '[' + index + ']', errors, depth + 1);
+            }
         }
     }
 
@@ -95,18 +98,19 @@ function validateNode(value, schema, path, errors, depth) {
             ? schema.properties
             : {};
         const required = Array.isArray(schema.required)
-            ? schema.required.filter(item => typeof item === 'string')
+            ? schema.required
             : [];
 
         for (const key of required) {
-            if (!Object.hasOwn(value, key)) {
+            if (typeof key === 'string' && !Object.hasOwn(value, key)) {
                 errors.push(`${path}: missing required property '${key}'`);
             }
         }
 
-        for (const [key, child] of Object.entries(value)) {
+        for (const key of Object.keys(value)) {
+            const child = value[key];
             if (Object.hasOwn(properties, key)) {
-                validateNode(child, properties[key], path + '.' + key, errors, depth + 1);
+                validateNode(child, properties[key], path === null ? null : path + '.' + key, errors, depth + 1);
                 continue;
             }
             if (schema.additionalProperties === false) {
@@ -114,7 +118,7 @@ function validateNode(value, schema, path, errors, depth) {
                 continue;
             }
             if (schema.additionalProperties && typeof schema.additionalProperties === 'object') {
-                validateNode(child, schema.additionalProperties, path + '.' + key, errors, depth + 1);
+                validateNode(child, schema.additionalProperties, path === null ? null : path + '.' + key, errors, depth + 1);
             }
         }
     }
@@ -122,7 +126,7 @@ function validateNode(value, schema, path, errors, depth) {
 
 export function validateSchemaValue(value, schema, options = {}) {
     const errors = [];
-    const path = typeof options.path === 'string' && options.path ? options.path : '$';
+    const path = options.details === false ? null : typeof options.path === 'string' && options.path ? options.path : '$';
     validateNode(value, schema, path, errors, 0);
     return { ok: errors.length === 0, errors };
 }

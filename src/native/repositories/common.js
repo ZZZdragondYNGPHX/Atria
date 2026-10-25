@@ -4,6 +4,19 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { ConflictError } from '../../storage/errors.js';
 import { readStoredState, deltaStateNamespace } from '../state-delta.js';
 
+// Property names recur throughout state records. Cache only their JSON spelling,
+// never mutable values or document hashes; canonical bytes remain unchanged.
+const encodedKeys = new Map();
+function encodedKey(key) {
+    if (key.length > 256) return JSON.stringify(key);
+    const cached = encodedKeys.get(key);
+    if (cached !== undefined) return cached;
+    const text = JSON.stringify(key);
+    if (encodedKeys.size >= 1024) encodedKeys.clear();
+    encodedKeys.set(key, text);
+    return text;
+}
+
 function stableJson(value) {
     if (value === null || typeof value !== 'object') return JSON.stringify(value);
     // Preserve the existing canonical bytes (including sparse array slots),
@@ -21,13 +34,28 @@ function stableJson(value) {
     for (let index = 0; index < keys.length; index++) {
         if (index) text += ',';
         const key = keys[index];
-        text += JSON.stringify(key) + ':' + stableJson(value[key]);
+        text += encodedKey(key) + ':' + stableJson(value[key]);
     }
     return text + '}';
 }
 
 export function cloneNativeDocument(value) {
     return structuredClone(value);
+}
+
+// For already admitted JSON trees only. These contain no transferables,
+// prototypes or graph cycles, so the general structured-clone protocol is
+// unnecessary. External inputs still use their existing admission boundary.
+export function cloneAdmittedDocument(value) {
+    if (value === null || typeof value !== 'object') return value;
+    if (Array.isArray(value)) return value.map(cloneAdmittedDocument);
+    const copy = {};
+    for (const key of Object.keys(value)) {
+        const child = cloneAdmittedDocument(value[key]);
+        if (key === '__proto__') Object.defineProperty(copy, key, { value: child, enumerable: true, writable: true, configurable: true });
+        else copy[key] = child;
+    }
+    return copy;
 }
 
 export function serializeNativeDocument(value) {

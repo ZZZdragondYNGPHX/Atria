@@ -29,7 +29,7 @@ function exact(value) {
 }
 export function assertTaskValue(value, schema, { copy = true } = {}) {
     const result = json(value, 0, { nodes: 0 }, copy);
-    if (!validateSchemaValue(result, schema).ok) throw new TypeError('Task value violates schema');
+    if (!validateSchemaValue(result, schema, { details: false }).ok) throw new TypeError('Task value violates schema');
     return result;
 }
 /** Original GenerationHost Task normalization, shared with completion evidence. */

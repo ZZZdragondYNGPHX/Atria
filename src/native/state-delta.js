@@ -1,4 +1,4 @@
-import { equalNativeDocuments, putImmutable } from './repositories/common.js';
+import { cloneAdmittedDocument, equalNativeDocuments, putImmutable } from './repositories/common.js';
 import { NATIVE_RESOURCE_KINDS as K } from './contracts.js';
 
 const FORMAT = 'atria-world-state-v2';
@@ -39,14 +39,14 @@ function apply(value, patch) {
             if (!Array.isArray(target) || !Number.isSafeInteger(item.value) || item.value < 0 || item.value > target.length) throw new TypeError('Invalid Delta array length');
             target.length = item.value; continue;
         }
-        if (!item.path.length) { if (item.op !== 'replace') throw new TypeError('Invalid root Delta'); value = structuredClone(item.value); continue; }
+        if (!item.path.length) { if (item.op !== 'replace') throw new TypeError('Invalid root Delta'); value = cloneAdmittedDocument(item.value); continue; }
         let parent = value;
         for (const field of item.path.slice(0, -1)) { if (!container(parent) || !Object.hasOwn(parent, field)) throw new TypeError('Missing Delta parent'); parent = parent[field]; }
         if (!container(parent)) throw new TypeError('Invalid Delta parent');
         const field = item.path.at(-1);
         if (Array.isArray(parent) && (!Number.isSafeInteger(field) || field > parent.length || item.op === 'remove')) throw new TypeError('Invalid Delta array index');
         if (item.op === 'remove') delete parent[field];
-        else Object.defineProperty(parent, field, { value: structuredClone(item.value), writable: true, enumerable: true, configurable: true });
+        else Object.defineProperty(parent, field, { value: cloneAdmittedDocument(item.value), writable: true, enumerable: true, configurable: true });
     }
     return value;
 }
@@ -59,10 +59,10 @@ async function decodeState(tx, key, record, cache) {
         seen.add(key.head);
         if (doc?.format !== FORMAT) {
             if (key.namespace === 'atri_world_state') throw new TypeError('Unsupported World State');
-            value = structuredClone(doc); break;
+            value = cloneAdmittedDocument(doc); break;
         }
         if (doc.contentHash !== key.head || !Number.isSafeInteger(doc.depth) || doc.depth < 0 || doc.depth > 32) throw new TypeError('Invalid State Delta identity');
-        if (doc.kind === 'snapshot' && doc.depth === 0) { value = structuredClone(doc.value); break; }
+        if (doc.kind === 'snapshot' && doc.depth === 0) { value = cloneAdmittedDocument(doc.value); break; }
         if (doc.kind !== 'delta' || !Array.isArray(doc.patch)) throw new TypeError('Invalid State encoding');
         patches.push(doc.patch);
         const baseKey = { ...key, head: doc.baseHead };
@@ -71,7 +71,7 @@ async function decodeState(tx, key, record, cache) {
         if (cached) {
             const base = await cached;
             if (doc.depth !== base.depth + 1) throw new TypeError('State Delta depth mismatch');
-            value = structuredClone(base.value); break;
+            value = cloneAdmittedDocument(base.value); break;
         }
         const base = await tx.getResource(baseKey);
         if (!base || doc.depth !== (base.doc?.format === FORMAT ? base.doc.depth : 0) + 1) throw new TypeError('Missing State Delta dependency');
@@ -93,7 +93,7 @@ async function storedState(tx, key, record) {
     return result;
 }
 export async function readStoredState(tx, key, record) {
-    return structuredClone((await storedState(tx, key, record)).value);
+    return cloneAdmittedDocument((await storedState(tx, key, record)).value);
 }
 export async function putStoredState(tx, key, value, previousHead = null) {
     if (key.kind !== K.sessionState || !deltaStateNamespace(key.namespace)) throw new TypeError('Invalid State identity');
@@ -114,6 +114,6 @@ export async function putStoredState(tx, key, value, previousHead = null) {
         }
     }
     await putImmutable(tx, key, doc);
-    if (fullBytes <= 4 * 1024 * 1024) remember(stateCache(tx), cacheKey(key), Promise.resolve({ value: structuredClone(value), depth: doc.depth, bytes: fullBytes,
+    if (fullBytes <= 4 * 1024 * 1024) remember(stateCache(tx), cacheKey(key), Promise.resolve({ value: cloneAdmittedDocument(value), depth: doc.depth, bytes: fullBytes,
         integrity: (await tx.getResource(key)).integrity }));
 }

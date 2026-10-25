@@ -159,6 +159,7 @@ export function validateCognitionTransition(base, candidate, { taskId = null, ta
 export function publishMemoryAcquisitions(states, acquisitions, revisionId) {
     for (const item of acquisitions) {
         const record = states.atri_lifecycle.domains[item.domainId].records.find(record => record.id === item.recordId);
-        record.value.basis.received = { revisionId, clockId: item.clockId, tick: states.atri_lifecycle.clocks[item.clockId] };
+        record.value = { ...record.value, basis: { ...record.value.basis,
+            received: { revisionId, clockId: item.clockId, tick: states.atri_lifecycle.clocks[item.clockId] } } };
     }
 }

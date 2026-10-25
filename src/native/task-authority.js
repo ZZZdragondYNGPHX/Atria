@@ -1,4 +1,4 @@
-import { equalNativeDocuments } from './repositories/common.js';
+import { cloneAdmittedDocument, equalNativeDocuments } from './repositories/common.js';
 import { compileDeclarativeLogic } from '../../public/scripts/native/experience/logic/declarative.js';
 import { createGameWorldSession } from '../../public/scripts/native/experience/world/session.js';
 import { createInterpretationMappingRegistry } from '../../public/scripts/native/experience/logic/interpretations.js';
@@ -39,14 +39,18 @@ export function validateTaskRecords(base) {
 // Bounded, exact-byte declaration cache. It contains no Session state,
 // candidates, authority proofs or RNG. Exact source/Data/contract changes miss.
 const compiledWorlds = [];
+const frozenDeclaration = value => value === null || typeof value !== 'object'
+    || Object.isFrozen(value) && Object.values(value).every(frozenDeclaration);
 function pinnedLogic(bytes, data, experienceContract) {
-    const cached = compiledWorlds.find(item => item.bytes.equals(bytes) && equalNativeDocuments(item.data, data) && equalNativeDocuments(item.contract, experienceContract));
+    const cached = compiledWorlds.find(item => item.bytes.equals(bytes) && equalNativeDocuments(item.data, data)
+        && (item.sourceContract === experienceContract || equalNativeDocuments(item.contract, experienceContract)));
     if (cached) return cached;
     const text = bytes.toString('utf8');
     const validatedContract = experienceContract ? assertNativeExperienceContract(experienceContract) : undefined;
     const compiled = compileDeclarativeLogic(JSON.parse(text), { data, experienceContract: validatedContract });
     if (compiledWorlds.length >= 4) compiledWorlds.shift();
-    const entry = { bytes: Buffer.from(bytes), data: structuredClone(data), contract: structuredClone(experienceContract), logic: compiled, validatedContract };
+    const entry = { bytes: Buffer.from(bytes), data: structuredClone(data), sourceContract: frozenDeclaration(experienceContract) ? experienceContract : null,
+        contract: structuredClone(experienceContract), logic: compiled, validatedContract };
     compiledWorlds.push(entry);
     return entry;
 }
@@ -72,7 +76,7 @@ export function loadTaskLogic(installed) {
 
 export async function createTaskWorld(base, installed, publish = null, authority = null) {
     const { runtime, logic } = loadTaskLogic(installed);
-    const candidate = structuredClone(base);
+    const candidate = cloneAdmittedDocument(base);
     candidate.worlds = selectedWorlds(candidate.states, installed.manifest, installed.entryPoint);
     const statePatch = {};
     const adapter = { active: true, snapshot: candidate, commitStatePatch: async patch => {
