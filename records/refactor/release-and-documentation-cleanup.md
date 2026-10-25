@@ -4,7 +4,7 @@
 
 - Task ID: `refactor/release-and-documentation-cleanup`
 - Primary Workspace: `docs`
-- Status: Complete (Git 分支历史与文档；托管端残留范围见下文)
+- Status: Git 分支历史与文档已完成；GitHub 托管端旧对象仍可访问，未彻底清除
 - Date: 2026-10-25
 - 起点：docs `28594b32`、main `3a0437bd`、package `ea81990e`、plugin `eb7b11eb`。
 
@@ -38,9 +38,12 @@
 - 发布白名单拒绝源码、发行目录内的 JavaScript 与 `.env`，允许版本化 `.atria`；本地游戏开发分支没有远端跟踪，默认 push 指向停用目标。
 - 其它公开分支和 `v0.9.0` 的提交图没有旧 package 提交，其顶层也没有游戏源码目录。没有因这次清理删除 Atria 产品或独立工具源码。
 - 曾尝试枚举其它分支的全部历史路径，但 partial clone 触发了与目标无关的历史树下载，已终止；改用上述提交图和顶层检查。未将未完成的全路径枚举报告为通过，也未枚举托管端 PR 引用的文件内容。
+- 四分支原子推送成功后，远端 refs 与本地提交逐一一致；远端只剩 main、docs、package、plugin 和原有 v0.9.0 标签，两个已删除标签没有恢复。
 
 ## 范围与边界
 
 - 本次清理文档与发布历史，不修改游戏算法、Atria 运行时代码或现有安全检查；不声称运行性能已经改变。
 - hash 的历史统计、Git 对象身份、确定性算法或实际安全边界与运行时重复自检不是同一用途；没有为文档整理启动游戏、构建、浏览器、真实模型、跨端或长时验收。
 - 分支重写只能移除当前可达发布历史。GitHub 缓存、隐藏 PR refs、旧 SHA 页面、第三方 clone/fork 不因强推自动擦除；彻底清除托管端残留需要 GitHub 侧处理，不能承诺源码从未上传。
+- 推送后对旧提交的一条源码 raw 地址仅发送 HEAD 请求，返回 HTTP 200，证明旧源码仍可按 SHA 访问；没有将源码正文或可直接访问的地址再写入文档。不能把本次结果描述为源码已从 GitHub 彻底擦除。
+- [GitHub 官方说明](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/removing-sensitive-data-from-a-repository)指出，Support 可处理符合其敏感数据政策的缓存与残留引用，但不会为非敏感数据提供同样清除服务。剩余托管端处理需要仓库所有者与 GitHub 确认；本任务没有擅自删库、重建仓库、改变可见性或声称已提交 Support 请求。
