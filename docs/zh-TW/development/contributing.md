@@ -79,13 +79,9 @@ docs(extension-api): add examples for registerExtensionApi
 
 ## 本機開發流程
 
-2. 實作變更。
-3. 本機提交，在獨立 `docs` 分支寫入或更新同一 Record。
-4. 完成的產品任務在本機合併 `main`。
-5. 推送已提交結果作為儲存，清理已完成的本機及遠端任務分支。
-6. 多階段任務更新同一 Record，按 Governance §8 繼續；僅在使用者要求中斷時寫 HANDOFF。
+任務推進依 `docs:README.md` §8；實作精簡、最小相關驗證與執行期輕量檢查統一依 §12.1–§12.2。該檔案屬於獨立 docs 分支，可用 `git show docs:README.md` 讀取。
 
-明確需要審閱時可使用 PR；
+本機實作，記錄實際結果，完成後整合 main 並推送授權內容。遊戲原始碼只留本機，package 只存發行包；保護無關開發工作。CI、PR 與歷史驗證清單都不是預設交付門檻。
 
 ## 程式碼風格
 

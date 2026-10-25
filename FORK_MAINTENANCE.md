@@ -8,11 +8,10 @@ Atria is maintained as a SillyTavern-based modified product. The stable product 
 
 - `main`: stable Atria product/integration line.
 - `docs`: independent Governance, Plans, Records and optional live `HANDOFF.md`.
-- `package`: independent game/Atria Package assets.
+- `package`: game release archives and release notes only; game sources remain local.
 - `plugin`: independent standalone development tools.
-- `skills`: independent repository-agent Skills.
-- `reference/vanilla`: SillyTavern upstream/reference history.
-- `reference/luker`: legacy Luker reference history.
+- Repository-agent Skills: installed local tools; no remote `skills` branch.
+- `reference/<project>`: only when an explicitly authorized reference checkout exists; do not assume old reference names are live branches.
 - `feat/*`, `fix/*`, `refactor/*` and other justified semantic prefixes: temporary product task branches.
 
 ## Normal development flow
@@ -25,6 +24,8 @@ Atria is maintained as a SillyTavern-based modified product. The stable product 
 7. Delete the completed temporary branch and live HANDOFF when the task is complete.
 
 Development, commits, integration and cleanup happen locally. Push committed results to the remote for storage. GitHub Actions are disabled; neither CI nor a PR is a routine gate. Preserve other active tasks and their HANDOFF. Workspace naming follows `docs:README.md` §3.1.
+
+Implementation, minimal related validation and lightweight runtime checks follow `docs:README.md` §12.1–§12.2. Old branch names and historical test lists do not authorize recreation or repeated acceptance workflows.
 
 ## Reference branches
 

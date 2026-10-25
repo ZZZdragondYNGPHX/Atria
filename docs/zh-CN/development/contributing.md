@@ -79,13 +79,9 @@ docs(extension-api): add examples for registerExtensionApi
 
 ## 本地开发流程
 
-2. 实现改动。
-3. 本地提交，在独立 `docs` 分支写入或更新同一 Record。
-4. 完成的产品任务在本地合并 `main`。
-5. 推送已提交结果用于存储，清理已完成的本地及远端任务分支。
-6. 多阶段任务更新同一 Record，按 Governance §8 继续；仅在用户要求中断时写 HANDOFF。
+任务推进按 `docs:README.md` §8；实现精简、最小相关验证与运行时轻量检查统一按 §12.1–§12.2。该文件属于独立 docs 分支，可用 `git show docs:README.md` 读取。
 
-明确需要审阅时可使用 PR；
+本地实现，记录实际结果，完成后集成 main 并推送授权内容。游戏源码只留本地，package 只存发行包；保护无关开发工作。CI、PR 和历史验证清单均不是默认交付门槛。
 
 ## 代码风格
 

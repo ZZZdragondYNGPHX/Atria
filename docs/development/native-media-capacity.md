@@ -1,5 +1,10 @@
 # Native media and Work capacity
 
+This page describes the current implementation, not a requirement to add checks.
+Implementation changes follow `docs:README.md` §12.1–§12.2: use the existing
+admission boundary and reuse accepted identities; do not add whole-library or
+whole-archive verification to ordinary gameplay, rendering or cache hits.
+
 Local Work import separates the encoded media library from frontend structure and
 the resident browser cache. These are admission limits, not a promise of smooth
 playback at the maximum size.

@@ -2,13 +2,9 @@
 
 Repository: `ZZZdragondYNGPHX/Atria`
 
-2. If resuming an existing task, read `docs:HANDOFF.md` and its named Plan/Record. For a new ordinary feature, load only directly relevant context.
-3. Create a fresh `feat/<short-name>` branch from current `main`.
-4. Inspect the owning architecture, state/service/API/UI/persistence paths and relevant tests before coding.
-5. Reuse existing authorities and services rather than creating parallel systems.
-6. Read a `reference/<project>` only when the user explicitly authorizes that reference.
-7. Apply `docs:README.md` §12.1 to implementation and compatibility.
-8. Create/update a Plan when the feature is complex or staged, and write/update the permanent Record under `docs:records/feat/**`.
-9. Integrate completed work into `main`, then delete the task branch and any completed live HANDOFF.
+1. Check actual Git state and protect unrelated changes. Load only the owning architecture and relevant current Plan/Record.
+2. Use an appropriate `feat/<short-name>` branch. Reuse existing state, services and authorities; discuss material scope changes.
+3. Implement the authorized feature under `docs:README.md` §12.1–§12.2. A Plan organizes substantial design, not extra validation stages.
+4. Update the same Record, integrate completed product work into `main`, push the authorized result and clean up only this completed task.
 
-Complete Governance: `docs:README.md`.
+Complete Governance: `docs:README.md`. Historical checklists and Skill examples do not create additional reviews, compatibility layers or runtime checks.

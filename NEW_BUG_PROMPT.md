@@ -2,13 +2,9 @@
 
 Repository: `ZZZdragondYNGPHX/Atria`
 
-2. If resuming an existing task, read `docs:HANDOFF.md` and its named Plan/Record. For a new ordinary bug, do not scan unrelated docs.
-3. Create a fresh `fix/<short-name>` branch from current `main`.
-4. Reproduce the failure path and identify root cause before editing.
-6. Read a `reference/<project>` only when the user explicitly authorizes that reference.
-7. Implement the smallest coherent fix.
-8. Write/update the permanent Record under `docs:records/fix/**`.
-9. Integrate completed work into `main`, then delete the task branch.
-10. Delete this task's live HANDOFF when the task is complete.
+1. Check actual Git state and protect unrelated changes. For resumed work, read an existing user-requested HANDOFF only when relevant, then the current Plan entrypoint and related Record.
+2. Use an appropriate `fix/<short-name>` branch and inspect the failing path and its owner.
+3. Fix the root cause with the smallest coherent change. Implementation and validation follow `docs:README.md` §12.1–§12.2.
+4. Record the actual outcome, integrate completed product work into `main`, push the authorized result and clean up only this completed task.
 
-Complete Governance: `docs:README.md`.
+Complete Governance: `docs:README.md`. Do not turn old test lists, review prompts or Skill examples into additional task gates.

@@ -79,13 +79,9 @@ docs(extension-api): add examples for registerExtensionApi
 
 ## Local Development Workflow
 
-2. Implement the change.
-3. Commit locally and write/update the task Record in the independent `docs` branch.
-4. Integrate completed product work into local `main`.
-5. Push committed results for storage and clean up completed local/remote task branches.
-6. For a multi-stage task, update the same Record and continue under Governance §8; write a HANDOFF only when the user requests interruption.
+Follow `docs:README.md` §8 for task execution and §12.1–§12.2 for implementation, minimal related validation and lightweight runtime checks. Read that independent branch with `git show docs:README.md`.
 
-A pull request may be used when explicit review is needed; it is not the default merge gate. Do not wait for disabled remote CI.
+Implement locally, record actual results and integrate completed product changes into `main`. Push only authorized results; game sources stay local and `package` stores releases only. Preserve unrelated development. Neither CI nor a PR is a routine prerequisite; historical checklists do not create new obligations.
 
 ## Code Style
 
