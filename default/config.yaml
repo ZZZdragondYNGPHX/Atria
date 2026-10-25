@@ -344,6 +344,16 @@ requestOverrides: []
 
 # Native local retrieval inference defaults. Exact player resources own model selection.
 native:
+  # World programs run outside the host event loop. Zero selects a hardware-
+  # based heap/concurrency budget; explicit values allow larger workloads.
+  # Restart after changing this policy. Frontend UI budgets are independent.
+  computation:
+    workers: 0
+    heapMiB: 0
+    timeoutMs: 2000
+    modules: 512
+    moduleMiB: 8
+    outputMiB: 1
   retrieval:
     autoDownload: true
     embeddingModel: Cohee/jina-embeddings-v2-base-en

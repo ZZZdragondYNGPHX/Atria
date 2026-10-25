@@ -1,96 +1,56 @@
-import { getQuickJS } from 'quickjs-emscripten';
+import { runComputationJob } from './package-computation-pool.js';
 import { compileController } from './frontend/script-compiler.js';
-import { SCRIPT_LIMITS } from '../../public/shared/native-frontend-script.js';
 import { assertJsonDeclaration } from '../../public/shared/native-values.js';
 import { resourcePath } from '../../public/shared/native-frontend-contract.js';
 import { hashNativeDocument } from './repositories/common.js';
 import { AUTHORITY_EXECUTION_LIMITS } from './authority-execution-limits.js';
+import { computationPolicy } from './computation-policy.js';
 
 // Cache only exact immutable module declarations, never inputs or outcomes.
 const artifacts = new Map();
+function freezeProgram(value) {
+    if (value && typeof value === 'object') {
+        for (const child of Object.values(value)) freezeProgram(child);
+        Object.freeze(value);
+    }
+    return value;
+}
 export function compilePackageComputation(source, files) {
-    resourcePath(source);
-    if (!/\.(js|ts)$/.test(source)) throw new TypeError('Package computation requires JS/TS');
-    const artifact = compileController(source, path => {
-        const bytes = files.get(path);
-        if (!bytes || bytes.length > SCRIPT_LIMITS.moduleBytes) throw new TypeError('Missing computation module');
-        return bytes.toString('utf8');
-    });
-    return artifact;
+    return pinnedArtifact(source, files).artifact;
 }
 
-function pinnedArtifact(installed, source) {
-    const cached = artifacts.get(source);
-    // Only the exact linked modules affect this artifact, not scene images.
-    if (cached && cached.modules.every(([path, bytes]) => installed.sourceFiles.has(path) && bytes.equals(installed.sourceFiles.get(path)))) return cached;
-    const artifact = compilePackageComputation(source, installed.sourceFiles);
-    const entry = { artifact, modules: artifact.modules.map(module => [module.id, Buffer.from(installed.sourceFiles.get(module.id))]),
+function pinnedArtifact(source, files) {
+    const limits = computationPolicy();
+    resourcePath(source);
+    if (!/\.(js|ts)$/.test(source)) throw new TypeError('Package computation requires JS/TS');
+    // Build validation and execution share the exact linked program. A package
+    // with many transactions must not transpile the same world rules per use.
+    for (const [key, cached] of artifacts) {
+        if (cached.source !== source || !cached.modules.every(([path, bytes]) => files.has(path) && bytes.equals(files.get(path)))) continue;
+        artifacts.delete(key); artifacts.set(key, cached);
+        return cached;
+    }
+    const artifact = compileController(source, path => {
+        const bytes = files.get(path);
+        if (!bytes || bytes.length > limits.computationModuleBytes) throw new TypeError('Missing computation module');
+        return bytes.toString('utf8');
+    }, { modules: limits.computationModules, moduleBytes: limits.computationModuleBytes, synchronous: true });
+    freezeProgram(artifact);
+    const entry = { source, artifact, modules: artifact.modules.map(module => [module.id, Buffer.from(files.get(module.id))]),
         resourceHash: hashNativeDocument(artifact) };
     if (artifacts.size >= 8) artifacts.delete(artifacts.keys().next().value);
-    artifacts.set(source, entry);
+    artifacts.set(entry.resourceHash, entry);
     return entry;
 }
 
 export async function runPackageComputation(installed, source, method, input) {
     if (!['precondition', 'compute', 'invariant', 'derive', 'transform'].includes(method)) throw new TypeError('Invalid computation stage');
-    const { artifact, resourceHash } = pinnedArtifact(installed, source);
+    const { artifact, resourceHash } = pinnedArtifact(source, installed.sourceFiles);
     // Several budgeted reads/values form one input; the frontend bridge message
     // ceiling is not the Authority aggregate. Guest execution limits still apply.
     const safe = assertJsonDeclaration(input, 'Computation input', AUTHORITY_EXECUTION_LIMITS.totalValueBytes);
-    const engine = await getQuickJS();
-    const runtime = engine.newRuntime();
-    runtime.setMemoryLimit(SCRIPT_LIMITS.heap); runtime.setMaxStackSize(SCRIPT_LIMITS.stack);
-    const vm = runtime.newContext();
-    // Server transactions freeze larger bounded read sets than UI controllers.
-    const deadline = Date.now() + AUTHORITY_EXECUTION_LIMITS.computationWallMs;
-    runtime.setInterruptHandler(() => Date.now() > deadline);
-    try {
-        // No host bridge is installed. Module factories, loader, checks and JSON
-        // serialization all execute in the bounded guest heap, never Node eval.
-        const result = vm.evalCode(`(() => {
-            const modules = Object.create(null), cache = Object.create(null);
-            const freeze = value => {
-                if (value && typeof value === 'object') {
-                    for (const key of Object.keys(value)) {
-                        const child = value[key];
-                        if (child && typeof child === 'object') freeze(child);
-                    }
-                    Object.freeze(value);
-                }
-                return value;
-            };
-            for (const proto of [Function.prototype, Object.getPrototypeOf(async function(){}), Object.getPrototypeOf(function*(){}), Object.getPrototypeOf(async function*(){})])
-                Object.defineProperty(proto, 'constructor', { value: undefined, configurable: false, writable: false });
-            for (const key of ['eval', 'Function', 'Date', 'WebAssembly', 'SharedArrayBuffer', 'Atomics'])
-                Object.defineProperty(globalThis, key, { value: undefined, configurable: false, writable: false });
-            Object.defineProperty(Math, 'random', { value: undefined, configurable: false, writable: false });
-            ${artifact.modules.map(module => `modules[${JSON.stringify(module.id)}] = { imports: ${JSON.stringify(module.imports)}, factory: function(require,module,exports){\n${module.code}\n} };`).join('\n')}
-            const load = id => {
-                if (cache[id]) return cache[id].exports;
-                const record = modules[id]; if (!record) throw Error('Unlinked module');
-                const module = { exports: {} }; cache[id] = module;
-                record.factory(name => { if (!Object.hasOwn(record.imports, name)) throw Error('Unlinked import'); return load(record.imports[name]); }, module, module.exports);
-                return module.exports;
-            };
-            const handler = load(${JSON.stringify(artifact.entry)}).default?.[${JSON.stringify(method)}];
-            if (typeof handler !== 'function') throw Error('Missing computation stage');
-            const value = handler(freeze(JSON.parse(${JSON.stringify(JSON.stringify(safe))})));
-            const check = (value, depth = 0) => {
-                if (depth > 32) throw Error('Computation depth');
-                if (value === null || typeof value === 'string' || typeof value === 'boolean') return;
-                if (typeof value === 'number' && Number.isFinite(value)) return;
-                if (!value || typeof value !== 'object' || value.then || (!Array.isArray(value) && Object.getPrototypeOf(value) !== Object.prototype && Object.getPrototypeOf(value) !== null)) throw Error('Computation JSON required');
-                Object.values(value).forEach(child => check(child, depth + 1));
-            };
-            check(value);
-            const text = JSON.stringify(value);
-            if (text.length > ${SCRIPT_LIMITS.messageBytes}) throw Error('Computation output budget');
-            return text;
-        })()`, source);
-        if (result.error) { result.error.dispose(); throw new TypeError('Package computation failed'); }
-        let value;
-        try { value = assertJsonDeclaration(JSON.parse(vm.getString(result.value)), 'Computation output', SCRIPT_LIMITS.messageBytes); } finally { result.value.dispose(); }
-        if (runtime.hasPendingJob()) throw new TypeError('Asynchronous computation denied');
-        return { value, evidence: { source, resourceHash, stage: method } };
-    } finally { vm.dispose(); runtime.dispose(); }
+    const limits = computationPolicy();
+    const text = await runComputationJob({ artifact, resourceHash, source, method, safe, limits });
+    const value = assertJsonDeclaration(JSON.parse(text), 'Computation output', limits.computationOutputBytes);
+    return { value, evidence: { source, resourceHash, stage: method } };
 }

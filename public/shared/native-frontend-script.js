@@ -4,6 +4,20 @@ export const SCRIPT_LIMITS = Object.freeze({ heap: 8 * 1024 * 1024, stack: 256 *
     experienceCpuMs: 2000, windowMs: 10000, modules: 64, moduleBytes: 512 * 1024, messageBytes: 128 * 1024,
     queue: 64, outstanding: 32, operations: 4, controllers: 16, commands: 2048, restarts: 2 });
 
+// Browser hints determine a shared device allowance; they are not capability
+// grants. Unknown devices retain a modest default rather than an 8 MiB ceiling.
+export function scriptRuntimeBudget(device = {}) {
+    const cores = Number.isFinite(device.hardwareConcurrency) && device.hardwareConcurrency > 0 ? device.hardwareConcurrency : 4;
+    const memoryGiB = Number.isFinite(device.deviceMemory) && device.deviceMemory > 0 ? device.deviceMemory : 4;
+    return Object.freeze({
+        ...SCRIPT_LIMITS,
+        heap: Math.max(SCRIPT_LIMITS.heap, Math.floor(memoryGiB * 1024 * 1024 * 1024 / (8 * SCRIPT_LIMITS.controllers))),
+        cpuMs: 200,
+        initializationMs: 1000,
+        experienceCpuMs: Math.floor(SCRIPT_LIMITS.windowMs * Math.max(1, cores - 1) * 0.75),
+    });
+}
+
 export function scriptMessage(value) {
     const text = JSON.stringify(value);
     if (typeof text !== 'string' || new TextEncoder().encode(text).length > SCRIPT_LIMITS.messageBytes) throw new TypeError('script_message_budget');
@@ -16,15 +30,15 @@ export function assertController(value) {
     return value;
 }
 
-export function assertScriptArtifact(value) {
+export function assertScriptArtifact(value, limits = SCRIPT_LIMITS) {
     fields(value, ['format', 'version', 'entry', 'modules']);
-    if (value.format !== 'atria-script' || value.version !== 1 || !Array.isArray(value.modules) || !value.modules.length || value.modules.length > SCRIPT_LIMITS.modules) throw new TypeError('Invalid Script artifact');
+    if (value.format !== 'atria-script' || value.version !== 1 || !Array.isArray(value.modules) || !value.modules.length || value.modules.length > limits.modules) throw new TypeError('Invalid Script artifact');
     const ids = new Set(); let bytes = 0;
     for (const module of value.modules) {
         fields(module, ['id', 'code', 'imports', 'map', 'sourceHash']); resourcePath(module.id);
         if (ids.has(module.id) || typeof module.code !== 'string' || !/^[a-f0-9]{64}$/.test(module.sourceHash)) throw new TypeError('Invalid Script module');
         ids.add(module.id); bytes += new TextEncoder().encode(module.code).length;
-        if (bytes > SCRIPT_LIMITS.moduleBytes) throw new TypeError('script_module_budget');
+        if (bytes > limits.moduleBytes) throw new TypeError('script_module_budget');
         fields(module.imports, Object.keys(module.imports));
         for (const [name, target] of Object.entries(module.imports)) {
             if (!name.startsWith('./') && !name.startsWith('../')) throw new TypeError('Only package-local imports');
@@ -33,7 +47,7 @@ export function assertScriptArtifact(value) {
         fields(module.map, ['version', 'file', 'sources', 'names', 'mappings']);
         if (module.map.version !== 3 || !Array.isArray(module.map.sources) || module.map.sources.length !== 1 || module.map.sources[0] !== module.id
             || !Array.isArray(module.map.names) || module.map.names.length > 10000 || module.map.names.some(name => typeof name !== 'string' || name.length > 256)
-            || typeof module.map.mappings !== 'string' || module.map.mappings.length > SCRIPT_LIMITS.moduleBytes) throw new TypeError('Invalid Script source map');
+            || typeof module.map.mappings !== 'string' || module.map.mappings.length > limits.moduleBytes) throw new TypeError('Invalid Script source map');
     }
     if (!ids.has(value.entry)) throw new TypeError('Missing Controller entry');
     for (const module of value.modules) for (const target of Object.values(module.imports)) if (!ids.has(target)) throw new TypeError('Open Script module graph');

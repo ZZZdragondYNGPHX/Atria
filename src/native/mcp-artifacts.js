@@ -1,6 +1,10 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { serverBootId } from '../logging/startup-store.js';
 import { ConflictError, NotFoundError } from '../storage/errors.js';
+import fs from 'node:fs';
+import { readFile } from 'node:fs/promises';
+import { PACKAGE_LIMITS } from '../../public/shared/native-package-limits.js';
+import { createTemporaryPayload } from './temporary-payload.js';
 
 const MiB = 1024 * 1024;
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -16,10 +20,10 @@ const refKeys = ['artifactId', 'contentHash', 'totalBytes', 'sourceRevision', 'c
 export class NativeMcpArtifacts {
     #items = new Map();
     #reservedBytes = 0;
-    constructor({ now = Date.now, bootId = serverBootId, ttlMs = 900000, maxEntries = 8, maxOwnerEntries = 4, maxTotalBytes = 256 * MiB, maxArtifactBytes = 128 * MiB, maxChunkBytes = MiB } = {}) {
+    constructor({ now = Date.now, bootId = serverBootId, ttlMs = 900000, maxEntries = 8, maxOwnerEntries = 4, maxTotalBytes = 8 * PACKAGE_LIMITS.archiveBytes, maxArtifactBytes = PACKAGE_LIMITS.archiveBytes, maxChunkBytes = MiB } = {}) {
         if (typeof now !== 'function' || !identifier(bootId) || !integer(ttlMs, 1, 900000)
-            || !integer(maxEntries, 1, 64) || !integer(maxOwnerEntries, 1, maxEntries) || !integer(maxTotalBytes, 1, 256 * MiB)
-            || !integer(maxArtifactBytes, 1, 128 * MiB) || !integer(maxChunkBytes, 1, MiB)) invalid();
+            || !integer(maxEntries, 1, 64) || !integer(maxOwnerEntries, 1, maxEntries) || !integer(maxTotalBytes, 1, Number.MAX_SAFE_INTEGER)
+            || !integer(maxArtifactBytes, 1, maxTotalBytes) || !integer(maxChunkBytes, 1, MiB)) invalid();
         Object.assign(this, { now, bootId, ttlMs, maxEntries, maxOwnerEntries, maxTotalBytes, maxArtifactBytes, maxChunkBytes });
         Object.freeze(this);
     }
@@ -30,7 +34,7 @@ export class NativeMcpArtifacts {
     }
     #drop(item) {
         if (item.readers) return;
-        item.bytes.fill(0); this.#reservedBytes -= item.totalBytes; this.#items.delete(item.artifactId);
+        item.backing.dispose(); item.hash = null; this.#reservedBytes -= item.totalBytes; this.#items.delete(item.artifactId);
     }
     cleanup() { for (const item of this.#items.values()) if (item.expiresAt <= this.now()) this.#drop(item); }
     #reserve(owner, clientInstanceId, contentHash, totalBytes, sourceRevision, source) {
@@ -40,9 +44,15 @@ export class NativeMcpArtifacts {
         if (this.#items.size >= this.maxEntries || [...this.#items.values()].filter(item => item.owner === owner).length >= this.maxOwnerEntries
             || this.#reservedBytes + totalBytes > this.maxTotalBytes) throw new ConflictError('native_artifact_capacity_conflict');
         const item = { artifactId: randomUUID(), owner, clientInstanceId, contentHash, totalBytes, sourceRevision,
-            serverBootId: this.bootId, source, expiresAt: this.now() + this.ttlMs, state: 'receiving', receivedBytes: 0, readers: 0, bytes: Buffer.alloc(totalBytes) };
+            serverBootId: this.bootId, source, expiresAt: this.now() + this.ttlMs, state: 'receiving', receivedBytes: 0, readers: 0,
+            backing: createTemporaryPayload('atria-artifact-'), hash: createHash('sha256') };
         this.#items.set(item.artifactId, item); this.#reservedBytes += totalBytes;
         return item;
+    }
+    #capture(item, bytes) {
+        try { fs.writeFileSync(item.backing.path, bytes); } catch (error) { this.#drop(item); throw error; }
+        item.hash = null; item.receivedBytes = bytes.length; item.state = 'complete';
+        return this.#metadata(item);
     }
     #get(owner, ref, complete = false) {
         this.cleanup();
@@ -75,13 +85,14 @@ export class NativeMcpArtifacts {
     }
     captureSkillEmbed(owner, clientInstanceId, bindingHash, bytes) {
         if (!Buffer.isBuffer(bytes) || !/^[a-f0-9]{64}$/.test(bindingHash ?? '')) invalid();
-        const item = this.#reserve(owner, clientInstanceId, digest(bytes), bytes.length, digest(bytes), { kind: 'skill-payload-upload', bindingHash });
-        bytes.copy(item.bytes); item.receivedBytes = bytes.length; item.state = 'complete'; return this.#metadata(item);
+        const hash = digest(bytes);
+        const item = this.#reserve(owner, clientInstanceId, hash, bytes.length, hash, { kind: 'skill-payload-upload', bindingHash });
+        return this.#capture(item, bytes);
     }
     captureSessionArchive(owner, clientInstanceId, sessionId, revisionId, saveId, bytes) {
         if (!identifier(sessionId) || !identifier(revisionId) || saveId !== null && !identifier(saveId) || !Buffer.isBuffer(bytes)) invalid();
         const item = this.#reserve(owner, clientInstanceId, digest(bytes), bytes.length, revisionId, { kind: 'session-archive', sessionId, revisionId, saveId });
-        bytes.copy(item.bytes); item.receivedBytes = bytes.length; item.state = 'complete'; return this.#metadata(item);
+        return this.#capture(item, bytes);
     }
     async withSessionArchive(owner, ref, consumer) {
         const item = this.#get(owner, ref, true);
@@ -91,14 +102,13 @@ export class NativeMcpArtifacts {
     captureBuild(owner, clientInstanceId, projectId, revision, bytes) {
         if (!identifier(projectId) || !Buffer.isBuffer(bytes)) invalid();
         const item = this.#reserve(owner, clientInstanceId, digest(bytes), bytes.length, revision, { kind: 'studio-project', projectId, revision });
-        bytes.copy(item.bytes); item.receivedBytes = bytes.length; item.state = 'complete';
-        return this.#metadata(item);
+        return this.#capture(item, bytes);
     }
     capturePackage(owner, clientInstanceId, packageId, packageVersionId, expectedContentHash, bytes) {
         if (!identifier(packageId) || !identifier(packageVersionId) || !Buffer.isBuffer(bytes) || digest(bytes) !== expectedContentHash) invalid();
         const item = this.#reserve(owner, clientInstanceId, expectedContentHash, bytes.length, packageVersionId,
             { kind: 'installed-package', packageId, packageVersionId });
-        bytes.copy(item.bytes); item.receivedBytes = bytes.length; item.state = 'complete'; return this.#metadata(item);
+        return this.#capture(item, bytes);
     }
     write(owner, ref, offset, bytes, chunkHash) {
         const item = this.#get(owner, ref);
@@ -107,30 +117,40 @@ export class NativeMcpArtifacts {
             || offset !== item.receivedBytes || offset + bytes.length > item.totalBytes || digest(bytes) !== chunkHash) {
             this.#drop(item); throw new ConflictError('native_artifact_chunk_conflict');
         }
-        bytes.copy(item.bytes, offset); item.receivedBytes += bytes.length;
+        try { fs.appendFileSync(item.backing.path, bytes); } catch (error) { this.#drop(item); throw error; }
+        item.hash.update(bytes); item.receivedBytes += bytes.length;
         return this.#metadata(item);
     }
     finalize(owner, ref) {
         const item = this.#get(owner, ref);
         if (item.state !== 'receiving') throw new ConflictError('native_artifact_state_conflict');
-        if (item.receivedBytes !== item.totalBytes || digest(item.bytes) !== item.contentHash) {
+        if (item.receivedBytes !== item.totalBytes || item.hash.digest('hex') !== item.contentHash) {
             this.#drop(item); throw new ConflictError('native_artifact_integrity_conflict');
         }
-        item.state = 'complete'; return this.#metadata(item);
+        item.hash = null; item.state = 'complete'; return this.#metadata(item);
     }
     inspect(owner, ref) { return this.#metadata(this.#get(owner, ref)); }
     readChunk(owner, ref, offset, length) {
         const item = this.#get(owner, ref, true);
         if (!integer(offset, 0, item.totalBytes - 1) || !integer(length, 1, Math.min(this.maxChunkBytes, item.totalBytes - offset))) invalid();
-        const bytes = Buffer.from(item.bytes.subarray(offset, offset + length));
+        const bytes = Buffer.allocUnsafe(length), descriptor = fs.openSync(item.backing.path, 'r');
+        try {
+            let read = 0;
+            while (read < length) {
+                const count = fs.readSync(descriptor, bytes, read, length - read, offset + read);
+                if (!count) throw new ConflictError('native_artifact_integrity_conflict');
+                read += count;
+            }
+        } finally { fs.closeSync(descriptor); }
         return { bytes, contentHash: digest(bytes), totalBytes: item.totalBytes, offset };
     }
     async withBytes(owner, ref, consumer) {
         const item = this.#get(owner, ref, true);
         item.readers++;
         try {
-            if (digest(item.bytes) !== item.contentHash) throw new ConflictError('native_artifact_integrity_conflict');
-            return await consumer(item.bytes);
+            // Admission already checked the stream. Each consumer receives its
+            // own bytes; it cannot mutate the retained, private backing file.
+            return await consumer(await readFile(item.backing.path));
         } finally { item.readers--; this.cleanup(); }
     }
     cancel(owner, ref) {

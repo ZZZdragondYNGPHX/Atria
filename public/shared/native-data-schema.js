@@ -17,7 +17,25 @@ function integerBound(value, minimum, maximum, label) {
 
 // Validate the schema itself before reusing the existing deterministic data
 // validator. In particular, unsupported keywords must never be silently ignored.
+const frozenSchemas = new WeakMap();
+function deeplyFrozen(value) {
+    return value === null || typeof value !== 'object'
+        || Object.isFrozen(value) && Object.values(value).every(deeplyFrozen);
+}
 export function compileDataSchema(raw, depth = 0, budget = { nodes: 0 }) {
+    const standard = depth === 0 && budget.nodes === 0 && budget.maxArrayItems === undefined;
+    const cached = standard && frozenSchemas.get(raw);
+    if (cached) { budget.nodes = cached.nodes; return cached.schema; }
+    const schema = json(compileNode(raw, depth, budget));
+    if (standard) {
+        const entry = { schema, nodes: budget.nodes };
+        if (deeplyFrozen(raw)) frozenSchemas.set(raw, entry);
+        frozenSchemas.set(schema, entry);
+    }
+    return schema;
+}
+
+function compileNode(raw, depth, budget) {
     if (depth > 8 || ++budget.nodes > 256) throw new Error('Message dataSchema complexity exceeded');
     if (!Object.hasOwn(SCHEMA_FIELDS, raw?.type)) throw new Error('Unknown message dataSchema type');
     fields(raw, ['type', ...SCHEMA_FIELDS[raw.type]], 'Message dataSchema');
@@ -28,7 +46,7 @@ export function compileDataSchema(raw, depth = 0, budget = { nodes: 0 }) {
         if (Object.keys(raw.properties).length > 128) throw new Error('Too many message schema properties');
         schema.properties = Object.fromEntries(Object.entries(raw.properties).map(([key, child]) => {
             if (!text(key, 128).length) throw new Error('Empty message schema property');
-            return [key, compileDataSchema(child, depth + 1, budget)];
+            return [key, compileNode(child, depth + 1, budget)];
         }));
         if (raw.required !== undefined) {
             if (!Array.isArray(raw.required) || raw.required.length > 128 || new Set(raw.required).size !== raw.required.length
@@ -41,7 +59,7 @@ export function compileDataSchema(raw, depth = 0, budget = { nodes: 0 }) {
         const limit = raw.type === 'array' ? (budget.maxArrayItems ?? 256) : 65536;
         integerBound(raw[max], 0, limit, 'message schema ' + max);
         if (raw[min] !== undefined) integerBound(raw[min], 0, raw[max], 'message schema ' + min);
-        if (raw.type === 'array') schema.items = compileDataSchema(raw.items, depth + 1, budget);
+        if (raw.type === 'array') schema.items = compileNode(raw.items, depth + 1, budget);
     }
     if (raw.type === 'number' || raw.type === 'integer') {
         for (const key of ['minimum', 'maximum']) {
@@ -59,5 +77,5 @@ export function compileDataSchema(raw, depth = 0, budget = { nodes: 0 }) {
         const withoutEnum = { ...schema }; delete withoutEnum.enum;
         for (const value of raw.enum) if (!validateSchemaValue(value, withoutEnum).ok) throw new Error('Invalid message schema enum value');
     }
-    return json(schema);
+    return schema;
 }

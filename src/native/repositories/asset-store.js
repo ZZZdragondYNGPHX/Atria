@@ -124,7 +124,9 @@ export class AssetStore {
     }
 
     async withBlobPublication(handle, payloads, operation) {
-        const hashes = [...new Set(payloads.map(bytes => digest(toBuffer(bytes))))].sort();
+        // Accept a lazy iterable so publishing a media-heavy package does not
+        // materialize every asset at once just to acquire its content leases.
+        const hashes = [...new Set(Array.from(payloads, bytes => digest(toBuffer(bytes))))].sort();
         const lock = index => index < hashes.length ? this.withBlobLease(handle, hashes[index], () => lock(index + 1))
             : withAccountQuota(this._engine, handle, async () => {
                 const created = [];

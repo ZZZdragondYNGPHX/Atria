@@ -1,11 +1,12 @@
-import { SCRIPT_LIMITS, assertScriptArtifact, scriptMessage } from '../../../shared/native-frontend-script.js';
+import { SCRIPT_LIMITS, assertScriptArtifact, scriptMessage, scriptRuntimeBudget } from '../../../shared/native-frontend-script.js';
 
 export function createScriptSupervisor({ window, scheduler, onDiagnostic = () => {}, workerFactory = () => new window.Worker('/atria-script.bundle.js', { type: 'module' }) }) {
+    const budget = scriptRuntimeBudget(window.navigator);
     const controllers = new Set(); let disposed = false, used = 0, since = Date.now();
     function account(cpu) {
         if (Date.now() - since > SCRIPT_LIMITS.windowMs) { used = 0; since = Date.now(); }
         used += Math.max(0, Number(cpu) || 0);
-        if (used > SCRIPT_LIMITS.experienceCpuMs) throw new Error('script_experience_budget');
+        if (used > budget.experienceCpuMs) throw new Error('script_experience_budget');
     }
     async function attach({ artifact, snapshot, capability, required, failure, revoked = () => {} }) {
         assertScriptArtifact(artifact); account(0);
@@ -33,7 +34,7 @@ export function createScriptSupervisor({ window, scheduler, onDiagnostic = () =>
             worker = workerFactory();
             worker.onmessage = event => { if (pending && event.data?.sequence === pending.id) { const task = pending; pending = null; task.resolve(event.data); } };
             worker.onerror = () => pending?.reject(new Error('script_worker_failed'));
-            const result = await send({ kind: 'init', artifact });
+            const result = await send({ kind: 'init', artifact, budget });
             if (result.error) throw Object.assign(new Error(result.error.reasonCode), { diagnostic: result.error });
         }
         function delay(ms, frame = false) {

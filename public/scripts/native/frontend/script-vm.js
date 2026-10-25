@@ -2,9 +2,9 @@ import { SCRIPT_LIMITS, assertScriptArtifact, scriptMessage, scriptMethod } from
 
 // This adapter never executes Package code in the Worker JS realm. Even the
 // module linker and promise callbacks below execute inside QuickJS's own heap.
-export function createScriptVM(QuickJS, artifact) {
+export function createScriptVM(QuickJS, artifact, budget = SCRIPT_LIMITS) {
     assertScriptArtifact(artifact);
-    const runtime = QuickJS.newRuntime(); runtime.setMemoryLimit(SCRIPT_LIMITS.heap); runtime.setMaxStackSize(SCRIPT_LIMITS.stack);
+    const runtime = QuickJS.newRuntime(); runtime.setMemoryLimit(budget.heap); runtime.setMaxStackSize(SCRIPT_LIMITS.stack);
     const vm = runtime.newContext(); let deadline = 0, calls = [], dead = false;
     runtime.setInterruptHandler(() => Date.now() > deadline);
     const send = vm.newFunction('send', handle => {
@@ -27,7 +27,7 @@ export function createScriptVM(QuickJS, artifact) {
         }
     }
     try {
-        deadline = Date.now() + SCRIPT_LIMITS.cpuMs;
+        deadline = Date.now() + (budget.initializationMs ?? budget.cpuMs);
         evaluate(`globalThis.__atri = (() => {
             const send = __atriSend; delete globalThis.__atriSend;
             const modules = Object.create(null), cache = Object.create(null), pending = new Map();
@@ -73,7 +73,7 @@ export function createScriptVM(QuickJS, artifact) {
     return {
         run(message) {
             if (dead) throw new Error('script_disposed');
-            calls = []; deadline = Date.now() + SCRIPT_LIMITS.cpuMs;
+            calls = []; deadline = Date.now() + budget.cpuMs;
             if (message.kind === 'invoke') { scriptMethod(message.method); evaluate(`__atri.run(${JSON.stringify(message.method)},${JSON.stringify(scriptMessage(message.snapshot))},${JSON.stringify(scriptMessage(message.event ?? {}))},${JSON.stringify(message.intent ?? null)})`); } else if (message.kind === 'settle') evaluate(`__atri.settle(${JSON.stringify(message.id)},${message.ok === true},${JSON.stringify(scriptMessage(message.value ?? null))},${JSON.stringify(scriptMessage(message.snapshot))})`);
             else throw new Error('script_protocol');
             jobs(); return scriptMessage(calls);

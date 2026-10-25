@@ -27,7 +27,7 @@ globalThis.onmessage = event => {
     chain = chain.then(async () => {
         const message = event.data, start = performance.now();
         try {
-            if (message.kind === 'init') { artifact = message.artifact; vm = createScriptVM(await engine, artifact); globalThis.postMessage({ sequence: message.sequence, calls: [], cpu: performance.now() - start }); } else {
+            if (message.kind === 'init') { artifact = message.artifact; vm = createScriptVM(await engine, artifact, message.budget); globalThis.postMessage({ sequence: message.sequence, calls: [], cpu: performance.now() - start }); } else {
                 const calls = vm.run(scriptMessage(message));
                 const failure = calls.find(call => call.method === 'exception');
                 globalThis.postMessage({ sequence: message.sequence, calls: calls.filter(call => call.method !== 'exception'), cpu: performance.now() - start, ...(failure ? { error: diagnostic(failure.args[0]) } : {}) });

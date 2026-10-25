@@ -1,6 +1,13 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 
 import AdmZip from 'adm-zip';
+import fs from 'node:fs';
+import { pipeline } from 'node:stream/promises';
+import { Readable, Transform } from 'node:stream';
+import { crc32 } from 'node:zlib';
+import yauzl from 'yauzl';
+import { createTemporaryPayload } from './temporary-payload.js';
+import { copyPackagePayload } from './package-payload-cache.js';
 import { PACKAGE_LIMITS } from '../../public/shared/native-package-limits.js';
 import { validateFrontendResources } from './experience-validation.js';
 
@@ -73,8 +80,10 @@ function normalizeArchivePath(input, { directory = false } = {}) {
 }
 
 function toBuffer(value, label) {
-    if (Buffer.isBuffer(value)) return Buffer.from(value);
-    if (value instanceof Uint8Array) return Buffer.from(value);
+    // All container operations are synchronous, read-only consumers of input.
+    // Reading a small header must not copy an entire media archive.
+    if (Buffer.isBuffer(value)) return value;
+    if (value instanceof Uint8Array) return Buffer.from(value.buffer, value.byteOffset, value.byteLength);
     if (typeof value === 'string') return Buffer.from(value, 'utf8');
     throw new TypeError(label + ' must be string, Buffer, or Uint8Array');
 }
@@ -187,7 +196,8 @@ function encodeEnvelope(header, payload) {
 
     const cipher = createCipheriv('aes-256-gcm', key, nonce);
     cipher.setAAD(headerBytes);
-    const ciphertext = Buffer.concat([cipher.update(payload), cipher.final()]);
+    const body = cipher.update(payload), tail = cipher.final();
+    const ciphertext = tail.length ? Buffer.concat([body, tail]) : body;
     const tag = cipher.getAuthTag();
 
     const prefix = Buffer.alloc(FIXED_PREFIX_BYTES);
@@ -324,7 +334,8 @@ function decryptPayload(decoded) {
     decipher.setAuthTag(decoded.tag);
     let payload;
     try {
-        payload = Buffer.concat([decipher.update(decoded.ciphertext), decipher.final()]);
+        const body = decipher.update(decoded.ciphertext), tail = decipher.final();
+        payload = tail.length ? Buffer.concat([body, tail]) : body;
     } catch {
         throw new Error('.atria payload authentication failed');
     }
@@ -369,7 +380,7 @@ function validateEntryNames(entries) {
     }
 }
 
-function safeEntryData(entry) {
+function validateEntrySize(entry) {
     const size = entryUncompressedSize(entry);
     const compressed = entryCompressedSize(entry);
     if (
@@ -384,6 +395,11 @@ function safeEntryData(entry) {
     if (size > 1024 * 1024 && size / Math.max(1, compressed) > ATRIA_PACKAGE_CONTAINER_LIMITS.maxCompressionRatio) {
         throw new Error(`Archive entry '${entry.entryName}' exceeds the decompression-ratio limit`);
     }
+    return size;
+}
+
+function safeEntryData(entry) {
+    const size = validateEntrySize(entry);
     let data;
     try {
         data = entry.getData();
@@ -403,6 +419,14 @@ function inspectPayload(payload, header) {
     } catch (error) {
         throw new Error('Malformed .atria payload archive: ' + (error?.message || String(error)));
     }
+    const admission = admitPayloadEntries(entries, header);
+    let step = admission.next();
+    while (!step.done) step = admission.next(safeEntryData(step.value));
+    return step.value;
+}
+
+// One admission authority for both synchronous authoring and streamed runtime reads.
+function* admitPayloadEntries(entries, header, store = bytes => bytes, view = map => map) {
     if (entries.length < 2 || entries.length > ATRIA_PACKAGE_CONTAINER_LIMITS.maxEntries) {
         throw new Error('.atria payload entry count is outside supported limits');
     }
@@ -418,8 +442,8 @@ function inspectPayload(payload, header) {
     let manifest;
     let inventoryDoc;
     try {
-        manifest = assertAtriaPackageManifest(JSON.parse(safeEntryData(manifestEntry).toString('utf8')));
-        inventoryDoc = JSON.parse(safeEntryData(inventoryEntry).toString('utf8'));
+        manifest = assertAtriaPackageManifest(JSON.parse((yield manifestEntry).toString('utf8')));
+        inventoryDoc = JSON.parse((yield inventoryEntry).toString('utf8'));
     } catch (error) {
         throw new Error('.atria package metadata is invalid: ' + (error?.message || String(error)));
     }
@@ -475,11 +499,13 @@ function inspectPayload(payload, header) {
 
     const sourceFiles = new Map();
     const assets = new Map();
+    const content = new Map();
+    const assetDigests = new Map();
     let actualTotal = 0;
     for (const [name, entry] of contentEntries) {
         const item = expected.get(name);
         if (!item) throw new Error(`Undeclared .atria payload file '${name}'`);
-        const data = safeEntryData(entry);
+        const data = yield entry;
         actualTotal += data.length;
         if (
             actualTotal > ATRIA_PACKAGE_CONTAINER_LIMITS.maxTotalUncompressedBytes
@@ -488,10 +514,16 @@ function inspectPayload(payload, header) {
         ) {
             throw new Error(`Integrity mismatch for .atria file '${name}'`);
         }
+        // Inventory admission has already verified these exact bytes. Runtime
+        // aliases (author media, compiled media and Assets) share one payload.
+        const admitted = content.get(item.sha256) ?? store(data);
+        content.set(item.sha256, admitted);
         if (name.startsWith('source/')) {
-            sourceFiles.set(name.slice('source/'.length), data);
+            sourceFiles.set(name.slice('source/'.length), admitted);
         } else if (name.startsWith('assets/')) {
-            assets.set(name.slice('assets/'.length), data);
+            const id = name.slice('assets/'.length);
+            assets.set(id, admitted);
+            assetDigests.set(id, item.sha256);
         } else {
             throw new Error(`Unexpected .atria content root '${name}'`);
         }
@@ -499,14 +531,14 @@ function inspectPayload(payload, header) {
 
     for (const ref of manifest.assets) {
         const data = assets.get(ref.assetId);
-        if (!data || data.length !== ref.size || sha256(data) !== ref.contentHash) {
+        if (!data || data.length !== ref.size || assetDigests.get(ref.assetId) !== ref.contentHash) {
             throw new Error('Packaged asset is missing or corrupt: ' + ref.assetId);
         }
     }
     if (assets.size !== manifest.assets.length) {
         throw new Error('.atria payload contains undeclared Package assets');
     }
-    validateFrontendResources(manifest, sourceFiles, assets);
+    validateFrontendResources(manifest, view(sourceFiles), view(assets));
 
     return Object.freeze({
         manifest,
@@ -572,4 +604,97 @@ export function inspectAtriaPackageContainer(archiveInput) {
 export function hashAtriaPackageContainer(archiveInput) {
     const archive = toBuffer(archiveInput, '.atria container');
     return sha256(archive);
+}
+
+// This view deliberately does not retain materialized media. Admission only
+// needs a few graph/data resources; the runtime cache owns the backing records.
+class PayloadView extends Map {
+    get(key) {
+        const value = super.get(key);
+        return value === undefined || Buffer.isBuffer(value) ? value : copyPackagePayload(value);
+    }
+    * entries() { for (const key of super.keys()) yield [key, this.get(key)]; }
+    * values() { for (const key of super.keys()) yield this.get(key); }
+    [Symbol.iterator]() { return this.entries(); }
+    forEach(callback, thisArg) { for (const [key, value] of this) callback.call(thisArg, value, key, this); }
+}
+
+export function packagePayloadView(inspected) {
+    return { ...inspected, sourceFiles: new PayloadView(inspected.sourceFiles), assets: new PayloadView(inspected.assets) };
+}
+
+async function readZipEntries(zip) {
+    return new Promise((resolve, reject) => {
+        const entries = [];
+        const fail = error => { cleanup(); reject(error); };
+        const entry = raw => {
+            if (entries.length >= ATRIA_PACKAGE_CONTAINER_LIMITS.maxEntries) return fail(new Error('.atria payload entry count exceeds limit'));
+            entries.push({ entryName: raw.fileName, isDirectory: raw.fileName.endsWith('/'),
+                header: { size: raw.uncompressedSize, compressedSize: raw.compressedSize }, raw });
+            zip.readEntry();
+        };
+        const end = () => { cleanup(); resolve(entries); };
+        const cleanup = () => { zip.off('error', fail); zip.off('entry', entry); zip.off('end', end); };
+        zip.on('error', fail); zip.on('entry', entry); zip.on('end', end); zip.readEntry();
+    });
+}
+
+async function readZipEntry(zip, entry) {
+    const size = validateEntrySize(entry);
+    const stream = await new Promise((resolve, reject) => zip.openReadStream(entry.raw, (error, value) => error ? reject(error) : resolve(value)));
+    const bytes = Buffer.allocUnsafeSlow(size);
+    let offset = 0, crc = 0;
+    for await (const chunk of stream) {
+        if (offset + chunk.length > size) throw new Error('Archive entry exceeds declared size');
+        chunk.copy(bytes, offset); offset += chunk.length; crc = crc32(chunk, crc);
+    }
+    if (offset !== size || crc !== entry.raw.crc32) throw new Error(`Archive entry '${entry.entryName}' is corrupt or size-mismatched`);
+    return bytes;
+}
+
+// The encrypted input remains caller-owned. Plaintext and admitted large media
+// are disk-backed, so cold reads never retain a second complete decompressed
+// archive. Crypto/decompression yield through streams instead of blocking UI/API.
+export async function inspectAtriaPackageContainerAsync(archiveInput, { residentBytes = 32 * 1024 * 1024 } = {}) {
+    const decoded = decodeHeader(archiveInput);
+    const plaintext = createTemporaryPayload('atria-package-zip-');
+    const backing = createTemporaryPayload('atria-package-payloads-');
+    let zip, descriptor;
+    try {
+        const decipher = createDecipheriv('aes-256-gcm', deriveKey(Buffer.from(decoded.header.protection.salt, 'base64')), Buffer.from(decoded.header.protection.nonce, 'base64'));
+        decipher.setAAD(decoded.headerBytes); decipher.setAuthTag(decoded.tag);
+        const digest = createHash('sha256');
+        let length = 0;
+        const verify = new Transform({ transform(chunk, encoding, next) { length += chunk.length; digest.update(chunk); next(null, chunk); } });
+        function* chunks() {
+            for (let offset = 0; offset < decoded.ciphertext.length; offset += 1024 * 1024) yield decoded.ciphertext.subarray(offset, offset + 1024 * 1024);
+        }
+        await pipeline(Readable.from(chunks()), decipher, verify, fs.createWriteStream(plaintext.path));
+        if (length !== decoded.header.payloadBytes || digest.digest('hex') !== decoded.header.payloadSha256) throw new Error('.atria payload integrity mismatch');
+        // No ZIP entry is inspected or exposed before GCM authentication succeeds.
+        zip = await new Promise((resolve, reject) => yauzl.open(plaintext.path, { lazyEntries: true, autoClose: false, strictFileNames: true }, (error, value) => error ? reject(error) : resolve(value)));
+        const entries = await readZipEntries(zip);
+        let resident = 0, offset = 0;
+        descriptor = fs.openSync(backing.path, 'w');
+        const store = bytes => {
+            if (resident + bytes.length <= residentBytes) { resident += bytes.length; return bytes; }
+            const record = { backing, offset, length: bytes.length };
+            let written = 0;
+            while (written < bytes.length) written += fs.writeSync(descriptor, bytes, written, bytes.length - written, offset + written);
+            offset += bytes.length; return record;
+        };
+        const admission = admitPayloadEntries(entries, decoded.header, store, map => new PayloadView(map));
+        let step = admission.next();
+        while (!step.done) step = admission.next(await readZipEntry(zip, step.value));
+        fs.closeSync(descriptor); descriptor = undefined;
+        if (!offset) backing.dispose();
+        return Object.freeze({ ...step.value, preflight: preflightAtriaPackageContainer(decoded.archive) });
+    } catch (error) {
+        if (descriptor !== undefined) { fs.closeSync(descriptor); descriptor = undefined; }
+        backing.dispose(); throw error;
+    } finally {
+        if (descriptor !== undefined) fs.closeSync(descriptor);
+        if (zip) await new Promise(resolve => { zip.once('close', resolve); zip.close(); });
+        plaintext.dispose();
+    }
 }
