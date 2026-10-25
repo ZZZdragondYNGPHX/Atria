@@ -4,7 +4,7 @@
 
 - Task ID: `refactor/release-and-documentation-cleanup`
 - Primary Workspace: `docs`
-- Status: Git 分支历史与文档已完成；GitHub 托管端旧对象仍可访问，未彻底清除
+- Status: Complete — 独立公开仓库已重建，旧源码匿名访问已阻断；私有归档与第三方副本不属于物理擦除承诺
 - Date: 2026-10-25
 - 起点：docs `28594b32`、main `3a0437bd`、package `ea81990e`、plugin `eb7b11eb`。
 
@@ -47,3 +47,13 @@
 - 分支重写只能移除当前可达发布历史。GitHub 缓存、隐藏 PR refs、旧 SHA 页面、第三方 clone/fork 不因强推自动擦除；彻底清除托管端残留需要 GitHub 侧处理，不能承诺源码从未上传。
 - 推送后对旧提交的一条源码 raw 地址仅发送 HEAD 请求，返回 HTTP 200，证明旧源码仍可按 SHA 访问；没有将源码正文或可直接访问的地址再写入文档。不能把本次结果描述为源码已从 GitHub 彻底擦除。
 - [GitHub 官方说明](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/removing-sensitive-data-from-a-repository)指出，Support 可处理符合其敏感数据政策的缓存与残留引用，但不会为非敏感数据提供同样清除服务。剩余托管端处理需要仓库所有者与 GitHub 确认；本任务没有擅自删库、重建仓库、改变可见性或声称已提交 Support 请求。
+
+## 2026-10-25 — 经授权重建公开仓库
+
+- 用户明确授权将旧仓库私有归档，并新建同名公开仓库。旧仓库 ID `1375308937` 已改名 `Atria-private-archive-20261025`、设为 private 且 archived；没有删除旧 Issues、PR 或 Release 页面。
+- 新 `ZZZdragondYNGPHX/Atria` 的 ID 为 `1433105711`，是独立 public 仓库，不是 fork。只发布清理后的 main、docs、package、plugin 及原有 v0.9.0 标签；没有镜像推送或恢复其它分支、标签、PR 引用。
+- 在独立完整 Git 仓库中仅取指定 refs，确认其中没有旧 package 提交或游戏开发目录，再原子推送。发行包的 Git LFS 对象随迁移发布，匿名 download batch 已确认 9 个对象全部可获取；没有重新构建发行包。
+- 新仓库默认分支为 main，Actions 保持关闭。旧仓库的平台记录留在私有归档，新仓库没有自动继承其 Issues、PR、Release 页面或其它平台记录。
+- 发布完成后，对旧 SHA 的原公开 raw 地址与私有归档 raw 地址匿名 HEAD 均返回 404。此前的 200 结果属于重建前状态，现已阻断本次已确认的公开访问路径；不声称物理删除 GitHub 内部副本或他人已下载的副本。
+- 本地 origin 保持原 URL，现指向新仓库；另配置只读私有归档对象来源，供已有 partial clone 按需补取旧历史，不默认获取归档分支，也不允许默认 push。未提交开发内容未纳入发布。
+- 后续用户授权的 SillyTavern 遗留数据清理见 [专项 Record](legacy-bundled-data.md)，不重写 Atria 产品历史。
