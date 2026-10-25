@@ -6,7 +6,7 @@
 
 | 项目 | 发行目录 | 现有发行包 |
 | --- | --- | --- |
-| Doupo Living World | [releases](doupo-living-world/releases/README.md) | 15 |
+| Doupo Living World | [releases](doupo-living-world/releases/README.md) | 14 |
 | Foglight Inn | [releases](foglight-inn/releases/README.md) | 4 |
 | Original Occult Western Fantasy Game | [releases](original-occult-western-fantasy-game/releases/README.md) | 4 |
 | Native Heavy-Frontend Reference | [releases](native-heavy-frontend-reference/releases/README.md) | 尚无已发布成品，仅保留发行目录说明 |
