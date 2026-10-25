@@ -1,0 +1,14 @@
+# Publish releases only. Development files remain local.
+/*
+!/.gitignore
+!/.gitattributes
+!/AGENTS.md
+!/CLAUDE.md
+!/README.md
+!/*/
+/*/*
+!/*/releases/
+/*/releases/*
+!/*/releases/*.atria
+!/*/releases/README.md
+!/*/releases/.gitattributes
