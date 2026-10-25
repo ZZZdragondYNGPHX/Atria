@@ -1,5 +1,7 @@
 # Atria 原生 Package Runtime 能力体系 — Record
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 - Task ID: `ARCH-NATIVE-PACKAGE-RUNTIME`
 - Primary Workspace: `main`。
 - Status: Complete — S0–S6 / CP3 完成，产品已合入并推送 main，任务分支和 live HANDOFF 已清理。

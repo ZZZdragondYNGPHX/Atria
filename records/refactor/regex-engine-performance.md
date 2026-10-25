@@ -1,5 +1,7 @@
 # Regex Engine Performance Refactor
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 ## Task
 
 Reduce regex-system stalls as active rule counts grow, especially when many rules are duplicated, conflict on the same pattern, or target lanes/placements unrelated to the text currently being processed.

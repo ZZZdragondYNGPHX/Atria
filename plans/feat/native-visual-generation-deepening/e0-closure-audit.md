@@ -1,5 +1,7 @@
 # E0 收口审计：原生视觉生成深化 D-001～D-013
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 - **Task ID**: `atria-native-visual-generation-deepening`
 - **Frozen Plan baseline**: `docs@179b8938cf2b5d13093e073861c772e7eedba06e`（D-013 最后跨文档提交完成）。本审计本身会产生新的 `docs` SHA，切勿把旧 SHA 当成当前 HEAD。
 - **Read-only product baseline**: `main@7e1045ab836c22cafbc92c5de056ad701f56e723`；本轮未创建或合并 `feat/*`，未修改 `main`，未启动软件、CI、浏览器/手机、FS/SQLite 本地测试或真实绘图 Provider API。
@@ -80,7 +82,7 @@
 | **ImageJob 幂等性与上游收费** | 只保留一个本地 Job 不能保证未接回执时远端没有执行；记录 uncertain、冻结预算/请求证据、查询原 remote task。不能虚构第三方 Exactly Once 或取消即退款。 |
 | **可见性和外部数据传输** | NPC 私密状态/其他分支图片不因本地能读就可向玩家展示或向第三方服务发送；|
 | **长会话索引/存档体量** | 旧单一 state 有 8192 images / 8MiB 序列化上限；Media Studio 需要可分页版本/索引与不可变资源，而非扩大单 JSON 到任意大小。 |
-| **Governance 与 Plan 默认配额混淆** | D-008 的产品自动图片/Planner 配额是用户可调运行时默认，D-011 GC/Mask 数字也是产品默认；`docs:README.md` §13.1 的开发测试 API **2000/day、20 RPM** 才是测试执行的独立规则。不得自创每阶段审批、额度或停止条件。|
+| **Governance 与 Plan 默认配额混淆** | D-008 的产品自动图片/Planner 配额是用户可调运行时默认，D-011 GC/Mask 数字也是产品默认；开发调用仅采用 `docs:README.md` §13.1 所指的当前配置，不恢复旧 2000/day 或 20 RPM 限制。不得自创每阶段审批、额度或停止条件。|
 
 ## 6. 正式 Codex / Local CLI 交接要求
 

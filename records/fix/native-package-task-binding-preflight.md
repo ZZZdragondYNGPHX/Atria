@@ -1,5 +1,7 @@
 # Native Package 首启模型用途预检 — Record
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 - Task ID: fix/native-package-task-binding-preflight
 - Primary Workspace: main 产品源码；短期分支 fix/native-package-task-binding-preflight
 - Plan: 小型修复，无独立 Plan。

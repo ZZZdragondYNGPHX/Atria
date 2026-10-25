@@ -1,5 +1,7 @@
 # Native Experience P8 — Shared Session & Realm Runtime completed
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../../../README.md#122-minimal-validation-and-runtime-checks)。
+
 Updated: 2026-09-27. **P8 complete and pushed; stop before P9**.
 
 - Branch: `feat/native-experience-modes-capability-deepening`.

@@ -1,5 +1,7 @@
 # Plan Bundle Template
 
+> 实现与验证约束只引用 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)，不从模板生成固定验收清单。
+
 当单个 Plan 已经大到不适合阶段执行时整份读取，使用 Plan Bundle。
 
 示例：

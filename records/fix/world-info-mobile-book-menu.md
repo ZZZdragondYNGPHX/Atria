@@ -1,5 +1,7 @@
 # World Info mobile lorebook menu reliability
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 ## Task
 
 Real-device follow-up after the World Info mobile controls fix. Android field testing showed the per-lorebook three-dot action menu did not reliably expand even though desktop Chromium accepted the native `<details><summary>` interaction.

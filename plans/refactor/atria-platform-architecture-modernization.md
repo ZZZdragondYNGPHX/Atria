@@ -1,5 +1,7 @@
 # R8 — Atria Platform Architecture Modernization
 
+> 执行规则入口：[Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 ## 状态
 
 - 状态：**已立项 / 等待 R7 最终合并后正式实施**

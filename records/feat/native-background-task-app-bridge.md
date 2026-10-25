@@ -1,5 +1,7 @@
 # Platform Gap G2 — Declared Background Task → App Command Bridge
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 Date: 2026-09-28. Task branch: `feat/native-background-task-app-bridge`.
 Baseline: `20d6b11b8e3d15a9089ffeb4da4e90d0c894b457` (fresh origin/main, G1 integrated). Local temporary branch deleted; remote cleanup request reported the ref already absent, and a fresh fetch/ls-remote confirmed its absence.
 

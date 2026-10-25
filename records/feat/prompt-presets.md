@@ -1,5 +1,7 @@
 # Isolated Native Prompt presets
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 Date: 2026-09-25. Repository: ZZZdragondYNGPHX/Atria.
 Task branch: `feat/prompt-presets`.
 Baseline: `23bfdc608b5e5ee2b6b863f116d118d529b0bab9` (fetched before editing).

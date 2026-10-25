@@ -1,5 +1,7 @@
 # D9 E1 — Native Orchestration V3 实施工作包与依赖（已冻结路线）
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 ## 1. E1 与零兼容的准确含义
 
 - **内核先行**：优先 Native Host Plan/Run/Effect/Receipt/Snapshot 的逻辑与持久合同，随后图调度、Domain Adapters、RP/Studio/Evolution consumers、U2 UI。

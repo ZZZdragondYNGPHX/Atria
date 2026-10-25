@@ -1,9 +1,11 @@
 # 雾灯旅舍 — Plan Index
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 - Task ID: `package/foglight-inn`
-- Primary Workspace: `package`
+- Primary Workspace: 本地游戏源码；`package` 仅发布成品
 - Status: P5 候选交付 — `1.0.0-rc.4` 已构建；MiniMax 中国区连接及六次真实游戏样本通过
-- Distribution: 已按用户要求作为 Atria 初始游戏内置，`main@2686aa40a`；制作源码与历史发布仍归 package
+- Distribution: 已按用户要求作为 Atria 初始游戏内置，`main@2686aa40a`；制作源码只留本地，历史发行包保留在 package
 - Record: [制作记录](../../../records/package/foglight-inn.md)
 - Product baseline: `main@9241325a7`（2026-10-14 的代码核查基线；正式实施重查实际 Git）
 - Plan entrypoint: `docs:plans/package/foglight-inn/index.md`
@@ -65,7 +67,7 @@
 | P3 — 终稿与启动提示词 | 已完成；v1.0 制作基线和可复制启动请求，正式制作由用户新对话发起 | `index.md` → `implementation-prompt.md` → `delivery.md` |
 | P4 — 正式制作 | 已实现；| 本入口的正式制作必读顺序；按当前任务加载内容模块 |
 
-未来产品变更使用语义源码分支，游戏资产属于独立 `package` 工作空间；治理和 API 测试规则只归 [Repository Governance](../../../README.md)。
+未来产品变更使用语义源码分支，游戏开发资产只留本地，发行包属于 `package` 分支；治理和 API 测试规则只归 [Repository Governance](../../../README.md)。
 
 ## 7. 实质设计变化
 

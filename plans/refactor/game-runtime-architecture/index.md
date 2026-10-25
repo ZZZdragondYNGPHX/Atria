@@ -1,5 +1,7 @@
 # Atria Game Runtime Architecture Refactor — Plan Index
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 - Task ID: `refactor/game-runtime-architecture`
 - Primary Workspace: `main`
 - R7 execution was superseded into the separate `refactor/atria-game-first-shell-redesign` task.

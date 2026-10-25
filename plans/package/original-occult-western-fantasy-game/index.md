@@ -1,5 +1,7 @@
 # Original Occult Western Fantasy Game — Plan Index
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 - **Task ID:** `package/original-occult-western-fantasy-game`
 - **Primary Workspace (implementation):** `package`
 - **Current stage:** Package P8 complete; P9 awaiting separate authorization
@@ -245,7 +247,7 @@ Implementation authorization is staged:
 
 Frozen cross-module decisions are indexed in `decisions.md`. Exact implementation order and phase gates are authoritative in `implementation-staging.md`.
 
-- approved P8 frontend Skill routing by adapter: Web/remote loads vendored copies from `skills`; Local/CLI/desktop uses installed local Skills first. Responsibility remains `frontend-design` → visual identity, `ui-ux-pro-max` → design-system/UX, `emil-design-eng` → interaction/motion polish, `web-design-guidelines` → final implementation audit.
+- approved P8 frontend Skill routing by adapter: use installed local Skills under Governance §10; the repository Skills branch is retired. Responsibility remains `frontend-design` → visual identity, `ui-ux-pro-max` → design-system/UX, `emil-design-eng` → interaction/motion polish, `web-design-guidelines` → final implementation audit.
 
 ## Material routing/design changes
 

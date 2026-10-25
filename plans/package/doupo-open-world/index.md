@@ -1,7 +1,11 @@
 # 斗破苍穹开放世界 — Plan Index
 
+> 已被 [Doupo Living World](../doupo-living-world/index.md) 取代，仅保留前期设计资料，不从这里开工或恢复执行限制。
+
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 - Task ID: `package/doupo-open-world`
-- Primary Workspace: `package`；方案与结果归 `docs`，必要的 Atria 产品修补归独立源码任务。
+- Primary Workspace: 本地游戏源码；`package` 仅发布成品；方案与结果归 `docs`，必要的 Atria 产品修补归独立源码任务。
 - Status: Draft v0.2 — 调研与多轮讨论，尚未批准正式制作。
 - Updated: 2026-10-20
 - Product research baseline: `main@f9a8a83827c8b3662c44e67e95c9ed84118baadd`；实施前核对实际 Git。

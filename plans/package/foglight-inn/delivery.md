@@ -1,5 +1,7 @@
 # 雾灯旅舍 — 设计协作、实施准备与
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 > 先读 [index.md](index.md)。故事、规则、媒体分别链接其权威模块，不再复制详细规格。
 
 ## 1. 当前交付与后续边界

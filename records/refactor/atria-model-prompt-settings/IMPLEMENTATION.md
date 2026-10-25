@@ -1,5 +1,7 @@
 # 实施蓝图：Atria Native Model / Prompt / Runtime P0–P8
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。
+
 正式实现分支：`refactor/atria-model-prompt-settings`
 
 基线：`main@2d1c3ec9c8039ecc4728ebe712f4a9f14186906f`

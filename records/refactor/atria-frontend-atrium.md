@@ -1,5 +1,7 @@
 # Atrium 前端与启动动画集成
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 ## 2026-10-19 — 集成到 main
 
 - 按用户指令，将 `origin/refactor/atria-frontend-atrium` 的两个提交快进集成到 `main`：`175c1db08`（Atrium 页面与设计稿对齐）、`d6657d68b`（Folios 启动封面与分支记忆星图）。

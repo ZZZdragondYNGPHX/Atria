@@ -1,5 +1,7 @@
 # World Simulation Scheduling — bounded Core support
 
+> 执行规则入口：[Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 - Task ID: feat/world-simulation-scheduling
 - Primary Workspace: main (short-lived product branch)
 - Consumer: package/original-occult-western-fantasy-game, P3 only

@@ -1,5 +1,7 @@
 # 本仓库测试资产仅本地保留
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 ## 2026-10-19 — 远端分支清退与规则落盘
 
 - Task ID：`chore/local-only-tests`；Primary Workspace：main 源码工作空间，其他长期分支仅作本次同一清退任务的资产辅助工作空间。

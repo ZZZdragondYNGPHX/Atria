@@ -1,5 +1,7 @@
 # Native visual generation deepening — Implementation Record
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 - Task ID: `atria-native-visual-generation-deepening`
 - Plan: [index](../../plans/feat/native-visual-generation-deepening/index.md)
 - Product branch: `feat/native-visual-generation-deepening`

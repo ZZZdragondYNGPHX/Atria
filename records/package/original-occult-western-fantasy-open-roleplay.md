@@ -1,5 +1,7 @@
 # 西幻开放式文字扮演重构记录
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 - Task ID: refactor/original-occult-western-fantasy-open-roleplay
 - Primary Workspace: package
 - Status: Complete; Phase 0–5 finished; Core/main and game/package integrated; 3.0.0 retained

@@ -1,5 +1,7 @@
 # Frontend redesign — Phase 6 Build / Studio
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。
+
 - Date: 2026-09-24
 - Branch: `refactor/atria-product-frontend-redesign`
 - Main baseline: `402b53a98a823573591db4e9fd015f98e6effbdb`

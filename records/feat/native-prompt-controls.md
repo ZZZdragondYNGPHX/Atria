@@ -1,5 +1,7 @@
 # Atria Native Prompt Controls
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 ## Goal
 
 Track and implement the current Native product gaps discovered while adapting real user content to Atria.

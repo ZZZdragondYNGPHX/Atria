@@ -1,5 +1,7 @@
 # Atria Native Frontend Runtime v3 — Plan Index
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 - Task ID: `refactor/native-frontend-runtime-v3`
 - Primary Workspace: `main`
 - Final integrated main recorded by the Record: `c936b0aa4c42cf5711f40ae4a00f5fc3432813dc`.

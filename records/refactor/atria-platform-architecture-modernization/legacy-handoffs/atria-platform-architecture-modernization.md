@@ -1,5 +1,7 @@
 # Handoff — R8 Atria Platform Architecture Modernization
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../../../README.md#122-minimal-validation-and-runtime-checks)。
+
 ## 当前状态
 
 R8 已完成立项准备，但**尚未允许开始功能开发**。

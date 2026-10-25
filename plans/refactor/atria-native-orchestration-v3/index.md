@@ -1,5 +1,7 @@
 # Atria Native Orchestration V3 — 智能体编排补强企划
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 > **唯一入口**。Task ID：`refactor/atria-native-orchestration-v3`。Primary Workspace：`main`；实现沿任务分支 `refactor/atria-native-orchestration-v3` 完成后集成，企划/Record继续在长期 `docs` 工作空间。规则只引用 [Repository Governance](../../../README.md)，不在本 Plan 复制执行规则。
 
 2026-10-19 本次收尾已完成并集成、推送至 **main `745dbd190`**，任务分支及工作树已清理。分支内有界回环 live/cold、SQL、POSIX、Browser 与真实 Provider 的实际结果见同一 [Record](../../../records/refactor/atria-native-orchestration-v3.md)。用户已明确将 Termux 实机测试延期，留待其实际使用时验证，不阻塞本次交付。支持范围及限制沿当前明示 Profile；有限证据不外推任意图组合或独立质量/价格合格。

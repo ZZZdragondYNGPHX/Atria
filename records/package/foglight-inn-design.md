@@ -1,5 +1,7 @@
 # 雾灯旅舍 — 企划与前端参考整合结果
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 - Task ID: `package/foglight-inn/design`
 - Primary Workspace: `docs`（正式游戏资产的工作空间仍为 `package`）
 - Status: Complete — 企划与参考整合完成；正式游戏尚未制作

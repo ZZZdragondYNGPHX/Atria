@@ -1,5 +1,7 @@
 # Native Image API / 数据契约 / 跨平台 UI / 分阶段交付 — D-013（Round 13 C）
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 - Task: `atria-native-visual-generation-deepening`
 - **Status: D-013 冻结设计。** 本文的代码锚点和候选实施分支描述记录 E0 当时的基线；
 - Frozen prerequisites: [decisions.md](decisions.md) D-001～D-013，尤其 D-003 ImagePromptIR+Adapter、D-004 Connection/Target/Rendering 三层配置、D-007/D-008 Durable Job/Budget、D-009～D-011 Media Studio/Mask/Save/GC、D-012 Target 三态/typed degrade/L1-L2-L3。以这些决策为规范，不重新表决。

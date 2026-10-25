@@ -1,5 +1,7 @@
 # Platform Gap G1 — Turn → Session Application Atomic Outcome
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 Date: 2026-09-28. Task branch: `feat/native-turn-app-outcome-bridge`.
 Baseline: `93991c7ccea30ce7499935bbb91592ae137086dd` (fresh origin/main). Main fast-forwarded and pushed; remote HEAD equality and feature ancestry confirmed.
 

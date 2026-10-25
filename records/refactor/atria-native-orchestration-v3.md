@@ -1,5 +1,7 @@
 # Atria Native Orchestration V3 — 设计与实施记录
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 - Task ID: `refactor/atria-native-orchestration-v3`
 - Primary Workspace（未来产品实现）：`main`；当前设计存储：独立 `docs` 工作空间。
 - Plan: [index](../../plans/refactor/atria-native-orchestration-v3/index.md) / [decisions](../../plans/refactor/atria-native-orchestration-v3/decisions.md)

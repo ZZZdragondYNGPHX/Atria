@@ -1,10 +1,10 @@
 # 图片与音乐素材制作
 
-Task ID：package/doupo-living-world；Primary Workspace：package。依据 [D27](decisions.md#d27--图片与音乐素材制作) / [D35](decisions.md#d35--批量素材画风与主线角色储备)，用户已确认参考画风并要求批量制作及主线关键角色储备。
+Task ID：package/doupo-living-world；Primary Workspace：本地游戏源码（仅发行包进入package）。依据 [D27](decisions.md#d27--图片与音乐素材制作) / [D35](decisions.md#d35--批量素材画风与主线角色储备)，用户已确认参考画风并要求批量制作及主线关键角色储备。
 
 ## 资产与边界
 
-实际清单及提示词权威为 package:doupo-living-world/media/v1/catalog.json，由 tools/media-catalog.mjs 生成；逐角色视觉差异归 tools/media-portrait-designs.mjs。manifest.json 和 provenance/只按实际文件记录生成状态、尺寸、哈希；gallery.html用于挑选素材，不作为正式前端完成证据。
+实际清单及提示词权威为 package:doupo-living-world/media/v1/catalog.json，由 tools/media-catalog.mjs 生成；逐角色视觉差异归 tools/media-portrait-designs.mjs。manifest.json 和 provenance/只按实际文件记录生成状态、尺寸；gallery.html用于挑选素材，不作为正式前端完成证据。
 
 当前制作清单120张：99个人物版本（78个原著角色/时期版本、21个本地原创居民）、12个首批地点场景、8件物品、1张地域氛围图。数字为本轮实施范围，不作为未来角色数量上限。优先覆盖开篇/加玛、沙漠与学院、黑角域、中州丹塔、远古种族和最终冲突的主线人物；主角、薰儿、纳兰嫣然、紫妍等区分早期/成年，萧潇/萧霖作为未来幼年储备。
 
@@ -16,7 +16,7 @@ Task ID：package/doupo-living-world；Primary Workspace：package。依据 [D27
 
 原参考人物图仅作为画风确认；若实际带入同一张脸，停止该批次并改为文字锁定画风、逐角色设定后重做。执行者查看生成结果，检查辨识度、年龄感、手部、材料/构图和遗漏；不启动独立审查工作流。
 
-图片使用内置image_gen，逐项生成、保存。交付采用无损WebP并验证与生成原图像素相等，原始PNG由生成服务保留本地；提示词和来源哈希随素材记录。生成失败不记为完成，未过检查候选不混入交付目录。
+图片使用内置image_gen，逐项生成、保存。交付采用无损WebP；只在转换实际出错时比较相关图片，原始PNG由生成服务保留本地；提示词和素材来源留在本地记录。生成失败不记为完成，未过检查候选不混入交付目录。
 
 ## 音乐
 
@@ -26,4 +26,4 @@ Task ID：package/doupo-living-world；Primary Workspace：package。依据 [D27
 
 ## 完成证据
 
-按实际文件核对清单、解码/哈希/重复ID与遗漏，逐张检查人物差异；播放格式/无削波/循环边界检查和真人听感分开。保存必要素材来源及生成记录，测试脚本和截图留本地；最终记录资产提交、真实完成数量、音频总时长与明确限制。正式游戏UI与be.2规则不因素材提交而自动完成。
+新增素材做必要的视觉检查；不为交付逐文件重算哈希或像素比较；播放格式/无削波/循环边界检查和真人听感分开。保存必要素材来源及生成记录，测试脚本和截图留本地；最终记录资产提交、真实完成数量、音频总时长与明确限制。正式游戏UI与be.2规则不因素材提交而自动完成。

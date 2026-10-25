@@ -1,5 +1,7 @@
 # Atria MCP 补强 — 第一轮代码审计与现状基线
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 > 最新实现以真实仓库/运行时为准；涉及动作设计的全局冻结决策见 [index.md](index.md)。
 
 ## 1. 审计范围与可重复定位

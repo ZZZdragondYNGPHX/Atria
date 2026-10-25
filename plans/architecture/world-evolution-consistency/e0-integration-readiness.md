@@ -1,5 +1,7 @@
 # ARCH-DWE-01 · 跨任务接口归属
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 [唯一入口](index.md) · [实现分工](e0-preflight-execution.md)。当前 **Draft / Paused**，先等待用户指定的编排、提示词与整体前端工作完成；不等待无关分支或自动恢复。
 
 | 接口 | 谁负责 | 世界重构如何接入 |

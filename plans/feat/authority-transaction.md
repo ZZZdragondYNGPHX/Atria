@@ -1,5 +1,7 @@
 # Authority Transaction — Core Plan
 
+> 执行规则入口：[Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 - **Task ID:** feat/authority-transaction
 - **Primary Workspace:** main
 - **Implementation branch:** feat/authority-transaction (merged; temporary branch removed)

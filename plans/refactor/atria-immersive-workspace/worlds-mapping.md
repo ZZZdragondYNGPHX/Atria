@@ -24,7 +24,7 @@ World 已有 `core.world` descriptor、`WorldRepo` 和资源 graph。不能照�
 
 下一轮先替换 Studio Worlds 展示与其局部防护，复用原 World editor 的一个目标草稿和原 `project.save`；S07 原列表/详情/历史/导入/只读规则保持，不据本映射自动整页重构 Library 或 Knowledge。
 
-| 旧字段 / 形态 || 替换位置与保留要求 | 测试门 |
+| 旧字段 / 形态 || 替换位置与保留要求 | 历史检查关联（非门槛） |
 | --- | --- | --- | --- |
 | `source.worlds[]` | 可为空；每项为 `{world,revision}`；非空只能选单快照，无集合 Source；空集合使用通用 value editor（G01） | chooser + 始终可达集合 Source；保留顺序、零/单/多 World；增加/删除/排序仍审阅完整项目，不自动改 EntryPoints | T01/T03、probe；N01 |
 | snapshot envelope | 只允许 `world`、`revision`；revision.worldId 必须等于 world.worldId；currentRevisionId 必须等于 worldRevisionId | 身份/快照区 + 全 snapshot Source；裸 revision content 与 snapshot 不混用；不自动纠正不匹配 identity | T04、probe；N02 |

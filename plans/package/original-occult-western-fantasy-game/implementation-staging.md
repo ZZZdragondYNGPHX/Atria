@@ -1,5 +1,7 @@
 # Original Occult Western Fantasy Game — Implementation Staging
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 ## Dependencies
 
 - index.md
@@ -259,7 +261,7 @@ Frontend design exploration may begin after P5. Formal integration should conver
 
 ### P8 required Skill set
 
-These four Skills are vendored in Atria's long-lived `skills` workspace primarily so Web / remote Agents can load them from the repository. During P8: Web / remote loads them through `skills:SKILLS.md -> corresponding Skill directory`; Local / CLI / desktop uses the locally installed versions when available and should not detour through the `skills` branch. Only use the repository copy locally when the Skill is missing, the user explicitly asks for it, or the Plan explicitly pins the repository version. Do not copy Skill assets into `main` or the Package workspace. Upstream provenance and pinned commits remain in each Skill's `UPSTREAM.md`.
+Use the relevant locally installed Skills under current Governance §10. Do not recreate a repository Skills branch or copy Skill assets into product or release workspaces.
 
 1. **frontend-design**
    - Source: `anthropics/skills`
@@ -413,7 +415,7 @@ Do not parallelize Package implementation against an unfinished P0 Core contract
 | P5 | "player.md" + "gameplay.md" + "content-architecture.md" + this module |
 | P6 | "content-architecture.md" + only corresponding world authority modules |
 | P7 | P6 set + relevant "technical-design.md" revelation/authority rules |
-| P8 | "platform-and-gameplay.md" + "technical-design.md" Round 9.6 + frontend Skills by adapter: Web/remote reads `skills:SKILLS.md` → required Skill; Local/CLI uses installed local Skill first; then follow P8-A/B/C/D routing above |
+| P8 | "platform-and-gameplay.md" + "technical-design.md" Round 9.6 + frontend Skills by adapter: use the relevant installed local Skill under Governance §10; then follow P8-A/B/C/D routing above |
 | P9 | "index.md" + "decisions.md" + "technical-design.md" + this module + current Record/HANDOFF |
 
 Agents should not load the full Plan Bundle when the phase reading map is sufficient.

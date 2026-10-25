@@ -1,5 +1,7 @@
 # Collapsible prompt editors
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 Date: 2026-09-25. Baseline: `19b0aaf6b8be79cb77e0696d957a9e15ae0fabf6`.
 Branch: `feat/prompt-editor-folds`.
 

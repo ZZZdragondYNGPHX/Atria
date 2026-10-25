@@ -1,5 +1,7 @@
 # World and Knowledge workflow repair
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 Status: complete, 2026-09-25. Main: `23bfdc608b5e5ee2b6b863f116d118d529b0bab9`.
 Implementation: `45f0fdbd56dac8dd46e80431b3cd094eb67a34ea`.
 Baseline: `aa3a0b0dcfbfc451c696990794ccf16390e7fba3`.

@@ -1,5 +1,7 @@
 # Atria MCP Capability Expansion — Implementation Record
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 Latest state: the 2026-10-04 integration checkpoint below supersedes the older unmerged-Core checkpoint.
 
 ## Phase 1 — MCP Kernel / Repository Observation

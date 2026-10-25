@@ -1,5 +1,7 @@
 # 雾灯旅舍 — 企划入口
 
+> 执行规则入口：[Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 完整企划已按领域整理为 Plan Bundle：
 
 - [企划索引与当前阶段](foglight-inn/index.md)

@@ -1,5 +1,7 @@
 # Termux main branch pinning
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 ## Goal
 
 Keep Atria's normal Termux installation, toolbox update, and CLI update path on the authoritative `main` branch while preserving Tag/Commit checkout for explicit debugging or rollback.

@@ -1,5 +1,7 @@
 # Staged delivery and editor preservation
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 ## Responsibility
 
 本模块负责阶段依赖、交付边界与完整编辑能力保留。

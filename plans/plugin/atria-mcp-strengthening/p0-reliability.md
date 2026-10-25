@@ -70,7 +70,7 @@ Journal 必须有原子更新、意外退出不损坏已确认记录、owner 隔
 - 2026-07-28 使用无状态 Core 与 Multi Round-Trip Requests（MRTR）；可信审批通过 `resultType: input_required` 和客户端 `inputResponses` 往返。该 `requestState` 为传回的不可信字符串，不能直接信任。
 - 若客户端不支持任何可信渠道，不得退回 `confirm=true`。
 - **Tasks 不属于 2026-07-28 核心必备能力**：2025-era experimental Tasks wire 在 SDK v2 中已废弃；新版为可协商的 `io.modelcontextprotocol/tasks` 扩展。只有客户端与稳定扩展实现同时支持时才暴露 tasks/get/update/cancel 等协议级 Task；未协商时仍以固定 ActionRegistry 内的语义 `operationId` + status/cancel/reconcile 提供等价可靠的观察/控制，不假装扩展已协商。
-- `main` 的 **内置 MCP Consumer** 与外部 Server 独立升级，不因本企划的 SDK 迁移改变 Native Consumer 的固定 2025-11-25 协议。若以后需联动，必须单独审查其 ReadOnly、budget、allowlist、SSE 与 cancellation invariants。
+- `main` 的 **内置 MCP Consumer** 与外部 Server 独立升级，不因本企划的 SDK 迁移改变 Native Consumer 的固定 2025-11-25 协议。若以后需联动，只检查实际受影响的 ReadOnly、budget、allowlist、SSE 或 cancellation 行为。
 - `stdio` 保持基线传输；不默认开启 HTTP 暴露服务。是否提供额外 HTTP transport 需独立网络安全评估。
 
 参考源（写入方案以便实施阶段重新确认）：

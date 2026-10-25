@@ -1,5 +1,7 @@
 # Native product localization
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../../../README.md#122-minimal-validation-and-runtime-checks)。
+
 NUX-044 preserves the integrated Atria visual system and existing locale authority.
 The Shell formatter resolves stable keys before substituting values. Native Runtime,
 Library, Studio, Play, Agents, Skills, Regex and Search Tools use their existing

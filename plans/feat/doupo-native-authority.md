@@ -1,5 +1,7 @@
 # Doupo Native authority 接纳扩展
 
+> 执行规则入口：[Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 Task ID：`feat/doupo-native-authority`。Primary Workspace：独立产品源码工作树。游戏与主线之间不迁移资产；关联 [package 任务](../package/doupo-living-world/index.md)。
 
 目标是让首批生活世界复用原有 Native 权威，修正实际接纳阻碍：单记录 privateReads 无法接纳有界人物/关系集合；动态 Subject 作为模型评价 target 被 manifest Actor 检查拒绝；完整 computation 状态在 invariant 中重复传入使二十四人目标样本超过消息预算。规则评价还需要宿主提供真实 anchor 以通过现有 Cognition 来源与分支验证。

@@ -1,5 +1,7 @@
 # Atria MCP 补强 — Model / Prompt / Runtime / Provider Bridge（第五轮冻结）
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 - **Task ID**：`plugin/atria-mcp-strengthening`；**Primary Workspace**：`plugin`，文档归 `docs`。
 - **冻结决定**：2026-10-14，第五轮选择 **方案 B：完整原生 Runtime Bridge**。本文件是目标方案，不表示 Action 已实现或联调通过。
 - 后续实现前重新比对真实 HEAD 和原生 API schema。
@@ -101,7 +103,7 @@
 - 同时遵守 MCP envelope、Native Route executionPolicy.computeBudget、Session/Project/Goal 对应 Task budget、Evolution owner budget 和真实 Provider 请求上限；**不统一改写各 domain ledger**。
 - Adapter 能力、Tokenization 和实际费用应分开报告。
 - `snapshot.diagnostics.executionPlan.economics.currencyCost` 可能是 `null` 且 state `unknown`，不能把一个估计汇率/单位价格冒充 Provider 实际货币消费。返回 `tokensEstimated/tokensObserved/usageStatus/costEstimate?/currencyCostStatus` 等区分类型，具体 schema 实施核实。
-- 已经 `reserved` 但 usage 未知的 Provider send，原生预算占用不能因为 MCP 重启/用户 cancel 就清零。开发 API 测试的每日 2000 次 / 20 RPM 限制归治理文档，本方案不发明另一套工程测试许可。
+- 已经 `reserved` 但 usage 未知的 Provider send，原生预算占用不能因为 MCP 重启/用户 cancel 就清零。开发 API 调用按治理文档引用的当前配置，不继承旧每日次数或 RPM 限制，本方案不发明另一套工程测试许可。
 
 ## 8. Operation、Stop、异常恢复与回执语义（冻结）
 

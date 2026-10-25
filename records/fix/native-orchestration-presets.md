@@ -1,5 +1,7 @@
 # Native orchestration preset refresh
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 Date: 2026-09-25. Branch: `fix/native-orchestration-presets`.
 Baseline: `df03dedbd46243bdf71e61861b494c7a30a20bd1`.
 Implementation: `1a3e891230eb15b65af0772a1879f97cc77db8d7`.

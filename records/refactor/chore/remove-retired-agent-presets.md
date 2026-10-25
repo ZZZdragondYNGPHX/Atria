@@ -1,5 +1,7 @@
 # Remove retired bundled agent prompt presets
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。
+
 Date: 2026-09-25. Branch: `chore/remove-retired-agent-presets`.
 Baseline: `3f5b001cd1ef16870816d6ee0ca0e4087bf6cc7a`.
 Implementation: `40dbf651b4cbd2abe4486c30a485cba9c87e0fbf`.

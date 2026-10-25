@@ -1,5 +1,7 @@
 # Native product UX — Group 6
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../../../README.md#122-minimal-validation-and-runtime-checks)。
+
 Branch: `fix/native-product-ux-audit`; pushed HEAD: `2f7a6a7ad` (implementation `b31ebf67a`).
 Main baseline remains `ad15c1e0c3e15e625ba163e284a300c00811f10d`.
 

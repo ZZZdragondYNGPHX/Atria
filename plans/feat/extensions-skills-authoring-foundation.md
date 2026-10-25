@@ -1,5 +1,7 @@
 # Atria Extensions / Skills / AI Authoring Foundation
 
+> 执行规则入口：[Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 Status: implemented and integrated into local/remote `main` at `93991c7ccea30ce7499935bbb91592ae137086dd`. 2026-09-27.
 
 ## 0. Authorization and branch

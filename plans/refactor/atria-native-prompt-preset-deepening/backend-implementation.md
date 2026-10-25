@@ -1,5 +1,7 @@
 # 提示词与前端：实现分工
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 [入口](index.md)定义范围，[源码剖析](baseline.md)说明实际差距。实现按功能及直接依赖推进。
 
 ## 原后端中的改动

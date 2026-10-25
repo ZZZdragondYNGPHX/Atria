@@ -1,5 +1,7 @@
 # S08 — Prompt 正文候选与精确 binding
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 - Task ID: `agent-intelligence-runtime`；沿用产品分支，仅 S08。
 - Status: Complete；依据 [M1 §7–9](m1-evolution.md) / [delivery S08](delivery.md)。
 

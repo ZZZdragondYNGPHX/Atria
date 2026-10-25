@@ -1,5 +1,7 @@
 # Atria M1：RP / Project 自迭代领域能力扩展研究
 
+> 执行规则入口：[Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 > 研究材料与历史工作量估算，不定义当前执行许可或 API 配额；
 
 - Task ID：`agent-intelligence-runtime`；研究日期：2026-10-09。

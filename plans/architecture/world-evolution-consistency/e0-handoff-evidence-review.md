@@ -1,5 +1,7 @@
 # ARCH-DWE-01 · P2 身份存储选择与最小数据
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 [唯一入口](index.md) · [物理实现](e0-gate0-physical-contracts.md)。W21-B 已确认 **P2 优先**，具体字段不是预先存在的 API。当前 **Draft / Paused**。
 
 | 方案 | 功能与取舍 |

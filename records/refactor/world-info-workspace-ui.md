@@ -1,5 +1,7 @@
 # World Info Workspace UI Refactor
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 ## Task
 
 Refactor the traditional SillyTavern World Info drawer presentation into a responsive Atria World Info Workspace without changing World Info persistence, API, import/export, state ownership, activation semantics, or the completed Worldbook Performance Foundation runtime/storage work.

@@ -12,7 +12,7 @@
 4. **权限是交集**：ActionRegistry + PolicyCeiling + 可信用户审批/Lease + 产品原生 owner/Scope/Revision/CAS + Provider/Asset externalEffects；模型传来的 `confirm`、Package/Skill 文字、插件页面按钮以及 HTML/JS 评论均不能升级权限。
 5. **业务执行与观察分离**：有原生持久写入或收费副作用的 `scan/prepare/describe/inspect` 按实际效果升级风险；不能根据名称/HTTP Method 假设 READ。结果未知不重复发送外部费用/安装/发布。
 6. **用户未显式授权不自动运营**：MCP 不默认开启自动画图、Plugin 自动启用/更新、Skill 自动发布、Package 自动安装；已存在有效产品自动策略遵守其 Native Budget/Permission。
-7. **保持分支边界**：产品内置 Runtime Skills/Browser Extensions/HostPlugin/PackagePlugin 与长期 `plugin` 开发工具及长期 `skills` 仓库 Agent Skill 副本是不同对象；不混合路径、角色、权限。生图深化项目未来变更要以实际 `main` 权威为准，不由 MCP 创建平行媒体格式。
+7. **保持分支边界**：产品内置 Runtime Skills/Browser Extensions/HostPlugin/PackagePlugin 与长期 `plugin` 开发工具及本地仓库开发 Agent Skill是不同对象；不混合路径、角色、权限。生图深化项目未来变更要以实际 `main` 权威为准，不由 MCP 创建平行媒体格式。
 
 ## 2. Package / Library / Resource Graph / Resource Bundle 完整能力
 
@@ -86,7 +86,7 @@ MCP 可以提供：
 
 - 安装在 **Package Scope 的 Skills 原件只读**；要修改必须回源 Project 并 Build 新 PackageVersion。
 - Skill 脚本或自然语言“指令”都不视为权限、Secret/Host Code 执行许可或用户 Approval。外部 AI 不能通过安装恶意 Skill 改变自己的 MCP Ceiling。
-- Atria 玩家 Runtime Skills ≠ 长期 `skills` 分支中给仓库 Agent 用的 Skill 副本。
+- Atria 玩家 Runtime Skills ≠ 本地给仓库开发 Agent 用的 Skill。
 - 容量收口：支持原生每文件 4 MiB、每 Skill 16 MiB、100 个文件及 `SKILL.md` 512 KiB 上限。大 payload 从允许的开发产物文件进入固定 `skill-payload-upload` Binary Lane；先独立 staging，再纯 preflight 与独立正式 Install。
 
 ## 7. Browser Extensions 与 Host Plugins 两级代码执行信任

@@ -1,5 +1,7 @@
 # Adaptive restore fallback and manual interrupt rollback
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 ## Task
 
 Improve large Android archive restore in two ways:

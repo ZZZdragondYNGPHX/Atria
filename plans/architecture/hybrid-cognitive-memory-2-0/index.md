@@ -1,5 +1,7 @@
 # Atria Hybrid Cognitive Memory 2.0 — 研究与 Codex 整合入口
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 > **产品级架构决策已全部定案（HCM-01–08）；D5 已整合进 Agent Intelligence Runtime 正式企划；功能未实施、收益未实测。**
 > 更新：2026-10-10；Task ID：hybrid-cognitive-memory-2-0；Primary Workspace：docs。
 > 目标消费者：[Agent Intelligence Runtime 正式 Plan](../agent-intelligence-runtime/index.md)。

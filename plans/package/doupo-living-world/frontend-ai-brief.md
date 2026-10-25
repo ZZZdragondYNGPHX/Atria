@@ -1,5 +1,7 @@
 # 《斗破苍穹》开放沙盒 — 前端 AI 委托
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 - Task ID：`package/doupo-living-world`
 - 用途：交给用户选择的前端 AI，在后端开发期间迭代游戏界面、视觉参考与交互设计。
 - 当前授权：正式开工和前后端分工已确认；be.5/C4为当前后端接口，v0.19记录世界深化及功能承载结果。前端对话继续原型迭代，用户已于2026-10-23指定当前执行者完成fe.2正式集成，后续设计须对照实际frontend与C4。

@@ -1,5 +1,7 @@
 # Atria MCP 当前主线适配 — Plan Index
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 - **Task ID**：`plugin/atria-mcp-main-adaptation`
 - **Primary Workspace**：`plugin`，工具实现归 `atria-mcp/`；必要产品接口归产品源码任务工作空间；方案与结果归 `docs`。
 - **状态**：已完成。三轮设计与推荐验收基线已落实，产品接缝已集成 main，工具 0.4.0 已交付；实际结果与边界见 [Record](../../../records/plugin/atria-mcp-main-adaptation.md)。

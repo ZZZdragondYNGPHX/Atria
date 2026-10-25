@@ -1,5 +1,7 @@
 # Atria 资源占用与安全清理中心 — Record
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 - Task ID: `atria-storage-center`
 - Primary Workspace: `main` 产品源码；本次文档保存在 `docs`。
 - Status: Active；

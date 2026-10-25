@@ -1,5 +1,7 @@
 # 40 个候选阶段：交付、依赖与
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 > 后续所选消费者的当前交付、真实对照和集成状态以 [index](index.md#当前状态) 与同一 Record 最新节为准。历史候选 ineligible 与不利结果保留，不恢复为当前阶段限制。
 > D2 保留 S01–S34，新增 M8 的 G01–G06；不重编号已有阶段。
 > D4 将 Execution Reuse / Cache Locality / Adaptive Invocation 的 A–F 逻辑顺序映射既有阶段与后续研究池，不新增正式阶段或扩张 M1。

@@ -70,7 +70,7 @@ Gateway 自己持有重试时尽量禁止重叠 retry；不可取得时标 `upst
 Affinity 支持 prefer / require 等显式策略；prefer 可在合规条件下让位，require 不满足则停止；不能以 sticky 为由越过能力、健康或预算。
 Delegated router 可作一个 target；Atria 只在证明委托方满足 hard constraints 时选择，否则不能发送受该约束的数据。
 
-正式接入至少完成可用真实 gateway 的有限 integration，再按矩阵注明其余未测项。不得把 fixtures 写成全部品牌服务已经兼容。
+只有本次实际修改 gateway 适配时，才选择直接相关的接入检查；不默认调用真实服务或填写全品牌矩阵。不得把 fixtures 写成全部品牌服务已经兼容。
 本轮不创建连接、获取凭据、发起 probe 或购买 / 下载模型。
 
 ## 6. 演进、评价与权限

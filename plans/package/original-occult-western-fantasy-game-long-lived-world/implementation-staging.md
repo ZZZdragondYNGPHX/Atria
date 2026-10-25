@@ -1,5 +1,7 @@
 # Original Occult Western Fantasy — Long-Lived World Implementation Staging
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 **Task ID:** `refactor/original-occult-western-fantasy-long-lived-world`  
 **Primary Workspace:** Package  
 **Implementation branch:** `refactor/original-occult-western-fantasy-long-lived-world`  
@@ -277,8 +279,7 @@ bypass its Phase 5–6 dependencies.
 - current frontend/runtime interfaces.
 
 **Skills:** apply `frontend-design`, `ui-ux-pro-max` and `emil-design-eng` during
-implementation/review. Prefer installed local Skills; remote execution routes
-through `skills:SKILLS.md` to those named copies. Preserve the existing
+implementation. Use installed local Skills under current Governance §10. Preserve the existing
 marine/paper register and the specification's decisions.
 
 **Implement information architecture for:**

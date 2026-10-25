@@ -14,7 +14,7 @@ Information v1增加可选narration声明，mode为separate（默认B）、limit
 
 ## 最小相关出口
 
-实际installed Host、Actor/Task context与工具、Hybrid合法源、两Actor/availability/撤回、有限A/B/C和独立Disclosure预算、旧schema兼容/strict非法字段、Save/fork/restore。自由正文沿主模型有限实际案例审读，费用计原2000/20RPM ledger；不重复已通过H0/HM1或跑全仓。后续Record报告source/实际消费者/撤回恢复和保证等级；通过后继续S17。
+实际installed Host、Actor/Task context与工具、Hybrid合法源、两Actor/availability/撤回、有限A/B/C和独立Disclosure预算、旧schema兼容/strict非法字段、Save/fork/restore。自由正文沿主模型有限实际案例审读，费用使用当前配置与既有运行记录，不继承旧开发限额；不重复已通过H0/HM1或跑全仓。后续Record报告source/实际消费者/撤回恢复和保证等级；通过后继续S17。
 
 ## 恢复后有限出口
 

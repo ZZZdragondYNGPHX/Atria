@@ -1,5 +1,7 @@
 # Atria Native Content & Session Architecture — implementation handoff
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../../../README.md#122-minimal-validation-and-runtime-checks)。
+
 ## Current state
 
 - Repository: `ZZZdragondYNGPHX/Atria`

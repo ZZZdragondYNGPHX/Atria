@@ -129,9 +129,9 @@
 - **三层设置/UI**：共享 **Image Connection（端点/Secret/网络）→ Image Target Profile（模型版本或 Workflow/节点绑定/真实能力/专有参数）→ Image Rendering Profile（画风/质量/默认目标）**；覆盖仍为单次任务 > 单标注 > 作品 > 全局默认，来源可解释；提示词/Director LLM Route 与 Image Target 分离。设置采用**普通视觉生成/角色参考/预算与任务视图 + 高级 Provider/Workflow/能力/降级设置**，Raw Prompt、三种操作模式与预算/费用的 Estimated/Actual/Unknown 表示保留；自动初始关闭，云自动支付无授权不得执行。
 - **三端**：以**同一响应式 Native Web UI**支持 **Windows、CachyOS KDE、Android Termux 中运行服务并由手机浏览器访问**；**不为本 Plan 另建原生 Android APK 或独立服务器发行路线**；
 - **正式阶段安排：S0～S6 共 7 大阶段、25 子阶段（3+4+3+4+4+3+4）**。S0 契约与 hard cutover（3）；S1 Job/Budget/Media/Save 中立内核（4）；S2 **P0 NovelAI→ComfyUI→OpenAI Images**，其中 NovelAI 先完成一条 Source→IR→Job→AssetStore→ImageVersion→展示的**垂直薄切片**（3）；S3 Actor/VisualState/Reference/Director/模式（4）；S4 Mask/Img2Img/Inpaint/Upscale/Media Studio/Gallery/GC（4）；S5 **P1 Gemini→SD WebUI/Forge→RunningHub**、P2 扩展机制（3）；详细子阶段与依赖见 [native-contracts-ui-delivery.md](native-contracts-ui-delivery.md) §5。**P1 是完整交付范围**，不因阶段靠后永久推迟；视频/DCC 等未被其他冻结决策批准的功能不自动纳入。
-- P0/P1 各 Provider/操作都有 L1 静态协议和 L2 Fixture/执行证据，L3 针对用户明确授权的真实 Target 和实际可用账号/费用/设备执行。**L1/L2≠L3**；跨端 Windows/CachyOS/Termux 的自动化/实机/不可得证据分别列明，不伪造手机真机通过。Source/费用、分支、DAG/SavePoint/GC/重启恢复等既有硬约束为阶段回归必查。
+- Provider 协议与实际可用能力分开描述；仅在本次改动涉及对应 Provider 时按 [Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks) 选择检查，不沿用 L1/L2/L3 固定流水线或跨端矩阵。
 - **Reason**：避免一次性全系统重写后才碰到真实 Provider、FS/SQLite 或平台故障，也避免在旧 NovelAI 数据结构上不断堆兼容和重复数据权威，确保每个阶段有可证明的交付。
-- **必须先按用户要求进行 D-001～D-013 全量 E0 收口审计，查清关键未冻结接口和真实阻塞，完成前不得创建 `feat/*`**。文档提交不等于 CI/L3/真机通过。
+- 旧 E0 全量审计前置条件已撤销；当前实现与检查范围只按 [Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。
 
 ## 基线与合规约束（非单独由用户冻结的架构方案）
 

@@ -1,5 +1,7 @@
 # 提示词／前端：现有能力与剩余接线
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 路径沿用既有链接；当前职责是功能依赖索引。详细实现归[后端分工](backend-implementation.md)，源码位置和结论归[源码剖析](baseline.md)。
 
 | 功能 | 已有基础 | 本方案要补的操作 |

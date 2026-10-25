@@ -1,5 +1,7 @@
 # Termux Native storage ownership 启动兼容
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 ## 2026-10-19 — 文件系统编号精确归一化
 
 - Task ID：`fix/termux-native-storage-ownership`。

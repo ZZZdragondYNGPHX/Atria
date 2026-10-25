@@ -1,5 +1,7 @@
 # Squash-Merged Task Branch Cleanup
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 ## Problem
 
 The first Atria cleanup workflow only used Git ancestry to find completed temporary branches. That works for normal merge commits and some rebase histories, but a squash merge creates a new commit on `main`; the original task branch tip is not an ancestor of `main`.

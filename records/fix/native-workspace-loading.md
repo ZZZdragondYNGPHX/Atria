@@ -1,5 +1,7 @@
 # Native workspace loading and prompt module refresh
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 Date: 2026-09-25. Baseline: main `e42bd5043939af90583b473c22b68c4b57ca0aaf`.
 Task branch: `fix/native-workspace-loading`. Implementation: `32f9b539c95f130340725e88e6c840bda3edc3c9`.
 

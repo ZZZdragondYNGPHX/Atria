@@ -1,5 +1,7 @@
 # Atria 提示词／行为深化与全产品前端重构
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 Task ID：`refactor/atria-native-prompt-preset-deepening`。本方案定义后续实现；实际结果归[同一 Record](../../../records/refactor/atria-native-prompt-preset-deepening.md)。
 
 ## 要交付的能力

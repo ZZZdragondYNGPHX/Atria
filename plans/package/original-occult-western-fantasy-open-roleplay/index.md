@@ -1,7 +1,9 @@
 # 西幻开放式文字扮演重构企划
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 - Task ID: `refactor/original-occult-western-fantasy-open-roleplay`
-- Primary Workspace: `package`
+- Primary Workspace: 本地游戏源码；`package` 仅发布成品
 - Implementation branch: `refactor/original-occult-western-fantasy-open-roleplay`
 - Base: `package@48b1d97fa660ab5fdd5e2a0c1e50c5e91a57148e`
 - Core baseline: `main@c8d2d0e0c11c283ade2fa3c730740a0dc480c746`

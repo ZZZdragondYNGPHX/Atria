@@ -1,5 +1,7 @@
 # 全产品前端实施输入
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 功能范围归[提示词／前端方案](../../refactor/atria-native-prompt-preset-deepening/index.md)，最新源码关系见[源码剖析](../../refactor/atria-native-prompt-preset-deepening/baseline.md)。本文件定义页面与接线工作，产品实现留在原任务源码分支。
 
 ## 产品范围
@@ -90,7 +92,7 @@
 
 ## 本次前后端交接
 
-最新断点与源码 HEAD 见 [HANDOFF](../../../HANDOFF.md)，已交付与验证事实见原 Record。
+最新断点与源码 HEAD 见 `HANDOFF.md`（仅在对应中断任务存在时读取），已交付与验证事实见原 Record。
 前端需接入 `derive` 中的 `stage.configure`／`stage.move`，并补上游 Stage 消失／移动目标冲突；保持同一 Draft 与 Undo/Redo。Inspector 当前 Program 选择器仍只筛 Library，需根据当前原来源呈现 Project／Package 固定引用。
 
 独立视觉沿 `POST /api/native/generation/authoring/images/prepare` 和原 `/illustration-images` 提交／观察／取消；列表与归档使用 `/authoring/images`。完整字段、资源读取和保留语义见源码 `docs/native-visual-generation.md`，无需创建 Session。普通试生成当前是 txt2img，Session Media Studio 的编辑／Mask／引用仍走原流程。

@@ -1,5 +1,7 @@
 # 实施依赖与 E0 契约收口
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 Task ID：`plugin/atria-mcp-strengthening`。本模块承接前八轮冻结范围，不替代各域规则。
 
 ## 决策来源

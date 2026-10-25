@@ -1,5 +1,7 @@
 # Knowledge originals and preset boundaries
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 Date: 2026-09-25.
 Baseline main: `7a7b96d898b2c8bc317bd5d3f4642dc291da2ec6`.
 Implementation: `17b443faa`. Task branch: `fix/knowledge-originals-preset-boundaries`.

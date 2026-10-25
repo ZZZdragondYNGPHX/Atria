@@ -30,7 +30,7 @@
 
 - `identity_reference` 约束身份，`outfit` 当前时点衣着，`style/vibe` 风格/迁移，`lora` 模型权重，`controlnet` 结构/姿态。由 D-005/D-006 的 Actor/Visual State 与授权素材决定语义和用途，Provider Adapter 只能编译，不得把图片中偶然旧衣物/伤痕写回世界事实。
 - 各 Provider 的 strength/CFG/denoise/character weight/ControlNet guidance 值**没有统一物理意义**，应在 Target 原生配置而不是错误地强行映射到 ImagePromptIR 的同一个数值滑杆。
-- 组合判定依赖目标、模型/Workflow 版本、引用图张数/上传格式/布局、精确 Mask 支持、费用/延迟。NovelAI V4.5 Precise 与 Vibe 是本轮必须覆盖的 fixture。
+- 组合判定依赖目标、模型/Workflow 版本、引用图张数/上传格式/布局、精确 Mask 支持、费用/延迟。NovelAI V4.5 Precise 与 Vibe 是能力示例，不是所有改动都要重跑的 fixture。
 - Vibe 预编码/缓存、Precise Reference 每参考图的额外费用、RunningHub 远端工作流费用、云图片输入计费均进入 D-008 Budget/Job 证据；未取得可合理约束的费用上界时，云端自动生图遵守默认不授权原则。
 
 ## 2. D-012 已冻结：Required / Preferred / Optional 分级降级协商

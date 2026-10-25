@@ -1,5 +1,7 @@
 # Copyable N4 continuation prompt — in-progress checkpoint
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../../../README.md#122-minimal-validation-and-runtime-checks)。
+
 你现在接手 GitHub 项目 https://github.com/ZZZdragondYNGPHX/Atria。
 当前任务：Atria Native Content & Session Architecture Refactor，继续 N4，不是 N5。
 

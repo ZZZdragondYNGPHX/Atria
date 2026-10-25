@@ -1,5 +1,7 @@
 # 官方生图插件 — Plan
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 - Task ID: `atria-novelai-illustration`
 - Primary Workspace: `main` 产品源码，实施分支 `feat/novelai-illustration`
 - Status: Approved（2026-10-04 用户多轮确认产品边界并授权开始）

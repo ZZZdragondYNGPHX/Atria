@@ -1,5 +1,7 @@
 # Atria Execution Reuse / Cache Locality / Adaptive Invocation 前沿调研报告
 
+> 执行规则入口：[Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 - **调研日期**：2026-10-06
 - **适用项目**：Atria
 - **主题**：缓存命中率、Tool / Plan / Workflow 复用、Prompt Cache、Context Segment、KV Cache、Agent-aware Scheduling、Adaptive Invocation 与正文生成加速

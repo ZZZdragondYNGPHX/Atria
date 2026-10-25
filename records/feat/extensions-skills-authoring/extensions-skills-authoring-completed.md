@@ -1,5 +1,7 @@
 # Extensions / Skills / AI Authoring Foundation — Content and Integration
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。
+
 Completed implementation: 2026-09-27. Feature HEAD `93991c7ccea30ce7499935bbb91592ae137086dd` (pushed).
 
 Integration on 2026-09-27: at the user's subsequent request, local and remote `main` fast-forwarded from `4dab353ac639d42eae885c79e18245267abd6820` to `93991c7ccea30ce7499935bbb91592ae137086dd`, retaining all 16 feature commits. The already-merged remote `feat/component-form-composer-submit` was also removed. Long-lived branches remain. Incoming UI HEAD `cf6315abebdcb621b142e975d3ca0c3f61278a74` and every earlier P0–P9/Foundation commit remain ancestors of `main`.

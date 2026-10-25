@@ -1,5 +1,7 @@
 # Prompt stage ordering and add position
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 Date: 2026-09-25. Baseline: `b3beb59dd1cb0d37e6329b6d669448aba213753c`.
 Task branch: `fix/prompt-stage-order-position`.
 

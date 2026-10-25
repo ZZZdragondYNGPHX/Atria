@@ -1,5 +1,7 @@
 # API and Prompt preset refactor — Record
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 - Task ID: `api-prompt-presets`
 - Date: 2026-10-20 (America/Los_Angeles)
 - Primary Workspace: product `main`

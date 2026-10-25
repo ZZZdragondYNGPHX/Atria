@@ -1,5 +1,7 @@
 # Native Regex 三层作用域恢复
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 日期：2026-09-25。仓库：`ZZZdragondYNGPHX/Atria`。
 任务分支：`feat/native-regex-scopes`。
 基线：`6cf383abad35456316ab60ec4925830c6f4053fb`。

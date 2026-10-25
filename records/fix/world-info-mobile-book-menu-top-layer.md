@@ -1,5 +1,7 @@
 # World Info mobile lorebook action sheet hardening
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 ## Task
 
 Real-device follow-up after the first mobile lorebook action-menu repair still failed on Android: tapping the per-book three-dot trigger could change state, but the menu could remain clipped or render outside the usable mobile viewport.

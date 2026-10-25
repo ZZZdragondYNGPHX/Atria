@@ -1,5 +1,7 @@
 # ARCH-DWE-01 — Dynamic World Evolution & Consistency Record
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 - Task ID: ARCH-DWE-01
 - Primary Workspace: docs
 - Status: Completed · implemented, integrated and pushed

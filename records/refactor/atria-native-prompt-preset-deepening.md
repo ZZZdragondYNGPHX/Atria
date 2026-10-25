@@ -1,5 +1,7 @@
 # Atria Native Prompt Preset Deepening — 唯一 Record
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 ## 2026-10-18 — Prompt/Frontend 方案细化（docs-only）
 
 - 用户确定**原生语义融合**方案：只吸收有序创作结构、语义位置、带源贡献/正文宏分工、编译可解释性与渐进式作者工作台；保留 Atria 唯一 Native Program/Module/PromptCompiler/PromptIR、Host、Context、Provider、CAS/Review/Publish，不复制 Loom Core、树形存储或第二排序/权限权威。

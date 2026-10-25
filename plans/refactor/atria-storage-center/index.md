@@ -1,5 +1,7 @@
 # Atria 资源占用与安全清理中心 — Plan Index
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 - Task ID: `atria-storage-center`
 - Status: Completed；实际证据与环境边界见 Record。
 - Primary Workspace: `main` 产品源码；正式实施使用该任务的语义工作分支。

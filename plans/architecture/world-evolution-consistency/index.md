@@ -1,5 +1,7 @@
 # Atria 动态世界／知识重构（唯一入口）
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 Task ID：`ARCH-DWE-01`。当前 WP-A～F 产品实施与 main 合并推送已完成（`c83f18bb`）；功能、验证和边界见[同一 Record](../../../records/architecture/world-evolution-consistency.md)。
 
 ## 要实现什么

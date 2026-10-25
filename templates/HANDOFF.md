@@ -1,5 +1,7 @@
 # HANDOFF Template
 
+> 实现与验证约束只引用 [Governance §12.2](../README.md#122-minimal-validation-and-runtime-checks)，不从模板生成固定验收清单。
+
 > 使用条件与生命周期见 [Governance §7](../README.md#7-handoff)。
 
 ## Task

@@ -18,4 +18,4 @@
 
 复用Information application emotion/relationship source、当前性和独立displayGrant。作者可只公开text、隐藏内部level和basis，玩家/Task不因owner或共享pass得到private field。Context解释动态情绪、方向性关系与相对数值；它们不是Truth、客观概率或新行为证据。
 
-保留私有raw、失败、连续2000/20RPM ledger，不重跑原已通过组或不可用DB。S19–S21不冒称交付。
+只保留必要的失败摘要与当前费用记录，不继承旧开发限额或额外诊断账本，不重跑原已通过组或不可用DB。S19–S21不冒称交付。

@@ -1,5 +1,7 @@
 # Atria 性能与长期体验优化 — 已冻结的 E0–E7 工程实施路线
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 - **Task ID**：`refactor/atria-performance-long-term-experience`
 - **状态**：**Plan Frozen v1.0（第十六轮方案 C 已获用户批准）**；执行事实与待证见 [累计 Record](../../../records/refactor/atria-performance-long-term-experience.md)。
 - **冻结日期**：2026-10-13；**执行总量**：E0–E7 共 8 个工程阶段、30 个最小任务单元，具体真实工期与数值阈值不预先承诺。
@@ -31,21 +33,15 @@
 
 ### E0 — 主线准入、再审计与 P0 最小基线（4 单元，复杂度中）
 
-- **E0.1 合并门槛**：等待功能分支合入 `main`；记录真实 HEAD 和 CachyOS/Windows/Termux 的 Node/V8、`engines`/`@types/node`、浏览器、`better-sqlite3` 本地 ABI/编译、FS/SQLite 能力。独立 Android APK 的 nodejs-mobile/Kotlin/WebView 与远程部署版本暂缓，不当作本轮 Gate。
-- **E0.2 基准夹具**：在新格式下生成可重现的 100/1k/5k 对话与深分支、SavePoint/World/Knowledge/大 Memory/资产集；可选 20k 只作极限探索。不保留旧数据兼容器。
-- **E0.3 独立指标**：对 CachyOS、Windows、Termux 各自本地 Node + 浏览器分别测启动 T0–T4、长聊天输入/流式/滚动 P50/P95、Node 事件循环、RangeRead/Commit/GC、内存稳态、召回质量、RPC/Token/费用及 S1/S2 恢复；额外标出 CPU 热点、同步 I/O、全量 DOM/索引重算来源。三端不可混算，沿用现有遥测和夹具。
-- 记录 Node 24 LTS 统一基线/Worker/Rust-WASM 作为**有条件技术候选**，仅指定 E5/E6 对照测试，不新增工程阶段或第二套状态权威。**没有 P0 证据时不冻结引擎选择、压缩块大小、缓存阈值或混合计算方案**。
-
-**Gate E0**：新 `main` 源码与可复现 baseline/质量夹具可用；无实测项明确列为后续待证，而非伪造通过。
+以当前 main 的实际实现定位本次性能问题，复用已有测量；仅在缺少直接证据时建立最小复现。撤销预设的多规模夹具、三端指标矩阵和无条件整仓再审计，执行规则见 [Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。后续阶段只表达功能依赖，不是强制验证顺序。
 
 ### E1 — 统一 S2 Durable Commit Contract 与引擎落盘（4 单元，复杂度极高）
 
 - **E1.1 提交合同**：规范 `prepare → durable dependencies → publish root/commit receipt (CAS) → ACK`；`commitId/requestId` 幂等及断电后的确定恢复，确认时需要保护的 Blob、State、RevisionRoot 和 RunControl 状态集合。
 - **E1.2 SQLite 参考引擎**：事务和持久性配置、覆盖 WAL+FULL 的实际 VFS 平台证明；索引式按键/范围查询；外部内容寻址 Blob 必须先 fsync 文件/目录再提交 DB Root，不能把 SQL COMMIT 等同全域 S2。
 - **E1.3 FS 独立引擎**：多文件 prepare/manifest/journal/durable 发布与目录耐久屏障，不得继续用只有回调包装的 `withTransaction` 声称多资源 ACID；与 SQLite 满足同样可恢复的可见根契约。
-- FS/SQLite 在 CachyOS、Windows、Termux 上分别出具可达 S2 的证据并据此选择默认引擎，不达 S2 的引擎不得静默标注合规或作无提示后备。
+- 持久化承诺按当前实际支持的引擎与平台表述；修改对应实现时检查受影响的提交边界，不默认启动全部平台矩阵或设备断电实验。
 
-**Gate E1**：同一 Turn/State/Blob Root 在声明支持的平台达到可重复 S2 证明；外部硬件断电仍需真机/设备证据时必须列明，不能以单进程 kill 冒充。
 
 ### E2 — 无损长历史、共享 Revision 与 SavePoint 物理体系（4 单元，复杂度极高）
 
@@ -54,7 +50,6 @@
 - **E2.3 SavePoint / Branch 语义**：周期低频 + 结构化重大选择**之前** + 手动轻量 SavePoint；来源存档派生不同 Branch，自动编号/可更名展示元数据、保护手动保留点；读档不销毁原路线。正式 Play 后续只能从已经存在且有权使用的 SavePoint 产生玩家可选分叉。
 - **E2.4 锚点、权限与可达根**：将活跃分支、原历史、保留 SavePoint、派生资产、铁人只读终局档案和在途导出/提交定义为持久引用根；铁人终局不可续玩但历史仍可只读。形成供 E4 GC 复用的 `ReachabilitySnapshot/Generation` 契约。
 
-**Gate E2**：千/万消息样本增量追加与历史分页可还原，两个分支共享祖先且互不污染；重大选择之前的存档读档能恢复原世界状态；铁人死亡不能复活也不误删原文；物理段阈值由 P0 选优。
 
 ### E3 — Native Play 长正文与旧楼层操作退役（4 单元，复杂度高）
 
@@ -63,7 +58,6 @@
 - **E3.3 旧楼层突变闭口**：删除旧 Swipe/Delete/Hide 和 Native Retry/Restart/Re-enter/任意 Revision Fork 的正式玩家 UI/API/Slash Command/快捷键旁路；先追踪 `#sheld` 隐藏生成 ABI 的实际消费者，必要时迁移到原生等价接口后再去除相关旧代码。媒体 Swipe、只读 History、正常资源删除与未提交 Draft 错误恢复应保留。
 - **E3.4 存读档/分支体验**：唯一易识别的 Branch 名称、重命名、来源存档、归档/搜索/分页、铁人终局只读展示；Crash Resume 与玩家主动 Load/Fork 的规则绝不能混淆。
 
-**Gate E3**：长会话 DOM/响应随可见窗口有界；从 SavePoint 读档生成独立 Branch；任何旧入口不能改写已确认的楼层/世界状态；允许只读回顾及非破坏性资源管理。
 
 ### E4 — 统一资源预算、后台 GC 与生命周期（4 单元，复杂度高）
 
@@ -72,7 +66,6 @@
 - FS 异步批量 IO、SQLite WAL checkpoint 与逻辑删除独立调度，避免同步事件循环扫描冻结前台。
 - **E4.4 内存与停机压力**：反复打开/关闭、切分支、后台索引/GC、CachyOS/Windows/Termux 的 Node/浏览器内存回落与 S2 安全联合测试；Termux 须纳入 Android 低内存后台回收，区分 JS Heap/External/RSS 及真正有 Retaining Path 的泄漏，不强制生产 `global.gc()` 伪造改善。
 
-**Gate E4**：后台整理可暂停并能继续，用户输入/保存不被不合理抢占，可达历史无误删；重复生命周期稳态资源可解释，设备低内存下保留正式 S2 数据。
 
 ### E5 — P3 记忆/上下文/Agent 计算增量化（4 单元，复杂度高）
 

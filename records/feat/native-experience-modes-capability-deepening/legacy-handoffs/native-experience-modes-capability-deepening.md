@@ -1,5 +1,7 @@
 # Handoff — P9 complete; merge explicitly on hold
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../../../README.md#122-minimal-validation-and-runtime-checks)。
+
 - P9 HEAD: `88c1a776f91e0bab6becc7039e7978d56058ef85` (pushed).
 - Incoming P8: `767d23a27019e0562c09548ad6ec50b39c8c4773`; every P0–P8 commit preserved.
 - Current main: `4dab353ac639d42eae885c79e18245267abd6820` before integration.

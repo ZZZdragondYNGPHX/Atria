@@ -1,5 +1,7 @@
 # R7 Shell 中文本地化修复
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 ## 状态
 
 - Repository: `ZZZdragondYNGPHX/Atria`

@@ -1,5 +1,7 @@
 # Native product UX completed work
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../../../README.md#122-minimal-validation-and-runtime-checks)。
+
 Task branch: `fix/native-product-ux-audit`.
 Baseline: `main@ad15c1e0c3e15e625ba163e284a300c00811f10d`.
 Workspace `AGENTS.md` and `FORK_MAINTENANCE.md` take precedence over the obsolete remote copies.

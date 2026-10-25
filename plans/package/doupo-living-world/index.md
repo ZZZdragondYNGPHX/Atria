@@ -1,7 +1,9 @@
 # 斗破苍穹开放沙盒世界 — Plan Index
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 - Task ID: `package/doupo-living-world`
-- Primary Workspace: `package`；本 Bundle 位于 `docs`；必要的产品修补使用独立产品任务。
+- Primary Workspace: 本地游戏源码；`package` 仅发布成品；本 Bundle 位于 `docs`；必要的产品修补使用独立产品任务。
 - Status: v0.52 — 2026-10-24已完成combat.1战斗／功法首批实现；combat.2整合前端重构，完成构建、自然新局、演武与暂停存档／恢复联调并归档。实际字段见C6，完整证据与明确边界归同一Record。
 - Updated: 2026-10-24
 - Source baseline: 当前main为3a0437bdf1da5e318b3939b1ab366035bc9cc6f9；world.2已完成无损状态/提交轻量化和96人跨月/全年Native容量验证，长时成本边界见Record；world.1已完成长期推进轻量化、Native/浏览器验收与归档。quests.2使用d5f65ee5c679c1ca4bdf9ef4ee5cf9b7dbf2b0da完成前轮验收，旧归档保留。package@ea81990e2c3e5dde6015b6589a9251a086f17999已整合content/atlas/quests/world、战斗功法与前端重构；package不合并main，版本标识不替代证据。各版本实际范围见Record。

@@ -1,5 +1,7 @@
 # Native 素材容量与运行缓存
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 Task ID：feat/native-media-capacity。Primary Workspace：main。Plan：[native-media-capacity](../../plans/feat/native-media-capacity.md)。2026-10-23，起点 main@4470cffb9f688d7e889eb94b42b1cb85966318c1。
 
 ## 实现与边界

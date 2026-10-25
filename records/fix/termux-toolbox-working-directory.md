@@ -1,5 +1,7 @@
 # Termux 工具箱卸载后重装的工作目录修复
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 ## 2026-10-19 — v0.3.10
 
 - Task ID：`fix/termux-toolbox-working-directory`；Primary Workspace：`tasks/termux-toolbox-working-directory/source`。

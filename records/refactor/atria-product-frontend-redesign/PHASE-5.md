@@ -1,5 +1,7 @@
 # Frontend redesign — Phase 5 Runtime
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。
+
 - Date: 2026-09-24
 - Branch: `refactor/atria-product-frontend-redesign`
 - Starting HEAD: `1ee087510c39926616ccc8cfad22cb435e63de36` (Phase 4)

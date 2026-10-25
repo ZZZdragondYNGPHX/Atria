@@ -1,5 +1,7 @@
 # 斗破苍穹开放沙盒世界 — Record
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 - Task ID: `package/doupo-living-world`
 - Primary Workspace: `package`；BE 在 package 实施，必要原生接纳补充使用独立源码任务。
 - Status: 2026-10-24 — combat.1战斗与功法正式交付；combat.2整合前端重构并完成关键流程联调、归档安装与新局。用户要求将前端与战斗系统一并提交推送；各版本证据与边界见后续对应阶段。

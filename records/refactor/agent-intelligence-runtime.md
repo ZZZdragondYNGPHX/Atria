@@ -1,5 +1,7 @@
 # Agent Intelligence Runtime — Record
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 > 本文件保留实际工程与试验历史。旧配额、scope/claim、双模型、首失败停止、单轮/候选与数值门槛不恢复为执行规则；
 
 > 本文旧预算、累计 1000、Step 次数、scope 许可、首失败停止等是历史事实，不能恢复为当前限制；当前交付读本文最新节。
@@ -1395,7 +1397,7 @@ Provider ancestor safe-copy/reset loss、compaction与其它实际消费者仍�
 
 累计真实模型38/direct72982、unknown2/17515 upper、admission fetch0及G06质量FAIL不变；本地loopback tokens不是gateway账单，实际价格/cache/可靠收益无新证据。已交付组不重做，继续其它已选Task消费者和已启用Context/初始Skill/reuse准入，再沿实际有意义质量修复进入获准G06。main不变，不创建HANDOFF、不新设审批/固定调用次数或token门槛。
 
-2026-10-11 设备迁移停在已推送 source `3cebec8f7` / docs `96ccf204b` 安全 checkpoint 停止并保存 [HANDOFF](../../HANDOFF.md)。下一 Context/Skill 组仅只读定位，无产品改动/新测试/外部发送；
+2026-10-11 设备迁移停在已推送 source `3cebec8f7` / docs `96ccf204b` 安全 checkpoint 停止并保存 `HANDOFF.md`（仅在对应中断任务存在时读取）。下一 Context/Skill 组仅只读定位，无产品改动/新测试/外部发送；
 
 具体本地路径/manifest/排除范围见HANDOFF。原含凭据ZIP与私有原件保留，无上传、未运行恢复或paid脚本。迁移包不是全部机器备份，原额度ledger延续不重置。
 

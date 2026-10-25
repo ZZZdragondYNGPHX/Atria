@@ -22,7 +22,7 @@ EntryPoint 是 `source.package.entryPoints[]` 中的项目内结构，写入目�
 
 下一轮专属 Fields renderer 嵌入原 value editor；单入口修改按 **exact entryPointId** 克隆全项目、只替换该入口，集合编辑只替换 `package.entryPoints`。单入口与集合是不同编辑目标，切换走原离开确认；Fields/Source 共用一个目标草稿，不新建写入 authority。
 
-| 旧字段 / 形态 || 替换位置与保留要求 | 测试门 |
+| 旧字段 / 形态 || 替换位置与保留要求 | 历史检查关联（非门槛） |
 | --- | --- | --- | --- |
 | `package.entryPoints` | Project/Package 都要求非空数组；允许单/多入口；当前非空只可选一个入口编辑，无集合 Source/专用 CRUD（G01） | 入口 chooser + 始终可达的集合 Source，保留数组顺序；新增/删除/排序仍走 `project.save`，删除最后一个必须拒绝。空集合只作为错误修复状态，不是可保存的空项目 | T01、probe；N01 |
 | `entryPointId` | `entry_` + 32 位小写 hex Native ID，原通用文本可改；Project 当前接受重复入口 ID，Package 拒绝（G03） | exact 身份区 + 高级显式修改/Source；改名不改 ID；同名独立；ID 变化不自动重写 scenario/引用/Session；Review 前拒绝重复 | T01、T03、probe；N02 |

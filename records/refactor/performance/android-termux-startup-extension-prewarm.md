@@ -1,5 +1,7 @@
 # Android / Termux startup: deferred extension module prewarm
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。
+
 Date: 2026-09-20
 
 ## Baseline

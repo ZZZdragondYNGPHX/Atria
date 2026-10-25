@@ -1,5 +1,7 @@
 # D9 E0 — Native Orchestration V3 工程审计与设计就绪
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 > **当前状态（2026-10-15）**：E0_DESIGN_READY，R01–R07设计闭合；用户已明确授权正式开发，R08=AUTHORIZED，P1 IN_PROGRESS。§1–10及§11.1的先前未授权结论保留历史。
 
 > **此前审计结论（2026-10-15，当前分类以§11为准）**：最新只读基线 `main@60aca695726893e298b7d485f300c6efef3b79fd`。§1–7 为早期定向审计历史；本轮全仓证据及处置以 §8 起为准。静态取证范围已扩大，运行闭包、V3 持久化/安全和三端证据仍未通过，不得把审计文档完成改称 E0 PASS。

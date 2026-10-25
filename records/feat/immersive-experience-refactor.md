@@ -1,5 +1,7 @@
 # Atria 沉浸体验重构企划书
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 ## 任务信息
 
 - 任务：Immersive Experience Refactor

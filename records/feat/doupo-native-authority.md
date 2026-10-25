@@ -1,5 +1,7 @@
 # Doupo Native authority — Record
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 - Task ID：`feat/doupo-native-authority`；Primary Workspace：独立产品源码。
 - Plan：[接纳扩展](../../plans/feat/doupo-native-authority.md)。
 - Start HEAD：`f9a8a83827c8b3662c44e67e95c9ed84118baadd`。

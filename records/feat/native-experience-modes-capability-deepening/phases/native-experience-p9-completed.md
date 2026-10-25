@@ -1,5 +1,7 @@
 # Native Experience P9 — completion and final integration
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../../../README.md#122-minimal-validation-and-runtime-checks)。
+
 Updated: 2026-09-27. P9 only; P0–P8 history preserved.
 
 ## Repository and lifecycle

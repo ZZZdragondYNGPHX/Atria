@@ -1,5 +1,7 @@
 # 手机端提示词预设无法进入详情
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 - Task ID: `mobile-prompt-preset-navigation`
 - Date: 2026-10-20
 - Primary Workspace: 产品源码；实施分支 `fix/mobile-prompt-preset-navigation`

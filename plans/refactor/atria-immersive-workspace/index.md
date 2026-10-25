@@ -1,5 +1,7 @@
 # Atria Immersive Workspace — Plan Index
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 - Task ID: `refactor/atria-immersive-workspace`
 - Primary Workspace: `main`
 - Status: **Completed — 2026-10-06；A5冻结本地支持范围内 A1–B4/F 完成，已合并并推送 main `4ac8affbf`。**
@@ -32,13 +34,13 @@
 | [states.md](states.md) | 加载、草稿、冲突、审阅、能力与异步生命周期 | coverage |
 | [personas.md](personas.md) | S20 原生身份、Prompt 接入、迁移、恢复与开放门 | states、Native 契约 |
 | [delivery.md](delivery.md) | 分阶段实施、完整编辑能力保留、依赖和阶段门 | coverage、personas |
-| [entrypoints-mapping.md](entrypoints-mapping.md) | B1 EntryPoints 字段/动作/模式、Source/draft/revision/handler/authority、错误冲突离开、缺口与替换测试门 ||
-| [worlds-mapping.md](worlds-mapping.md) | B1 Worlds snapshot/Library/只读原版字段与动作、Source/draft/revision/handler/authority、错误冲突离开、缺口与替换测试门 ||
+| [entrypoints-mapping.md](entrypoints-mapping.md) | B1 EntryPoints 字段/动作/模式、Source/draft/revision/handler/authority、错误冲突离开、缺口与替换历史检查关联（非门槛） ||
+| [worlds-mapping.md](worlds-mapping.md) | B1 Worlds snapshot/Library/只读原版字段与动作、Source/draft/revision/handler/authority、错误冲突离开、缺口与替换历史检查关联（非门槛） ||
 | [knowledge-mapping.md](knowledge-mapping.md) | B1 Knowledge snapshot/裸 content/可编辑原版、条目全字段与操作、exact refs/草稿/冲突/authority ||
 | [b2-mapping.md](b2-mapping.md) | Prompt/Runtime/检索全字段、Source和原契约映射 ||
 | [b4-mapping.md](b4-mapping.md) | UI/Assets/Skills/Plugins/插图完整字段与Source、原authority和状态门 ||
 | [b3-mapping.md](b3-mapping.md) | Agents四模式、Memory OS/Trace、权限/预算/Scope及Source映射 ||
-| [actors-mapping.md](actors-mapping.md) | B1 Actors 旧字段/动作/模式、展示去向、draft/revision/authority、已知缺口与测试门 ||
+| [actors-mapping.md](actors-mapping.md) | B1 Actors 旧字段/动作/模式、展示去向、draft/revision/authority、已知缺口与历史检查关联（非门槛） ||
 
 ## Stage routing
 

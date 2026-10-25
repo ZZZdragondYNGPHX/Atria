@@ -1,5 +1,7 @@
 # World Info Mobile Product UI Refactor
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 ## Task
 
 Refine the World Info Workspace from the live Atria `main` after real mobile-device review. The task keeps the mature World Info runtime stable while replacing the inherited settings/drawer presentation with a clearer product information architecture.

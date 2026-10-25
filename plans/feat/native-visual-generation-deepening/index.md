@@ -1,5 +1,7 @@
 # Atria 原生视觉生成系统深化 — Plan Index
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 - **Task ID**: `atria-native-visual-generation-deepening`
 - **Primary Workspace**: `main`（Atria 产品源码）；`docs` 仅承载本 Plan
 - **Status**: **已完成**（2026-10-14，S0～S6；

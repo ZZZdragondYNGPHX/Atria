@@ -1,5 +1,7 @@
 # Prompt module categories, action menus and return position
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 Date: 2026-09-25. Baseline main: `5fce29a6b64af519e7d89ee888acedee6de40ba7`.
 Task branch: `fix/prompt-module-category-navigation`.
 Implementation: `31f91f783e5183eab7d7ad5b4a7d950b957eb5d0`.

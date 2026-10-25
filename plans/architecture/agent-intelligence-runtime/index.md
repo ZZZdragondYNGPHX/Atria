@@ -1,5 +1,7 @@
 # Atria Agent Intelligence Runtime — 正式架构与阶段入口
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 > 执行规则统一见 [Governance](../../../README.md)。历史工程数字不构成当前配额、测试许可或人工审批。
 
 - Task ID: `agent-intelligence-runtime`

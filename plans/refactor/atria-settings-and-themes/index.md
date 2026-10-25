@@ -1,5 +1,7 @@
 # Atria 设置界面与原生主题重构 — Plan Index
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 - Task ID: `refactor/atria-settings-and-themes`
 - Primary Workspace: `main`；本 Bundle 属于独立 `docs` 工作空间。
 - Design status: **Approved**。

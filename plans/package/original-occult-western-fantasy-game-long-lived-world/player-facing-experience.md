@@ -24,7 +24,7 @@ The memorable visual device remains the double-file spine. Historical depth is e
 
 ### Skill application and design review
 
-Applied `frontend-design` for subject-specific hierarchy and tokens, `ui-ux-pro-max` for usability/accessibility, and `emil-design-eng` for interaction feedback and motion restraint. Local Skills are preferred; a remote executor can use `skills:SKILLS.md` and those named repository copies. Skills guide implementation, while this Plan and Native contracts own scope.
+Applied `frontend-design` for subject-specific hierarchy and tokens, `ui-ux-pro-max` for usability/accessibility, and `emil-design-eng` for interaction feedback and motion restraint. Local Skills are preferred; there is no repository Skills branch or remote-executor fallback. Skills guide implementation, while this Plan and Native contracts own scope.
 
 The design-system search `narrative game archive history` returned a gaming product showcase/3D direction. The narrower retry `archive reading interface` returned a marketing demo/Swiss interface. Visual decisions below reuse the inspected Package design. A focused `keyboard focus modal` UX search supports visible focus and unobscured controls. General contrast, touch, safe-area and reduced-motion constraints come from the Skill's built-in guidance.
 

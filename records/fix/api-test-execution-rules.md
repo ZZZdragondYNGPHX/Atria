@@ -1,5 +1,7 @@
 # 限制与 Agent 入口清理
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 - Primary Workspace: `docs`
 - 范围：344 份已跟踪文档的限制/停工措辞扫描；全局及项目各层级 Agent 入口；私有恢复说明；
 

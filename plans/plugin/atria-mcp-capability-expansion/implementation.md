@@ -1,5 +1,7 @@
 # Atria MCP Capability Expansion — Implementation & Change Control
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 > Governance 1.1 migration: the detailed Plan text below is preserved from the former monolithic Plan; this module now owns only the domain named above.
 
 ## 19. Implementation phase plan

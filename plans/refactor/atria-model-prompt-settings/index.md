@@ -1,5 +1,7 @@
 # Atria Model / Prompt / Runtime Native Refactor — Plan Index
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 - Task ID: `refactor/atria-model-prompt-settings`
 - Primary Workspace: `main`
 - Status: Complete — P0–P8 integrated through PR #85. Permanent evidence lives under `records/refactor/atria-model-prompt-settings/`.

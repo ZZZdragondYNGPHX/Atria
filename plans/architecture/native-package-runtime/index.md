@@ -1,5 +1,7 @@
 # Atria 原生 Package Runtime 能力体系 — Plan Index
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 - Task ID: `ARCH-NATIVE-PACKAGE-RUNTIME`
 - Primary Workspace: `main`；`docs` 承载本任务的 Plan、Record 与实时交接。
 - Status: Complete — S0–S6 / CP1–CP3 完成；

@@ -1,5 +1,7 @@
 # ARCH-DWE-01 · 功能实施入口与恢复范围
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 [唯一入口](index.md) · [实现分工](e0-preflight-execution.md) · [同一 Record](../../../records/architecture/world-evolution-consistency.md)。**Draft / Paused**。W1-B～W22-B 的已确认架构方向保持。
 
 ## 已确定的实现方向

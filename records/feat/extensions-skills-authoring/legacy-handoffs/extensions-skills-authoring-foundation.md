@@ -1,5 +1,7 @@
 # Extensions / Skills / AI Authoring Foundation — integrated
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../../../README.md#122-minimal-validation-and-runtime-checks)。
+
 Updated: 2026-09-27. Local and remote `main`: `93991c7ccea30ce7499935bbb91592ae137086dd`.
 
 - The user subsequently authorized integration and obsolete-branch cleanup. `main` fast-forwarded from `4dab353ac639d42eae885c79e18245267abd6820`, retaining every feature commit. The local/remote feature branch and the already-merged remote `feat/component-form-composer-submit` were removed. The no-merge instructions in archived checkpoints below are superseded.

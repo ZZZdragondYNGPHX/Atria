@@ -1,5 +1,7 @@
 # 实施阶段与
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 全任务共用 index指定的 Task ID、Primary Workspace、任务分支及唯一 Record。通用执行流程见 [Governance §8](../../../README.md#8-task-lifecycle)。
 
 ## Phase 0 企划与换设备交接

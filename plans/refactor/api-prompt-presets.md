@@ -1,5 +1,7 @@
 # API and Prompt preset responsibilities
 
+> 执行规则入口：[Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 ## Approved outcome
 
 The user selected the separation: API presets own connection, model and generation controls; Prompt presets own text, ordering and text-processing rules. A game purpose selects an API preset and uses the work's prompts by default.
@@ -16,7 +18,7 @@ The user selected the separation: API presets own connection, model and generati
 
 ## Validation and delivery
 
-Targeted contract/transaction assertions, package task composition/provenance checks, Prompt preset split/import tests and real built-in-browser setup/edit/game workflows. Inspect desktop and narrow layouts and keyboard/error states. Test assets stay local. Deploy to the actual launcher checkout, integrate/push main, update the task Record and sync/notify the dynamic-world task as already requested in this conversation.
+This implementation is complete; see the Record for historical results. Subsequent changes follow [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks). Do not restart its original browser, deployment or cross-task notification workflow.
 
 ## Completion
 

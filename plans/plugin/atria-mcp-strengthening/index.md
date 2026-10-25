@@ -1,5 +1,7 @@
 # Atria MCP 补强企划 — Plan Index
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 - **Task ID**：`plugin/atria-mcp-strengthening`
 - **Primary Workspace**：`plugin`（实现位置：`plugin:atria-mcp/`）；设计文档位于 `docs`。
 - 真人审批、其它平台与真实付费 Provider 等外部证据仍待验，实际边界见 [唯一 Record](../../../records/plugin/atria-mcp-strengthening.md)。前八轮冻结范围保持；第九轮由 2026-10-14 本次开工指令授权 E0 收口，并非此前单独选择，来源详见 [实施收口](implementation.md)。

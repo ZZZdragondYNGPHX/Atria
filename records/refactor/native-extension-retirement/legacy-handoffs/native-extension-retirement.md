@@ -1,5 +1,7 @@
 # NUX-042 dependency inventory
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../../../README.md#122-minimal-validation-and-runtime-checks)。
+
 Captured before physical retirement on `6cb86b33c`. Static imports include product code and regression fixtures; dynamic loader/manifest and settings registrations are reviewed separately.
 
 | Former extension owner | Disposition | External static consumers |

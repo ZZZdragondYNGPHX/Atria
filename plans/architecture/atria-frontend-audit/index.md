@@ -1,5 +1,7 @@
 # Atria 全产品前端：功能与实现输入
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 当前实施范围归[提示词／前端方案](../../refactor/atria-native-prompt-preset-deepening/index.md)，页面与接线归[实施输入](claude-code-frontend-prompt.md)，代码结论归[源码剖析](../../refactor/atria-native-prompt-preset-deepening/baseline.md)。实际结果记[同一 Record](../../../records/refactor/atria-native-prompt-preset-deepening.md)。
 
 ## 当前读取路线

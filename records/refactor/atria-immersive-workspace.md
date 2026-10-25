@@ -1,5 +1,7 @@
 # Atria Immersive Workspace — Record
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 - Task ID: `refactor/atria-immersive-workspace`
 - Primary Workspace: `main`
 - Status: Completed — A1–A5, B1–B4 and F complete within the frozen local support scope; merged and pushed to main `4ac8affbf` on 2026-10-06

@@ -1,5 +1,7 @@
 # 《雾灯旅舍》设计背景、体验目标与示例内容
 
+> 执行规则入口：[Governance §12.2](../../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 本文件与 [任务说明](README.md)、[完整界面需求](interface-requirements.md) 一起使用。这里提供无需读取作者剧本的公开内容，帮助设计者做出具体、可信的游戏画面。
 
 ## 1. 游戏是什么

@@ -11,7 +11,7 @@
 | S05 | 同目标/跨进程写竞态、Lease 双花 | 本进程资源隔离 + 原生 OCC/CAS；凭证不跨实例 | 单元、多进程 Native |
 | S06 | Dispatch 后断线、回执丢失、MCP/Host 重启 | 先 Journal 后 dispatch；unknown 不重发；| 故障、重启 |
 | S07 | 名义查询隐性 reconcile/费用/持久清理 | 纯 Observe 与效果操作分开；READ 无持久变化/Secret/Send | 存储前后比较、调用 spy |
-| S08 | SecretRef 绑定恶意 endpoint、DNS/redirect/内网/降级 | 正确网络目标绑定、独立审查；输出无明文| 网络故障 fixture、Native |
+| S08 | SecretRef 绑定恶意 endpoint、DNS/redirect/内网/降级 | 正确网络目标绑定、既有原生授权；输出无明文| 网络故障 fixture、Native |
 | S09 || 不完成/不安装半包；独立下游审批；非任意 URL/磁盘 | 二进制单元、真实大包 |
 | S10 | Skill 指令提权、Git 漂移、Extension/Host code 执行 | Skill 无权限；安装禁用；无 Host 执行旁路| 合同、恶意 fixture |
 | S11 | 伪 host evidence/human feedback/label、自动 wake 隐藏费用 | 来源不可由模型自封；级联效果与预算前检；发布独批 ||

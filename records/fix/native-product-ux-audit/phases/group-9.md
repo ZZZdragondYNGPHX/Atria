@@ -1,5 +1,7 @@
 # Native product UX — Group 9 and final closure
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../../../README.md#122-minimal-validation-and-runtime-checks)。
+
 Branch: `fix/native-product-ux-audit`.
 Baseline: Group 8 `42265308d4b08964c71ddfbcbbccf7730bda4a4a`.
 Final HEAD: `652bb6386f61e9c5fb983157c8852b1680736eb2`.

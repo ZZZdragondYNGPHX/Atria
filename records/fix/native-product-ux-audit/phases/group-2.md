@@ -1,5 +1,7 @@
 # Native product UX — Group 2
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../../../README.md#122-minimal-validation-and-runtime-checks)。
+
 Branch: `fix/native-product-ux-audit`; pushed HEAD: `c863c0536`.
 
 ## Group 2 — Native Runtime / Provider Foundation

@@ -1,5 +1,7 @@
 # Native product UX — Group 4
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../../../README.md#122-minimal-validation-and-runtime-checks)。
+
 Branch: `fix/native-product-ux-audit`.
 Implementation commits: NUX-016 `9b6fdc7f6`, NUX-017 `dc49d4f39`, NUX-018 `3a33f86fb`.
 

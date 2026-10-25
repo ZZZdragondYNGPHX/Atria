@@ -1,5 +1,7 @@
 # Atria Native Content & Session Architecture Refactor — Plan Index
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 - Task ID: `refactor/atria-native-content-session-architecture`
 - Primary Workspace: `main`
 - Status: Historical completed/integrated architecture. Use current Records/remote state for execution facts.

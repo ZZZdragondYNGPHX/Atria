@@ -1,5 +1,7 @@
 # Atria 性能与长期使用体验优化 — Plan Index
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 - **Task ID**: `refactor/atria-performance-long-term-experience`
 - **Primary Workspace**: `main`（已集成产品）；企划与累计 Record 归档于长期 `docs` 工作空间
 - **状态**: **Plan Frozen v1.0（架构/8阶段30单元不变；本地实施与主线集成已完成）**；事实与待证见 [累计 Record](../../../records/refactor/atria-performance-long-term-experience.md)

@@ -1,5 +1,7 @@
 # Atria MCP 当前主线适配
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 - Task ID：`plugin/atria-mcp-main-adaptation`
 - Primary Workspace：`plugin`
 - Plan：[index](../../plans/plugin/atria-mcp-main-adaptation/index.md)

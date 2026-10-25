@@ -1,5 +1,7 @@
 # Atria MCP Capability Expansion — Plan Index
 
+> 执行规则入口：[Governance §12.2](../../../README.md#122-minimal-validation-and-runtime-checks)。本文件不另设验证或复审门槛。
+
 - Task ID: `plugin/atria-mcp-capability-expansion`
 - Primary Workspace: `plugin`
 - Live state: `records/plugin/atria-mcp-capability-expansion.md`; the earlier HANDOFF is historical and no longer present.

@@ -1,5 +1,7 @@
 # Atria 设置界面与原生主题重构
 
+> 历史记录，不是执行清单。当前实现与验证规则见 [Governance §12.2](../../README.md#122-minimal-validation-and-runtime-checks)。
+
 - Task ID: `refactor/atria-settings-and-themes`
 - Primary Workspace: `main`
 - Plan: [index](../../plans/refactor/atria-settings-and-themes/index.md)
