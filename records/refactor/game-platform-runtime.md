@@ -3,7 +3,7 @@
 - Task ID: `refactor/game-platform-runtime`
 - Plan: [index](../../plans/refactor/game-platform-runtime/index.md)
 - Start HEAD: `519642ad`
-- 状态：P0–P6 的本次实施与相关验证完成；8 个产品提交已快进集成本地 `main@4401f527`。最终交付同步 main/docs 并清理本任务短期工作树，不处理其他任务的 dirty changes。
+- 状态：P0–P6 的本次实施与相关验证完成；8 个产品提交已快进集成 `main@4401f527`，main/docs 已同步远端。其他任务的 63 项 docs dirty changes 保持不变。本任务短期工作树/分支清理命令被工具自动审批检查拒绝（仅返回 `blocked by policy`，删除未执行），故保留 `tasks/native-world-performance/{source,docs}` 及对应分支；实现和验证已交付，清理未完成。
 - 环境：Windows x64，Node v24.18.0，AMD Ryzen 7 9800X3D（8 核 / 16 逻辑处理器），可用内存约 22.79 GiB。下列耗时是本机样本，不是跨设备承诺。
 
 ## P0
