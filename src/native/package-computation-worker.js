@@ -11,18 +11,35 @@ function reset() {
     isolate = null;
 }
 process.on('disconnect', () => { reset(); process.exit(0); });
-process.on('message', async ({ artifact, resourceHash, source, method, inputText, extraText, limits }) => {
+function rememberProgram(resourceHash, artifact) {
+    if (programs.size >= 8 && !programs.has(resourceHash)) {
+        const oldest = programs.keys().next().value;
+        programs.delete(oldest);
+        for (const [key, script] of scripts) if (key.startsWith(oldest + ':')) { script.release(); scripts.delete(key); }
+    }
+    programs.set(resourceHash, artifact);
+}
+process.on('message', async ({ compile, artifact, resourceHash, source, method, inputText, extraText, limits }) => {
     let context;
     try {
+        if (compile) {
+            const [{ compileController }, { hashNativeDocument }] = await Promise.all([
+                import('./frontend/script-compiler.js'), import('./repositories/common.js'),
+            ]);
+            const modules = new Map(compile.modules.map(module => [module.id, module.source]));
+            const artifact = compileController(source, path => {
+                if (!modules.has(path)) throw new TypeError('Missing computation module');
+                return modules.get(path);
+            }, { modules: limits.computationModules, moduleBytes: limits.computationModuleBytes, synchronous: true });
+            const resourceHash = hashNativeDocument(artifact);
+            rememberProgram(resourceHash, artifact);
+            process.send({ value: { artifact, resourceHash }, programs: [...programs.keys()] });
+            return;
+        }
         isolate ??= new ivm.Isolate({ memoryLimit: limits.computationHeapBytes / 1048576,
             onCatastrophicError: () => process.exit(1) });
         if (artifact) {
-            if (programs.size >= 8) {
-                const oldest = programs.keys().next().value;
-                programs.delete(oldest);
-                for (const [key, script] of scripts) if (key.startsWith(oldest + ':')) { script.release(); scripts.delete(key); }
-            }
-            programs.set(resourceHash, artifact);
+            rememberProgram(resourceHash, artifact);
         }
         const program = programs.get(resourceHash);
         if (!program) throw new Error('Computation program is not loaded');

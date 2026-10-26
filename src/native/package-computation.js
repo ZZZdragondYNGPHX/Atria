@@ -1,6 +1,6 @@
 import { runComputationJob } from './package-computation-pool.js';
-import { compileController } from './frontend/script-compiler.js';
-import { assertJsonDeclaration } from '../../public/shared/native-values.js';
+import { compileController, collectControllerSources } from './frontend/script-compiler.js';
+import { assertJsonDeclaration, parseJsonDeclaration, jsonDeclarationBytes } from '../../public/shared/native-values.js';
 import { resourcePath } from '../../public/shared/native-frontend-contract.js';
 import { hashNativeDocument } from './repositories/common.js';
 import { packageDeclarationKey } from './package-declarations.js';
@@ -24,6 +24,18 @@ function pinnedArtifact(source, files) {
     const limits = computationPolicy();
     resourcePath(source);
     if (!/\.(js|ts)$/.test(source)) throw new TypeError('Package computation requires JS/TS');
+    const cached = cachedArtifact(source, files);
+    if (cached) return cached;
+    const artifact = compileController(source, path => moduleText(files, path, limits), compilerLimits(limits));
+    return rememberArtifact(source, files, artifact, hashNativeDocument(artifact));
+}
+const compilerLimits = limits => ({ modules: limits.computationModules, moduleBytes: limits.computationModuleBytes, synchronous: true });
+function moduleText(files, path, limits) {
+    const bytes = readPackagePayload(files, path);
+    if (!bytes || bytes.length > limits.computationModuleBytes) throw new TypeError('Missing computation module');
+    return bytes.toString('utf8');
+}
+function cachedArtifact(source, files) {
     // Build validation and execution share the exact linked program. A package
     // with many transactions must not transpile the same world rules per use.
     for (const [key, cached] of artifacts) {
@@ -31,17 +43,33 @@ function pinnedArtifact(source, files) {
         artifacts.delete(key); artifacts.set(key, cached);
         return cached;
     }
-    const artifact = compileController(source, path => {
-        const bytes = readPackagePayload(files, path);
-        if (!bytes || bytes.length > limits.computationModuleBytes) throw new TypeError('Missing computation module');
-        return bytes.toString('utf8');
-    }, { modules: limits.computationModules, moduleBytes: limits.computationModuleBytes, synchronous: true });
+}
+function rememberArtifact(source, files, artifact, resourceHash, captured = null) {
     freezeProgram(artifact);
-    const entry = { source, artifact, modules: artifact.modules.map(module => [module.id, Buffer.from(readPackagePayload(files, module.id))]),
-        resourceHash: hashNativeDocument(artifact) };
+    const entry = { source, artifact, modules: artifact.modules.map(module => [module.id, captured?.get(module.id) ?? Buffer.from(readPackagePayload(files, module.id))]),
+        resourceHash };
     if (artifacts.size >= 8) artifacts.delete(artifacts.keys().next().value);
     artifacts.set(entry.resourceHash, entry);
     return entry;
+}
+
+async function prepareArtifact(source, files, signal) {
+    resourcePath(source);
+    if (!/\.(js|ts)$/.test(source)) throw new TypeError('Package computation requires JS/TS');
+    const cached = cachedArtifact(source, files);
+    if (cached) return cached;
+    const limits = computationPolicy();
+    // Only exact reachable sources cross IPC, never an entire package/asset Map.
+    const captured = new Map();
+    const modules = collectControllerSources(source, path => {
+        const text = moduleText(files, path, limits);
+        captured.set(path, Buffer.from(readPackagePayload(files, path)));
+        return text;
+    }, compilerLimits(limits));
+    const bytes = modules.reduce((sum, module) => sum + Buffer.byteLength(module.source), 0);
+    const { artifact, resourceHash } = await runComputationJob({ compile: { modules }, source, method: 'compile',
+        resourceHash: null, bytes, limits }, { signal });
+    return rememberArtifact(source, files, artifact, resourceHash, captured);
 }
 
 export async function runPackageComputation(installed, source, method, input, { partitioned = false, signal } = {}) {
@@ -49,7 +77,7 @@ export async function runPackageComputation(installed, source, method, input, { 
     const identity = packageDeclarationKey(installed);
     let entry = identity && installedArtifacts.get(identity)?.get(source);
     if (!entry) {
-        entry = pinnedArtifact(source, installed.sourceFiles);
+        entry = await prepareArtifact(source, installed.sourceFiles, signal);
         if (identity) {
             let entries = installedArtifacts.get(identity);
             if (!entries) { entries = new Map(); installedArtifacts.set(identity, entries); }
@@ -59,7 +87,7 @@ export async function runPackageComputation(installed, source, method, input, { 
     const { artifact, resourceHash } = entry, limits = computationPolicy();
     const jsonLimits = { maxNodes: limits.computationNodes, maxDepth: limits.computationDepth, maxString: limits.computationInputBytes };
     const safe = assertJsonDeclaration(input, 'Computation input', limits.computationInputBytes, jsonLimits);
-    const inputText = JSON.stringify(safe), inputBytes = Buffer.byteLength(inputText);
+    const inputText = JSON.stringify(safe), inputBytes = jsonDeclarationBytes(safe);
     const batch = new AbortController();
     const abort = () => batch.abort(signal.reason);
     if (signal?.aborted) abort(); else signal?.addEventListener('abort', abort, { once: true });
@@ -68,7 +96,7 @@ export async function runPackageComputation(installed, source, method, input, { 
         const bytes = inputBytes + (extraText ? Buffer.byteLength(extraText) : 0);
         if (bytes > limits.computationInputBytes) throw new TypeError('Computation input byte limit');
         const text = await runComputationJob({ artifact, resourceHash, source, method: stage, inputText, extraText, bytes, limits }, { signal: batch.signal });
-        return assertJsonDeclaration(JSON.parse(text), 'Computation output', limits.computationOutputBytes, jsonLimits);
+        return parseJsonDeclaration(text, 'Computation output', limits.computationOutputBytes, jsonLimits);
     }
     try {
         let value;

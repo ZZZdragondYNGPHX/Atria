@@ -43,6 +43,13 @@ Programs and compiled stages are reused by admitted package identity. A batch
 serializes its original input once on the host, but IPC and guest parsing still
 copy data into each process. This is not shared-memory or GPU computation. Each
 stage has a fresh guest context; module globals do not persist between calls.
+On the first runtime use, the host collects bounded static dependencies and the
+same child-process pool performs TypeScript/JavaScript compilation. Build and
+runtime use the same compiler and artifact hash. Source bytes are pinned before
+the asynchronous boundary; modifying an authoring Map cannot poison the compiled
+identity. Compiler startup can increase the first-action latency, but no longer
+holds the host thread throughout transpilation. Compilation jobs share queue
+backpressure, cancellation and process deadlines with computation jobs.
 
 Host settings under `native.computation` are read at startup:
 
@@ -75,6 +82,15 @@ messages or bypass authored permissions and schemas.
 already performs it. `invariantSource` selects a smaller exact module exporting
 `default.invariant`; `invariantContext` and `invariantReads` constrain its input.
 Changed values and the final invariant remain checked.
+Within one transaction, the final check recollects its current authorized reads.
+If its complete input equals the successful earlier invariant input, it reuses
+that verdict and preserves both logical evidence entries. Changed inputs execute
+the invariant again; verdicts are not shared between transactions.
+
+Strict JSON admission records byte size, node count, height and longest string
+for each owned immutable subtree. Smaller subsequent limits still apply. Sandbox
+JSON responses are parsed, checked and frozen in place; external object inputs
+still require descriptor, prototype, key and dense-array checks before copying.
 
 A simulation may declare up to 4096 jobs and 65536 steps; actual execution also
 consumes the host Authority budget. During one catch-up, static record reads
@@ -125,8 +141,17 @@ history instead of re-reading every old Variant. Rewrites, branch changes and
 checkpoints reconstruct history. A fresh full snapshot still loads full history;
 this API does not silently truncate a game or its save data.
 
-FS compression/decompression uses asynchronous zlib for request paths. The
-lossless `ATRZ1` format and durable redo ordering are unchanged. A stamp-checked
+FS compression/decompression uses asynchronous zlib for request paths. Independent
+state writes and resource encoding run in bounded batches of four. The `ATRJ2`
+redo journal stores the exact encoded target-file bytes, with a hashed index and
+payload, so installation does not serialize and compress every resource again.
+Recovery also accepts the previous JSON/`ATRZ1` journals. Target files retain their
+existing JSON/`ATRZ1` format; durable redo ordering, file sync and publication
+barriers remain. An engine recovers a root on first access and again after any
+failed transaction; the shared account queue invalidates this known-clean state
+across engine instances. It does not scan the journal on every successful read.
+Internal integrity comparisons borrow records; public mutable reads still copy.
+A stamp-checked
 file cache holds at most 4096 envelopes / 64 MiB of decoded JSON bytes, with a
 16 MiB per-entry limit. The materialized state cache holds eight heads of up to
 16 MiB each. These are cache weights, not process RSS limits. File changes,

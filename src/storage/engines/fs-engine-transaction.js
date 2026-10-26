@@ -63,6 +63,13 @@ export class FsTransaction {
         return this._h(key.kind, 'putResource').put(key, record);
     }
 
+    async encodeNativeResource(key, record) {
+        return this._h(key.kind, 'encodeNativeResource').encode(key, record);
+    }
+    async putEncodedNativeResource(key, bytes) {
+        return this._h(key.kind, 'putEncodedNativeResource').putEncoded(key, bytes);
+    }
+
     async getChatRange(key, options = {}) {
         if (key?.kind !== 'chat') {
             throw new Error('FsTransaction.getChatRange: chat resource required');
@@ -100,7 +107,7 @@ export class FsTransaction {
     }
 
     async putResourceIfMatch(key, expectedIntegrity, record) {
-        const existing = await this.getResource(key);
+        const existing = await this.getImmutableResource(key);
         if (expectedIntegrity === null) {
             if (existing !== null) return { updated: false };
         } else {
@@ -818,9 +825,9 @@ function registerNativeResourceHandlers(tx) {
             const record = await readEnvelope(key);
             return immutable ? record : structuredClone(record);
         },
-        async put(key, record) {
+        async encode(key, record) {
             const normalized = normalizeNativeResourceKey(key);
-            const existing = await readEnvelope(normalized);
+            const existing = record.createdAt == null ? await readEnvelope(normalized) : null;
             const now = Date.now();
             const envelope = {
                 key: normalized,
@@ -829,9 +836,15 @@ function registerNativeResourceHandlers(tx) {
                 updatedAt: Number(record.updatedAt ?? now),
                 createdAt: Number(record.createdAt ?? existing?.createdAt ?? now),
             };
-            const fp = filePath(normalized);
-            await durableWriteAsync(fp, await encodeNativeJsonAsync(envelope));
+            return encodeNativeJsonAsync(envelope);
+        },
+        async putEncoded(key, bytes) {
+            const fp = filePath(normalizeNativeResourceKey(key));
+            await durableWriteAsync(fp, bytes);
             await tx._nativeResourceCache?.written(fp);
+        },
+        async put(key, record) {
+            return handler.putEncoded(key, await handler.encode(key, record));
         },
         async delete(key) {
             const normalized = normalizeNativeResourceKey(key);

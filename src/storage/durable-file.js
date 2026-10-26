@@ -51,10 +51,12 @@ export async function durableMkdirAsync(directory) {
 export async function durableWriteAsync(file, bytes) {
     await durableMkdirAsync(path.dirname(file));
     const temporary = file + '.' + randomUUID() + '.prepare', handle = await fsp.open(temporary, 'wx', 0o600);
+    let renamed = false;
     try {
         try { await handle.writeFile(bytes); await handle.sync(); } finally { await handle.close(); }
-        await fsp.rename(temporary, file); await syncDirectoryAsync(path.dirname(file));
-    } finally { await fsp.rm(temporary, { force: true }); }
+        await fsp.rename(temporary, file); renamed = true;
+        await syncDirectoryAsync(path.dirname(file));
+    } finally { if (!renamed) await fsp.rm(temporary, { force: true }); }
 }
 export async function durableRemoveAsync(file) {
     try { await fsp.unlink(file); } catch (error) { if (error.code === 'ENOENT') return false; throw error; }

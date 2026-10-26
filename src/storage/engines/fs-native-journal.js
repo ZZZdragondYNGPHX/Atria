@@ -6,7 +6,8 @@ import { durableWriteAsync, durableRemoveAsync, syncDirectoryAsync } from '../du
 import { isNativeStorageKind, normalizeNativeResourceKey, encodeNativeResourceKey, nativeResourceMatchesFilter, sortAndLimitNativeRecords } from './native-resource-key.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../../native/contracts.js';
 import { prepareIndependent } from '../../../public/shared/native-independent-preparation.js';
-import { encodeNativeJsonAsync, decodeNativeJsonAsync } from './native-json-codec.js';
+import { decodeNativeJsonAsync } from './native-json-codec.js';
+import { encodedNativeJournal, encodeNativeJournal, decodeNativeJournal } from './native-journal-codec.js';
 
 const identity = key => key.kind + '\0' + encodeNativeResourceKey(key);
 const digest = text => createHash('sha256').update(text).digest('hex');
@@ -53,19 +54,19 @@ export class FsNativeJournal {
         if (!isNativeStorageKind(key.kind)) return this.base.putResource(key, record);
         const normalized = this.checkedKey(key);
         this.stateCache?.delete([normalized.handle, normalized.sessionId, normalized.namespace, normalized.head].join('\0'));
-        const existing = await this.getResource(normalized), now = Date.now();
+        const existing = await this.getImmutableResource(normalized), now = Date.now();
         this.writes.set(identity(normalized), { key: normalized, record: structuredClone({ ...record, key: normalized,
             createdAt: record.createdAt ?? existing?.createdAt ?? now, updatedAt: record.updatedAt ?? now }) });
     }
     async putResourceIfMatch(key, expectedIntegrity, record) {
         if (!isNativeStorageKind(key.kind)) return this.base.putResourceIfMatch(key, expectedIntegrity, record);
-        const existing = await this.getResource(key);
+        const existing = await this.getImmutableResource(key);
         if (expectedIntegrity === null ? existing !== null : !existing || existing.integrity !== expectedIntegrity) return { updated: false };
         await this.putResource(key, record); return { updated: true };
     }
     async deleteResource(key) {
         if (!isNativeStorageKind(key.kind)) return this.base.deleteResource(key);
-        const normalized = this.checkedKey(key), existed = Boolean(await this.getResource(normalized));
+        const normalized = this.checkedKey(key), existed = Boolean(await this.getImmutableResource(normalized));
         this.stateCache?.delete([normalized.handle, normalized.sessionId, normalized.namespace, normalized.head].join('\0'));
         this.writes.set(identity(normalized), { key: normalized, record: null }); return existed;
     }
@@ -81,14 +82,15 @@ export class FsNativeJournal {
     async install(items) {
         const install = async ({ item, index }) => {
             this.checkedKey(item.key);
-            if (item.record) await this.base.putResource(item.key, item.record);
+            if (item.bytes) await this.base.putEncodedNativeResource(item.key, item.bytes);
+            else if (item.record) await this.base.putResource(item.key, item.record);
             else await this.base.deleteResource(item.key);
             await this.fault('install', index);
         };
         let batch = [];
         for (let index = 0; index < items.length; index++) {
             const item = items[index];
-            if (item.record && dependencies.has(item.key.kind)) batch.push({ item, index });
+            if ((item.bytes || item.record) && dependencies.has(item.key.kind)) batch.push({ item, index });
             else {
                 // Independent files may sync together; mutable roots and
                 // deletions remain ordered barriers after all siblings settle.
@@ -103,19 +105,28 @@ export class FsNativeJournal {
         try { raw = await fsp.readFile(this.file); } catch (error) { if (error.code !== 'ENOENT') throw error; }
         if (raw !== undefined) {
             this.stateCache?.clear();
-            const journal = await decodeNativeJsonAsync(raw);
-            if (journal.schemaVersion !== 1 || digest(journal.payload) !== journal.digest) throw new Error('Native commit journal integrity mismatch');
-            await this.install(JSON.parse(journal.payload));
+            let items;
+            if (encodedNativeJournal(raw)) items = decodeNativeJournal(raw);
+            else {
+                const journal = await decodeNativeJsonAsync(raw);
+                if (journal.schemaVersion !== 1 || digest(journal.payload) !== journal.digest) throw new Error('Native commit journal integrity mismatch');
+                items = JSON.parse(journal.payload);
+            }
+            await this.install(items);
             await durableRemoveAsync(this.file);
         }
         await durableRemoveAsync(this.file + '.prepared');
     }
     async commit() {
         if (!this.writes.size) return;
-        const items = [...this.writes.values()], payload = JSON.stringify(items);
         const prepared = this.file + '.prepared';
         await this.fault('prepare');
-        await durableWriteAsync(prepared, await encodeNativeJsonAsync({ schemaVersion: 1, payload, digest: digest(payload) }));
+        // zlib jobs use independent libuv workers. Target-file bytes are reused
+        // by the redo record and installation instead of encoding every tree twice.
+        const items = await prepareIndependent([...this.writes.values()], async ({ key, record }) => ({ key,
+            bytes: record ? await this.base.encodeNativeResource(key, record) : null,
+        }), { concurrency: 4 });
+        await durableWriteAsync(prepared, encodeNativeJournal(items));
         await this.fault('dependencies');
         await fsp.rename(prepared, this.file); await syncDirectoryAsync(this.root);
         await this.fault('publish');

@@ -8,7 +8,7 @@ import { prepareLifetimes, validateLifetimes } from './lifetime-authority.js';
 import { lifetimePolicy } from '../../public/shared/native-lifetime-contract.js';
 import { prepareHistory, historySources, validateHistory } from './history-authority.js';
 import { assertNativeExperienceContract } from '../../public/shared/native-experience-contract.js';
-import { assertJsonDeclaration, fields } from '../../public/shared/native-values.js';
+import { assertJsonDeclaration, jsonDeclarationBytes, fields } from '../../public/shared/native-values.js';
 import { WORLD_DATA_LIMITS } from '../../public/shared/native-world-data.js';
 import { assertTaskValue, taskId } from '../../public/shared/native-task-contract.js';
 import { compileDataSchema, compileWorldDataSchema } from '../../public/shared/native-data-schema.js';
@@ -123,7 +123,7 @@ function budgetFor(policy, rngSeed, signal) {
         rngSeed, signal, counts, protectedDomains, publication: false,
         step() { signal?.throwIfAborted(); add('steps', 1, authorityExecutionLimits().steps); },
         rule() { context.step(); add('ruleEvaluations', 1, authorityExecutionLimits().ruleEvaluations); },
-        value(value) { const safe = bounded(value); add('valueBytes', bytes(safe), authorityExecutionLimits().totalValueBytes); return safe; },
+        value(value) { const safe = bounded(value); add('valueBytes', jsonDeclarationBytes(safe), authorityExecutionLimits().totalValueBytes); return safe; },
         effect(effect) {
             context.step(); context.value(effect); add('effects', 1, policy.maxEffects);
             const families = { 'world.event': ['worldEvents', policy.maxWorldEvents], 'app.command': ['appCommands', policy.maxAppCommands],
@@ -137,7 +137,7 @@ function budgetFor(policy, rngSeed, signal) {
         scan(records) { add('recordScans', records, authorityExecutionLimits().recordScans); },
         readValue(value) {
             const safe = context.value(value);
-            add('readBytes', bytes(safe), authorityExecutionLimits().readBytes);
+            add('readBytes', jsonDeclarationBytes(safe), authorityExecutionLimits().readBytes);
             return safe;
         },
         validateEvents(drafts, reducers) {
@@ -321,13 +321,13 @@ async function executeTransaction(candidate, installed, contract, logic, world, 
 
     if (Object.keys(subjects).length && !applied) throw new TypeError('Subject admission requires an applied Domain effect');
     const computationState = transaction.computation ? { args, beforeReads: reads, computed, resolution, seed: identity, artifacts } : null;
-    const invariantStable = await checkComputation(candidate, installed, contract, transaction, budget, computationState, execution);
+    const invariant = await checkComputation(candidate, installed, contract, transaction, budget, computationState, execution);
     for (const item of consumed) markTaskArtifactConsumption(candidate, item, identity);
     const more = transaction.continuationCondition !== undefined && predicate(transaction.continuationCondition, resolved);
-    return { resolution, computationState, invariantStable, execution, artifacts: consumed.map(item => item.evidence), speeches, more };
+    return { resolution, computationState, invariant, execution, artifacts: consumed.map(item => item.evidence), speeches, more };
 }
 
-async function checkComputation(candidate, installed, contract, transaction, budget, state, evidence) {
+async function checkComputation(candidate, installed, contract, transaction, budget, state, evidence, previous = null) {
     if (!state) return;
     budget.step();
     const selected = transaction.computation.invariantReads;
@@ -338,12 +338,16 @@ async function checkComputation(candidate, installed, contract, transaction, bud
     const available = { ...state, reads };
     const input = transaction.computation.invariantContext === undefined ? available
         : Object.fromEntries(transaction.computation.invariantContext.map(key => [key, available[key]]));
-    const checked = await runPackageComputation(installed, transaction.computation.invariantSource ?? transaction.computation.source, 'invariant', input, { signal: budget.signal });
+    // The post-publication boundary still reads its current grants. An unchanged
+    // complete input to this same deterministic stage has the same verdict; keep
+    // both evidence entries without another context, IPC round trip or execution.
+    const checked = previous && equalNativeDocuments(input, previous.input, true) ? previous.checked
+        : await runPackageComputation(installed, transaction.computation.invariantSource ?? transaction.computation.source, 'invariant', input, { signal: budget.signal });
     if (checked.value !== true) throw new TypeError('Domain invariant rejected');
     evidence.push(checked.evidence);
     // Derived publications can only change candidate reads. A pure invariant
     // that observes no such reads has exactly the same admitted input afterward.
-    return grants.length === 0 || transaction.computation.invariantContext?.includes('reads') === false;
+    return { input, checked, stable: grants.length === 0 || transaction.computation.invariantContext?.includes('reads') === false };
 }
 
 export async function prepareAuthorityTransaction(base, installed, rawRequest, { signal } = {}) {
@@ -411,7 +415,7 @@ export async function prepareAuthorityTransaction(base, installed, rawRequest, {
             budget.counts.historyLogicalBytes = bytes(candidate.states.atri_lifecycle.history);
         }
         await publications(candidate, installed, contract, logic, budget);
-        if (!executed.invariantStable) await checkComputation(candidate, installed, contract, transaction, budget, executed.computationState, executed.execution);
+        if (!executed.invariant?.stable) await checkComputation(candidate, installed, contract, transaction, budget, executed.computationState, executed.execution, executed.invariant);
         validateCandidate(candidate, contract);
         const projection = budget.typed(template(transaction.receipt.projection, { args, resolution }), transaction.receipt.schema);
         const receipt = bounded({ schemaVersion: 1, authorityId: identity, transactionId: transaction.id, verb: transaction.verb,

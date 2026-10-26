@@ -1,4 +1,5 @@
 import { illustrationManifest, materializeIllustrations, IMAGE_VERSION_NAMESPACE } from '../../../public/shared/native-illustration-storage.js';
+import { prepareIndependent } from '../../../public/shared/native-independent-preparation.js';
 import { illustrationAssetIds } from '../../../public/shared/native-media-contract.js';
 import { maintainSession, cancelSessionMaintenance } from '../session-maintenance.js';
 import { PERSONA_NAMESPACE, personaAvatars } from '../persona-contract.js';
@@ -614,11 +615,11 @@ export class SessionRepo {
                 await putImmutable(tx, this._timelineKey(handle, session.sessionId, entry.branchId, entry.messageId), entry);
             }
             const previousRevision = existing?.doc.headRevisionId && await getNativeDocument(tx, this._revisionKey(handle, session.sessionId, existing.doc.headRevisionId));
-            for (const [namespace, value] of Object.entries(states)) {
+            await prepareIndependent(Object.entries(states), async ([namespace, value]) => {
                 const stateKey = this._stateKey(handle, session.sessionId, namespace, heads[namespace]);
                 if (deltaStateNamespace(namespace)) await putStoredState(tx, stateKey, value, previousRevision?.stateHeads[namespace]);
                 else await putImmutable(tx, stateKey, value);
-            }
+            }, { concurrency: this._engine.kind === 'fs' ? 4 : 1 });
             // Mutable presentation metadata belongs to the current Session root,
             // not the generation/restore draft captured before a concurrent rename.
             const published = { ...session, updatedAt: Math.max(session.updatedAt, existing?.doc.updatedAt || 0) };

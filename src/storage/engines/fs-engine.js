@@ -6,6 +6,9 @@ import { FsNativeCache } from './fs-native-cache.js';
 
 const tails = new Map();
 const active = new AsyncLocalStorage();
+// All engines for a root share the same transaction queue. A failed transaction
+// invalidates the known-clean journal state, including in other engine instances.
+const recoveryRequired = new Set();
 
 export class FsEngine {
     constructor({ directoriesByHandle, durabilityFault = () => {} }) {
@@ -15,6 +18,7 @@ export class FsEngine {
         this.kind = 'fs';
         this._directoriesByHandle = directoriesByHandle;
         this._recoveredPatchJournals = new Set();
+        this._recoveredNativeJournals = new Set();
         this._durabilityFault = durabilityFault;
         this._nativeStateCache = new Map();
         this._nativeResourceCache = new FsNativeCache();
@@ -47,12 +51,16 @@ export class FsEngine {
         }
         const tx = new FsTransaction({ directoriesByHandle: this._directoriesByHandle, nativeResourceCache: this._nativeResourceCache, nativeStateCache: this._nativeStateCache });
         const journal = new FsNativeJournal(tx, root, handle, this._durabilityFault, this._nativeStateCache);
-        await journal.recover();
+        if (!this._recoveredNativeJournals.has(handle) || recoveryRequired.has(root)) {
+            await journal.recover();
+            this._recoveredNativeJournals.add(handle); recoveryRequired.delete(root);
+        }
         const scope = { root, tx: journal.tx, open: true };
         return active.run(scope, async () => {
             try {
                 const result = await fn(journal.tx); await journal.commit(); return result;
             } catch (error) {
+                recoveryRequired.add(root);
                 this._nativeStateCache.clear(); throw error;
             } finally { scope.open = false; }
         });

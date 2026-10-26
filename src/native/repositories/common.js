@@ -112,21 +112,26 @@ export function nativeDocumentBytes(value) {
 }
 
 /** Compare already admitted JSON data directly, without serializing or hashing.
- * Object key order and signed zero have the same meaning as canonical JSON. */
-export function equalNativeDocuments(left, right) {
+ * Object key order and signed zero have the same meaning as canonical JSON.
+ * Computation inputs may require key order too: guest scripts can enumerate it. */
+export function equalNativeDocuments(left, right, orderedKeys = false) {
     if (left === right) return true;
     if (left === null || right === null || typeof left !== 'object' || typeof right !== 'object') return false;
     if (Array.isArray(left)) {
         if (!Array.isArray(right) || left.length !== right.length) return false;
         for (let index = 0; index < left.length; index++) {
-            if ((index in left) !== (index in right) || index in left && !equalNativeDocuments(left[index], right[index])) return false;
+            if ((index in left) !== (index in right) || index in left && !equalNativeDocuments(left[index], right[index], orderedKeys)) return false;
         }
         return true;
     }
     if (Array.isArray(right)) return false;
     const keys = Object.keys(left);
-    if (keys.length !== Object.keys(right).length) return false;
-    for (const key of keys) if (!Object.hasOwn(right, key) || !equalNativeDocuments(left[key], right[key])) return false;
+    const rightKeys = Object.keys(right);
+    if (keys.length !== rightKeys.length) return false;
+    for (let index = 0; index < keys.length; index++) {
+        const key = keys[index];
+        if (orderedKeys && key !== rightKeys[index] || !Object.hasOwn(right, key) || !equalNativeDocuments(left[key], right[key], orderedKeys)) return false;
+    }
     return true;
 }
 
@@ -148,20 +153,20 @@ export function nativeRecord(value, {
 export async function putImmutable(tx, key, value) {
     const record = nativeRecord(value);
     const { doc, integrity } = record;
-    const existing = await tx.getResource(key);
+    const existing = await readNativeRecord(tx, key);
     if (existing) {
-        if (existing.integrity === integrity) return existing.doc;
+        if (existing.integrity === integrity) return cloneNativeDocument(existing.doc);
         throw new ConflictError('native_immutable_conflict', { key });
     }
     const result = await tx.putResourceIfMatch(key, null, record);
     if (result.updated) return doc;
-    const raced = await tx.getResource(key);
-    if (raced?.integrity === integrity) return raced.doc;
+    const raced = await readNativeRecord(tx, key);
+    if (raced?.integrity === integrity) return cloneNativeDocument(raced.doc);
     throw new ConflictError('native_immutable_conflict', { key });
 }
 
 export async function putMutable(tx, key, value, { expectedIntegrity = undefined } = {}) {
-    const existing = await tx.getResource(key);
+    const existing = await readNativeRecord(tx, key);
     const record = nativeRecord(value, { existing });
     if (expectedIntegrity === undefined) {
         await tx.putResource(key, record);
@@ -170,6 +175,12 @@ export async function putMutable(tx, key, value, { expectedIntegrity = undefined
     const result = await tx.putResourceIfMatch(key, expectedIntegrity, record);
     if (!result.updated) throw new ConflictError('native_write_conflict', { key });
     return record.doc;
+}
+
+// Internal borrowed record. Callers may inspect it, but must copy before mutation
+// or returning a public mutable document. SQL engines already return fresh rows.
+export function readNativeRecord(tx, key) {
+    return tx.getImmutableResource ? tx.getImmutableResource(key) : tx.getResource(key);
 }
 
 export async function getNativeDocument(tx, key) {

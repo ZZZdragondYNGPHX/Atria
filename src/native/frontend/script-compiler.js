@@ -27,7 +27,7 @@ function inspect(code, file, compiled = false, synchronous = false) {
     visit(tree); return [...new Set(imports)];
 }
 
-export function compileController(entry, readText, limits = SCRIPT_LIMITS) {
+export function collectControllerSources(entry, readText, limits = SCRIPT_LIMITS) {
     const modules = new Map(), visiting = new Set(); let bytes = 0;
     const visit = file => {
         if (modules.has(file)) return;
@@ -43,16 +43,23 @@ export function compileController(entry, readText, limits = SCRIPT_LIMITS) {
             if (target.startsWith('../') || path.posix.isAbsolute(target)) throw new TypeError('Script import escapes Package');
             imports[name] = target; visit(target);
         }
+        modules.set(file, { id: file, source, imports }); visiting.delete(file);
+    };
+    visit(entry);
+    return [...modules.values()];
+}
+
+export function compileController(entry, readText, limits = SCRIPT_LIMITS) {
+    const modules = collectControllerSources(entry, readText, limits).map(({ id: file, source, imports }) => {
         const output = ts.transpileModule(source, { fileName: file, reportDiagnostics: true, compilerOptions: {
             target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS, sourceMap: true, inlineSources: false, alwaysStrict: true,
         } });
         if (output.diagnostics?.some(item => item.category === ts.DiagnosticCategory.Error)) throw new TypeError('Controller transpile failed: ' + file);
         const map = JSON.parse(output.sourceMapText); map.sources = [file]; delete map.sourceRoot;
         const code = output.outputText.replace(/\/\/# sourceMappingURL=.*$/m, '');
-        modules.set(file, { id: file, code, imports, map, sourceHash: hash(Buffer.from(source)) }); visiting.delete(file);
-    };
-    visit(entry);
-    return validateScriptArtifact({ format: 'atria-script', version: 1, entry, modules: [...modules.values()].sort((a, b) => a.id.localeCompare(b.id)) }, limits);
+        return { id: file, code, imports, map, sourceHash: hash(Buffer.from(source)) };
+    });
+    return validateScriptArtifact({ format: 'atria-script', version: 1, entry, modules: modules.sort((a, b) => a.id.localeCompare(b.id)) }, limits);
 }
 
 export function validateScriptArtifact(value, limits = SCRIPT_LIMITS) {

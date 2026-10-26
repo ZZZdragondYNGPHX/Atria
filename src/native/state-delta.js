@@ -1,4 +1,4 @@
-import { cloneAdmittedDocument, putImmutable, nativeDocumentBytes } from './repositories/common.js';
+import { cloneAdmittedDocument, putImmutable, nativeDocumentBytes, readNativeRecord } from './repositories/common.js';
 import { NATIVE_RESOURCE_KINDS as K } from './contracts.js';
 import { freezeRecordValue } from './record-values.js';
 import { copyRecordState, copyReceiptState } from './record-state.js';
@@ -83,7 +83,7 @@ async function decodeState(tx, key, record, cache) {
             if (doc.depth !== base.depth + 1) throw new TypeError('State Delta depth mismatch');
             value = cloneAdmittedDocument(base.value); break;
         }
-        const base = await tx.getResource(baseKey);
+        const base = await readNativeRecord(tx, baseKey);
         if (!base || doc.depth !== (base.doc?.format === FORMAT ? base.doc.depth : 0) + 1) throw new TypeError('Missing State Delta dependency');
         key = baseKey; record = base;
     }
@@ -110,12 +110,12 @@ export async function readStoredState(tx, key, record, { shareRecordValues = fal
 }
 export async function putStoredState(tx, key, value, previousHead = null) {
     if (key.kind !== K.sessionState || !deltaStateNamespace(key.namespace)) throw new TypeError('Invalid State identity');
-    const existing = await tx.getResource(key);
+    const existing = await readNativeRecord(tx, key);
     if (existing) return;
     const fullBytes = nativeDocumentBytes(value);
     let doc = { format: FORMAT, kind: 'snapshot', value, contentHash: key.head, depth: 0, replayBytes: 0 };
     if (previousHead && previousHead !== key.head) {
-        const previousKey = { ...key, head: previousHead }, previous = await tx.getResource(previousKey);
+        const previousKey = { ...key, head: previousHead }, previous = await readNativeRecord(tx, previousKey);
         if (previous) {
             const before = (await storedState(tx, previousKey, previous)).value, patch = difference(before, value);
             const bytes = Buffer.byteLength(JSON.stringify(patch));
@@ -130,5 +130,5 @@ export async function putStoredState(tx, key, value, previousHead = null) {
     if (fullBytes <= cachedStateBytes) remember(stateCache(tx), cacheKey(key), Promise.resolve({ value: freezeRecords(key,
         key.namespace === 'atri_lifecycle' && value.domains ? copyRecordState(value)
             : key.namespace === 'atri_action_receipts' ? copyReceiptState(value) : cloneAdmittedDocument(value)), depth: doc.depth, bytes: fullBytes,
-    integrity: (await tx.getResource(key)).integrity }));
+    integrity: (await readNativeRecord(tx, key)).integrity }));
 }
