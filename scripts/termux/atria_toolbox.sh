@@ -1,5 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# Atria Toolbox launcher - v0.3.10
+# Atria Toolbox launcher - v0.3.11
+# v0.3.11：安装仅浅克隆 main；更新只取 main 增量，Tag/Commit 按需下载。
 # v0.3.10：卸载、重装前离开程序目录，修复 npm/Git 因当前目录被删除而失败。
 # v0.3.9：卸载管理收敛为“保留用户数据卸载”和“彻底卸载 Atria”两种安全模式。
 # v0.3.8：修复 curl | bash 启动后菜单 stdin 已耗尽导致反复清屏/“无效选项”。
@@ -20,10 +21,10 @@ cd -- "$HOME" || {
     exit 1
 }
 
-SCRIPT_VERSION="v0.3.10"
+SCRIPT_VERSION="v0.3.11"
 RUNTIME_URL="${ATRIA_TOOLBOX_RUNTIME_URL:-https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria/main/scripts/termux/atria_toolbox.runtime.sh.gz}"
 # v0.3.0 完整运行时；本启动器在执行前注入后续就绪检测、main 分支策略与启动缓存优化。
-RUNTIME_SHA256="${ATRIA_TOOLBOX_RUNTIME_SHA256:-286140c2c810618fa1a00a5a24e5447e0cf06e37b4f878fcf6eddc90955b2965}"
+RUNTIME_SHA256="${ATRIA_TOOLBOX_RUNTIME_SHA256:-b7b5bca93ab61064564d35d4681ab6a4abdf74c39b7351f0a06db642f142cb84}"
 CANONICAL_REPO_URL="https://github.com/ZZZdragondYNGPHX/Atria.git"
 CANONICAL_REPO_WEB="https://github.com/ZZZdragondYNGPHX/Atria"
 CANONICAL_RAW_BASE="https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria"
@@ -316,7 +317,7 @@ open_browser() {
 # ============================================================================
 # v0.3.2 main-branch policy
 # ============================================================================
-SCRIPT_VERSION="v0.3.10"
+SCRIPT_VERSION="v0.3.11"
 DEFAULT_BRANCH="main"
 SCRIPT_URL="${ATRIA_TOOLBOX_URL:-https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria/main/scripts/termux/atria_toolbox.sh}"
 CANONICAL_REPO_URL="https://github.com/ZZZdragondYNGPHX/Atria.git"
@@ -372,8 +373,8 @@ align_main_after_history_cutover() {
     git -C "$ATRIA_DIR" branch --set-upstream-to=origin/main main >/dev/null 2>&1 || true
     info "main 已安全对齐新的 Atria 独立历史。"
 }
-# All tag/commit/main fetch paths pass through this runtime helper. Wrapping it
-# prevents an old predecessor clone from ever fetching updates from the legacy repo.
+# Keep daily updates on the canonical repository. Tag/commit downloads check
+# the same origin directly before fetching the selected target.
 if declare -F fetch_repo_refs >/dev/null 2>&1; then
     eval "$(declare -f fetch_repo_refs | sed '1s/fetch_repo_refs/fetch_repo_refs_base/')"
     fetch_repo_refs() {

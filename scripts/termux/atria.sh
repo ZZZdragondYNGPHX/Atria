@@ -370,7 +370,7 @@ update_repo() {
 
   ensure_canonical_origin
   log "Refreshing origin/main..."
-  git fetch origin main --prune
+  git fetch --no-tags origin '+refs/heads/main:refs/remotes/origin/main'
 
   local old_sha remote_sha
   old_sha="$(git rev-parse HEAD)"
