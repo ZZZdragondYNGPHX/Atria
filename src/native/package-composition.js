@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import { Readable } from 'node:stream';
 import { freezePackagePromptPrograms } from './model-prompt-runtime/package-freeze.js';
 import { registerPackageDeclarations } from './package-declarations.js';
 import { validateExperienceResources } from './experience-validation.js';
@@ -48,15 +50,30 @@ function copyPackageBytes(bytes) {
 const unreadBytes = Symbol('unread Package bytes');
 class PackageByteMap extends Map {
     #source;
+    #pristine = true;
+    get pristine() { return this.#pristine; }
     constructor(source) {
         super(); this.#source = source;
         for (const key of source.keys()) super.set(key, unreadBytes);
     }
     get(key) {
         const value = super.get(key);
+        if (value !== undefined) this.#pristine = false;
         if (value !== unreadBytes) return value;
         const bytes = copyPackagePayload(this.#source.get(key));
         super.set(key, bytes); return bytes;
+    }
+    set(key, value) { this.#pristine = false; return super.set(key, value); }
+    delete(key) { this.#pristine = false; return super.delete(key); }
+    clear() { this.#pristine = false; return super.clear(); }
+    stream(key, start, end) {
+        const value = this.#source.get(key);
+        if (!value) throw new TypeError('Missing Package payload');
+        // Keep the backing owner reachable until the stream closes.
+        const stream = Buffer.isBuffer(value) ? Readable.from([value.subarray(start, end + 1)])
+            : fs.createReadStream(value.backing.path, { start: value.offset + start, end: value.offset + end });
+        stream.once('close', () => { void value.backing; });
+        return stream;
     }
     * entries() { for (const key of super.keys()) yield [key, this.get(key)]; }
     * values() { for (const key of super.keys()) yield this.get(key); }
@@ -81,8 +98,9 @@ function copyParsedArchive(inspected) {
     // Runtime rules never read scene media. Copy bytes on first access while
     // keeping every returned Buffer and its backing store caller-owned.
     const copyMap = map => new PackageByteMap(map);
+    const sourceFiles = copyMap(inspected.sourceFiles), assets = copyMap(inspected.assets);
     return registerPackageDeclarations(Object.freeze({ manifest: inspected.manifest, preflight: inspected.preflight,
-        sourceFiles: copyMap(inspected.sourceFiles), assets: copyMap(inspected.assets) }), inspected);
+        sourceFiles, assets }), inspected, () => sourceFiles.pristine && assets.pristine);
 }
 
 function parsedArchiveBytes(inspected) {
@@ -256,10 +274,9 @@ export async function buildProjectPackage({
     });
 }
 
+const archiveCaches = new WeakMap();
 export class PackageInstaller {
-    #parsedArchives = new Map();
-    #parsedArchiveBytes = 0;
-    #inspections = new Map();
+    #cache;
 
     constructor({ packageRepo, assetStore }) {
         if (!packageRepo || !assetStore) {
@@ -267,6 +284,8 @@ export class PackageInstaller {
         }
         this._packageRepo = packageRepo;
         this._assetStore = assetStore;
+        if (!archiveCaches.has(assetStore)) archiveCaches.set(assetStore, { archives: new Map(), bytes: 0, inspections: new Map() });
+        this.#cache = archiveCaches.get(assetStore);
     }
 
     preflight(archive) {
@@ -274,17 +293,17 @@ export class PackageInstaller {
     }
 
     async #inspect(key, archive) {
-        let pending = this.#inspections.get(key);
+        let pending = this.#cache.inspections.get(key);
         if (!pending) {
             pending = inspectAtriaPackageContainerAsync(archive, { residentBytes: RESIDENT_PACKAGE_PAYLOAD_BYTES }).then(inspected => {
                 validateContentComposition(packagePayloadView(inspected));
                 freezeParsedJson(inspected.manifest); freezeParsedJson(inspected.preflight);
                 return inspected;
             });
-            this.#inspections.set(key, pending);
+            this.#cache.inspections.set(key, pending);
         }
         try { return await pending; } finally {
-            if (this.#inspections.get(key) === pending) this.#inspections.delete(key);
+            if (this.#cache.inspections.get(key) === pending) this.#cache.inspections.delete(key);
         }
     }
 
@@ -371,7 +390,7 @@ export class PackageInstaller {
             throw new Error('Installed PackageVersion metadata does not match exact Package reference');
         }
         const cacheKey = JSON.stringify([handle, version.packageContentHash]);
-        let cached = this.#parsedArchives.get(cacheKey);
+        let cached = this.#cache.archives.get(cacheKey);
         const stamp = await this._assetStore.blobStamp(handle, version.packageContentHash);
         const reusable = !!stamp && cached?.blobStamp === stamp;
         const archive = stamp !== null && (!reusable || includeArchive) ? await this._assetStore.readBlob(handle, version.packageContentHash) : null;
@@ -386,9 +405,9 @@ export class PackageInstaller {
         // AssetStore verifies cold/export reads. A warm open only needs the
         // owner-scoped immutable blob identity, not another archive or digest.
         if (!reusable && cached) {
-            if (this.#parsedArchives.get(cacheKey) === cached) {
-                this.#parsedArchives.delete(cacheKey);
-                this.#parsedArchiveBytes -= cached.bytes;
+            if (this.#cache.archives.get(cacheKey) === cached) {
+                this.#cache.archives.delete(cacheKey);
+                this.#cache.bytes -= cached.bytes;
             }
             cached = null;
         }
@@ -401,22 +420,22 @@ export class PackageInstaller {
             throw new Error('Installed PackageVersion metadata does not match Package content');
         }
         if (cached) {
-            this.#parsedArchives.delete(cacheKey);
-            this.#parsedArchives.set(cacheKey, cached);
+            this.#cache.archives.delete(cacheKey);
+            this.#cache.archives.set(cacheKey, cached);
         } else {
             const bytes = parsedArchiveBytes(inspected);
             // A legal large package remains usable; memoization is optional.
             if (bytes <= PARSED_ARCHIVE_BYTES) {
                 // Concurrent cold opens share admission and may finish together.
-                const previous = this.#parsedArchives.get(cacheKey);
-                if (previous) { this.#parsedArchives.delete(cacheKey); this.#parsedArchiveBytes -= previous.bytes; }
-                while (this.#parsedArchives.size >= PARSED_ARCHIVE_ENTRIES || this.#parsedArchiveBytes + bytes > PARSED_ARCHIVE_BYTES) {
-                    const oldest = this.#parsedArchives.keys().next().value;
-                    this.#parsedArchiveBytes -= this.#parsedArchives.get(oldest).bytes;
-                    this.#parsedArchives.delete(oldest);
+                const previous = this.#cache.archives.get(cacheKey);
+                if (previous) { this.#cache.archives.delete(cacheKey); this.#cache.bytes -= previous.bytes; }
+                while (this.#cache.archives.size >= PARSED_ARCHIVE_ENTRIES || this.#cache.bytes + bytes > PARSED_ARCHIVE_BYTES) {
+                    const oldest = this.#cache.archives.keys().next().value;
+                    this.#cache.bytes -= this.#cache.archives.get(oldest).bytes;
+                    this.#cache.archives.delete(oldest);
                 }
-                this.#parsedArchives.set(cacheKey, { bytes, inspected, blobStamp: stamp });
-                this.#parsedArchiveBytes += bytes;
+                this.#cache.archives.set(cacheKey, { bytes, inspected, blobStamp: stamp });
+                this.#cache.bytes += bytes;
             }
         }
         const opened = copyParsedArchive(inspected);

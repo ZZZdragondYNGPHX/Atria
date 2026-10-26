@@ -11,11 +11,15 @@ export function parseAssetRange(value, size) {
     return { start, end };
 }
 export async function deliverNativeAsset(req, res, assets, handle) {
-    const expected = req.query.contentHash;
-    if (expected !== undefined && (typeof expected !== 'string' || !/^[a-f0-9]{64}$/.test(expected))) throw new TypeError('Exact Asset contentHash required');
     const asset = await assets.openDelivery(handle, req.params.assetId);
     if (!asset) { res.sendStatus(404); return; }
+    return deliverAssetResponse(req, res, asset);
+}
+
+export async function deliverAssetResponse(req, res, asset) {
+    const expected = req.query.contentHash;
     try {
+        if (expected !== undefined && (typeof expected !== 'string' || !/^[a-f0-9]{64}$/.test(expected))) throw new TypeError('Exact Asset contentHash required');
         if (expected && expected !== asset.ref.contentHash) throw new ConflictError('native_asset_integrity_mismatch');
         const etag = '"' + asset.ref.contentHash + '"'; const size = asset.ref.size;
         const mediaType = /^(image\/(png|jpeg|gif|webp|avif)|audio\/[a-z0-9.+-]+|video\/[a-z0-9.+-]+|text\/plain)$/.test(asset.ref.mediaType)

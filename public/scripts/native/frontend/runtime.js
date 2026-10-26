@@ -174,6 +174,7 @@ export async function mountNativeFrontend(options) {
         instance.revokeScriptMedia = revoke;
         instance.cleanups.add(revoke);
         const controller = await (async () => scripts.attach({ artifact: await resources.json(instance.ir.controller.resource, 'script'), required: instance.ir.controller.required,
+            snapshotVersion: () => presentationRevision,
             snapshot: () => ({ props: instance.props, state: instance.state, env: instance.view.environment.get(), time: Date.now() }),
             failure: error => {
                 if (!error.scriptFatal && instance.failBoundary) instance.failBoundary(error);
@@ -276,7 +277,7 @@ export async function mountNativeFrontend(options) {
         };
         instance.update = async input => {
             if (instance.disposed || instance.projectionBusy) return;
-            if (input && JSON.stringify(input) !== JSON.stringify(instance.props)) { instance.props = propsFor(contract, input); await lifecycle(instance, 'propsChanged'); await instance.controller?.invoke('update'); }
+            if (input && JSON.stringify(input) !== JSON.stringify(instance.props)) { instance.props = propsFor(contract, input); presentationRevision++; await lifecycle(instance, 'propsChanged'); await instance.controller?.invoke('update'); }
             await block.update();
         };
         return instance;

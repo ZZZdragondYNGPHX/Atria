@@ -34,7 +34,7 @@ process.on('message', async ({ artifact, resourceHash, source, method, inputText
         }
         context = await isolate.createContext();
         await context.global.set('__atriInput', inputText);
-        await context.global.set('__atriExtra', extraText ?? '{}');
+        await context.global.set('__atriExtra', extraText ?? 'null');
         const value = await script.run(context, { timeout: limits.computationWallMs });
         process.send({ value, programs: [...programs.keys()] });
     } catch (error) {
@@ -71,7 +71,8 @@ function programText(artifact, source, method, limits) {
             };
             const handler = load(${JSON.stringify(artifact.entry)}).default?.[${JSON.stringify(method)}];
             if (typeof handler !== 'function') throw Error('Missing computation stage');
-            const value = handler(freeze(Object.assign(JSON.parse(__atriInput), JSON.parse(__atriExtra))));
+            const input = JSON.parse(__atriInput), extra = JSON.parse(__atriExtra);
+            const value = handler(freeze(extra === null ? input : { ...input, ...extra }));
             const check = (value, depth = 0) => {
                 if (depth > ${limits.computationDepth}) throw Error('Computation depth');
                 if (value === null || typeof value === 'string' || typeof value === 'boolean') return;

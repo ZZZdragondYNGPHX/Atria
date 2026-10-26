@@ -128,6 +128,12 @@ export async function loadFrontendBytes(packageState, path, options = {}) {
     return new Uint8Array(await response.arrayBuffer());
 }
 
+export function frontendMediaUrl(packageState, ref, options = {}) {
+    const query = new URLSearchParams({ sessionId: sessionIdOf(packageState), path: ref.path, contentHash: ref.contentHash,
+        ...(options.sharedOwner ? { sharedOwner: options.sharedOwner } : {}) });
+    return '/api/native/session/runtime/media?' + query;
+}
+
 export async function loadGamePackageJsonResource(packageState, relativePath, options = {}) {
     const sessionId = sessionIdOf(packageState);
     const path = String(relativePath || '').trim();

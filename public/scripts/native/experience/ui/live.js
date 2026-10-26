@@ -6,7 +6,7 @@ import { createFullGameHost } from './full-host.js';
 import { createAtriaSurfaceAdapter } from './host-surfaces.js';
 import { createSurfaceHost } from './surfaces.js';
 import { mountNativeFrontend } from '../../frontend/runtime.js';
-import { loadFrontendBytes } from '../package-loader.js';
+import { loadFrontendBytes, frontendMediaUrl } from '../package-loader.js';
 
 const EXPERIENCE_MODES = new Set(['text', 'component', 'hybrid', 'full']);
 
@@ -83,6 +83,7 @@ export async function activateNativeExperienceRuntime(packageState, worldSession
                 bridgeTransport: options.bridgeTransport ?? frontendHttpTransport({ sessionId: packageState.sessionId, fetchImpl: options.fetchImpl, headers: options.headers }),
                 stateStorage: options.createStateStorage?.({ stateVersion: 3 }, packageState),
                 loadBytes: (path, signal) => loadFrontendBytes(packageState, path, { ...options, signal }),
+                mediaUrl: ref => frontendMediaUrl(packageState, ref, options),
             });
             options.assertCurrent?.(); fullHost?.activate();
             return Object.freeze({ ...runtime, getContributions: query => contributions.list(query),

@@ -8,13 +8,14 @@ export function createScriptSupervisor({ window, scheduler, onDiagnostic = () =>
         used += Math.max(0, Number(cpu) || 0);
         if (used > budget.experienceCpuMs) throw new Error('script_experience_budget');
     }
-    async function attach({ artifact, snapshot, capability, required, failure, revoked = () => {} }) {
+    async function attach({ artifact, snapshot, snapshotVersion = () => undefined, capability, required, failure, revoked = () => {} }) {
         assertScriptArtifact(artifact); account(0);
         if (disposed || controllers.size >= SCRIPT_LIMITS.controllers) throw new Error('script_controller_budget');
         let worker, pending = null, sequence = 0, generation = 0, dead = false, recovering = false, retries = 0, queued = 0, outstanding = 0, chain = Promise.resolve(), faulting = null;
+        let sentSnapshotVersion;
         const cancellations = new Set(), operations = new Set(), intents = new Set();
         function stop() {
-            generation++; intents.clear(); worker?.terminate(); worker = null;
+            generation++; sentSnapshotVersion = undefined; intents.clear(); worker?.terminate(); worker = null;
             pending?.reject(new Error('script_revoked')); pending = null;
             cancellations.forEach(cancel => cancel()); cancellations.clear(); revoked(); outstanding = 0;
         }
@@ -122,7 +123,10 @@ export function createScriptSupervisor({ window, scheduler, onDiagnostic = () =>
                 if (dead || token !== generation) return;
                 const intent = body.kind === 'invoke' && body.method === 'event' ? globalThis.crypto.randomUUID() : null;
                 if (intent) { if (intents.size >= 64) intents.delete(intents.values().next().value); intents.add(intent); }
-                const message = { ...body, intent, snapshot: scriptMessage(snapshot()) };
+                const version = snapshotVersion();
+                const changed = version === undefined || sentSnapshotVersion !== version;
+                const message = { ...body, intent, time: Date.now(), ...(changed ? { snapshot: scriptMessage(snapshot()) } : {}) };
+                sentSnapshotVersion = version;
                 await process(await send(message), token);
             }).catch(fault).finally(() => { queued--; });
             return chain;

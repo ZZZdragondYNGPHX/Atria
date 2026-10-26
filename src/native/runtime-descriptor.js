@@ -1,3 +1,4 @@
+import { packageDeclarationKey } from './package-declarations.js';
 import { skillDeclarationId, validateSkillDeclarations } from '../../public/scripts/native/skill-declarations.js';
 import { assertExperienceDataClosure, assertSupportedExperienceContract } from '../../public/shared/native-experience-contract.js';
 import {
@@ -10,6 +11,15 @@ import { compilePackageRuntimePlugins } from './plugin-platform.js';
 import { assertFrontendExperience, frontendFeatureAvailability } from '../../public/shared/native-frontend-contract.js';
 import { frontendTransactions } from './frontend/authority.js';
 import { validateFrontendGraph } from './frontend/graph.js';
+
+const resolvedPackages = new WeakMap();
+function freezeResolved(value) {
+    if (value && typeof value === 'object') {
+        for (const child of Object.values(value)) freezeResolved(child);
+        Object.freeze(value);
+    }
+    return value;
+}
 
 function plain(value) {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -187,6 +197,9 @@ export function resolveNativeRuntimePackage(opened, entryPointId) {
     if (!opened?.packageVersion || !opened?.manifest || !(opened.sourceFiles instanceof Map)) {
         throw new TypeError('Native Runtime resolver requires an opened installed PackageVersion');
     }
+    const identity = packageDeclarationKey(opened);
+    const cached = identity && resolvedPackages.get(identity)?.get(entryPointId);
+    if (cached && Object.keys(cached.packageVersion).every(key => cached.packageVersion[key] === opened.packageVersion[key])) return cached;
     const compiled = compileNativeRuntimeDescriptor({
         packageVersion: opened.packageVersion,
         manifest: opened.manifest,
@@ -196,12 +209,18 @@ export function resolveNativeRuntimePackage(opened, entryPointId) {
     const frontendGraph = experience.frontend ? validateFrontendGraph({ entry: experience.frontend.entry, files: opened.sourceFiles,
         mode: experience.mode, experienceContract: opened.manifest.runtime?.experienceContract,
         transactions: () => frontendTransactions(opened.manifest, compiled.entryPoint, opened.sourceFiles) }) : null;
-    return Object.freeze({
+    const resolved = freezeResolved({
         ...compiled,
         ...(frontendGraph ? { frontendGraph } : {}),
         manifest: opened.manifest,
         packageVersion: opened.packageVersion,
     });
+    if (identity) {
+        let entries = resolvedPackages.get(identity);
+        if (!entries) { entries = new Map(); resolvedPackages.set(identity, entries); }
+        entries.set(entryPointId, resolved);
+    }
+    return resolved;
 }
 
 // Transport gate for native@3. Author source may exist as optional remix data,

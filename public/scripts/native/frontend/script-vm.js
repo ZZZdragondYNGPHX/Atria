@@ -31,7 +31,7 @@ export function createScriptVM(QuickJS, artifact, budget = SCRIPT_LIMITS) {
         evaluate(`globalThis.__atri = (() => {
             const send = __atriSend; delete globalThis.__atriSend;
             const modules = Object.create(null), cache = Object.create(null), pending = new Map();
-            let snapshot = {}, controller, sequence = 0;
+            let snapshot = {}, time = 0, controller, sequence = 0;
             const freeze = value => { if (value && typeof value === 'object') { Object.values(value).forEach(freeze); Object.freeze(value); } return value; };
             const notify = (method, args, intent = null) => send(JSON.stringify({ method, args, ...(intent ? { intent } : {}) }));
             const request = (method, args, intent = null) => {
@@ -45,7 +45,7 @@ export function createScriptVM(QuickJS, artifact, budget = SCRIPT_LIMITS) {
                 node: (id, method = 'measure', value) => request('node', [id, method, value]),
                 media: (binding, ref) => request('media', [binding, ref]), canvas: (id, buffer) => notify('canvas', [id, buffer]),
                 scheduler: Object.freeze({ timer: ms => request('timer', [ms]), frame: () => request('frame', []), yield: () => request('yield', []) }),
-                clock: () => snapshot.time, random: () => Math.random()
+                clock: () => time, random: () => Math.random()
             });
             const load = id => {
                 if (cache[id]) return cache[id].exports;
@@ -63,8 +63,8 @@ export function createScriptVM(QuickJS, artifact, budget = SCRIPT_LIMITS) {
             return Object.freeze({
                 register(id, imports, factory) { modules[id] = { imports, factory }; },
                 start(id) { controller = load(id).default; if (!controller || typeof controller !== 'object') throw Error('Controller default object required'); },
-                run(method, input, event, intent) { snapshot = freeze(input); if (typeof controller[method] === 'function') { const result = controller[method](context(intent), freeze(event)); if (result?.then) result.catch(errors); } },
-                settle(id, ok, value, input) { snapshot = freeze(input); const task = pending.get(id); if (task) { pending.delete(id); (ok ? task.resolve : task.reject)(freeze(value)); } }
+                run(method, input, event, intent, now) { if (input !== undefined) snapshot = freeze(input); time = now; if (typeof controller[method] === 'function') { const result = controller[method](context(intent), freeze(event)); if (result?.then) result.catch(errors); } },
+                settle(id, ok, value, input, now) { if (input !== undefined) snapshot = freeze(input); time = now; const task = pending.get(id); if (task) { pending.delete(id); (ok ? task.resolve : task.reject)(freeze(value)); } }
             });
         })();`);
         for (const module of artifact.modules) evaluate(`__atri.register(${JSON.stringify(module.id)},${JSON.stringify(module.imports)},function(require,module,exports){\n${module.code}\n});`, module.id);
@@ -74,7 +74,9 @@ export function createScriptVM(QuickJS, artifact, budget = SCRIPT_LIMITS) {
         run(message) {
             if (dead) throw new Error('script_disposed');
             calls = []; deadline = Date.now() + budget.cpuMs;
-            if (message.kind === 'invoke') { scriptMethod(message.method); evaluate(`__atri.run(${JSON.stringify(message.method)},${JSON.stringify(scriptMessage(message.snapshot))},${JSON.stringify(scriptMessage(message.event ?? {}))},${JSON.stringify(message.intent ?? null)})`); } else if (message.kind === 'settle') evaluate(`__atri.settle(${JSON.stringify(message.id)},${message.ok === true},${JSON.stringify(scriptMessage(message.value ?? null))},${JSON.stringify(scriptMessage(message.snapshot))})`);
+            const input = message.snapshot === undefined ? 'undefined' : JSON.stringify(scriptMessage(message.snapshot));
+            const time = Number.isFinite(message.time) ? message.time : Number.isFinite(message.snapshot?.time) ? message.snapshot.time : 0;
+            if (message.kind === 'invoke') { scriptMethod(message.method); evaluate(`__atri.run(${JSON.stringify(message.method)},${input},${JSON.stringify(scriptMessage(message.event ?? {}))},${JSON.stringify(message.intent ?? null)},${time})`); } else if (message.kind === 'settle') evaluate(`__atri.settle(${JSON.stringify(message.id)},${message.ok === true},${JSON.stringify(scriptMessage(message.value ?? null))},${input},${time})`);
             else throw new Error('script_protocol');
             jobs(); return scriptMessage(calls);
         },

@@ -9,7 +9,7 @@ import { bridgeReceipt, publicBridgeError } from '../../public/shared/native-fro
 import { fields } from '../../public/shared/native-frontend-contract.js';
 import { SharedAuthority } from '../native/shared-authority.js';
 import { inspectExperienceHealth, previewExperienceRepair, applyExperienceRepair } from '../native/experience-health.js';
-import { deliverNativeAsset } from '../native/asset-delivery.js';
+import { deliverNativeAsset, deliverAssetResponse } from '../native/asset-delivery.js';
 import { IllustrationService } from '../native/illustration-service.js';
 import express from 'express';
 import { createHash } from 'node:crypto';
@@ -319,9 +319,20 @@ export function createNativeSessionRouter(getServices = services) {
     });
     router.post('/runtime/resolve', resolveRuntime(false));
     router.post('/runtime/observe', resolveRuntime(true));
+    router.get('/runtime/media', route(async (req, res, { core, packageInstaller }, handle) => {
+        handle = await resourceOwner(req, core, handle);
+        const snapshot = await core.observeHead(handle, req.query.sessionId);
+        const opened = await packageInstaller.open(handle, snapshot.session.packageId, snapshot.session.packageVersionId);
+        if (!opened || opened.packageVersion.packageContentHash !== snapshot.session.packageContentHash) throw new TypeError('Native Runtime PackageVersion content mismatch');
+        const resolved = resolveNativeRuntimePackage(opened, snapshot.session.entryPointId);
+        const ref = resolved.frontendGraph?.resources.find(item => item.path === req.query.path);
+        if (ref?.kind !== 'asset' || !/^(audio|video)\//.test(ref.mediaType) || req.query.contentHash !== ref.contentHash) throw new TypeError('Exact declared Runtime media required');
+        await deliverAssetResponse(req, res, { ref,
+            stream: (start, end) => opened.sourceFiles.stream(ref.path, start, end), close: async () => {} });
+    }));
     router.post('/runtime/resource', route(async (req, res, { core, packageInstaller }, handle) => {
         handle = await resourceOwner(req, core, handle);
-        const snapshot = await core.load(handle, req.body?.sessionId);
+        const snapshot = await core.observeHead(handle, req.body?.sessionId);
         const opened = await packageInstaller.open(
             handle,
             snapshot.session.packageId,

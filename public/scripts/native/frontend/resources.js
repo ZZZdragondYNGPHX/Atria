@@ -1,6 +1,6 @@
 import { fields, resourcePath, FRONTEND_LIMITS, frontendResourceBytes, assertFrontendResourceBudget } from '../../../shared/native-frontend-contract.js';
 
-export async function createFrontendResources({ entry, loadBytes, crypto = globalThis.crypto, window = globalThis.window }) {
+export async function createFrontendResources({ entry, loadBytes, mediaUrl, crypto = globalThis.crypto, window = globalThis.window }) {
     resourcePath(entry);
     const abort = new AbortController();
     let disposed = false;
@@ -47,6 +47,8 @@ export async function createFrontendResources({ entry, loadBytes, crypto = globa
     async function acquireAsset(id) {
         active();
         if (refs.get(id)?.kind !== 'asset') throw new TypeError('Exact asset required');
+        const media = refs.get(id);
+        if (mediaUrl && /^(audio|video)\//.test(media.mediaType)) return { url: mediaUrl(media), release() {} };
         let record = assets.get(id);
         if (!record) {
             const ref = refs.get(id);

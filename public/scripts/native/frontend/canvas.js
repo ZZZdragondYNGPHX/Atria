@@ -6,8 +6,14 @@ export function createCanvasSurface(node, scheduler, imageFor, budget = new Map(
     let retained = null, cancel = null, dead = false;
     function draw() {
         cancel = null; if (dead || !retained || !node.isConnected) return;
-        node.width = retained.width; node.height = retained.height;
+        const resized = node.width !== retained.width || node.height !== retained.height;
+        if (resized) { node.width = retained.width; node.height = retained.height; }
         const context = node.getContext('2d'); if (!context) { onError(new Error('canvas_unavailable')); return; }
+        // Preserve the old fresh-frame semantics without reallocating the bitmap.
+        if (!resized) {
+            if (context.reset) context.reset();
+            else { node.width = retained.width; }
+        }
         try {
             for (const [op, ...args] of retained.commands) {
                 if (['fillStyle', 'strokeStyle', 'lineWidth', 'globalAlpha'].includes(op)) context[op] = args[0];
