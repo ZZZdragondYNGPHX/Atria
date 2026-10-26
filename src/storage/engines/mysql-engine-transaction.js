@@ -1,5 +1,6 @@
 import { getNativeResourceKeyFields } from '../../native/contracts.js';
 import { isDeepStrictEqual } from 'node:util';
+import { readNativeSqlBatch } from './native-resource-batch.js';
 import { NotFoundError } from '../errors.js';
 import { assertSafeRepoNameShape } from '../name-validation.js';
 import { normalizeLookupText } from '../../util.js';
@@ -52,6 +53,9 @@ export class MysqlTransaction {
     }
 
     async getResource(key)       { return this._h(key.kind, 'getResource').get(key); }
+    async getNativeResources(keys) {
+        return readNativeSqlBatch(keys, this._handle, (kind, ids) => this._h(kind, 'getNativeResources').getMany(this._handle, kind, ids));
+    }
     async lockNativeHostFence(handle) {
         await this._conn.execute('SELECT integrity FROM native_resources WHERE handle = ? AND kind = ? AND resource_key = ? LOCK IN SHARE MODE', [handle, 'atri_host_fence', '[]']);
     }
@@ -1033,6 +1037,10 @@ export function registerNativeResourceHandlers(tx) {
         };
     };
     const handler = {
+        async getMany(handle, kind, ids) {
+            const [rows] = await conn.execute('SELECT resource_key, doc, integrity, updated_at, created_at FROM native_resources WHERE handle=? AND kind=? AND resource_key IN (' + ids.map(() => '?').join(',') + ')', [handle, kind, ...ids]);
+            return rows.map(row => parseRow(kind, handle, row.resource_key, row));
+        },
         async get(key) {
             const p = params(key);
             const [rows] = await conn.execute(

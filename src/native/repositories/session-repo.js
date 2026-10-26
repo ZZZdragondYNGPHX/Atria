@@ -2,7 +2,6 @@ import { illustrationManifest, materializeIllustrations, IMAGE_VERSION_NAMESPACE
 import { illustrationAssetIds } from '../../../public/shared/native-media-contract.js';
 import { maintainSession, cancelSessionMaintenance } from '../session-maintenance.js';
 import { PERSONA_NAMESPACE, personaAvatars } from '../persona-contract.js';
-import { prepareIndependent } from '../../../public/shared/native-independent-preparation.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { RunControl, assertRunAccess, readRunControl, writeRunControl, validRunPublication, runFailure, retireRunOperations } from '../run-control.js';
 import { RUN_NAMESPACE, assertRunState, assertRunContinuation } from '../../../public/shared/native-run-contract.js';
@@ -11,6 +10,7 @@ import { ILLUSTRATION_NAMESPACE, assertIllustrationState, illustrationAnchorMatc
 import { readIllustrationState, validateIllustrationDependencies, illustrationContentHash } from '../session-illustrations.js';
 import { ContinuityRepo } from './continuity-repo.js';
 import { appendTimelineIndex, readTimelineIndex } from '../timeline-index.js';
+import { materializeTimeline } from '../timeline-materialization.js';
 import { orchestrationSessionRoots } from '../orchestration/reference-roots.js';
 import { putStoredState, deltaStateNamespace } from '../state-delta.js';
 import {
@@ -311,42 +311,9 @@ export class SessionRepo {
     }
 
     async _materializeTimelineSelections(tx, handle, sessionId, selections, variants = []) {
-        const decoded = await prepareIndependent(selections, async selection => {
-            const entry = assertTimelineEntry(await readCheckedDocument(tx, this._timelineKey(
-                handle,
-                sessionId,
-                selection.branchId,
-                selection.messageId,
-            )));
-            if (entry.sessionId !== sessionId || entry.messageId !== selection.messageId
-                || entry.branchId !== selection.branchId) {
-                throw new TypeError('Timeline identity mismatch');
-            }
-            if (!Array.isArray(selection.variantIds) || !selection.variantIds.length) {
-                throw new TypeError('Missing Timeline variants');
-            }
-            const variant = assertVariant(await readCheckedDocument(tx, this._variantKey(
-                handle,
-                sessionId,
-                entry.messageId,
-                selection.activeVariantId,
-            )));
-            if (variant.sessionId !== sessionId || variant.messageId !== entry.messageId
-                || variant.variantId !== selection.activeVariantId
-                || !selection.variantIds.includes(variant.variantId)) {
-                throw new TypeError('Timeline active Variant mismatch');
-            }
-            return { entry: assertTimelineEntry({
-                ...entry,
-                sequence: Number(selection.sequence ?? entry.sequence),
-                content: variant.content,
-                variantIds: [...selection.variantIds],
-                activeVariantId: variant.variantId,
-            }), variant };
-        }, { concurrency: 4 });
-        // Preserve canonical ordering even when independent reads finish early.
-        for (const item of decoded) variants.push(item.variant);
-        return decoded.map(item => item.entry);
+        const result = await materializeTimeline(tx, handle, sessionId, selections, { activeOnly: true });
+        variants.push(...result.variants);
+        return result.entries;
     }
 
     /**

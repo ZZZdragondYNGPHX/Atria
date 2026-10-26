@@ -1,5 +1,6 @@
 import { initialSubjects, publishSubjects, validateSubjects } from './subject-authority.js';
-import { immutableRecordValue } from './record-values.js';
+import { immutableRecordValue, freezeRecordValue } from './record-values.js';
+import { copyRecordState, copyReceiptState } from './record-state.js';
 import { assertPinnedWorldLawExecutions } from './world-law-execution.js';
 import { assertValidWorldState } from '../../public/scripts/native/experience/world/schema.js';
 import { SUBJECT_NAMESPACE } from '../../public/shared/native-subject-contract.js';
@@ -86,17 +87,10 @@ function copyPublicationState(states) {
     // values have already been prepared; the memory acquisition writer replaces
     // its affected value/basis path rather than mutating a shared value.
     const { atri_lifecycle: lifecycle, ...other } = states;
-    const copy = cloneAdmittedDocument(other);
+    const copy = Object.fromEntries(Object.entries(other).map(([namespace, state]) => [namespace,
+        namespace === ACTION_RECEIPTS_NAMESPACE ? copyReceiptState(state) : cloneAdmittedDocument(state)]));
     if (!lifecycle) return copy;
-    const { domains, ...metadata } = lifecycle;
-    copy.atri_lifecycle = { ...cloneAdmittedDocument(metadata), domains: {} };
-    for (const [id, domain] of Object.entries(domains)) {
-        const { records, ...metadata } = domain;
-        copy.atri_lifecycle.domains[id] = { ...cloneAdmittedDocument(metadata), records: records.map(record => {
-            const { value, ...envelope } = record;
-            return { ...cloneAdmittedDocument(envelope), value };
-        }) };
-    }
+    copy.atri_lifecycle = copyRecordState(lifecycle, () => true);
     return copy;
 }
 
@@ -507,10 +501,10 @@ export class SessionCore {
             if (previous.length >= 2048) throw new TypeError('Action receipt retention limit reached');
             const previousEvents = new Set((base.states.atri_game_runtime?.events ?? []).map(event => event.id));
             const eventRefs = (states.atri_game_runtime?.events ?? []).filter(event => !previousEvents.has(event.id)).map(event => event.id);
-            states = { ...states, [ACTION_RECEIPTS_NAMESPACE]: { schemaVersion: 1, receipts: [...previous, {
+            states = { ...states, [ACTION_RECEIPTS_NAMESPACE]: { schemaVersion: 1, receipts: [...previous, freezeRecordValue({
                 ...actionRequest, receiptId: 'action:' + revisionId, status: 'committed', baseRevisionId: base.revision.revisionId,
                 committedRevisionId: revisionId, branchId, eventRefs,
-            }] } };
+            })] } };
         }
         if (states.atri_lifecycle) {
             const acquisitions = validateCognitionTransition(base, { ...base, states }, { taskId: taskRecord?.kind === 'task' ? taskRecord.taskId : null,

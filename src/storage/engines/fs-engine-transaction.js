@@ -1,4 +1,5 @@
 import { getNativeResourceKeyFields } from '../../native/contracts.js';
+import { readNativeFileBatch } from './native-resource-batch.js';
 import { durableWrite } from '../durable-file.js';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
@@ -53,6 +54,9 @@ export class FsTransaction {
     }
     async getImmutableResource(key) {
         return this._h(key.kind, 'getResource').get(key, { immutable: true });
+    }
+    async getNativeResources(keys) {
+        return readNativeFileBatch(keys, key => this.getImmutableResource(key));
     }
 
     async putResource(key, record) {

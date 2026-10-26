@@ -1,4 +1,5 @@
 import fsp from 'node:fs/promises';
+import { readNativeFileBatch } from './native-resource-batch.js';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { durableWriteAsync, durableRemoveAsync, syncDirectoryAsync } from '../durable-file.js';
@@ -22,7 +23,7 @@ export class FsNativeJournal {
         this.file = path.join(root, 'native-commit.journal');
         this.tx = new Proxy(tx, { get: (target, name) => {
             if (name === 'nativeStateCache') return this.stateCache;
-            if (['getResource', 'getImmutableResource', 'putResource', 'putResourceIfMatch', 'deleteResource', 'listResources'].includes(name)) return this[name].bind(this);
+            if (['getResource', 'getImmutableResource', 'getNativeResources', 'putResource', 'putResourceIfMatch', 'deleteResource', 'listResources'].includes(name)) return this[name].bind(this);
             const value = target[name]; return typeof value === 'function' ? value.bind(target) : value;
         } });
     }
@@ -33,6 +34,9 @@ export class FsNativeJournal {
     }
     async getResource(key) {
         return structuredClone(await this.getImmutableResource(key));
+    }
+    async getNativeResources(keys) {
+        return readNativeFileBatch(keys, key => this.getImmutableResource(key));
     }
     async getImmutableResource(key) {
         if (!isNativeStorageKind(key.kind)) return this.base.getResource(key);

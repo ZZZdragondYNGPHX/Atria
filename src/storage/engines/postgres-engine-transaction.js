@@ -1,5 +1,6 @@
 import { getNativeResourceKeyFields } from '../../native/contracts.js';
 import { isDeepStrictEqual } from 'node:util';
+import { readNativeSqlBatch } from './native-resource-batch.js';
 import { NotFoundError } from '../errors.js';
 import { assertSafeRepoNameShape } from '../name-validation.js';
 import { normalizeLookupText } from '../../util.js';
@@ -63,6 +64,9 @@ export class PgTransaction {
     }
 
     async getResource(key)       { return this._h(key.kind, 'getResource').get(key); }
+    async getNativeResources(keys) {
+        return readNativeSqlBatch(keys, this._handle, (kind, ids) => this._h(kind, 'getNativeResources').getMany(this._handle, kind, ids));
+    }
     async lockNativeHostFence(handle) {
         await this._client.query('SELECT integrity FROM native_resources WHERE handle = $1 AND kind = $2 AND resource_key = $3 FOR SHARE', [handle, 'atri_host_fence', '[]']);
     }
@@ -994,6 +998,10 @@ export function registerNativeResourceHandlers(tx) {
         };
     };
     const handler = {
+        async getMany(handle, kind, ids) {
+            const { rows } = await client.query('SELECT resource_key, doc, integrity, updated_at, created_at FROM native_resources WHERE handle=$1 AND kind=$2 AND resource_key = ANY($3::text[])', [handle, kind, ids]);
+            return rows.map(row => parseRow(kind, handle, row.resource_key, row));
+        },
         async get(key) {
             const p = params(key);
             const r = await client.query(

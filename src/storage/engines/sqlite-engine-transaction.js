@@ -1,4 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
+import { readNativeSqlBatch } from './native-resource-batch.js';
 import { listSqlAccountContent } from './account-content.js';
 import { getNativeResourceKeyFields } from '../../native/contracts.js';
 import { NotFoundError } from '../errors.js';
@@ -43,6 +44,9 @@ export class SqliteTransaction {
     }
 
     async getResource(key)       { return this._h(key.kind, 'getResource').get(key); }
+    async getNativeResources(keys) {
+        return readNativeSqlBatch(keys, this._handle, (kind, ids) => this._h(kind, 'getNativeResources').getMany(this._handle, kind, ids));
+    }
     async getChatRange(key, options = {}) {
         if (key?.kind !== 'chat') {
             throw new Error('SqliteTransaction.getChatRange: chat resource required');
@@ -953,6 +957,10 @@ export function registerNativeResourceHandlers(tx) {
         };
     };
     const handler = {
+        getMany(handle, kind, ids) {
+            const rows = db.prepare('SELECT resource_key, doc, integrity, updated_at, created_at FROM native_resources WHERE handle=? AND kind=? AND resource_key IN (' + ids.map(() => '?').join(',') + ')').all(handle, kind, ...ids);
+            return rows.map(row => parseRow(kind, handle, row)).filter(Boolean);
+        },
         get(key) {
             const p = params(key);
             const row = getStmt.get(p.key.handle, p.key.kind, p.resourceKey);

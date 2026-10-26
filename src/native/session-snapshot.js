@@ -1,5 +1,5 @@
-import { prepareIndependent } from '../../public/shared/native-independent-preparation.js';
-import { NATIVE_RESOURCE_KINDS as K, assertBranch, assertSessionRevision, assertTimelineEntry, assertVariant } from './contracts.js';
+import { materializeTimeline } from './timeline-materialization.js';
+import { NATIVE_RESOURCE_KINDS as K, assertBranch, assertSessionRevision } from './contracts.js';
 import { assertNativeId } from './identity.js';
 import { equalNativeDocuments } from './repositories/common.js';
 import { NotFoundError } from '../storage/errors.js';
@@ -90,46 +90,15 @@ export async function readSessionSnapshot(tx, handle, session, value, publishedS
         }
     }
     if (byId.get(revision.branchId)?.headRevisionId !== revision.revisionId) throw new TypeError('Branch HEAD mismatch');
-    const entries = publishedHistory?.timeline ?? [];
-    const variants = publishedHistory?.variants ?? [];
-    const messages = new Set();
     const ancestors = new Set();
     let ancestor = byId.get(revision.branchId);
     while (ancestor) {
         ancestors.add(ancestor.branchId);
         ancestor = byId.get(ancestor.branch.parentBranchId);
     }
-    const decoded = publishedHistory ? [] : await prepareIndependent(timeline, async (selection, sequence) => {
-        const selectionVariants = [];
-        if (sequence % 32 === 0) await new Promise(resolve => setImmediate(resolve));
-        if (messages.has(selection.messageId)) throw new TypeError('Duplicate Timeline message identity');
-        messages.add(selection.messageId);
-        if (!ancestors.has(selection.branchId)) throw new TypeError('Timeline entry is not on this Branch ancestry');
-        const entry = assertTimelineEntry(await readCheckedDocument(tx, {
-            kind: K.timelineEntry, handle, sessionId, branchId: selection.branchId, messageId: selection.messageId,
-        }));
-        if (entry.sessionId !== sessionId || entry.branchId !== selection.branchId || entry.messageId !== selection.messageId) {
-            throw new TypeError('Timeline identity mismatch');
-        }
-        let active;
-        if (!Array.isArray(selection.variantIds) || !selection.variantIds.length) throw new TypeError('Missing Timeline variants');
-        for (const variantId of selection.variantIds) {
-            const variant = assertVariant(await readCheckedDocument(tx, {
-                kind: K.timelineVariant, handle, sessionId, messageId: entry.messageId, variantId,
-            }));
-            if (variant.sessionId !== sessionId || variant.messageId !== entry.messageId || variant.variantId !== variantId) {
-                throw new TypeError('Variant identity mismatch');
-            }
-            if (variantId === selection.activeVariantId) active = variant;
-            selectionVariants.push(variant);
-        }
-        if (!active) throw new TypeError('Missing active Variant');
-        return { entry: assertTimelineEntry({
-            ...entry, sequence, content: active.content,
-            variantIds: selection.variantIds, activeVariantId: active.variantId,
-        }), variants: selectionVariants };
-    }, { concurrency: 4 });
-    for (const item of decoded) { entries.push(item.entry); variants.push(...item.variants); }
+    const materialized = publishedHistory ?? await materializeTimeline(tx, handle, sessionId, timeline, { sequenceOffset: 0, ancestors });
+    const entries = publishedHistory ? materialized.timeline : materialized.entries;
+    const variants = materialized.variants;
 
     const last = entries.at(-1);
     const head = last ? { messageId: last.messageId, variantId: last.activeVariantId } : null;

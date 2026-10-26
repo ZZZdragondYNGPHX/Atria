@@ -1,3 +1,4 @@
+import { immutableRecordValue } from '../record-values.js';
 import { createHash } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
 
@@ -17,15 +18,37 @@ function encodedKey(key) {
     return text;
 }
 
-function stableJson(value) {
+// Only host-owned immutable JSON can reuse canonical bytes. Bound retained text,
+// not the number of worlds; mutable containers are always visited again.
+const canonicalValues = new Map();
+const canonicalLimit = 32 * 1024 * 1024;
+let canonicalBytes = 0;
+function canonicalValue(value) {
+    let entry = canonicalValues.get(value);
+    if (entry) return entry;
+    const text = stableJson(value, false), bytes = Buffer.byteLength(text);
+    entry = { text, bytes };
+    const weight = text.length * 2;
+    if (weight <= canonicalLimit / 4) {
+        while (canonicalBytes + weight > canonicalLimit || canonicalValues.size >= 4096) {
+            const first = canonicalValues.keys().next().value;
+            canonicalBytes -= canonicalValues.get(first).text.length * 2;
+            canonicalValues.delete(first);
+        }
+        canonicalValues.set(value, entry); canonicalBytes += weight;
+    }
+    return entry;
+}
+function stableJson(value, reuse = true) {
     if (value === null || typeof value !== 'object') return JSON.stringify(value);
+    if (reuse && immutableRecordValue(value)) return canonicalValue(value).text;
     // Preserve the existing canonical bytes (including sparse array slots),
     // without allocating a callback and intermediate array at every level.
     if (Array.isArray(value)) {
         let text = '[';
         for (let index = 0; index < value.length; index++) {
             if (index) text += ',';
-            if (index in value) text += stableJson(value[index]);
+            if (index in value) text += stableJson(value[index], reuse);
         }
         return text + ']';
     }
@@ -34,7 +57,7 @@ function stableJson(value) {
     for (let index = 0; index < keys.length; index++) {
         if (index) text += ',';
         const key = keys[index];
-        text += encodedKey(key) + ':' + stableJson(value[key]);
+        text += encodedKey(key) + ':' + stableJson(value[key], reuse);
     }
     return text + '}';
 }
@@ -63,7 +86,29 @@ export function serializeNativeDocument(value) {
 }
 
 export function hashNativeDocument(value) {
+    if (immutableRecordValue(value)) {
+        const entry = canonicalValue(value);
+        return entry.hash ??= createHash('sha256').update(entry.text).digest('hex');
+    }
     return createHash('sha256').update(stableJson(value)).digest('hex');
+}
+
+// JSON byte accounting for admitted trees. Key order does not affect size;
+// immutable record payloads share the same cached bytes used for identity.
+export function nativeDocumentBytes(value) {
+    if (value === null || typeof value !== 'object') return Buffer.byteLength(JSON.stringify(value) ?? 'null');
+    if (immutableRecordValue(value)) return canonicalValue(value).bytes;
+    if (Array.isArray(value)) {
+        let size = 2 + Math.max(0, value.length - 1);
+        for (let index = 0; index < value.length; index++) size += nativeDocumentBytes(value[index]);
+        return size;
+    }
+    let size = 2, count = 0;
+    for (const key of Object.keys(value)) {
+        if (value[key] === undefined) continue;
+        size += Number(count++ > 0) + Buffer.byteLength(encodedKey(key)) + 1 + nativeDocumentBytes(value[key]);
+    }
+    return size;
 }
 
 /** Compare already admitted JSON data directly, without serializing or hashing.
@@ -90,11 +135,11 @@ export function nativeRecord(value, {
     createdAt = undefined,
     updatedAt = undefined,
 } = {}) {
-    const doc = cloneNativeDocument(value);
+    const integrity = hashNativeDocument(value), doc = cloneNativeDocument(value);
     const now = Date.now();
     return {
         doc,
-        integrity: hashNativeDocument(doc),
+        integrity,
         createdAt: Number(createdAt ?? existing?.createdAt ?? now),
         updatedAt: Number(updatedAt ?? now),
     };

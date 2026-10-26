@@ -1,8 +1,8 @@
 import { WORLD_DATA_LIMITS } from '../../public/shared/native-world-data.js';
 import { compileWorldDataSchema } from '../../public/shared/native-data-schema.js';
-import { immutableRecordValue } from './record-values.js';
+import { immutableRecordValue, freezeRecordValue } from './record-values.js';
 import { initialLifetimes, validateLifetimes } from './lifetime-authority.js';
-import { recordById, invalidateRecordIndex } from './domain-record-index.js';
+import { recordById, invalidateRecordIndex, updateRecordIndex } from './domain-record-index.js';
 import { initialHistory } from '../../public/shared/native-history-runtime.js';
 import { prepareActivity, validateActivities } from './activity-authority.js';
 import { prepareInformationRollup } from './information-authority.js';
@@ -11,7 +11,7 @@ import { compileDeclarativeLogic } from '../../public/scripts/native/experience/
 import { fields } from '../../public/shared/native-values.js';
 import { assertTaskValue, taskId } from '../../public/shared/native-task-contract.js';
 import { LIFECYCLE_STATE_NAMESPACE as NS } from '../../public/shared/native-lifecycle-contract.js';
-import { hashNativeDocument } from './repositories/common.js';
+import { hashNativeDocument, nativeDocumentBytes } from './repositories/common.js';
 import { prepareTaskAuthority } from './task-authority.js';
 import { captureAppraisalEvent, prepareAppraisalCommands } from './appraisal-authority.js';
 import { subjectTaskContext } from './subject-authority.js';
@@ -136,7 +136,7 @@ export function compactLifecycle(base, state, { reserveTask = false, pruneIntera
     for (const domain of def.domains) {
         const records = state.domains[domain.id].records;
         const policy = domain.retention;
-        let logicalBytes = byteCache?.get(records) ?? Buffer.byteLength(JSON.stringify(records));
+        let logicalBytes = byteCache?.get(records) ?? nativeDocumentBytes(records);
         if (!policy.terminalTtl && records.length <= policy.maxItems && logicalBytes <= policy.maxLogicalBytes) {
             byteCache?.set(records, logicalBytes);
             continue;
@@ -148,7 +148,7 @@ export function compactLifecycle(base, state, { reserveTask = false, pruneIntera
             if ((expired || oversized) && !protectedRecord(base, state, domain.id, record)) {
                 records.splice(index, 1);
                 invalidateRecordIndex(records);
-                logicalBytes = Buffer.byteLength(JSON.stringify(records));
+                logicalBytes = nativeDocumentBytes(records);
             } else index++;
         }
         if (records.length > policy.maxItems || logicalBytes > policy.maxLogicalBytes) throw new TypeError('Domain retention is pinned or active');
@@ -290,15 +290,17 @@ export async function applyLifecycleCandidate(candidate, installed, action, auth
             const args = authority ? authority.typed(request.args, command.argsSchema) : assertTaskValue(request.args, command.argsSchema, { limits: WORLD_DATA_LIMITS });
             const records = state.domains[domain.id].records, logicalBytes = byteCache?.get(records);
             let record = recordById(records, request.recordId);
-            const beforeBytes = logicalBytes === undefined ? 0 : record ? Buffer.byteLength(JSON.stringify(record)) : -Number(records.length > 0);
+            const previousValue = record?.value;
+            const beforeBytes = logicalBytes === undefined ? 0 : record ? nativeDocumentBytes(record) : -Number(records.length > 0);
             if (record?.status === 'terminal') throw new TypeError('App record is terminal');
             if (!record) { record = { id: request.recordId, scopeId: domain.scopeId, value: copy(domain.initial), status: 'active', pinned: false, createdLogicalTime: state.logicalTime }; records.push(record); }
             const event = { type: command.event, payload: args };
             const nextValue = commandReducer(command).reduce(record.value, event);
-            record.value = authority ? authority.typed(nextValue, domain.recordSchema) : assertTaskValue(nextValue, domain.recordSchema, { limits: WORLD_DATA_LIMITS });
+            record.value = freezeRecordValue(authority ? authority.typed(nextValue, domain.recordSchema) : assertTaskValue(nextValue, domain.recordSchema, { limits: WORLD_DATA_LIMITS }));
+            updateRecordIndex(records, record, previousValue);
             record.updatedLogicalTime = state.logicalTime + 1;
             if (command.terminal) { record.status = 'terminal'; record.terminalTicks = copy(state.clocks); }
-            if (logicalBytes !== undefined) byteCache.set(records, logicalBytes - beforeBytes + Buffer.byteLength(JSON.stringify(record)));
+            if (logicalBytes !== undefined) byteCache.set(records, logicalBytes - beforeBytes + nativeDocumentBytes(record));
             events.push({ type: event.type, domainId: domain.id, recordId: record.id, payload: args });
         } else if (request.kind === 'world.command') {
             fields(request, ['kind', 'commandId', 'args'], 'World Process Command');

@@ -6,6 +6,7 @@ import { hashNativeDocument, equalNativeDocuments } from './repositories/common.
 import { validateHypothesisEvidence } from './tom-authority.js';
 import { INFORMATION_LIMITS } from '../../public/shared/native-information-contract.js';
 import { subjectTaskContext } from './subject-authority.js';
+import { invalidateRecordIndex } from './domain-record-index.js';
 
 // Only SessionCore's coherent branch recovery calls this. Keep the immutable
 // source Revision untouched; copy current evidence into the derived Branch in
@@ -53,6 +54,7 @@ export function rebindCognitionBranch(base, candidate) {
         if (isManagedMemory(entry.source)) record.value.applicability = { ...record.value.applicability,
             exceptionRefs: record.value.applicability.exceptionRefs.map(ref => ({ ...ref,
                 fingerprint: refs.find(next => next.itemId === ref.itemId).fingerprint })) };
+        invalidateRecordIndex(states.atri_lifecycle.domains[entry.source.domainId].records);
         completed.add(key);
     };
     for (const key of eligible.keys()) visit(key);
@@ -161,5 +163,6 @@ export function publishMemoryAcquisitions(states, acquisitions, revisionId) {
         const record = states.atri_lifecycle.domains[item.domainId].records.find(record => record.id === item.recordId);
         record.value = { ...record.value, basis: { ...record.value.basis,
             received: { revisionId, clockId: item.clockId, tick: states.atri_lifecycle.clocks[item.clockId] } } };
+        invalidateRecordIndex(states.atri_lifecycle.domains[item.domainId].records);
     }
 }

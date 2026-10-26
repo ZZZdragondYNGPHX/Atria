@@ -1,5 +1,5 @@
 import { cloneAdmittedDocument, equalNativeDocuments } from './repositories/common.js';
-import { copyRecordState } from './record-values.js';
+import { copyRecordState, copyReceiptState } from './record-state.js';
 import { packageDeclarationKey } from './package-declarations.js';
 import { readPackagePayload } from './package-payload-cache.js';
 import { compileDeclarativeLogic } from '../../public/scripts/native/experience/logic/declarative.js';
@@ -49,7 +49,8 @@ export function createTaskCandidate(base, authority) {
     const { states, ...readOnly } = base;
     const candidate = cloneCandidate(readOnly);
     candidate.states = Object.fromEntries(Object.entries(states).map(([namespace, state]) => [namespace,
-        namespace === 'atri_lifecycle' && state.domains ? copyRecordState(state, frozenDeclaration) : cloneAdmittedDocument(state)]));
+        namespace === 'atri_lifecycle' && state.domains ? copyRecordState(state, frozenDeclaration)
+            : namespace === 'atri_action_receipts' ? copyReceiptState(state) : cloneAdmittedDocument(state)]));
     if (authority) candidates.set(candidate, authority);
     return candidate;
 }

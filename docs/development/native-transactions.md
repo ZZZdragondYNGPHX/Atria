@@ -97,12 +97,29 @@ record value cannot mutate an older snapshot; shallow caller freezing is not a
 trust signal. Validation reuses the typed result for unchanged host-owned frozen
 values, while changed values, scope membership and mutable metadata are checked.
 
-Single-ID reads use the runtime record index; membership changes invalidate it.
-Collection filters still pay for their actual scans. Content-addressed state
-publication still hashes new namespace content. The existing bounded delta format
-preserves field deletion, array truncation, ancestry and GC dependencies.
+Single-ID reads use the runtime record index. Field equality and ID/field unions
+build up to eight field indexes per record view. Identical private copies share
+these indexes; value replacement copies only affected buckets, while removal or
+cognition rebinding invalidates them. Cold construction and hot lookups charge
+actual work without raising Authority budgets.
 
-History windows use the persistent Timeline index and bounded independent reads.
+Host-owned frozen record values and append-only action receipts reuse canonical
+JSON and SHA256 results. Canonical text retention is bounded to 4096 entries and
+32 MiB of UTF-16 text weight (8 MiB per entry); this is not a process RSS limit.
+Mutable containers are never cached by reference. Logical byte accounting shares
+the immutable payload sizes, and publication preserves old receipt identities
+instead of cloning their contents. Canonical bytes and persisted hashes remain
+unchanged. A changed namespace still hashes its complete canonical bytes; this
+is not a Merkle format or a constant-time hash of arbitrary changes. The existing
+delta format preserves field deletion, array truncation, ancestry and GC dependencies.
+
+History windows and complete snapshots use the same materialization path over
+the persistent Timeline index. SQL fetches at most 256 exact keys per query;
+FS has at most 16 concurrent dependency reads and observes pending journal writes.
+Both preserve ordering, missing-dependency errors and account boundaries. Stored
+immutable entry/variant metadata is admitted by repository writes and Save import;
+ordinary reads validate identity, ancestry and selection joins without admitting
+every metadata leaf again.
 An append-only publication with the same admitted prefix reuses its complete
 history instead of re-reading every old Variant. Rewrites, branch changes and
 checkpoints reconstruct history. A fresh full snapshot still loads full history;

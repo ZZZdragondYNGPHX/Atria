@@ -1,5 +1,5 @@
 import { readTaskArtifact, markTaskArtifactConsumption } from './task-artifact-authority.js';
-import { recordById } from './domain-record-index.js';
+import { recordById, selectRecords } from './domain-record-index.js';
 import { prepareSubjects, resolveSimulationSubject } from './subject-authority.js';
 import { prepareSpeechDraft } from './participant-authority.js';
 import { runPackageComputation } from './package-computation.js';
@@ -182,15 +182,9 @@ export function privateReads(candidate, contract, grants, args, budget) {
             const where = grant.collection.where;
             const selector = grant.collection.ids;
             const ids = selector ? new Set(selector.field.split('.').reduce((value, key) => value?.[key], result[selector.read])) : null;
-            const indexed = ids && grant.collection.match !== 'any';
-            budget.read(indexed ? ids.size : records.length);
-            const candidates = indexed ? [...ids].map(id => recordById(records, id)).filter(Boolean) : records;
+            budget.read(0);
             const expected = where ? template(where.equals, { args }) : undefined;
-            const matching = candidates.filter(record => {
-                const byId = !ids || ids.has(record.id);
-                const byField = !where || where.field.split('.').reduce((value, key) => value?.[key], record.value) === expected;
-                return grant.collection.match === 'any' ? byId || byField : byId && byField;
-            });
+            const matching = selectRecords(records, { ids, where, expected, match: grant.collection.match }, count => budget.scan(count));
             if (matching.length > grant.collection.maxItems) throw new TypeError('Private collection read limit');
             selected = { records: [...matching].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
                 .map(record => ({ id: record.id, value: select(record), ...(grant.collection.recordHash ? { hash: hashNativeDocument(record.value) } : {}) })) };
