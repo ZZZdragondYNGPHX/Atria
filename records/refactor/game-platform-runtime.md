@@ -145,3 +145,53 @@
 - 受影响 JS ESLint 与 diff whitespace 检查通过。未运行 PostgreSQL/MySQL 服务端、浏览器 FPS、低端设备或硬件掉电测试。
 
 最终三天诊断中真实 guest compute 约 352 ms，发布仍约 2,471 ms，journal commit 约 1,289 ms；并行 putStoredState 的累计函数时间包含重叠等待，不能拿它当串行关键路径。剩余主成本是 FS 逐逻辑事务/多文件耐久发布及首次上下文输入解析、模块初始化。没有把必要 fsync 删掉换跑分，没有自动并行有因果关系的世界事务，没有宣称零拷贝、任意脚本全核线性扩展、GPU 加速或所有极端游戏都已验证。
+
+## P9：Native WAL 耐久发布与首次冷编译（2026-10-25）
+
+起点 `main@bf7e7e92`；产品实现 `9f0ac008`。本轮针对逐事务多文件耐久发布和首次编译退化，未增大游戏执行预算、改变人口/资产或删除一致性屏障。
+
+### 实施
+
+- FS 模式的 Native 记录改存每账号 `atria-native/resources.sqlite`，直接复用现有 `native_resources` 表、键编码、索引、批读和 CAS；每个逻辑事务独立 `BEGIN IMMEDIATE` / WAL `synchronous=FULL` / COMMIT 后 ACK。原 Session/Revision/receipt/RunControl 发布权威不变，外部 Blob 仍先耐久写入再发布引用。Legacy chat/文件没有被包装成虚假的跨文件 SQL 原子事务。
+- 首次访问先恢复已提交旧 JSON/ATRZ1/ATRJ2 日志，再逐文件流式导入。记录和账号/版本 marker 在同一 SQL 事务内提交；完成后数据库是唯一读取权威。旧资源移至 `pre-wal-resources` 作为不参与读取的恢复副本，删除不会复活；维护扫描游标重建，避免沿用旧文件排序。旧 journal writer/overlay 已移除，只保留恢复解码；SQL 损坏 JSON 不再静默当作记录不存在。
+- 在线备份使用 SQLite backup API，和事务/checkpoint 共用账号队列；ZIP/恢复点不复制活动 DB/WAL/SHM 或旧恢复副本。临时恢复源重绑定数据库账号；恢复前关闭连接，资源计量排除数据库物理字节的重复计入；Host 生命周期也跟踪新备份/checkpoint 操作。
+- 世界 JS/TS 转译使用固定 `esbuild@0.28.2`（MIT）的原生服务，在原计算子进程池内执行，避免每个冷子进程再加载 TypeScript 全编译器。宿主现有源码 AST 和生成产物检查保留，UI Controller 编译保持原样。构建与运行时使用同一转译器和 hash；首次可达源字节在异步前固定。
+- 并发冷启动按完全相同的源字节共享编译和产物校验。单个调用取消不伤害其他调用，最后一个调用取消仍终止池中作业。保持原背压、deadline、fresh guest context 和不可信代码进程隔离。编译器变化导致新世界执行证据的 artifact hash 变化，旧回执没有被改写。
+
+研究使用 [SQLite WAL](https://www.sqlite.org/wal.html)、[online backup](https://www.sqlite.org/backup.html)、[esbuild transform](https://esbuild.github.io/api/#transform) 和 [固定版本许可](https://github.com/evanw/esbuild/blob/v0.28.2/LICENSE.md)。本机 better-sqlite3 12.10.0 的 SQLite 为 3.53.1，已包含官方说明的 WAL-reset 修复；没有引入日志同步降级或运行时自动退回较弱存储。
+
+### 真实游戏数据
+
+仍为原始 106,778,956 字节 `doupo-living-world-0.1.0-combat.2.atria`。从相同自然初始化存档，执行等待及完整 continuation，经真实 SessionCore、规则、沙箱、Repo 和存储。另从全新 Native 数据库完成 create → ready → 六次 bind → 人物创建/初始化 → 三日运行 → checkpoint/关闭 → 新进程冷重载。
+
+| 场景 | P8 对照 | P9 | 说明 |
+|---|---:|---:|---|
+| 九日全部动作，含首次计算编译 | 23,632.31 ms | 14,163.81 / 14,461.65 ms | 两次独立运行，减少 38.8–40.1% |
+| 九日完整流程：首次加载 + 动作 + checkpoint/关闭 + 新进程启动/冷重载 | 25,994.61 ms | 16,534.55 / 16,771.84 ms | 减少 35.5–36.4%，未把刷盘或重载移出计时 |
+| 固定 Revision 首次等待准备 | 869.22 ms | 425.66 / 389.66 ms | 减少 51.0–55.2%，无预热 |
+| 四真实会话共享 PackageInstaller，各三日，全部加载后同时推进，含冷加载 | 14,584.30 ms | 10,844.34 ms | 减少 25.6%，两侧均观察到四个计算进程同时工作 |
+| 原四个独立 installer、错峰开始场景 | 14,825.99 ms | 12,113.71 ms | 减少 18.3%；加载错峰导致新版最多两个计算进程同时忙，不能当作四核容量上限 |
+
+九日自然发展为 53 人物、44 关系、98 信息、26 因果；七域机制数据相同。87 处差异严格限制在关系的 `basis.anchor.revisionId`、`appraisal.invocationId`、`appraisal.previousHash`，来源于原有 250 ms 合批边界随速度改变。固定同一 Revision 的 wait/profile/move/gather 四次准备，candidate states 与回执其余字段完全一致；仅 12 个 `receipt.execution[*].resourceHash` 随编译器改变。recordScans 仍为 589/390/548/390。
+
+每次完整流程都在全新子进程重新 `SessionCore.load`，与退出前的 states、完整 timeline、variants 逐项相等；九日完整可见 timeline 为 14 项，不冒充数十万条历史。新版本显式 checkpoint/关闭 8.13–12.20 ms，冷重载自身 883–902 ms，连进程启动 1,395–1,406 ms；大型包首次完整加载约 0.9 秒仍未消除。
+
+三日诊断中 `_publishLocked` 从 P8 的约 2,471 ms 降至 900 ms（约 63.6%）；游戏 compute 自身约 370 ms，模块初始化约 184 ms、输入解析/冻结约 145 ms，不能把这些时间归为 fsync。四并发诊断 2,985 次 COMMIT（包括只读事务结束）累计 330.85 ms，单次最长 3.02 ms。合并重复编译后冷编译 job 为两个实际不同程序，最长事件循环延迟约 163 ms（与对照相近）；P95 从 15.52 增至 27.79 ms，吞吐改善没有同时改善所有宿主延迟分位数。未把它宣称为浏览器 FPS。
+
+最初一轮九日性能实验与另一基线短时重叠，已弃作正式数据；表中单会话对照与复测均分开执行。并发第一版未合并重复编译，出现 312 ms 最大事件循环延迟，随后定位到 5–6 次重复冷编译并修复，再测为约 163 ms；没有只放宽预算。SQL 实测不支持把该停顿归咎于单次 COMMIT，因此未另建异步数据库/第二写入权威。
+
+### 验证
+
+- 五个强制进程退出点：migration record、migration COMMIT 前、migration COMMIT 后、普通 COMMIT 前、ACK 前。检查旧/新完整状态、删除、重新导入、旧目录重建不复活、`integrity_check` 与引擎连接 FULL 设置。
+- 在实际游戏 SessionCore 的 publish COMMIT 前/后强制退出，验证恢复后 HEAD/依赖闭合、相同 invocation 重放、再次重放不重复提交，以及旧 Revision 冲突拒绝。
+- 已提交旧 ATRJ2 和 ATRZ1 日志恢复、损坏日志拒绝、损坏旧文件导入整体回滚、损坏 SQL JSON 明确失败、维护游标重建、两个连接的 CAS 只有一个成功、事务回滚与账号边界通过。
+- 在线 snapshot/restore、流式 Native ZIP 和 scratch 账号重绑定、Host fence 附着后的备份/checkpoint/关闭通过。迁移、恢复、校验与 benchmark 只使用隔离本地副本。
+- FS/SQLite 批量读取顺序、600 个重复/缺失键、账户隔离、历史祖先/身份/缺失依赖、公有可变副本隔离；状态 delta 删除/数组截断、过滤排序；50k 记录/160 万标量的状态共享、变更数据校验通过。
+- 构建/运行时 artifact hash 一致、异步期间源 Map 修改隔离、fresh module context、变化的不变量/键顺序仍拒绝；前端 async TS、依赖/source map 与原编译器相同。共享冷编译单调用取消、全调用取消及即时重试通过；实际 SessionCore 冷编译取消和进入无限 guest 后取消都保持 HEAD 不变、池可继续工作。
+- 修改 JS 的 ESLint 和 `git diff --check` 通过。夹具初次误将 SQLite 的连接级 synchronous 用另一条默认连接读取，随后改查引擎连接；临时恢复源账号初次未符合既有 `_xrestore_` 约束，修正夹具后通过。安装依赖时 npm 默认忽略 native install script 导致绑定缺失，显式重建已有 native 依赖后相关检查通过，产品没有添加兼容绕行。
+
+### 边界
+
+保留每逻辑事务耐久性、SQL CAS、原 Host 独占、Blob 引用次序及提交回执。真实多会话可并行，但有因果依赖的单世界事务仍顺序执行；没有声称任意脚本线性全核加速。新的 FS Native 数据库需要可用的 better-sqlite3/WAL；旧版本不能继续写迁移后的数据。旧恢复副本占用空间一次性保留，不自动删除用户恢复材料。
+
+这里是 Windows/Node 24.18.0 上真实游戏的后端完整调用链与进程中断证据；未启动真实 HTTP/浏览器流程，未测 MySQL/PostgreSQL 服务、Termux/CachyOS 或硬件掉电，也不将 FULL 配置等同于所有设备的物理掉电认证。剩余主要成本包括约 0.9 秒冷包加载、宿主规则/数据处理及沙箱上下文/输入初始化。
