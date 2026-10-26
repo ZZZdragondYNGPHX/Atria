@@ -23,8 +23,16 @@ process.on('message', async ({ compile, artifact, resourceHash, source, method, 
     let context;
     try {
         if (compile) {
-            const { transpileComputationAsync } = await import('./computation-transpiler.js');
-            const artifact = await transpileComputationAsync(source, compile.modules);
+            const [{ transpileComputationAsync }, { collectControllerSources, validateScriptArtifact }] = await Promise.all([
+                import('./computation-transpiler.js'), import('./frontend/script-compiler.js'),
+            ]);
+            const files = new Map(compile.modules.map(module => [module.id, module.source]));
+            const policy = { modules: limits.computationModules, moduleBytes: limits.computationModuleBytes, synchronous: true };
+            const modules = collectControllerSources(source, id => {
+                if (!files.has(id)) throw new TypeError('Missing computation module');
+                return files.get(id);
+            }, policy);
+            const artifact = validateScriptArtifact(await transpileComputationAsync(source, modules), policy);
             process.send({ value: artifact, programs: [...programs.keys()] });
             return;
         }

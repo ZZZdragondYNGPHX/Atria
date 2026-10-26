@@ -4,7 +4,19 @@ import { WORLD_CAPACITY } from './native-world-data.js';
 // Computations compose several independently bounded Domain records and receipts.
 // Keep the ordinary 256-node schema limit on each output, and bound the aggregate
 // separately. This does not widen Domain, task, message, or input schemas.
+const compiledSchemas = new WeakMap();
+function deeplyFrozen(value) {
+    return value === null || typeof value !== 'object'
+        || Object.isFrozen(value) && Object.values(value).every(deeplyFrozen);
+}
 export function compileComputationSchema(raw) {
+    const cached = compiledSchemas.get(raw);
+    if (cached) return cached;
+    const schema = compile(raw);
+    if (deeplyFrozen(raw)) compiledSchemas.set(raw, schema);
+    return schema;
+}
+function compile(raw) {
     if (raw?.type !== 'object') throw new TypeError('Computation output must be a bounded closed object');
     try {
         return compileDataSchema(raw, 0, { nodes: 0, maxArrayItems: WORLD_CAPACITY.arrayItems });
@@ -26,5 +38,5 @@ export function compileComputationSchema(raw) {
         if (nodes > 1024) throw new TypeError('Computation output schema composition limit');
         return [key, schema];
     }));
-    return { ...shell, properties };
+    return Object.freeze({ ...shell, properties: Object.freeze(properties) });
 }

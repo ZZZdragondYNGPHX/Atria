@@ -44,6 +44,7 @@ export class SqliteTransaction {
     }
 
     async getResource(key)       { return this._h(key.kind, 'getResource').get(key); }
+    async getImmutableResource(key) { return this._h(key.kind, 'getImmutableResource').get(key, true); }
     async getNativeResources(keys) {
         return readNativeSqlBatch(keys, this._handle, (kind, ids) => this._h(kind, 'getNativeResources').getMany(this._handle, kind, ids));
     }
@@ -944,27 +945,36 @@ export function registerNativeResourceHandlers(tx) {
             resourceKey: encodeNativeResourceKey(normalized),
         };
     };
-    const parseRow = (kind, handle, row) => {
+    const parseRow = (kind, handle, row, lazy = false) => {
         if (!row) return null;
-        const doc = JSON.parse(row.doc);
-        return {
+        const record = {
             key: decodeNativeResourceKey(kind, handle, row.resource_key),
-            doc,
             integrity: String(row.integrity || ''),
             updatedAt: Number(row.updated_at || 0),
             createdAt: Number(row.created_at || 0),
         };
+        if (!lazy) record.doc = JSON.parse(row.doc);
+        else {
+            // Internal identity/CAS reads often never need the document. Keep
+            // the row's captured text, so delayed decoding still sees this read.
+            let decoded = false, value;
+            Object.defineProperty(record, 'doc', { enumerable: true, get() {
+                if (!decoded) { value = JSON.parse(row.doc); decoded = true; }
+                return value;
+            } });
+        }
+        return record;
     };
     const handler = {
         getMany(handle, kind, ids) {
             const rows = db.prepare('SELECT resource_key, doc, integrity, updated_at, created_at FROM native_resources WHERE handle=? AND kind=? AND resource_key IN (' + ids.map(() => '?').join(',') + ')').all(handle, kind, ...ids);
             return rows.map(row => parseRow(kind, handle, row)).filter(Boolean);
         },
-        get(key) {
+        get(key, lazy = false) {
             const p = params(key);
             const row = getStmt.get(p.key.handle, p.key.kind, p.resourceKey);
             if (!row) return null;
-            return parseRow(p.key.kind, p.key.handle, { ...row, resource_key: p.resourceKey });
+            return parseRow(p.key.kind, p.key.handle, { ...row, resource_key: p.resourceKey }, lazy);
         },
         put(key, record) {
             const p = params(key);

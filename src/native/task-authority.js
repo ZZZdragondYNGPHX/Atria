@@ -66,7 +66,7 @@ function cloneCandidate(value) {
     if (Array.isArray(value)) return value.map(cloneCandidate);
     return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, cloneCandidate(child)]));
 }
-function pinnedLogic(bytes, data, experienceContract) {
+export function compilePinnedTaskLogic(bytes, data, experienceContract) {
     const cached = compiledWorlds.find(item => item.bytes.equals(bytes) && equalNativeDocuments(item.data, data)
         && (item.sourceContract === experienceContract || equalNativeDocuments(item.contract, experienceContract)));
     if (cached) return cached;
@@ -98,7 +98,7 @@ export function loadTaskLogic(installed) {
         for (const key of keys.slice(0, -1)) { target[key] ??= {}; target = target[key]; }
         target[keys.at(-1)] = JSON.parse(bytes.toString('utf8'));
     }
-    const entry = pinnedLogic(bytes, data, installed.manifest.runtime?.experienceContract);
+    const entry = compilePinnedTaskLogic(bytes, data, installed.manifest.runtime?.experienceContract);
     if (identity) {
         let entries = installedWorlds.get(identity);
         if (!entries) { entries = new Map(); installedWorlds.set(identity, entries); }

@@ -9,7 +9,7 @@ import { prepareLifetimes, validateLifetimes } from './lifetime-authority.js';
 import { lifetimePolicy } from '../../public/shared/native-lifetime-contract.js';
 import { prepareHistory, historySources, validateHistory } from './history-authority.js';
 import { assertNativeExperienceContract } from '../../public/shared/native-experience-contract.js';
-import { assertJsonDeclaration, jsonDeclarationBytes, fields } from '../../public/shared/native-values.js';
+import { assertJsonDeclaration, jsonDeclarationBytes, jsonObjectDeclaration, jsonArrayDeclaration, fields } from '../../public/shared/native-values.js';
 import { WORLD_DATA_LIMITS } from '../../public/shared/native-world-data.js';
 import { assertTaskValue, taskId } from '../../public/shared/native-task-contract.js';
 import { compileDataSchema, compileWorldDataSchema } from '../../public/shared/native-data-schema.js';
@@ -126,12 +126,13 @@ function budgetFor(policy, rngSeed, signal) {
         rule() { context.step(); add('ruleEvaluations', 1, authorityExecutionLimits().ruleEvaluations); },
         value(value) { const safe = bounded(value); add('valueBytes', jsonDeclarationBytes(safe), authorityExecutionLimits().totalValueBytes); return safe; },
         effect(effect) {
-            context.step(); context.value(effect); add('effects', 1, policy.maxEffects);
+            context.step(); effect = context.value(effect); add('effects', 1, policy.maxEffects);
             const families = { 'world.event': ['worldEvents', policy.maxWorldEvents], 'app.command': ['appCommands', policy.maxAppCommands],
                 'clock.advance': ['clockAdvances', AUTHORITY_LIMITS.clockAdvances], 'workflow.transition': ['workflowTransitions', AUTHORITY_LIMITS.workflowTransitions] };
             if (families[effect.kind]) add(families[effect.kind][0], 1, families[effect.kind][1]);
             else if (!['world.command', 'task'].includes(effect.kind)) throw new TypeError('Unsupported expanded authority effect');
             if (effect.kind === 'app.command' && protectedDomains.has(effect.domainId) && !context.publication) throw new TypeError('Derived output is not authority');
+            return effect;
         },
         typed(value, schema) { return assertTaskValue(context.value(value), compileWorldDataSchema(schema), { limits: WORLD_DATA_LIMITS }); },
         read(records) { add('readGrants', 1, policy.maxReadGrants); add('recordScans', records, authorityExecutionLimits().recordScans); },
@@ -155,6 +156,8 @@ function budgetFor(policy, rngSeed, signal) {
     return context;
 }
 const readSelections = new WeakMap();
+const readObject = entries => jsonObjectDeclaration(entries, 'Authority value', authorityExecutionLimits().valueBytes, WORLD_DATA_LIMITS);
+const readArray = items => jsonArrayDeclaration(items, 'Authority value', authorityExecutionLimits().valueBytes, WORLD_DATA_LIMITS);
 function readSelection(grant) {
     let selection = readSelections.get(grant);
     if (selection) return selection;
@@ -172,10 +175,10 @@ function readSelection(grant) {
 }
 function selectReadFields(value, selection) {
     if (!selection.fields.size) return selection.whole ? value : {};
-    const selected = {};
+    const selected = [];
     for (const [field, child] of selection.fields) {
         if (!value || !Object.hasOwn(value, field)) throw new TypeError('Private field unavailable');
-        selected[field] = selectReadFields(value[field], child);
+        selected.push([field, selectReadFields(value[field], child)]);
     }
     // A whole-field grant also validates overlapping nested paths. Preserve
     // field order: sandbox programs can observe Object.keys on their reads.
@@ -184,11 +187,11 @@ function selectReadFields(value, selection) {
         const keys = Object.keys(value);
         let index = 0;
         if (keys.length === selection.fields.size) {
-            for (const field of selection.fields.keys()) if (keys[index++] !== field) return selected;
+            for (const field of selection.fields.keys()) if (keys[index++] !== field) return readObject(selected);
             return value;
         }
     }
-    return selected;
+    return readObject(selected);
 }
 export function privateReads(candidate, contract, grants, args, budget) {
     const result = {};
@@ -211,8 +214,8 @@ export function privateReads(candidate, contract, grants, args, budget) {
             const expected = where ? template(where.equals, { args }) : undefined;
             const matching = selectRecords(records, { ids, where, expected, match: grant.collection.match }, count => budget.scan(count));
             if (matching.length > grant.collection.maxItems) throw new TypeError('Private collection read limit');
-            selected = { records: [...matching].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
-                .map(record => ({ id: record.id, value: select(record), ...(grant.collection.recordHash ? { hash: hashNativeDocument(record.value) } : {}) })) };
+            selected = readObject([['records', readArray([...matching].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
+                .map(record => readObject([['id', record.id], ['value', select(record)], ...(grant.collection.recordHash ? [['hash', hashNativeDocument(record.value)]] : [])])))]]);
         } else {
             budget.read(1);
             selected = select(recordById(records, taskId(template(grant.recordId, { args }))));

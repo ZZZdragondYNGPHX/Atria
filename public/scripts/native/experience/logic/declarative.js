@@ -4,6 +4,7 @@ import {
     evaluateFormulaAst,
 } from './formula.js';
 import { lowerDeclarativeMutations } from './mutations.js';
+import { isJsonDeclaration } from '../../../../shared/native-values.js';
 
 const BLOCKED_PATH_SEGMENTS = new Set(['__proto__', 'prototype', 'constructor']);
 const PATH_SEGMENT_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]*$/;
@@ -200,7 +201,10 @@ function applyAssignment(target, assignment, value, structuralSharing = false) {
         }
         cursor = cursor[segment];
     }
-    cursor[assignment.segments.at(-1)] = clone(value);
+    // Copy-on-write reducers may retain owned JSON leaves. Subsequent nested
+    // assignments still copy every container on their write path above.
+    const field = assignment.segments.at(-1);
+    cursor[field] = structuralSharing && isJsonDeclaration(value) ? value : clone(value);
 }
 
 export function compileDeclarativeCommand(raw, options = {}) {

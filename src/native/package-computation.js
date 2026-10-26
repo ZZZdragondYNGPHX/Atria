@@ -1,5 +1,6 @@
 import { runComputationJob } from './package-computation-pool.js';
-import { collectControllerSources, validateScriptArtifact } from './frontend/script-compiler.js';
+import { collectControllerSources, captureControllerSources, validateScriptArtifact } from './frontend/script-compiler.js';
+import { assertScriptArtifact } from '../../public/shared/native-frontend-script.js';
 import { transpileComputation } from './computation-transpiler.js';
 import { assertJsonDeclaration, parseJsonDeclaration, jsonDeclarationBytes } from '../../public/shared/native-values.js';
 import { resourcePath } from '../../public/shared/native-frontend-contract.js';
@@ -71,17 +72,18 @@ async function prepareArtifact(source, files, signal) {
     const limits = computationPolicy();
     // Only exact reachable sources cross IPC, never an entire package/asset Map.
     const captured = new Map();
-    const modules = collectControllerSources(source, path => {
-        const text = moduleText(files, path, limits);
-        captured.set(path, Buffer.from(readPackagePayload(files, path)));
-        return text;
+    const modules = captureControllerSources(source, path => {
+        const bytes = readPackagePayload(files, path);
+        if (!bytes || bytes.length > limits.computationModuleBytes) throw new TypeError('Missing computation module');
+        captured.set(path, Buffer.from(bytes));
+        return bytes.toString('utf8');
     }, compilerLimits(limits));
     const bytes = modules.reduce((sum, module) => sum + Buffer.byteLength(module.source), 0);
     const entry = { source, modules: captured, controller: new AbortController(), callers: 0, done: false };
     preparations.add(entry);
     entry.promise = runComputationJob({ compile: { modules }, source, method: 'compile',
         resourceHash: null, bytes, limits }, { signal: entry.controller.signal }).then(artifact => {
-        validateScriptArtifact(artifact, compilerLimits(limits));
+        assertScriptArtifact(artifact, compilerLimits(limits));
         return rememberArtifact(source, files, artifact, hashNativeDocument(artifact), captured);
     }).finally(() => { entry.done = true; preparations.delete(entry); });
     return joinPreparation(entry, signal);

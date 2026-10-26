@@ -38,6 +38,7 @@ export function json(value, depth = 0, budget = { nodes: 0 }, copy = true) {
 // Only owned objects admitted and deeply frozen here are reusable declarations. Merely
 // freezing caller data does not bypass admission or a smaller byte budget.
 const declarations = new WeakMap();
+export const isJsonDeclaration = value => value !== null && typeof value === 'object' && declarations.has(value);
 const encoder = new TextEncoder();
 // Count the exact JSON UTF-8 representation without allocating encoded copies.
 function stringBytes(value) {
@@ -76,6 +77,40 @@ export function assertJsonDeclaration(value, label = 'Native', maxBytes = 104857
 // instead of copying the sandbox response a second time on the host.
 export function parseJsonDeclaration(source, label = 'Native', maxBytes = 1048576, limits = {}) {
     return admitDeclaration(JSON.parse(source), label, maxBytes, limits, true);
+}
+// Build owned containers and admission metadata in one pass. Unknown children
+// still cross normal admission; constructing a parent never trusts caller-owned
+// objects merely because they are frozen.
+export function jsonObjectDeclaration(entries, label = 'Native', maxBytes = 1048576, limits = {}) {
+    return composeDeclaration(entries, false, label, maxBytes, limits);
+}
+export function jsonArrayDeclaration(items, label = 'Native', maxBytes = 1048576, limits = {}) {
+    return composeDeclaration(items.entries(), true, label, maxBytes, limits);
+}
+function composeDeclaration(entries, array, label, maxBytes, limits) {
+    const { maxNodes = 32768, maxDepth = 24, maxString = 65536 } = limits;
+    const result = array ? [] : {};
+    let bytes = 2, nodes = 1, height = 0, longest = 0, count = 0;
+    for (const [key, value] of entries) {
+        if (!array && (typeof key !== 'string' || key.length > 256 || BLOCKED.has(key) || Object.hasOwn(result, key))) throw new TypeError(label + ' requires JSON fields');
+        let child = value;
+        if (child !== null && typeof child === 'object') child = assertJsonDeclaration(child, label, maxBytes, limits);
+        else if (typeof child === 'string') text(child, maxString);
+        else if (child !== null && typeof child !== 'boolean' && !(typeof child === 'number' && Number.isFinite(child))) throw new TypeError(label + ' requires JSON values');
+        const metadata = child !== null && typeof child === 'object' ? declarations.get(child) : undefined;
+        bytes += Number(count++ > 0) + (array ? 0 : fieldBytes(key) + 1) + (metadata?.bytes ?? scalarBytes(child));
+        nodes += metadata?.nodes ?? 1;
+        height = Math.max(height, 1 + (metadata?.height ?? 0));
+        longest = Math.max(longest, metadata?.maxString ?? (typeof child === 'string' ? child.length : 0));
+        if (nodes > maxNodes || height > maxDepth || longest > maxString) throw new TypeError(label + ' JSON complexity limit');
+        if (bytes > maxBytes) throw new TypeError(label + ' declaration byte limit');
+        if (array) result.push(child); else result[key] = child;
+    }
+    if (nodes > maxNodes || height > maxDepth) throw new TypeError(label + ' JSON complexity limit');
+    if (bytes > maxBytes) throw new TypeError(label + ' declaration byte limit');
+    Object.freeze(result);
+    declarations.set(result, { bytes, nodes, height, maxString: longest });
+    return result;
 }
 function admitDeclaration(value, label, maxBytes, { maxNodes = 32768, maxDepth = 24, maxString = 65536 }, owned) {
     const admitted = value && typeof value === 'object' ? declarations.get(value) : undefined;

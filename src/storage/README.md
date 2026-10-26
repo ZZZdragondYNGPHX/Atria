@@ -319,6 +319,9 @@ FS Native records live in `atria-native/resources.sqlite`, using the existing
 SQLite resource table, queries and CAS. Each logical transaction has one
 `BEGIN IMMEDIATE` / `COMMIT`, with WAL and `synchronous=FULL`; ACK follows COMMIT.
 No deferred durable acknowledgement or cross-action group commit is used.
+Internal Native identity/CAS reads capture row metadata and JSON text without
+eager document decoding. Accessing `doc` decodes that captured text once; later
+writes cannot change the earlier read. Public resource reads remain eager.
 Legacy non-Native files retain their existing semantics. The original exclusive
 Host ownership of the local data root remains required.
 

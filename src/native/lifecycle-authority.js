@@ -281,7 +281,7 @@ export async function applyLifecycleCandidate(candidate, installed, action, auth
     };
     const apply = async (request, occurrence = 'direct', scopeId = null) => {
         if (--budget < 0) throw new TypeError('Lifecycle transaction work limit');
-        authority?.effect(request);
+        if (authority) request = authority.effect(request);
         if (request.kind === 'app.command') {
             fields(request, ['kind', 'domainId', 'recordId', 'commandId', 'args'], 'App Command');
             const domain = def.domains.find(item => item.id === request.domainId); const command = domain?.commands.find(item => item.id === request.commandId);

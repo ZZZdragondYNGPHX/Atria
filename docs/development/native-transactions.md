@@ -45,15 +45,18 @@ copy data into each process. This is not shared-memory or GPU computation. Each
 stage has a fresh guest context; module globals do not persist between calls.
 On the first runtime use, the host collects bounded static dependencies and the
 same child-process pool performs TypeScript/JavaScript transpilation through
-esbuild's native service. Source and generated-code AST admission remain on the
-host; workers do not load the full TypeScript compiler. Build and runtime share
-the same world transpiler and artifact hash; the frontend controller compiler
-is unchanged. Source bytes are pinned before the asynchronous boundary. Concurrent
+esbuild's native service. JavaScript dependency capture uses a lightweight module
+lexer; TypeScript capture retains its syntax-aware parser. Full source and
+generated-code admission run in the compiler process before execution. JavaScript
+uses Acorn; TypeScript loads its parser only when needed. Build and runtime share
+the same admission and transpiler, preserving world artifact hashes. Frontend
+controller transpilation remains unchanged. Source bytes are pinned before the
+asynchronous boundary. Concurrent
 requests for identical source bytes share compilation and validation; cancelling
 one caller leaves other callers active, while cancelling the last retires the job.
 Compilation jobs share queue backpressure and process deadlines with computation
-jobs. The compiler change intentionally changes world artifact evidence hashes;
-old stored receipts are preserved, not relabelled as new artifacts.
+jobs. Frontend bindings and task execution share exact-source declarative logic
+compilation; source, Data or contract changes invalidate that identity.
 
 Host settings under `native.computation` are read at startup:
 
@@ -139,7 +142,9 @@ retain independent ownership.
 
 Host-owned frozen record values and append-only action receipts reuse canonical
 JSON and SHA256 results. Canonical text retention is bounded to 4096 entries and
-32 MiB of UTF-16 text weight (8 MiB per entry); this is not a process RSS limit.
+32 MiB of combined UTF-16 text and UTF-8 buffer weight (8 MiB per entry); this is
+not a process RSS limit. Hashing streams these buffers between mutable-container
+fragments, avoiding a flattened namespace string and repeated UTF-8 conversion.
 Mutable containers are never cached by reference. Logical byte accounting shares
 the immutable payload sizes, and publication preserves old receipt identities
 instead of cloning their contents. Canonical bytes and persisted hashes remain
@@ -162,9 +167,22 @@ this API does not silently truncate a game or its save data.
 FS Native publication uses the [storage durable commit contract](../../src/storage/README.md#native-durable-commit-contract).
 The previous per-file journal writer/overlay is removed; its decoder remains
 only for migration recovery. SQL rows own their decoded JSON; internal integrity
-comparisons borrow those rows and public mutable reads remain independent.
+comparisons read metadata without decoding the document. An internal row captures
+its JSON text at read time and decodes it on first document access; ordinary
+public reads still decode eagerly. Cached state retains delta replay metadata
+alongside its integrity, avoiding a second full document read for those fields.
+Public mutable reads remain independent.
 The materialized state cache holds eight heads of up to 16 MiB each. Writes,
 rollback, connection close and another connection's `data_version` invalidate
 cached state. These are cache weights, not process RSS limits.
 
 For package and media transport, see [Native media capacity](native-media-capacity.md).
+
+Internal projections construct owned JSON containers and admission metadata
+together. Effect expansion retains the admitted result, and copy-on-write reducers
+share admitted immutable assignment values while copying nested write paths.
+Unknown caller values still cross normal admission. Public action input is
+captured before the run lock and shared by its internal continuation steps.
+Transaction catalogues preserve compiled schema identity; output schemas compile
+once per immutable declaration. These changes do not raise any execution budget
+or remove changed-value validation.

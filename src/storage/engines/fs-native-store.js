@@ -102,7 +102,7 @@ export class FsNativeStore {
                 if (!isNativeStorageKind(key.kind)) return target[name](key, ...args);
                 if (key.handle !== this.handle) throw new TypeError('FS transaction handle mismatch');
                 if (['putResource', 'putResourceIfMatch', 'deleteResource'].includes(name)) this.stateCache.delete([key.handle, key.sessionId, key.namespace, key.head].join('\0'));
-                return this.sql[name === 'getImmutableResource' ? 'getResource' : name](key, ...args);
+                return this.sql[name](key, ...args);
             };
             const value = target[name]; return typeof value === 'function' ? value.bind(target) : value;
         } });

@@ -1,6 +1,6 @@
 import { snapshotAnchor, prepareAuthorityTransaction } from './authority-transaction.js';
 import { loadTaskLogic } from './task-authority.js';
-import { assertJsonDeclaration } from '../../public/shared/native-values.js';
+import { assertJsonDeclaration, jsonObjectDeclaration } from '../../public/shared/native-values.js';
 import { assertTaskValue } from '../../public/shared/native-task-contract.js';
 import { compileDataSchema } from '../../public/shared/native-data-schema.js';
 import { hashNativeDocument } from './repositories/common.js';
@@ -25,7 +25,9 @@ export const authorityValue = value => assertJsonDeclaration(value, 'Authority T
 // validators, effects, private grants or authoring-only Resolution formulas.
 export async function authorityCatalog(_base, installed) {
     const { logic } = loadTaskLogic(installed);
-    return immutable(logic.transactions.filter(item => item.origin !== 'simulation').map(({ id, verb, inputSchema, intent, coalesceInput }) => ({ id, verb, inputSchema, intent,
+    // The compiled transaction owns these frozen declarations. Keep their
+    // identity through the public projection instead of cloning every schema.
+    return Object.freeze(logic.transactions.filter(item => item.origin !== 'simulation').map(({ id, verb, inputSchema, intent, coalesceInput }) => Object.freeze({ id, verb, inputSchema, intent,
         ...(coalesceInput ? { coalesceInput: true } : {}) })));
 }
 export function authoritySelection(catalog, raw, { resolver = false } = {}) {
@@ -33,7 +35,7 @@ export function authoritySelection(catalog, raw, { resolver = false } = {}) {
     if (Object.keys(value).some(key => !['transactionId', 'input'].includes(key))) throw authorityFailure('native_authority_selection_invalid');
     const declared = catalog.find(item => item.id === value.transactionId && (!resolver || item.intent.expose));
     if (!declared) throw authorityFailure('native_authority_selection_denied');
-    return immutable({ transactionId: declared.id, input: assertTaskValue(value.input, compileDataSchema(declared.inputSchema)) });
+    return jsonObjectDeclaration([['transactionId', declared.id], ['input', assertTaskValue(value.input, compileDataSchema(declared.inputSchema))]], 'Authority Turn value', 65536);
 }
 // Typed and narrated submissions share the same mechanical anchor. Retrying a
 // failed preparation at an unchanged head cannot obtain a different RNG draw.
@@ -73,7 +75,7 @@ export function resolverRequest(catalog, observation, userInput) {
 // provenance and refuses caller-created candidates at its public finalize seam.
 const preparations = new WeakMap();
 export async function prepareAuthorityTurn(core, owner, base, installed, selection, player = null, { signal } = {}) {
-    selection = immutable(authorityValue(selection));
+    selection = authorityValue(selection);
     player = player ? immutable(player) : null;
     const source = player ? { ...base, timeline: [...base.timeline, player.entry], variants: [...base.variants, player.variant] } : base;
     const request = { ...selection, anchor: snapshotAnchor(source), playerMessageId: source.timeline.at(-1)?.messageId };

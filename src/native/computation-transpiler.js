@@ -1,9 +1,8 @@
 import { transform, transformSync } from 'esbuild';
 import { createHash } from 'node:crypto';
 
-// This worker dependency deliberately excludes the TypeScript AST checker.
-// Sources are admitted by collectControllerSources in the host, and generated
-// artifacts pass validateScriptArtifact there before any guest execution.
+// The shared compiler pipeline admits sources and generated artifacts before
+// execution. Transpilation itself does not execute package code.
 const options = id => ({ loader: id.endsWith('.ts') ? 'ts' : 'js', sourcefile: id,
     target: 'es2020', format: 'cjs', platform: 'neutral', sourcemap: 'external', sourcesContent: false,
     treeShaking: false, keepNames: true,

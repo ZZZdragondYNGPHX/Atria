@@ -62,6 +62,7 @@ function apply(value, patch) {
 }
 async function decodeState(tx, key, record, cache) {
     const patches = [], seen = new Set(), integrity = record.integrity, depth = record.doc?.format === FORMAT ? record.doc.depth : 0;
+    const replayBytes = record.doc?.format === FORMAT ? record.doc.replayBytes : 0;
     let value;
     for (;;) {
         const doc = record.doc;
@@ -89,7 +90,7 @@ async function decodeState(tx, key, record, cache) {
     }
     // Clone the full snapshot once, not once per ancestor in the delta chain.
     for (const patch of patches.reverse()) value = apply(value, patch);
-    return { value: freezeRecords(key, value), depth, bytes: nativeDocumentBytes(value), integrity };
+    return { value: freezeRecords(key, value), depth, replayBytes, bytes: nativeDocumentBytes(value), integrity };
 }
 async function storedState(tx, key, record) {
     const cache = stateCache(tx), id = cacheKey(key);
@@ -117,9 +118,9 @@ export async function putStoredState(tx, key, value, previousHead = null) {
     if (previousHead && previousHead !== key.head) {
         const previousKey = { ...key, head: previousHead }, previous = await readNativeRecord(tx, previousKey);
         if (previous) {
-            const before = (await storedState(tx, previousKey, previous)).value, patch = difference(before, value);
+            const before = await storedState(tx, previousKey, previous), patch = difference(before.value, value);
             const bytes = Buffer.byteLength(JSON.stringify(patch));
-            const depth = previous.doc?.format === FORMAT ? previous.doc.depth : 0, replayBytes = previous.doc?.format === FORMAT ? previous.doc.replayBytes : 0;
+            const { depth, replayBytes } = before;
             if (bytes * 2 < fullBytes && depth < 32 && replayBytes + bytes < fullBytes) {
                 doc = { format: FORMAT, kind: 'delta', baseHead: previousHead, patch, contentHash: key.head,
                     depth: depth + 1, replayBytes: replayBytes + bytes };
@@ -129,6 +130,6 @@ export async function putStoredState(tx, key, value, previousHead = null) {
     await putImmutable(tx, key, doc, { shareImmutableValues: true });
     if (fullBytes <= cachedStateBytes) remember(stateCache(tx), cacheKey(key), Promise.resolve({ value: freezeRecords(key,
         key.namespace === 'atri_lifecycle' && value.domains ? copyRecordState(value)
-            : key.namespace === 'atri_action_receipts' ? copyReceiptState(value) : cloneAdmittedDocument(value)), depth: doc.depth, bytes: fullBytes,
+            : key.namespace === 'atri_action_receipts' ? copyReceiptState(value) : cloneAdmittedDocument(value)), depth: doc.depth, replayBytes: doc.replayBytes, bytes: fullBytes,
     integrity: (await readNativeRecord(tx, key)).integrity }));
 }

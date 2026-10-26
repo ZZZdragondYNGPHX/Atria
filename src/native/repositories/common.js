@@ -18,21 +18,21 @@ function encodedKey(key) {
     return text;
 }
 
-// Only host-owned immutable JSON can reuse canonical bytes. Bound retained text,
-// not the number of worlds; mutable containers are always visited again.
+// Only host-owned immutable JSON can reuse canonical bytes. Bound both retained
+// text and UTF-8 buffers; mutable containers are always visited again.
 const canonicalValues = new Map();
 const canonicalLimit = 32 * 1024 * 1024;
 let canonicalBytes = 0;
 function canonicalValue(value) {
     let entry = canonicalValues.get(value);
     if (entry) return entry;
-    const text = stableJson(value, false), bytes = Buffer.byteLength(text);
-    entry = { text, bytes };
-    const weight = text.length * 2;
+    const text = stableJson(value, false), encoded = Buffer.from(text), bytes = encoded.length;
+    const weight = text.length * 2 + bytes;
+    entry = { text, encoded, bytes, weight };
     if (weight <= canonicalLimit / 4) {
         while (canonicalBytes + weight > canonicalLimit || canonicalValues.size >= 4096) {
             const first = canonicalValues.keys().next().value;
-            canonicalBytes -= canonicalValues.get(first).text.length * 2;
+            canonicalBytes -= canonicalValues.get(first).weight;
             canonicalValues.delete(first);
         }
         canonicalValues.set(value, entry); canonicalBytes += weight;
@@ -102,9 +102,36 @@ export function serializeNativeDocument(value) {
 export function hashNativeDocument(value) {
     if (immutableRecordValue(value)) {
         const entry = canonicalValue(value);
-        return entry.hash ??= createHash('sha256').update(entry.text).digest('hex');
+        return entry.hash ??= createHash('sha256').update(entry.encoded).digest('hex');
     }
-    return createHash('sha256').update(stableJson(value)).digest('hex');
+    if (value === null || typeof value !== 'object') return createHash('sha256').update(JSON.stringify(value)).digest('hex');
+    // Hash the same canonical byte stream directly. Sealed record payloads
+    // already own UTF-8 bytes: do not flatten a whole namespace string and
+    // transcode every unchanged payload again for each new revision.
+    const hash = createHash('sha256');
+    let text = '';
+    const flush = () => { if (text) { hash.update(text); text = ''; } };
+    function append(item) {
+        if (item === null || typeof item !== 'object') { text += JSON.stringify(item); return; }
+        if (immutableRecordValue(item)) { flush(); hash.update(canonicalValue(item).encoded); return; }
+        if (Array.isArray(item)) {
+            text += '[';
+            for (let index = 0; index < item.length; index++) {
+                if (index) text += ',';
+                if (index in item) append(item[index]);
+            }
+            text += ']'; return;
+        }
+        const keys = Object.keys(item).sort();
+        text += '{';
+        for (let index = 0; index < keys.length; index++) {
+            if (index) text += ',';
+            text += encodedKey(keys[index]) + ':'; append(item[keys[index]]);
+        }
+        text += '}';
+    }
+    append(value); flush();
+    return hash.digest('hex');
 }
 
 // JSON byte accounting for admitted trees. Key order does not affect size;

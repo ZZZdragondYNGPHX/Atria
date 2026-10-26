@@ -15,7 +15,7 @@ import { RUN_NAMESPACE, assertRunState } from '../../public/shared/native-run-co
 import { nativeTaskScheduler } from './task-scheduler.js';
 import { requestSessionMaintenance } from './session-maintenance.js';
 import { prepareLifetimes, validateLifetimes } from './lifetime-authority.js';
-import { hasAuthorityTransactions, prepareAuthorityTurn, authorityTurnProof, authorityActionRequest, authorityFailure, authorityCatalog, authoritySelection, authorityPlayerEntry } from './authority-turn.js';
+import { hasAuthorityTransactions, prepareAuthorityTurn, authorityTurnProof, authorityActionRequest, authorityFailure, authorityCatalog, authoritySelection, authorityPlayerEntry, authorityValue } from './authority-turn.js';
 import { prepareAuthorityPublications, createAuthorityPublicationBudget } from './authority-transaction.js';
 import { resolveNativeRuntimePackage } from './runtime-descriptor.js';
 import { bridgeValue } from '../../public/shared/native-frontend-bridge.js';
@@ -749,6 +749,9 @@ export class SessionCore {
 
     async applyAuthorityAction(handle, sessionId, { transactionId, input, invocationId }, { expectedRevisionId } = {}) {
         if (!expectedRevisionId || typeof invocationId !== 'string' || !/^[a-zA-Z0-9._:-]{1,128}$/.test(invocationId)) throw new TypeError('Authority action anchor and invocation required');
+        // Capture the caller's input before waiting for the run lock. Internal
+        // continuation steps share this admitted value, not the caller's tree.
+        input = authorityValue({ transactionId, input }).input;
         return this._sessions.withRunLock(handle, sessionId, async () => {
             const fs = this._sessions._engine.kind === 'fs';
             const run = async () => {

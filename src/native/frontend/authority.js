@@ -1,4 +1,4 @@
-import { compileDeclarativeLogic } from '../../../public/scripts/native/experience/logic/declarative.js';
+import { compilePinnedTaskLogic } from '../task-authority.js';
 import { readPackagePayload } from '../package-payload-cache.js';
 
 // Link bindings against the exact entrypoint's declarative catalog, at Build,
@@ -9,5 +9,5 @@ export function frontendTransactions(manifest, owner, files) {
     const path = owner?.runtime?.game?.logic ?? manifest.runtime?.game?.logic;
     const bytes = readPackagePayload(files, path);
     if (!bytes || bytes.length > 2 * 1024 * 1024) throw new TypeError('Pinned Transaction logic required');
-    return compileDeclarativeLogic(JSON.parse(bytes.toString('utf8')), { data: {}, experienceContract: contract }).transactions.filter(item => item.origin !== 'simulation');
+    return compilePinnedTaskLogic(bytes, {}, contract).logic.transactions.filter(item => item.origin !== 'simulation');
 }
