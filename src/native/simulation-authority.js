@@ -1,6 +1,7 @@
 import { nextAttentionTick } from './lifetime-authority.js';
+import { createTaskCandidate } from './task-authority.js';
 import { hashNativeDocument } from './repositories/common.js';
-import { simulationPrivateContext, template, predicate, prepareSimulationStep } from './authority-transaction.js';
+import { simulationPrivateContext, template, predicate, prepareSimulationStep, validateCandidate } from './authority-transaction.js';
 import { simulationInstantSchema } from '../../public/shared/native-simulation-contract.js';
 import { addOutbox } from './lifecycle-authority.js';
 import { captureAppraisalEvent } from './appraisal-authority.js';
@@ -31,6 +32,7 @@ function evaluate(base, contract, job, budget, targetTick = base.states.atri_lif
 export async function prepareWorldSimulation(base, installed, untilTick, budget, { admit = true, attention = false, excludeJobId = null } = {}) {
     const contract = base.manifest.runtime.experienceContract;
     const simulation = contract.simulationRuntime;
+    validateCandidate(base, contract);
     if (!simulation || !budget || !base.states.atri_lifecycle.ready) throw new TypeError('Ready simulation authority required');
     const start = base.states.atri_lifecycle.clocks[simulation.clockId];
     budget.typed(untilTick, simulationInstantSchema);
@@ -40,17 +42,18 @@ export async function prepareWorldSimulation(base, installed, untilTick, budget,
     let candidate = base;
     const mutable = () => {
         if (candidate !== base) return;
-        const state = base.states.atri_lifecycle;
-        candidate = { ...base, states: { ...base.states, atri_lifecycle: { ...state,
-            clocks: { ...state.clocks }, outbox: state.outbox.slice(), automations: { ...state.automations } } } };
+        candidate = createTaskCandidate(base, budget);
     };
     const occurrences = new Set();
     let steps = 0;
     while (true) {
-        const due = simulation.jobs.filter(job => job.action.kind === 'transaction')
-            .map(job => evaluate(candidate, contract, job, budget, untilTick, requestedTick)).filter(item => item && item.tick <= untilTick).sort(compare);
-        if (!due.length) break;
-        const next = due[0];
+        let next = null;
+        for (const job of simulation.jobs) {
+            if (job.action.kind !== 'transaction') continue;
+            const item = evaluate(candidate, contract, job, budget, untilTick, requestedTick);
+            if (item && item.tick <= untilTick && (!next || compare(item, next) < 0)) next = item;
+        }
+        if (!next) break;
         const occurrence = next.job.id + ':' + next.tick + (next.context.subject ? ':' + next.context.subject.id : '');
         if (occurrences.has(occurrence) || ++steps > simulation.policy.maxSteps) throw new TypeError('Simulation progress/work limit');
         occurrences.add(occurrence);
@@ -102,6 +105,7 @@ export async function prepareWorldSimulation(base, installed, untilTick, budget,
             }
         }
     }
+    validateCandidate(candidate, contract);
     return candidate;
 }
 

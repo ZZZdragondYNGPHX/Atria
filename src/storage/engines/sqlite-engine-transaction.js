@@ -1026,8 +1026,13 @@ export function registerNativeResourceHandlers(tx) {
                 }
                 return { records, cursor, done: records.length < filter.limit && bytes < filter.maxBytes, bytes, scanned: records.length };
             }
-            const rows = predicates.length ? db.prepare(`SELECT resource_key, doc, integrity, updated_at, created_at
-                FROM native_resources WHERE handle=? AND kind=? AND ${predicates.join(' AND ')}`).all(...values)
+            const order = { updatedAt: 'updated_at', createdAt: 'created_at' }[filter.orderBy];
+            let suffix = predicates.length ? ' AND ' + predicates.join(' AND ') : '';
+            if (order) {
+                suffix += ' ORDER BY ' + order + ' DESC';
+                if (Number.isSafeInteger(filter.limit) && filter.limit >= 0) { suffix += ' LIMIT ?'; values.push(filter.limit); }
+            }
+            const rows = suffix ? db.prepare('SELECT resource_key, doc, integrity, updated_at, created_at FROM native_resources WHERE handle=? AND kind=?' + suffix).all(...values)
                 : listStmt.all(filter.handle, filter.kind);
             const records = rows
                 .map(row => parseRow(filter.kind, filter.handle, row))

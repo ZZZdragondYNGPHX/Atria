@@ -22,7 +22,12 @@ export function computationPolicy() {
         computationWallMs: number('timeoutMs', AUTHORITY_EXECUTION_LIMITS.computationWallMs),
         computationModules: number('modules', AUTHORITY_EXECUTION_LIMITS.computationModules),
         computationModuleBytes: number('moduleMiB', AUTHORITY_EXECUTION_LIMITS.computationModuleBytes / mib) * mib,
-        computationOutputBytes: number('outputMiB', AUTHORITY_EXECUTION_LIMITS.computationOutputBytes / mib) * mib,
+        computationInputBytes: number('inputMiB', 16) * mib,
+        computationOutputBytes: number('outputMiB', 16) * mib,
+        computationNodes: number('nodes', 1000000),
+        computationDepth: number('depth', 64),
+        computationShards: number('shards', Math.max(4, cores * 4)),
+        computationQueueBytes: number('queueMiB', 128) * mib,
         workers: number('workers', 0, 0) || automaticWorkers,
     });
     return policy;

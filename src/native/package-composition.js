@@ -1,4 +1,5 @@
 import { freezePackagePromptPrograms } from './model-prompt-runtime/package-freeze.js';
+import { registerPackageDeclarations } from './package-declarations.js';
 import { validateExperienceResources } from './experience-validation.js';
 import { compileProjectFrontends } from './frontend/compiler.js';
 import { createHash } from 'node:crypto';
@@ -80,8 +81,8 @@ function copyParsedArchive(inspected) {
     // Runtime rules never read scene media. Copy bytes on first access while
     // keeping every returned Buffer and its backing store caller-owned.
     const copyMap = map => new PackageByteMap(map);
-    return Object.freeze({ manifest: inspected.manifest, preflight: inspected.preflight,
-        sourceFiles: copyMap(inspected.sourceFiles), assets: copyMap(inspected.assets) });
+    return registerPackageDeclarations(Object.freeze({ manifest: inspected.manifest, preflight: inspected.preflight,
+        sourceFiles: copyMap(inspected.sourceFiles), assets: copyMap(inspected.assets) }), inspected);
 }
 
 function parsedArchiveBytes(inspected) {

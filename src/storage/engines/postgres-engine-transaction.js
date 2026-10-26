@@ -1,3 +1,4 @@
+import { getNativeResourceKeyFields } from '../../native/contracts.js';
 import { isDeepStrictEqual } from 'node:util';
 import { NotFoundError } from '../errors.js';
 import { assertSafeRepoNameShape } from '../name-validation.js';
@@ -1071,10 +1072,20 @@ export function registerNativeResourceHandlers(tx) {
             return r.rowCount > 0;
         },
         async list(filter) {
+            const values = [filter.handle, filter.kind], predicates = [];
+            getNativeResourceKeyFields(filter.kind).filter(field => field !== 'handle').forEach((field, index) => {
+                if (filter[field] === undefined) return;
+                values.push(JSON.stringify(filter[field]));
+                predicates.push(`resource_key::jsonb -> ${index} = $${values.length}::jsonb`);
+            });
+            const order = { updatedAt: 'updated_at', createdAt: 'created_at' }[filter.orderBy];
+            let suffix = predicates.length ? ' AND ' + predicates.join(' AND ') : '';
+            if (order) {
+                suffix += ' ORDER BY ' + order + ' DESC';
+                if (Number.isSafeInteger(filter.limit) && filter.limit >= 0) { values.push(filter.limit); suffix += ' LIMIT $' + values.length; }
+            }
             const r = await client.query(
-                `SELECT resource_key, doc, integrity, updated_at, created_at
-                 FROM native_resources WHERE handle=$1 AND kind=$2`,
-                [filter.handle, filter.kind],
+                'SELECT resource_key, doc, integrity, updated_at, created_at FROM native_resources WHERE handle=$1 AND kind=$2' + suffix, values,
             );
             const records = r.rows
                 .map(row => parseRow(filter.kind, filter.handle, row.resource_key, row))

@@ -57,7 +57,7 @@ export function snapshotAnchor(base) {
     return { sessionId: base.session.sessionId, packageVersionId: base.session.packageVersionId,
         branchId: base.revision.branchId, revisionId: base.revision.revisionId };
 }
-function validateCandidate(base, contract) {
+export function validateCandidate(base, contract) {
     for (const domain of contract.lifecycleRuntime?.domains ?? []) {
         const records = base.states.atri_lifecycle?.domains[domain.id]?.records;
         if (!Array.isArray(records) || records.some(record => record.scopeId !== domain.scopeId)) throw new TypeError('Authority record scope mismatch');
@@ -280,7 +280,7 @@ async function executeTransaction(candidate, installed, contract, logic, world, 
             if (checked.value !== true) throw new TypeError('Domain precondition rejected');
             execution.push(checked.evidence);
         }
-        const prepared = await runPackageComputation(installed, transaction.computation.source, 'compute', input);
+        const prepared = await runPackageComputation(installed, transaction.computation.source, 'compute', input, { partitioned: transaction.computation.partitioned === true });
         computed = assertTaskValue(budget.value(prepared.value), compileComputationSchema(transaction.computation.outputSchema));
         execution.push(prepared.evidence);
     }
@@ -428,7 +428,9 @@ export async function prepareAuthorityTransaction(base, installed, rawRequest) {
 // timeline entry; the required simulation declaration owns all targets/input.
 export async function prepareSimulationStep(base, installed, jobId, tick, budget, targetTick = tick, requestedTick = targetTick) {
     try {
-        const contract = contractFor(base, installed); validateCandidate(base, contract);
+        // The simulation coordinator validates the boundary once. Each command
+        // still validates its changed values before mutating this private candidate.
+        const contract = contractFor(base, installed);
         const simulation = contract.simulationRuntime;
         const job = simulation?.jobs.find(item => item.id === jobId);
         if (!budget || !job || job.action.kind !== 'transaction' || !base.states.atri_lifecycle.ready
@@ -447,7 +449,6 @@ export async function prepareSimulationStep(base, installed, jobId, tick, budget
         const input = budget.typed(template(job.action.input, context), transaction.inputSchema);
         const identity = 'sim:' + hashNativeDocument({ ...snapshotAnchor(base), jobId, tick, input });
         await executeTransaction(candidate, installed, contract, logic, world, transaction, input, budget, identity);
-        validateCandidate(candidate, contract);
         return candidate;
     } catch { throw failure('simulation step'); }
 }

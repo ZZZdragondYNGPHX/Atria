@@ -1,4 +1,5 @@
 import { cloneAdmittedDocument, equalNativeDocuments } from './repositories/common.js';
+import { packageDeclarationKey } from './package-declarations.js';
 import { compileDeclarativeLogic } from '../../public/scripts/native/experience/logic/declarative.js';
 import { createGameWorldSession } from '../../public/scripts/native/experience/world/session.js';
 import { createInterpretationMappingRegistry } from '../../public/scripts/native/experience/logic/interpretations.js';
@@ -39,6 +40,14 @@ export function validateTaskRecords(base) {
 // Bounded, exact-byte declaration cache. It contains no Session state,
 // candidates, authority proofs or RNG. Exact source/Data/contract changes miss.
 const compiledWorlds = [];
+const installedWorlds = new WeakMap();
+const candidates = new WeakMap();
+export function createTaskCandidate(base, authority) {
+    if (authority && candidates.get(base) === authority && !Object.isFrozen(base)) return base;
+    const candidate = cloneAdmittedDocument(base);
+    if (authority) candidates.set(candidate, authority);
+    return candidate;
+}
 const frozenDeclaration = value => value === null || typeof value !== 'object'
     || Object.isFrozen(value) && Object.values(value).every(frozenDeclaration);
 function pinnedLogic(bytes, data, experienceContract) {
@@ -60,6 +69,9 @@ function pinnedLogic(bytes, data, experienceContract) {
 export function loadTaskLogic(installed) {
     const runtime = { ...installed.manifest.runtime, ...installed.entryPoint.runtime };
     const path = runtime?.game?.logic;
+    const identity = packageDeclarationKey(installed);
+    const cached = identity && installedWorlds.get(identity)?.get(path);
+    if (cached) return { runtime, ...cached };
     const bytes = installed.sourceFiles.get(path);
     if (!bytes || bytes.length > 2 * 1024 * 1024) throw new TypeError('Pinned declarative logic required');
     const data = {};
@@ -71,12 +83,17 @@ export function loadTaskLogic(installed) {
         target[keys.at(-1)] = JSON.parse(bytes.toString('utf8'));
     }
     const entry = pinnedLogic(bytes, data, installed.manifest.runtime?.experienceContract);
+    if (identity) {
+        let entries = installedWorlds.get(identity);
+        if (!entries) { entries = new Map(); installedWorlds.set(identity, entries); }
+        entries.set(path, { logic: entry.logic, contract: entry.validatedContract });
+    }
     return { runtime, logic: entry.logic, contract: entry.validatedContract };
 }
 
 export async function createTaskWorld(base, installed, publish = null, authority = null) {
     const { runtime, logic } = loadTaskLogic(installed);
-    const candidate = cloneAdmittedDocument(base);
+    const candidate = createTaskCandidate(base, authority);
     candidate.worlds = selectedWorlds(candidate.states, installed.manifest, installed.entryPoint);
     const statePatch = {};
     const adapter = { active: true, snapshot: candidate, commitStatePatch: async patch => {

@@ -13,7 +13,7 @@ export function json(value, depth = 0, budget = { nodes: 0 }, copy = true) {
     const admitted = value && typeof value === 'object' ? declarations.get(value) : undefined;
     if (admitted) {
         budget.nodes += admitted.nodes - 1;
-        if (depth + admitted.height > 24 || budget.nodes > 32768) throw new Error('Native JSON exceeds complexity limit');
+        if (depth + admitted.height > 24 || budget.nodes > 32768 || admitted.maxString > 65536) throw new Error('Native JSON exceeds complexity limit');
         return value;
     }
     if (value === null || typeof value === 'boolean') return value;
@@ -37,25 +37,26 @@ export function json(value, depth = 0, budget = { nodes: 0 }, copy = true) {
 // Only objects copied and deeply frozen here are reusable declarations. Merely
 // freezing caller data does not bypass admission or a smaller byte budget.
 const declarations = new WeakMap();
-export function assertJsonDeclaration(value, label = 'Native', maxBytes = 1048576) {
+export function assertJsonDeclaration(value, label = 'Native', maxBytes = 1048576, { maxNodes = 32768, maxDepth = 24, maxString = 65536 } = {}) {
     const admitted = value && typeof value === 'object' ? declarations.get(value) : undefined;
     if (admitted !== undefined) {
+        if (admitted.nodes > maxNodes || admitted.height > maxDepth || admitted.maxString > maxString) throw new TypeError(label + ' JSON complexity limit');
         if (admitted.bytes > maxBytes) throw new TypeError(label + ' declaration byte limit');
         return value;
     }
-    const budget = { nodes: 0, height: 0 };
+    const budget = { nodes: 0, height: 0, maxString: 0 };
     function inspect(item, depth = 0) {
-        if (depth > 24 || ++budget.nodes > 32768) throw new TypeError(label + ' JSON complexity limit');
+        if (depth > maxDepth || ++budget.nodes > maxNodes) throw new TypeError(label + ' JSON complexity limit');
         budget.height = Math.max(budget.height, depth);
         if (item === null || typeof item === 'boolean') return item;
-        if (typeof item === 'string') return text(item, 65536);
+        if (typeof item === 'string') { budget.maxString = Math.max(budget.maxString, item.length); return text(item, maxString); }
         if (typeof item === 'number' && Number.isFinite(item)) return item;
         if (!item || typeof item !== 'object') throw new TypeError(label + ' requires JSON values');
         const known = declarations.get(item);
         if (known) {
             budget.nodes += known.nodes - 1;
-            if (depth + known.height > 24 || budget.nodes > 32768) throw new TypeError(label + ' JSON complexity limit');
-            budget.height = Math.max(budget.height, depth + known.height);
+            if (depth + known.height > maxDepth || budget.nodes > maxNodes || known.maxString > maxString) throw new TypeError(label + ' JSON complexity limit');
+            budget.height = Math.max(budget.height, depth + known.height); budget.maxString = Math.max(budget.maxString, known.maxString);
             return item;
         }
         const array = Array.isArray(item);
@@ -75,6 +76,6 @@ export function assertJsonDeclaration(value, label = 'Native', maxBytes = 104857
     const result = inspect(value);
     const bytes = new TextEncoder().encode(JSON.stringify(result)).byteLength;
     if (bytes > maxBytes) throw new TypeError(label + ' declaration byte limit');
-    if (result && typeof result === 'object') declarations.set(result, { bytes, nodes: budget.nodes, height: budget.height });
+    if (result && typeof result === 'object') declarations.set(result, { bytes, nodes: budget.nodes, height: budget.height, maxString: budget.maxString });
     return result;
 }

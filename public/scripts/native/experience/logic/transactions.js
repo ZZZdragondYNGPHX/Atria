@@ -165,7 +165,8 @@ export function compileTransactionDeclarations(raw, options) {
         validators(transaction.validators, before);
         let computed = {};
         if (transaction.computation !== undefined) {
-            fields(transaction.computation, ['source', 'precondition', 'outputSchema', 'invariantSource', 'invariantContext', 'invariantReads'], 'Transaction computation');
+            if (transaction.computation.partitioned !== undefined && typeof transaction.computation.partitioned !== 'boolean') throw new TypeError('Invalid partitioned computation');
+            fields(transaction.computation, ['source', 'precondition', 'outputSchema', 'invariantSource', 'invariantContext', 'invariantReads', 'partitioned'], 'Transaction computation');
             if (transaction.computation.precondition !== undefined && typeof transaction.computation.precondition !== 'boolean') throw new TypeError('Invalid computation precondition declaration');
             if (transaction.computation.invariantReads !== undefined) {
                 list(transaction.computation.invariantReads, LIMITS.readGrants, selection => {

@@ -3,11 +3,11 @@ import { compileController } from './frontend/script-compiler.js';
 import { assertJsonDeclaration } from '../../public/shared/native-values.js';
 import { resourcePath } from '../../public/shared/native-frontend-contract.js';
 import { hashNativeDocument } from './repositories/common.js';
-import { AUTHORITY_EXECUTION_LIMITS } from './authority-execution-limits.js';
+import { packageDeclarationKey } from './package-declarations.js';
 import { computationPolicy } from './computation-policy.js';
 
 // Cache only exact immutable module declarations, never inputs or outcomes.
-const artifacts = new Map();
+const artifacts = new Map(), installedArtifacts = new WeakMap();
 function freezeProgram(value) {
     if (value && typeof value === 'object') {
         for (const child of Object.values(value)) freezeProgram(child);
@@ -43,14 +43,47 @@ function pinnedArtifact(source, files) {
     return entry;
 }
 
-export async function runPackageComputation(installed, source, method, input) {
+export async function runPackageComputation(installed, source, method, input, { partitioned = false, signal } = {}) {
     if (!['precondition', 'compute', 'invariant', 'derive', 'transform'].includes(method)) throw new TypeError('Invalid computation stage');
-    const { artifact, resourceHash } = pinnedArtifact(source, installed.sourceFiles);
-    // Several budgeted reads/values form one input; the frontend bridge message
-    // ceiling is not the Authority aggregate. Guest execution limits still apply.
-    const safe = assertJsonDeclaration(input, 'Computation input', AUTHORITY_EXECUTION_LIMITS.totalValueBytes);
-    const limits = computationPolicy();
-    const text = await runComputationJob({ artifact, resourceHash, source, method, safe, limits });
-    const value = assertJsonDeclaration(JSON.parse(text), 'Computation output', limits.computationOutputBytes);
-    return { value, evidence: { source, resourceHash, stage: method } };
+    const identity = packageDeclarationKey(installed);
+    let entry = identity && installedArtifacts.get(identity)?.get(source);
+    if (!entry) {
+        entry = pinnedArtifact(source, installed.sourceFiles);
+        if (identity) {
+            let entries = installedArtifacts.get(identity);
+            if (!entries) { entries = new Map(); installedArtifacts.set(identity, entries); }
+            entries.set(source, entry);
+        }
+    }
+    const { artifact, resourceHash } = entry, limits = computationPolicy();
+    const jsonLimits = { maxNodes: limits.computationNodes, maxDepth: limits.computationDepth, maxString: limits.computationInputBytes };
+    const safe = assertJsonDeclaration(input, 'Computation input', limits.computationInputBytes, jsonLimits);
+    const inputText = JSON.stringify(safe), inputBytes = Buffer.byteLength(inputText);
+    const batch = new AbortController();
+    const abort = () => batch.abort(signal.reason);
+    if (signal?.aborted) abort(); else signal?.addEventListener('abort', abort, { once: true });
+    async function run(stage, extra = undefined) {
+        const extraText = extra === undefined ? undefined : JSON.stringify(extra);
+        const bytes = inputBytes + (extraText ? Buffer.byteLength(extraText) : 0);
+        if (bytes > limits.computationInputBytes) throw new TypeError('Computation input byte limit');
+        const text = await runComputationJob({ artifact, resourceHash, source, method: stage, inputText, extraText, bytes, limits }, { signal: batch.signal });
+        return assertJsonDeclaration(JSON.parse(text), 'Computation output', limits.computationOutputBytes, jsonLimits);
+    }
+    try {
+        let value;
+        if (partitioned && method === 'compute') {
+            const shards = await run('partition');
+            if (!Array.isArray(shards) || !shards.length || shards.length > limits.computationShards) throw new TypeError('Computation shard limit');
+            // Bounded producers keep a large partition from flooding the shared pool.
+            const results = new Array(shards.length); let next = 0;
+            await Promise.all(Array.from({ length: Math.min(shards.length, limits.workers) }, async () => {
+                while (next < shards.length) {
+                    const index = next++;
+                    results[index] = await run('compute', { shard: shards[index], shardIndex: index, shardCount: shards.length });
+                }
+            }));
+            value = await run('reduce', { results });
+        } else value = await run(method);
+        return { value, evidence: { source, resourceHash, stage: method } };
+    } catch (error) { batch.abort(error); throw error; } finally { signal?.removeEventListener('abort', abort); }
 }

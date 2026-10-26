@@ -11,7 +11,7 @@ function reset() {
     isolate = null;
 }
 process.on('disconnect', () => { reset(); process.exit(0); });
-process.on('message', async ({ artifact, resourceHash, source, method, safe, limits }) => {
+process.on('message', async ({ artifact, resourceHash, source, method, inputText, extraText, limits }) => {
     let context;
     try {
         isolate ??= new ivm.Isolate({ memoryLimit: limits.computationHeapBytes / 1048576,
@@ -33,7 +33,8 @@ process.on('message', async ({ artifact, resourceHash, source, method, safe, lim
             scripts.set(key, script);
         }
         context = await isolate.createContext();
-        await context.global.set('__atriInput', JSON.stringify(safe));
+        await context.global.set('__atriInput', inputText);
+        await context.global.set('__atriExtra', extraText ?? '{}');
         const value = await script.run(context, { timeout: limits.computationWallMs });
         process.send({ value, programs: [...programs.keys()] });
     } catch (error) {
@@ -70,9 +71,9 @@ function programText(artifact, source, method, limits) {
             };
             const handler = load(${JSON.stringify(artifact.entry)}).default?.[${JSON.stringify(method)}];
             if (typeof handler !== 'function') throw Error('Missing computation stage');
-            const value = handler(freeze(JSON.parse(__atriInput)));
+            const value = handler(freeze(Object.assign(JSON.parse(__atriInput), JSON.parse(__atriExtra))));
             const check = (value, depth = 0) => {
-                if (depth > 32) throw Error('Computation depth');
+                if (depth > ${limits.computationDepth}) throw Error('Computation depth');
                 if (value === null || typeof value === 'string' || typeof value === 'boolean') return;
                 if (typeof value === 'number' && Number.isFinite(value)) return;
                 if (!value || typeof value !== 'object' || value.then || (!Array.isArray(value) && Object.getPrototypeOf(value) !== Object.prototype && Object.getPrototypeOf(value) !== null)) throw Error('Computation JSON required');

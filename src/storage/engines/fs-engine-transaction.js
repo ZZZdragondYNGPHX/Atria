@@ -1,3 +1,4 @@
+import { getNativeResourceKeyFields } from '../../native/contracts.js';
 import { durableWrite } from '../durable-file.js';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
@@ -829,6 +830,11 @@ function registerNativeResourceHandlers(tx) {
                 throw new Error('FsTransaction native list requires a Native resource kind');
             }
             const normalizedFilter = { ...filter, handle: String(filter.handle || '') };
+            if (!filter.scan && getNativeResourceKeyFields(filter.kind).every(field => normalizedFilter[field] !== undefined)) {
+                if (filter.limit === 0) return [];
+                const record = await handler.get(normalizedFilter);
+                return record ? [record] : [];
+            }
             const dir = rootFor(normalizedFilter);
             const records = [];
             let files;

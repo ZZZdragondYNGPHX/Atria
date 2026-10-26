@@ -743,7 +743,7 @@ export class SessionCore {
     async applyAuthorityAction(handle, sessionId, { transactionId, input, invocationId }, { expectedRevisionId } = {}) {
         if (!expectedRevisionId || typeof invocationId !== 'string' || !/^[a-zA-Z0-9._:-]{1,128}$/.test(invocationId)) throw new TypeError('Authority action anchor and invocation required');
         return this._sessions.withRunLock(handle, sessionId, async () => {
-            const fs = this._sessions._engine.kind === 'fs', deferred = fs ? [] : null;
+            const fs = this._sessions._engine.kind === 'fs', deferred = null;
             const run = async () => {
                 const started = performance.now(), identity = hashNativeDocument({ sessionId, expectedRevisionId, invocationId });
                 let result = await this.#applyAuthorityAction(handle, sessionId, { transactionId, input, invocationId }, expectedRevisionId, deferred, fs ? identity.slice(0, 32) : undefined);
@@ -754,7 +754,9 @@ export class SessionCore {
                 }
                 return result;
             };
-            const result = fs ? await this._sessions._engine.withTransaction(handle, run) : await run();
+            // Session ordering is held above. CPU work must not hold the account
+            // storage queue; each _publish retains its own durable CAS transaction.
+            const result = await run();
             // Preserve every logical Revision. Save anchors and background wakes
             // run only after the enclosing durable publication has completed.
             for (const item of deferred ?? []) {
