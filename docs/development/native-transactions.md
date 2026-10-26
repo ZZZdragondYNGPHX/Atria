@@ -1,91 +1,120 @@
-# Native Transaction Hot Paths
+# Native computation and transactions
 
-Transaction declarations may set `computation.precondition: false` when their
-compute handler already checks actionable preconditions. The default still
-executes `precondition`. This flag does not skip input schemas, grants, limits,
-effects, invariants or SessionCore publication checks.
+Game mechanics run in isolated V8 child processes. UI controllers retain their
+separate QuickJS worker and frame-oriented budgets. CPU-heavy JavaScript belongs
+in a declared package computation, not in a UI render or an HTTP handler.
 
-`computation.invariantSource` selects a separate exact JS/TS module exporting
-`default.invariant`. Without it, the computation source remains the invariant
-source. `invariantContext` and `invariantReads` still constrain its input. The
-compiler and installer link and validate both declared modules. A small invariant
-module avoids loading the entire gameplay engine merely to check population.
+## Multicore computations
 
-## Internal Continuations
+Set `computation.partitioned: true` on a Transaction whose computation module
+exports `partition`, `compute` and `reduce`. The normal input contains the
+Transaction's `args`, authorized `reads`, `artifacts`, deterministic `seed` and
+`anchor`. Partition and reduce execute in the same isolated process pool as
+compute. They have no filesystem, network, clock, random or host-state access.
 
-`coalesceInput: true` is allowed only on a hidden, non-simulation Transaction
-without `savePointBefore`. A consecutive identical internal input can reuse the
-last user Timeline anchor while that anchor and Persona identity are unchanged.
-Player actions, speech, changed input or Persona identity break the sequence.
+```js
+export default {
+    precondition(input) { return input.args.values.length > 0; },
+    partition(input) {
+        const values = input.args.values;
+        const width = Math.ceil(values.length / 4);
+        return Array.from({ length: Math.ceil(values.length / width) },
+            (_, index) => values.slice(index * width, (index + 1) * width));
+    },
+    compute(input) {
+        return { sum: input.shard.reduce((sum, value) => sum + value, 0) };
+    },
+    reduce(input) {
+        return { sum: input.results.reduce((sum, result) => sum + result.sum, 0) };
+    },
+    invariant(input) { return Number.isFinite(input.computed.sum); },
+};
+```
 
-Coalescing does not reuse computation results, Authority identities, receipts or
-state. Each action still executes against its expected Revision with the same
-CAS and publication owner. Recent retries return their original receipts;
-checkpointed invocation signatures reject expired retries. Signatures are
-bounded by the existing history budget, not an unlimited replay ledger.
+Compute receives the original input plus `shard`, `shardIndex` and `shardCount`.
+Reduce receives the original input plus `results` in partition order, independent
+of completion order. The final reduced value must satisfy the declared
+`computation.outputSchema`. All effects still enter one SessionCore publication;
+a failed or cancelled shard cannot publish part of the world. Splitting work is
+an authoring decision: dependencies between simulation steps are not automatically
+parallelized. Use stable entity IDs or shard indices with the supplied seed.
 
-`continuationCondition` may be a Boolean expression on that same hidden,
-coalesced Transaction. The FS engine can prepare up to eight ordinary logical
-actions in one journal, stopping after 250 ms of preparation or when the
-condition becomes false. Each action still has its own Revision, Authority
-budget, execution, receipt and history. Speech, pending outbox work and Run
-state stop internal continuation. Other engines publish one action per call.
+Programs and compiled stages are reused by admitted package identity. A batch
+serializes its original input once on the host, but IPC and guest parsing still
+copy data into each process. This is not shared-memory or GPU computation. Each
+stage has a fresh guest context; module globals do not persist between calls.
 
-The next action uses the preceding private publication while the original
-Session and engine locks remain held; it does not reload the same state from
-storage. A preparation failure exposes none of the group. After durable journal
-publication, recovery completes all its writes before reads or retries. Revision
-entropy is stable for a retried group. Automatic saves retain each logical
-snapshot's anchor and captured time, and execute after physical publication.
+Host settings under `native.computation` are read at startup:
 
-## Candidate And Persistence
+| Setting | Default |
+| --- | --- |
+| `workers`, `heapMiB` | `0`: size from available CPU and memory |
+| `timeoutMs` | 2000 per stage |
+| `inputMiB`, `outputMiB` | 16 each |
+| `queueMiB` | 128, with at most 64 queued jobs |
+| `nodes`, `depth` | 1000000, 64 |
+| `shards` | max(4, available logical CPUs * 4) |
+| `modules`, `moduleMiB` | 512, 8 |
 
-Authority preparation owns an isolated candidate. Lifecycle effects mutate that
-candidate without copying every Domain after each command. Public lifecycle
-preparation still copies the caller's state, and preparation failures cannot
-publish the private candidate.
+Automatic sizing reserves host capacity; workers start on demand. Increasing
+workers helps independent CPU work and increases memory use. Queue pressure
+rejects with `computation_busy`; timeouts retire an unresponsive process.
+Generation cancellation propagates through Authority preparation, context
+computations and output processors. The internal `runPackageComputation` API also
+accepts an `AbortSignal`. Cancelling preparation leaves HEAD unchanged. A network
+disconnect does not roll back an already committed action.
 
-The filesystem redo journal installs independent state, Revision,
-Timeline and Branch files with at most four concurrent writes. Mutable roots,
-deletions and Session HEAD remain ordered barriers; failed batches wait for all
-in-flight siblings before returning. Journal recovery and durable sync remain
-in effect. This is file I/O concurrency, not parallel world causality.
+`native.authority` separately configures `valueBytes`, `totalValueBytes`,
+`readBytes`, `recordScans`, `ruleEvaluations` and `steps`. Defaults are 16 MiB,
+128 MiB, 64 MiB, 1000000, 16384 and 65536. These do not enlarge ordinary UI/model
+messages or bypass authored permissions and schemas.
 
-Only SessionCore's existing publication proof permits reuse of its freshly
-computed state heads and private documents at commit. Unowned repository inputs
-still have their actual heads checked. The commit fingerprint identifies those
-heads rather than serializing the full world a second time. Public loads remain
-isolated from the stored state and cache. Schema, scope, grant, retention,
-cognition and causal checks remain active; read-only schema validation avoids
-constructing an immutable copy that would immediately be discarded.
+## Avoiding repeated work
 
-The persisted Session HEAD directly proves its current Revision is committed.
-Historical single-Revision queries walk the same retained roots, prioritizing
-the current lineage and stopping when that Revision is found. Full reachability
-enumeration for maintenance still visits every retained root and dependency.
+`computation.precondition: false` omits a separate precondition call when compute
+already performs it. `invariantSource` selects a smaller exact module exporting
+`default.invariant`; `invariantContext` and `invariantReads` constrain its input.
+Changed values and the final invariant remain checked.
 
-## Lossless State Storage
+A simulation may declare up to 4096 jobs and 65536 steps; actual execution also
+consumes the host Authority budget. During one catch-up, static record reads
+reuse their evaluation until the record value, scope or relevant clock changes.
+Collection and Subject jobs retain full evaluation. Deterministic due/priority/ID
+ordering is unchanged.
 
-The existing `atria-world-state-v2` bounded delta encoding also stores Lifecycle,
-Task results and action receipts. Object changes and indexed array changes keep
-all logical values, including appends and truncation. Replay clones one snapshot
-and applies the patches in order; its depth remains at most 32 and its cumulative
-patch-byte bound is unchanged. GC marks all delta parents. Plain JSON records
-remain readable. Portable Save APIs still return complete logical states; this
-does not change their existing archive limits or promise cheap whole-history
-portable export.
+Internal `coalesceInput` and `continuationCondition` allow the FS caller to run
+up to eight logical actions, stopping after 250 ms or a terminal condition.
+The Session lock stays held, while each action has its own durable transaction,
+CAS, Revision, receipt and automatic-save handling. CPU preparation does not
+hold the account storage queue. If a later continuation fails, earlier committed
+actions remain committed; retries use their existing receipts.
 
-FS resource and redo files use `ATRZ1\n`, a four-byte uncompressed length, and
-level-one raw deflate only when smaller. Documents below 4 KiB or above 64 MiB
-retain JSON encoding. Decode bounds expansion and rejects truncation. Backup
-extraction and scratch-owner rebinding use the same codec. Compression changes
-physical representation, not resource identity or durability ordering.
+## State and history ownership
 
-The FS materialization cache holds at most eight heads, each at most 4 MiB,
-isolated by user, Session, namespace and head. Reads compare the envelope's
-integrity identity; managed writes/deletes invalidate the head, and transaction
-failure or journal recovery clears the cache. Transaction-local raw reads are
-bounded to 64 records and return copies. These caches assume Native-owned
-immutable dependencies, not a fresh cryptographic proof of externally modified
-ancestry on every action. Recent foreground writes defer maintenance slices;
-existing idle timers resume them without competing with continuous advancement.
+Private candidates own mutable state containers and record envelopes. Already
+admitted, deeply frozen record values and declarations can be shared. Replacing a
+record value cannot mutate an older snapshot; shallow caller freezing is not a
+trust signal. Validation reuses the typed result for unchanged host-owned frozen
+values, while changed values, scope membership and mutable metadata are checked.
+
+Single-ID reads use the runtime record index; membership changes invalidate it.
+Collection filters still pay for their actual scans. Content-addressed state
+publication still hashes new namespace content. The existing bounded delta format
+preserves field deletion, array truncation, ancestry and GC dependencies.
+
+History windows use the persistent Timeline index and bounded independent reads.
+An append-only publication with the same admitted prefix reuses its complete
+history instead of re-reading every old Variant. Rewrites, branch changes and
+checkpoints reconstruct history. A fresh full snapshot still loads full history;
+this API does not silently truncate a game or its save data.
+
+FS compression/decompression uses asynchronous zlib for request paths. The
+lossless `ATRZ1` format and durable redo ordering are unchanged. A stamp-checked
+file cache holds at most 4096 envelopes / 64 MiB of decoded JSON bytes, with a
+16 MiB per-entry limit. The materialized state cache holds eight heads of up to
+16 MiB each. These are cache weights, not process RSS limits. File changes,
+managed writes/deletes, transaction failures and journal recovery invalidate the
+relevant cached state. Ordinary mutable repository reads return copies; internal
+snapshot reads can borrow immutable record values.
+
+For package and media transport, see [Native media capacity](native-media-capacity.md).

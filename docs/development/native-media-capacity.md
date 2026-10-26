@@ -1,79 +1,89 @@
 # Native media and Work capacity
 
-This page describes the current implementation, not a requirement to add checks.
-Implementation changes follow `docs:README.md` §12.1–§12.2: use the existing
-admission boundary and reuse accepted identities; do not add whole-library or
-whole-archive verification to ordinary gameplay, rendering or cache hits.
+Package storage capacity, individual resource size, decoded memory and resident
+browser caching are separate budgets. The stream path supports packages larger
+than available browser or host cache memory; it does not promise smooth decoding
+at every admission limit.
 
-Local Work import separates the encoded media library from frontend structure and
-the resident browser cache. These are admission limits, not a promise of smooth
-playback at the maximum size.
+| Budget | Limit |
+| --- | --- |
+| Exact media library | 64 GiB, 4096 entries |
+| Individual audio/video | 2 GiB |
+| Individual image/font/other exact media | 16 MiB |
+| Frontend structure | 32 MiB per graph, 2 MiB per resource, 256 resources |
+| Resident browser encoded media cache | 64 MiB per mounted frontend |
+| Streamed `.atria` container | 16 GiB |
+| Uncompressed container | 64 GiB, 16384 entries |
+| Individual streamed ZIP entry | 2 GiB |
+| Buffer container builder/reader | 512 MiB archive, 1 GiB expanded |
+| Materialized package file / metadata | 32 MiB |
+| Server parsed archive cache | 256 MiB, at most 8 archives |
 
-| Budget | Limit | Authority |
-| --- | --- | --- |
-| Exact media library | 256 MiB, 4096 entries | `FRONTEND_LIMITS` |
-| Individual exact media | 16 MiB | `FRONTEND_LIMITS` |
-| Frontend structure, source and compiled graph | 32 MiB per graph, 2 MiB per resource, 256 entries | `FRONTEND_LIMITS` |
-| Resident exact media, encoded bytes | 64 MiB per mounted frontend | `FRONTEND_LIMITS` |
-| `.atria` container | 512 MiB | `PACKAGE_LIMITS` |
-| Uncompressed container content | 1 GiB, 16384 entries | `PACKAGE_LIMITS` |
-| Individual container file | 32 MiB | `ATRIA_PACKAGE_CONTAINER_LIMITS` |
-| Server parsed archive cache | 256 MiB, at most 8 entries | `package-composition.js` |
+The authorities are `FRONTEND_LIMITS`, `PACKAGE_LIMITS` and
+`ATRIA_PACKAGE_CONTAINER_LIMITS`. Executable structures, image decode memory,
+control messages and authoring text have separate limits.
 
-`FRONTEND_LIMITS` lives in `public/shared/native-frontend-contract.js` and
-`PACKAGE_LIMITS` in `public/shared/native-package-limits.js`. Compiler, graph
-validation and browser admission share the frontend budgets. Separate structural
-budgets preserve browser script, command, DOM and state constraints. Hashes,
-declared media types, exact paths and container compression checks still apply.
+## Import, build and export
 
-Dynamic local media acquires a shared lease. The cache reserves encoded bytes
-before loading, shares pending requests, and evicts the least recently used idle
-Blob URL when capacity is needed. Live leases cannot be evicted. If all remaining
-space is in use, a new request fails with `frontend_asset_cache_budget`. Releasing
-a lease makes its resource evictable; reloading checks its hash again. Creating a
-Blob does not leave a second byte-array cache behind.
+The local Work picker sends the browser File/Blob with
+`Content-Type: application/octet-stream`. Preflight and install stream it to a
+private temporary file. Options use the bounded, URI-encoded JSON
+`X-Atria-Package-Options` header. Existing authentication, permission grants,
+version pins and quota admission still apply.
 
-Image replacement, explicit `hidden` ancestors (including component shadow roots),
-disposal and stale results release their leases. CSS visibility alone does not
-control leases. CSS asset URLs and fonts remain pinned until frontend disposal.
-Decoded pixels, GPU textures and remote media are outside the encoded-byte
-budget. Prefer scene-sized images and virtualized lists over simultaneously
-displaying an entire catalog.
+The container remains format v2. Installation streams authenticated decryption,
+ZIP expansion and CRC/SHA-256 validation. Large entries use temporary file
+backing; a cold installed-package open does not materialize the archive in RAM.
+Metadata and a bounded amount of small payloads remain resident. Temporary file
+space is required in addition to durable installation space.
 
-The local Work picker and save-dependency recovery send a `Blob` using
-`application/octet-stream` to the authenticated package preflight/install routes.
-Install options travel in a bounded `X-Atria-Package-Options` header containing
-URI-encoded JSON. Permissions, exact dependency identity and base-version checks
-are unchanged. Legacy JSON/base64 import and MCP temporary artifacts retain their
-independent 128 MiB archive limit; save imports and `.atriabundle` resource bundles
-retain their own limits. Use local binary Work import for larger packages.
+Host package builders can import `buildAtriaPackageContainerFile` from
+`src/native/index.js`. It accepts the existing manifest/sourceFiles/assetPayloads
+inputs, including host-owned file payloads, and returns an archive payload plus
+preflight. Consume `archive.stream()` and always `await archive.close()` in a
+`finally` block. `stageFilePayload` in `src/native/file-payload.js` creates an owned,
+hashed payload from a readable stream; a request cannot supply an arbitrary local
+path or forge this internal identity. The Buffer builder remains available for
+small, already buffered authoring inputs.
 
-Archive memoization includes encoded archive bytes, decoded file bytes and an
-estimate of metadata size in its budget. Runtime cache hits check the owning
-installation and the blob's device/file identity, size, modification/change and
-creation stamps, then return byte maps that copy each payload on its first read.
-Returned buffers, including their backing stores, remain caller-owned; keys and
-metadata reads do not copy the scene library. Cold, changed and
-export reads verify the complete archive. This lightweight runtime path assumes
-host-managed immutable blobs; it is not a fresh cryptographic verification of
-every byte on each action. A deliberately external rewrite preserving all file
-stamps is outside that fast-path guarantee. Cache size is not a process
-memory ceiling: encryption, ZIP processing, validation and caller copies allocate
-additional buffers. The current container is processed as a whole. A 1 GiB
-encoded Work or streaming installation requires a separate container/transport
-design and measurement; raising a constant alone does not provide that support.
+Download an exact installed archive through the authenticated endpoint:
 
-Rule artifact cache hits compare the exact bytes of the linked JS/TS modules.
-Scene images and unrelated files are not scanned on every computation stage.
-Changing or removing any linked module recompiles the artifact; its evidence
-identity is computed once per compilation. Inputs and outcomes are never cached.
+```text
+GET /api/native/product/packages/:packageId/versions/:packageVersionId/archive?contentHash=<sha256>
+```
 
-Server Authority computation has its own 100 ms wall-clock budget per stage in
-`AUTHORITY_EXECUTION_LIMITS.computationWallMs`. This includes loading the module,
-freezing the bounded transaction input and executing the handler. UI controllers
-retain their 40 ms budget. Deep input immutability, 8 MiB guest heap, stack,
-input/output and overall Authority work budgets still apply. Slow or unbounded
-rules are interrupted, with no partial transaction publication.
+It supports HEAD, ETag, Range, cancellation and backpressure. Legacy JSON/base64
+imports and MCP export artifacts retain their independent 128 MiB limit. Large
+exports must use the streaming endpoint; they are rejected before allocation by
+the buffered export API. Studio's text-oriented project builder and portable
+save/bundle formats keep their own budgets; the streaming runtime does not turn
+all editor buffers into arbitrary-size binary editors.
 
-For hidden continuation inputs and smaller invariant modules, see
+## Runtime delivery and ownership
+
+Audio/video uses a Session-authorized URL pinned to the exact package and declared
+media hash. Browser playback and seeking request ranges instead of downloading
+an entire Blob. HEAD/304 and hot small ranges reuse admitted blob identity; the
+first cold blob read still verifies its digest. An open delivery holds its blob
+lease until close, including cancellation and failed ranges.
+
+Images and fonts retain the bounded reference-counted Blob cache. Replacing or
+hiding images, disposing a frontend, and discarding late results release leases.
+Decoded pixels and GPU textures are not covered by the encoded-byte budget.
+Image normalization and mask encoding run in a bounded worker-thread pool rather
+than blocking the host's event loop.
+
+Package caches are shared across loader instances and keyed by owner and file
+identity. Stamp checks include device/file identity, size and modification/change
+and creation times. Changed blobs are re-admitted. Host readers obtain owned
+byte copies without invalidating admitted declarations. Public Map reads expose
+mutable caller bytes and therefore invalidate declaration reuse; caller changes
+cannot mutate the archive cache. Large file-backed media is consumed with streams.
+
+Controller snapshots are sent when their presentation version changes; time
+updates are independent. Same-size Canvas redraws reset drawing state without
+reallocating the backing dimensions. These reduce transport and allocation work;
+they do not offload arbitrary UI JavaScript or guarantee a particular frame rate.
+
+For deterministic multicore mechanics and host budgets, see
 [Native transactions](native-transactions.md).

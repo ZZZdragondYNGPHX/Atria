@@ -579,7 +579,7 @@ export class SessionRepo {
     // publishing the revision manifest; the Session record is the final commit marker.
     async commitSnapshot(handle, { session: sessionValue, revision: revisionValue,
         branches = [], entries = [], variants = [], states, expectedRevisionId, historyCheckpoint = false, runProof = null, runAction = 'write', illustrationHead = undefined,
-        commitId = revisionValue.revisionId, requestFingerprint = null }) {
+        commitId = revisionValue.revisionId, requestFingerprint = null, publishedHistory = null }) {
         assertWritable();
         const session = assertSession(sessionValue);
         const revision = assertSessionRevision(revisionValue);
@@ -667,7 +667,7 @@ export class SessionRepo {
             const knownBranches = new Set(states[SESSION_CORE_NAMESPACE].branches.map(item => item.branchId));
             published.illustrationHeads = Object.fromEntries(Object.entries(branchHeads).filter(([id]) => knownBranches.has(id)));
             if (!Object.keys(published.illustrationHeads).length) delete published.illustrationHeads;
-            const snapshot = await readSessionSnapshot(tx, handle, assertSession(published), revision, owned ? states : null);
+            const snapshot = await readSessionSnapshot(tx, handle, assertSession(published), revision, owned ? states : null, owned ? publishedHistory : null);
             if (historyCheckpoint) {
                 const history = snapshot.states.atri_lifecycle?.history;
                 const previousRevision = (await tx.getResource(this._revisionKey(handle, session.sessionId, expectedRevisionId)))?.doc;

@@ -7,6 +7,7 @@ import { ILLUSTRATION_NAMESPACE, selectIllustrations } from '../../public/shared
 import { readIllustrationState } from './session-illustrations.js';
 import { readTimelineIndex } from './timeline-index.js';
 import { deltaStateNamespace, readStoredState } from './state-delta.js';
+import { freezeRecordValue } from './record-values.js';
 
 export const SESSION_CORE_NAMESPACE = 'atri_session_core';
 export const TIMELINE_NAMESPACE = 'atri_timeline';
@@ -22,7 +23,7 @@ export async function readCheckedDocument(tx, key, options) {
     return key.kind === K.sessionState && deltaStateNamespace(key.namespace) ? readStoredState(tx, key, record, options) : record.doc;
 }
 
-export async function readSessionSnapshot(tx, handle, session, value, publishedStates = null) {
+export async function readSessionSnapshot(tx, handle, session, value, publishedStates = null, publishedHistory = null) {
     const revision = assertSessionRevision(value);
     if (revision.sessionId !== session.sessionId) throw new TypeError('Revision belongs to another Session');
     const sessionId = session.sessionId;
@@ -34,7 +35,7 @@ export async function readSessionSnapshot(tx, handle, session, value, publishedS
     }
     const core = states[SESSION_CORE_NAMESPACE];
     const timelineRoot = states[TIMELINE_NAMESPACE];
-    const timeline = await readTimelineIndex(tx, handle, sessionId, timelineRoot);
+    const timeline = publishedHistory ? null : await readTimelineIndex(tx, handle, sessionId, timelineRoot);
     if (core?.schemaVersion !== 1 || !Array.isArray(core.branches)) {
         throw new TypeError('Missing Native Session Core snapshot');
     }
@@ -89,8 +90,8 @@ export async function readSessionSnapshot(tx, handle, session, value, publishedS
         }
     }
     if (byId.get(revision.branchId)?.headRevisionId !== revision.revisionId) throw new TypeError('Branch HEAD mismatch');
-    const entries = [];
-    const variants = [];
+    const entries = publishedHistory?.timeline ?? [];
+    const variants = publishedHistory?.variants ?? [];
     const messages = new Set();
     const ancestors = new Set();
     let ancestor = byId.get(revision.branchId);
@@ -98,7 +99,7 @@ export async function readSessionSnapshot(tx, handle, session, value, publishedS
         ancestors.add(ancestor.branchId);
         ancestor = byId.get(ancestor.branch.parentBranchId);
     }
-    const decoded = await prepareIndependent(timeline, async (selection, sequence) => {
+    const decoded = publishedHistory ? [] : await prepareIndependent(timeline, async (selection, sequence) => {
         const selectionVariants = [];
         if (sequence % 32 === 0) await new Promise(resolve => setImmediate(resolve));
         if (messages.has(selection.messageId)) throw new TypeError('Duplicate Timeline message identity');
@@ -137,5 +138,5 @@ export async function readSessionSnapshot(tx, handle, session, value, publishedS
     for (const namespace of [SESSION_CORE_NAMESPACE, TIMELINE_NAMESPACE, KNOWLEDGE_NAMESPACE]) delete states[namespace];
     const illustrationHead = revision.branchId === session.activeBranchId ? session.illustrationHead : session.illustrationHeads?.[revision.branchId];
     const illustrations = illustrationHead ? selectIllustrations(await readIllustrationState(tx, handle, sessionId, illustrationHead), variants) : null;
-    return { session, revision, graph, timeline: entries, timelineRoot, variants, states, knowledge, core, ...(illustrations ? { illustrations } : {}) };
+    return { session, revision, graph, timeline: freezeRecordValue(entries), timelineRoot, variants: freezeRecordValue(variants), states, knowledge, core, ...(illustrations ? { illustrations } : {}) };
 }

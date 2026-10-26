@@ -1,4 +1,5 @@
 import { initialSubjects, publishSubjects, validateSubjects } from './subject-authority.js';
+import { immutableRecordValue } from './record-values.js';
 import { assertPinnedWorldLawExecutions } from './world-law-execution.js';
 import { assertValidWorldState } from '../../public/scripts/native/experience/world/schema.js';
 import { SUBJECT_NAMESPACE } from '../../public/shared/native-subject-contract.js';
@@ -545,9 +546,11 @@ export class SessionCore {
         const core = { schemaVersion: 1, parentRevisionId: base.session.headRevisionId,
             branches: graph.map(node => ({ branchId: node.branchId, forkRevisionId: node.forkRevisionId,
                 headRevisionId: node.branchId === branchId ? revisionId : node.headRevisionId })) };
-        const appendOnly = timeline.length >= base.timeline.length && base.timeline.every((item, index) => {
-            const next = timeline[index]; return item.messageId === next.messageId && item.activeVariantId === next.activeVariantId;
-        });
+        const unchangedPrefix = immutableRecordValue(base.timeline) && base.timeline.every((item, index) => item === timeline[index]);
+        const appendOnly = timeline.length >= base.timeline.length && (unchangedPrefix || base.timeline.every((item, index) => {
+            const next = timeline[index]; return item.messageId === next.messageId && item.activeVariantId === next.activeVariantId
+                && item.branchId === next.branchId && equalNativeDocuments(item.variantIds, next.variantIds);
+        }));
         const timelineRoot = appendOnly && timeline.length === base.timeline.length && base.timelineRoot ? base.timelineRoot : await this._sessions.prepareTimelineIndex(handle, base.session.sessionId,
             appendOnly ? base.timelineRoot : null, (appendOnly ? timeline.slice(base.timeline.length) : timeline).map(timelineSelection));
         const documents = { ...states,
@@ -564,8 +567,18 @@ export class SessionCore {
             stateHeads, knowledgeHead: hashNativeDocument(documents[KNOWLEDGE_NAMESPACE]), createdAt: Date.now() });
         const session = assertSession({ ...base.session, activeBranchId: branchId, headRevisionId: revisionId,
             updatedAt: Math.max(Date.now(), base.session.updatedAt) });
+        // Append publications already own the admitted prefix and new entries.
+        // Re-reading every historical Variant after this commit adds no authority.
+        // Rewrites, branch changes and checkpoints retain full reconstruction.
+        let publishedHistory = null;
+        if (unchangedPrefix && appendOnly && !checkpoint && branchId === base.revision?.branchId && base.variants) {
+            const added = new Set(timeline.slice(base.timeline.length).flatMap(item => item.variantIds.map(id => item.messageId + ':' + id)));
+            if (variants.length === added.size && variants.every(item => added.has(item.messageId + ':' + item.variantId))) {
+                publishedHistory = { timeline, variants: [...base.variants, ...variants] };
+            }
+        }
         const snapshot = await this._sessions.commitSnapshot(handle, { session, revision, states: documents,
-            entries, variants, branches, expectedRevisionId: base.session.headRevisionId, historyCheckpoint: Boolean(checkpoint), runProof: runPublicationProof(), runAction, illustrationHead, commitId, requestFingerprint });
+            entries, variants, branches, expectedRevisionId: base.session.headRevisionId, historyCheckpoint: Boolean(checkpoint), runProof: runPublicationProof(), runAction, illustrationHead, commitId, requestFingerprint, publishedHistory });
         if (effectPolicy !== 'no-background-model') requestVisualWake(this, handle, session.sessionId);
         if (branchId !== base.session.activeBranchId) invalidateFrontendEpoch(handle, session.sessionId);
         if (snapshot.states[RUN_NAMESPACE]?.status === 'dead' && snapshot.states[RUN_NAMESPACE].mode === 'ironman') {
