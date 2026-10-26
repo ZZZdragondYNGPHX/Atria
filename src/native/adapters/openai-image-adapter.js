@@ -44,7 +44,7 @@ export function createOpenaiImageAdapter({ fetchImpl = fetch } = {}) {
                 return { image_url: 'data:' + input.ref.mediaType + ';base64,' + input.bytes.toString('base64') };
             }));
             if (body.mask) {
-                const input = await readImageInput(options, body.mask), png = canonicalMaskPng(input.bytes, compiled.maskGeometry.width, compiled.maskGeometry.height, true);
+                const input = await readImageInput(options, body.mask), png = await canonicalMaskPng(input.bytes, compiled.maskGeometry.width, compiled.maskGeometry.height, true);
                 body.mask = { image_url: 'data:image/png;base64,' + png.toString('base64') };
             }
             const response = await imageJson(fetchImpl, compiled.endpoint, { ...options, body, jsonLimit: 48 * 1024 * 1024 });

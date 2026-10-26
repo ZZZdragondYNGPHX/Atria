@@ -72,7 +72,7 @@ export function createNovelaiVisualAdapter({ fetchImpl = fetch } = {}) {
             if (parameters?.image) parameters.image = (await readImageInput(options, parameters.image)).bytes.toString('base64');
             if (parameters?.mask) {
                 const mask = await readImageInput(options, parameters.mask);
-                parameters.mask = canonicalMaskPng(mask.bytes, compiled.maskGeometry.width, compiled.maskGeometry.height).toString('base64');
+                parameters.mask = (await canonicalMaskPng(mask.bytes, compiled.maskGeometry.width, compiled.maskGeometry.height)).toString('base64');
             }
             if (parameters?.director_reference_images) parameters.director_reference_images = await Promise.all(parameters.director_reference_images.map(async ref => preciseReference((await readImageInput(options, ref)).bytes).toString('base64')));
             return provider.generate({ ...compiled, body }, options);

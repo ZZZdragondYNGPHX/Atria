@@ -1,5 +1,4 @@
-import { PNG } from 'pngjs';
-import { imageSize } from 'image-size';
+import { runImageJob } from '../image-codec-pool.js';
 import { visualError } from '../../../public/shared/native-visual-contract.js';
 
 export function imageEndpoint(endpoint) {
@@ -35,32 +34,15 @@ export async function imageJson(fetchImpl, endpoint, options) {
     const bytes = await boundedImageBytes(response, options?.signal, options?.jsonLimit ?? 8 * 1024 * 1024);
     try { return JSON.parse(bytes.toString('utf8')); } catch { visualError('response_invalid'); }
 }
-export async function normalizeImage(bytesValue) {
-    let bytes = Buffer.from(bytesValue), dimensions;
-    if (bytes.length > 32 * 1024 * 1024) visualError('response_limit');
-    try { dimensions = imageSize(bytes); } catch { visualError('response_invalid'); }
-    const { width, height, type } = dimensions;
-    if (!width || !height || width > 32768 || height > 32768 || width * height > 16777216 || !['png', 'jpg', 'webp'].includes(type)) visualError('response_invalid');
-    try {
-        if (type === 'png') PNG.sync.read(bytes, { checkCRC: true });
-        else {
-            const { default: Jimp } = await import('../../jimp.js');
-            const image = await Jimp.read(bytes); bytes = await image.getBuffer('image/png');
-        }
-    } catch { visualError('response_invalid'); }
-    const normalized = imageSize(bytes);
-    if (normalized.width * normalized.height > 16777216) visualError('response_invalid');
-    return { bytes, width: normalized.width, height: normalized.height, mediaType: 'image/png' };
+export async function normalizeImage(bytes) {
+    return runImageJob({ kind: 'normalize', bytes });
 }
 export function imageBase64(value) {
     if (typeof value !== 'string' || value.length > 44 * 1024 * 1024 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) visualError('response_invalid');
     return Buffer.from(value, 'base64');
 }
-export function canonicalMaskPng(bytes, width, height, alpha = false) {
-    if (bytes.length !== width * height || width * height > 16777216) visualError('mask_invalid');
-    const data = Buffer.alloc(width * height * 4);
-    for (let i = 0; i < bytes.length; i++) { data[i * 4] = data[i * 4 + 1] = data[i * 4 + 2] = alpha ? 255 : bytes[i]; data[i * 4 + 3] = alpha ? 255 - bytes[i] : 255; }
-    return PNG.sync.write({ width, height, data });
+export async function canonicalMaskPng(bytes, width, height, alpha = false) {
+    return (await runImageJob({ kind: 'mask', bytes, width, height, alpha })).bytes;
 }
 export async function readImageInput(options, reference) {
     const input = await options.readAsset(reference.assetId);

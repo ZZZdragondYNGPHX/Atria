@@ -1,4 +1,5 @@
 import { initialLifetimes, validateLifetimes } from './lifetime-authority.js';
+import { recordById, invalidateRecordIndex } from './domain-record-index.js';
 import { initialHistory } from '../../public/shared/native-history-runtime.js';
 import { prepareActivity, validateActivities } from './activity-authority.js';
 import { prepareInformationRollup } from './information-authority.js';
@@ -120,6 +121,7 @@ export function compactLifecycle(base, state, { reserveTask = false, pruneIntera
             const oversized = records.length > policy.maxItems || logicalBytes > policy.maxLogicalBytes;
             if ((expired || oversized) && !protectedRecord(base, state, domain.id, record)) {
                 records.splice(index, 1);
+                invalidateRecordIndex(records);
                 logicalBytes = Buffer.byteLength(JSON.stringify(records));
             } else index++;
         }
@@ -261,7 +263,7 @@ export async function applyLifecycleCandidate(candidate, installed, action, auth
             active(state, domain.scopeId); taskId(request.recordId);
             const args = authority ? authority.typed(request.args, command.argsSchema) : assertTaskValue(request.args, command.argsSchema);
             const records = state.domains[domain.id].records, logicalBytes = byteCache?.get(records);
-            let record = records.find(item => item.id === request.recordId);
+            let record = recordById(records, request.recordId);
             const beforeBytes = logicalBytes === undefined ? 0 : record ? Buffer.byteLength(JSON.stringify(record)) : -Number(records.length > 0);
             if (record?.status === 'terminal') throw new TypeError('App record is terminal');
             if (!record) { record = { id: request.recordId, scopeId: domain.scopeId, value: copy(domain.initial), status: 'active', pinned: false, createdLogicalTime: state.logicalTime }; records.push(record); }

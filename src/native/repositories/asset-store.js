@@ -1,4 +1,5 @@
 import { illustrationAssetIds } from '../../../public/shared/native-media-contract.js';
+import { admitBlob } from './blob-admission.js';
 import { withAccountFileGrowth, withAccountQuota } from '../../storage/account-quota.js';
 import { retainedBlobHashes, recoveryReferences } from '../recovery-roots.js';
 import { assertAccountPath } from '../../storage/path-boundary.js';
@@ -159,12 +160,12 @@ export class AssetStore {
             throw new TypeError('AssetStore contentHash must be a lowercase SHA-256 digest');
         }
         const blobPath = this._blobPath(handle, contentHash);
-        if (!fs.existsSync(blobPath)) return null;
-        const bytes = fs.readFileSync(blobPath);
-        if (digest(bytes) !== contentHash) {
-            throw new ConflictError('native_asset_blob_corrupt', { contentHash });
-        }
-        return bytes;
+        let file;
+        try {
+            file = await fsp.open(blobPath, 'r');
+            await admitBlob(file, handle, contentHash);
+            return await file.readFile();
+        } catch (error) { if (error.code === 'ENOENT') return null; throw error; } finally { await file?.close(); }
     }
 
     async blobStamp(handle, contentHash) {
@@ -225,20 +226,9 @@ export class AssetStore {
     async read(handle, assetId) {
         const ref = await this.getRef(handle, assetId);
         if (!ref) return null;
-        const blobPath = this._blobPath(handle, ref.contentHash);
-        if (!fs.existsSync(blobPath)) {
-            throw new NotFoundError('native asset blob', {
-                assetId,
-                contentHash: ref.contentHash,
-            });
-        }
-        const bytes = fs.readFileSync(blobPath);
-        if (bytes.length !== ref.size || digest(bytes) !== ref.contentHash) {
-            throw new ConflictError('native_asset_corrupt', {
-                assetId,
-                contentHash: ref.contentHash,
-            });
-        }
+        const bytes = await this.readBlob(handle, ref.contentHash);
+        if (!bytes) throw new NotFoundError('native asset blob', { assetId, contentHash: ref.contentHash });
+        if (bytes.length !== ref.size) throw new ConflictError('native_asset_corrupt', { assetId });
         return { ref, bytes };
     }
 
@@ -269,15 +259,7 @@ export class AssetStore {
         let file;
         try {
             file = await fs.promises.open(this._blobPath(handle, ref.contentHash), 'r');
-            const hash = createHash('sha256'); const buffer = Buffer.allocUnsafe(65536);
-            let position = 0;
-            for (;;) {
-                const { bytesRead } = await file.read(buffer, 0, buffer.length, position);
-                if (!bytesRead) break;
-                hash.update(buffer.subarray(0, bytesRead)); position += bytesRead;
-                if (position > ref.size) throw new ConflictError('native_asset_corrupt', { assetId });
-            }
-            if (position !== ref.size || hash.digest('hex') !== ref.contentHash) throw new ConflictError('native_asset_corrupt', { assetId });
+            await admitBlob(file, handle, ref.contentHash, ref.size);
             return { ref, stream: (start, end) => file.createReadStream({ start, end, autoClose: false }), close: () => file.close() };
         } catch (error) {
             await file?.close();

@@ -197,17 +197,17 @@ export class SessionCore {
         // Resolve HEAD once through the owning repository, then keep load on its
         // historical/read path. Never toggle the process-wide read-only flag.
         const snapshot = await this._sessions.loadSnapshot(handle, sessionId, revisionId ? { revisionId } : {});
-        return this.load(handle, sessionId, { revisionId: snapshot.revision.revisionId, skipPackageEdits: true });
+        return (await this.#loadWithPackage(handle, sessionId, { revisionId: snapshot.revision.revisionId, skipPackageEdits: true }, snapshot)).base;
     }
 
     async load(handle, sessionId, options = {}) {
         return (await this.#loadWithPackage(handle, sessionId, options)).base;
     }
 
-    async #loadWithPackage(handle, sessionId, options = {}) {
+    async #loadWithPackage(handle, sessionId, options = {}, loadedSnapshot = null) {
         assertNativeId(sessionId, 'session');
         if (options.revisionId) assertNativeId(options.revisionId, 'revision');
-        const snapshot = await this._sessions.loadSnapshot(handle, sessionId, options);
+        const snapshot = loadedSnapshot ?? await this._sessions.loadSnapshot(handle, sessionId, options);
         if (snapshot.states[RUN_NAMESPACE]?.mode === 'ironman' && snapshot.states[RUN_NAMESPACE].status === 'dead') options = { ...options, skipPackageEdits: true, revisionId: snapshot.revision.revisionId };
         const { session } = snapshot;
         const installed = await this._openPackage(handle, session.packageId, session.packageVersionId, session.entryPointId);

@@ -71,7 +71,7 @@ export function createWebuiImageAdapter({ fetchImpl = fetch } = {}) {
             const body = structuredClone(compiled.body), read = async ref => (await readImageInput(options, ref)).bytes.toString('base64');
             if (body.image) body.image = await read(body.image);
             if (body.init_images) body.init_images = await Promise.all(body.init_images.map(read));
-            if (body.mask) body.mask = canonicalMaskPng((await readImageInput(options, body.mask)).bytes, compiled.maskGeometry.width, compiled.maskGeometry.height).toString('base64');
+            if (body.mask) body.mask = (await canonicalMaskPng((await readImageInput(options, body.mask)).bytes, compiled.maskGeometry.width, compiled.maskGeometry.height)).toString('base64');
             if (body.alwayson_scripts) body.alwayson_scripts.ControlNet.args[0].image = await read(body.alwayson_scripts.ControlNet.args[0].image);
             const response = await imageJson(fetchImpl, compiled.endpoint, { ...options, secret: null, headers: basic(options.secret), body, jsonLimit: 48 * 1024 * 1024 });
             const images = response.image ? [response.image] : response.images;

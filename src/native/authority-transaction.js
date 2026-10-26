@@ -1,4 +1,5 @@
 import { readTaskArtifact, markTaskArtifactConsumption } from './task-artifact-authority.js';
+import { recordById } from './domain-record-index.js';
 import { prepareSubjects, resolveSimulationSubject } from './subject-authority.js';
 import { prepareSpeechDraft } from './participant-authority.js';
 import { runPackageComputation } from './package-computation.js';
@@ -158,7 +159,7 @@ export function privateReads(candidate, contract, grants, args, budget) {
         const state = candidate.states.atri_lifecycle;
         if (state.scopes[domain.scopeId]?.status !== 'active') throw new TypeError('Private read scope inactive');
         const records = state.domains[domain.id].records;
-        budget.read(records.length);
+        budget.read(grant.collection ? records.length : 1);
         const select = record => {
             if (!record || record.scopeId !== domain.scopeId) throw new TypeError('Private read unavailable');
             const selected = {};
@@ -189,7 +190,7 @@ export function privateReads(candidate, contract, grants, args, budget) {
             if (matching.length > grant.collection.maxItems) throw new TypeError('Private collection read limit');
             selected = { records: [...matching].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
                 .map(record => ({ id: record.id, value: select(record), ...(grant.collection.recordHash ? { hash: hashNativeDocument(record.value) } : {}) })) };
-        } else selected = select(records.find(item => item.id === taskId(template(grant.recordId, { args }))));
+        } else selected = select(recordById(records, taskId(template(grant.recordId, { args }))));
         // Admission already returns an isolated immutable copy. Retain it
         // instead of copying once here and discarding a second copy below.
         result[grant.id] = budget.readValue(selected);

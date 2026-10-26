@@ -62,7 +62,7 @@ export function createRunninghubImageAdapter({ fetchImpl = fetch, pollMs = 1000 
             for (const input of compiled.inputs) {
                 const asset = await readImageInput(options, input.reference);
                 if (asset.bytes.length > 30 * 1024 * 1024) visualError('input_limit');
-                const bytes = input.semantic === 'mask' ? canonicalMaskPng(asset.bytes, compiled.maskGeometry.width, compiled.maskGeometry.height, true) : asset.bytes;
+                const bytes = input.semantic === 'mask' ? await canonicalMaskPng(asset.bytes, compiled.maskGeometry.width, compiled.maskGeometry.height, true) : asset.bytes;
                 const form = new FormData(); form.append('apiKey', options.secret); form.append('fileType', 'input');
                 form.append('file', new Blob([bytes], { type: 'image/png' }), 'atria-' + options.jobId + '-' + input.semantic + '.png');
                 const response = await imageJson(fetchImpl, imageRoute(compiled.endpoint, 'task/openapi/upload'), { ...options, body: form });

@@ -89,7 +89,7 @@ export function createComfyImageAdapter({ fetchImpl = fetch, pollMs = 1000 } = {
             const body = structuredClone(compiled.body);
             for (const input of compiled.inputs) {
                 const asset = await readImageInput(options, input.reference);
-                const bytes = input.reference.purpose === 'mask' ? canonicalMaskPng(asset.bytes, compiled.maskGeometry.width, compiled.maskGeometry.height, true) : asset.bytes;
+                const bytes = input.reference.purpose === 'mask' ? await canonicalMaskPng(asset.bytes, compiled.maskGeometry.width, compiled.maskGeometry.height, true) : asset.bytes;
                 const form = new FormData(); form.append('image', new Blob([bytes], { type: 'image/png' }), 'atria-' + options.jobId + '-' + input.semantic + '.png');
                 form.append('type', 'input'); form.append('overwrite', 'false');
                 const result = await imageJson(fetchImpl, imageRoute(compiled.endpoint, 'upload/image'), { ...options, body: form });
