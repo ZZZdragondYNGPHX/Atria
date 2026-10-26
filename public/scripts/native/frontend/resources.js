@@ -15,7 +15,7 @@ export async function createFrontendResources({ entry, loadBytes, mediaUrl, cryp
     const refs = new Map();
     for (const ref of index.resources) {
         resourcePath(ref.path);
-        if (refs.has(ref.id) || !/^[a-f0-9]{64}$/.test(ref.contentHash) || !Number.isSafeInteger(ref.size) || ref.size < 0 || ref.size > frontendResourceBytes(ref.kind)) throw new TypeError('Invalid exact Frontend resource');
+        if (refs.has(ref.id) || !/^[a-f0-9]{64}$/.test(ref.contentHash) || !Number.isSafeInteger(ref.size) || ref.size < 0 || ref.size > frontendResourceBytes(ref.kind, ref.mediaType)) throw new TypeError('Invalid exact Frontend resource');
         refs.set(ref.id, ref);
     }
     if (refs.get(index.primaryView)?.kind !== 'view') throw new TypeError('Missing Primary View');

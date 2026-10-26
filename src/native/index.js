@@ -125,6 +125,7 @@ export {
     ATRIA_PACKAGE_CONTAINER_MAGIC,
     ATRIA_PACKAGE_CONTAINER_VERSION,
     buildAtriaPackageContainer,
+    buildAtriaPackageContainerFile,
     hashAtriaPackageContainer,
     inspectAtriaPackageContainer,
     preflightAtriaPackageContainer,

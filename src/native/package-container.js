@@ -1,13 +1,15 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 
 import AdmZip from 'adm-zip';
+import archiver from 'archiver';
 import fs from 'node:fs';
 import { pipeline } from 'node:stream/promises';
 import { Readable, Transform } from 'node:stream';
 import { crc32 } from 'node:zlib';
 import yauzl from 'yauzl';
 import { createTemporaryPayload } from './temporary-payload.js';
-import { copyPackagePayload } from './package-payload-cache.js';
+import { copyPackagePayload, admitPackagePayload, packagePayloadHash, registerPackagePayloadView } from './package-payload-cache.js';
+import { isFilePayload, payloadHash, stageFilePayload } from './file-payload.js';
 import { PACKAGE_LIMITS } from '../../public/shared/native-package-limits.js';
 import { validateFrontendResources } from './experience-validation.js';
 
@@ -25,7 +27,8 @@ export const ATRIA_PACKAGE_CONTAINER_LIMITS = Object.freeze({
     maxContainerBytes: PACKAGE_LIMITS.archiveBytes,
     maxHeaderBytes: 64 * 1024,
     maxEntries: PACKAGE_LIMITS.entries,
-    maxFileBytes: 32 * 1024 * 1024,
+    maxFileBytes: 2 * 1024 * 1024 * 1024,
+    maxBufferedFileBytes: 32 * 1024 * 1024,
     maxTotalUncompressedBytes: PACKAGE_LIMITS.uncompressedBytes,
     maxCompressionRatio: 200,
     maxPathLength: 512,
@@ -88,14 +91,14 @@ function toBuffer(value, label) {
     throw new TypeError(label + ' must be string, Buffer, or Uint8Array');
 }
 
-function normalizeFileMap(input, prefix) {
+function normalizeFileMap(input, prefix, streamed = false) {
     if (!(input instanceof Map)) throw new TypeError(prefix + ' files must be a Map');
     const out = new Map();
     for (const [rawPath, rawBytes] of input) {
         const relative = normalizeArchivePath(String(rawPath || ''));
         const archivePath = prefix + '/' + relative;
-        const bytes = toBuffer(rawBytes, prefix + ' file');
-        if (bytes.length > ATRIA_PACKAGE_CONTAINER_LIMITS.maxFileBytes) {
+        const bytes = streamed && isFilePayload(rawBytes) ? rawBytes : toBuffer(rawBytes, prefix + ' file');
+        if (bytes.length > (streamed ? ATRIA_PACKAGE_CONTAINER_LIMITS.maxFileBytes : ATRIA_PACKAGE_CONTAINER_LIMITS.maxBufferedFileBytes)) {
             throw new Error(`.atria file '${archivePath}' exceeds the per-file limit`);
         }
         if (out.has(archivePath)) throw new Error(`Duplicate .atria file '${archivePath}'`);
@@ -104,15 +107,15 @@ function normalizeFileMap(input, prefix) {
     return out;
 }
 
-function normalizeAssetPayloads(manifest, input) {
+function normalizeAssetPayloads(manifest, input, streamed = false) {
     if (!(input instanceof Map)) throw new TypeError('Package asset payloads must be a Map');
     const out = new Map();
     const declared = new Map(manifest.assets.map(ref => [ref.assetId, ref]));
     for (const [assetId, rawBytes] of input) {
         const ref = declared.get(assetId);
         if (!ref) throw new Error('Package asset payload is undeclared: ' + assetId);
-        const bytes = toBuffer(rawBytes, 'Package asset');
-        if (bytes.length !== ref.size || sha256(bytes) !== ref.contentHash) {
+        const bytes = streamed && isFilePayload(rawBytes) ? rawBytes : toBuffer(rawBytes, 'Package asset');
+        if (bytes.length > (streamed ? ATRIA_PACKAGE_CONTAINER_LIMITS.maxFileBytes : ATRIA_PACKAGE_CONTAINER_LIMITS.maxBufferedFileBytes) || bytes.length !== ref.size || payloadHash(bytes) !== ref.contentHash) {
             throw new Error('Package asset payload integrity mismatch: ' + assetId);
         }
         out.set('assets/' + assetId, bytes);
@@ -125,10 +128,10 @@ function normalizeAssetPayloads(manifest, input) {
     return out;
 }
 
-function buildInnerPayload(manifest, sourceFiles, assetPayloads) {
+function containerContents(manifest, sourceFiles, assetPayloads, streamed = false) {
     const contents = new Map([
-        ...normalizeFileMap(sourceFiles, 'source'),
-        ...normalizeAssetPayloads(manifest, assetPayloads),
+        ...normalizeFileMap(sourceFiles, 'source', streamed),
+        ...normalizeAssetPayloads(manifest, assetPayloads, streamed),
     ]);
     if (contents.size > ATRIA_PACKAGE_CONTAINER_LIMITS.maxEntries - 2) {
         throw new Error('.atria package exceeds the archive entry limit');
@@ -138,13 +141,13 @@ function buildInnerPayload(manifest, sourceFiles, assetPayloads) {
     const inventory = [...contents.entries()]
         .map(([entryPath, bytes]) => {
             total += bytes.length;
-            if (total > ATRIA_PACKAGE_CONTAINER_LIMITS.maxTotalUncompressedBytes) {
+            if (total > (streamed ? ATRIA_PACKAGE_CONTAINER_LIMITS.maxTotalUncompressedBytes : PACKAGE_LIMITS.bufferedUncompressedBytes)) {
                 throw new Error('.atria package exceeds total uncompressed-size limit');
             }
             return Object.freeze({
                 path: entryPath,
                 size: bytes.length,
-                sha256: sha256(bytes),
+                sha256: payloadHash(bytes),
             });
         })
         .sort((left, right) => left.path.localeCompare(right.path));
@@ -155,6 +158,11 @@ function buildInnerPayload(manifest, sourceFiles, assetPayloads) {
         entries: inventory,
     });
 
+    return { contents, inventory, inventoryDoc };
+}
+
+function buildInnerPayload(manifest, sourceFiles, assetPayloads) {
+    const { contents, inventory, inventoryDoc } = containerContents(manifest, sourceFiles, assetPayloads);
     const zip = new AdmZip();
     zip.addFile(MANIFEST_PATH, Buffer.from(JSON.stringify(manifest, null, 2) + '\n', 'utf8'));
     zip.addFile(INVENTORY_PATH, Buffer.from(JSON.stringify(inventoryDoc, null, 2) + '\n', 'utf8'));
@@ -175,7 +183,7 @@ function buildHeader(manifest, payload, salt, nonce) {
         capabilities: manifest.capabilities,
         permissions: manifest.permissions,
         payloadBytes: payload.length,
-        payloadSha256: sha256(payload),
+        payloadSha256: payloadHash(payload),
         protection: {
             algorithm: 'aes-256-gcm',
             keyMode: 'atria-portable-obfuscation-v1',
@@ -193,6 +201,7 @@ function encodeEnvelope(header, payload) {
     if (headerBytes.length > ATRIA_PACKAGE_CONTAINER_LIMITS.maxHeaderBytes) {
         throw new Error('.atria preflight header exceeds limit');
     }
+    if (FIXED_PREFIX_BYTES + headerBytes.length + payload.length + TAG_BYTES > PACKAGE_LIMITS.bufferedArchiveBytes) throw new Error('Large Package containers require the file builder');
 
     const cipher = createCipheriv('aes-256-gcm', key, nonce);
     cipher.setAAD(headerBytes);
@@ -211,18 +220,20 @@ function encodeEnvelope(header, payload) {
 }
 
 function decodeHeader(archiveInput) {
-    const archive = toBuffer(archiveInput, '.atria container');
+    const file = isFilePayload(archiveInput);
+    const archive = file ? archiveInput : toBuffer(archiveInput, '.atria container');
     if (
         archive.length < FIXED_PREFIX_BYTES + TAG_BYTES
-        || archive.length > ATRIA_PACKAGE_CONTAINER_LIMITS.maxContainerBytes
+        || archive.length > (file ? ATRIA_PACKAGE_CONTAINER_LIMITS.maxContainerBytes : PACKAGE_LIMITS.bufferedArchiveBytes)
     ) {
         throw new Error('.atria container size is outside supported limits');
     }
-    if (!archive.subarray(0, ATRIA_PACKAGE_CONTAINER_MAGIC.length).equals(ATRIA_PACKAGE_CONTAINER_MAGIC)) {
+    const prefix = file ? archive.readRange(0, FIXED_PREFIX_BYTES) : archive;
+    if (!prefix.subarray(0, ATRIA_PACKAGE_CONTAINER_MAGIC.length).equals(ATRIA_PACKAGE_CONTAINER_MAGIC)) {
         throw new Error('Unsupported .atria magic/header');
     }
 
-    const headerLength = archive.readUInt32BE(ATRIA_PACKAGE_CONTAINER_MAGIC.length);
+    const headerLength = prefix.readUInt32BE(ATRIA_PACKAGE_CONTAINER_MAGIC.length);
     if (headerLength <= 0 || headerLength > ATRIA_PACKAGE_CONTAINER_LIMITS.maxHeaderBytes) {
         throw new Error('.atria preflight header length is invalid');
     }
@@ -231,8 +242,9 @@ function decodeHeader(archiveInput) {
     if (headerEnd + TAG_BYTES > archive.length) throw new Error('.atria container is truncated');
 
     let header;
+    const headerBytes = file ? archive.readRange(headerStart, headerLength) : archive.subarray(headerStart, headerEnd);
     try {
-        header = JSON.parse(archive.subarray(headerStart, headerEnd).toString('utf8'));
+        header = JSON.parse(headerBytes.toString('utf8'));
     } catch (error) {
         throw new Error('.atria preflight header is malformed: ' + (error?.message || String(error)));
     }
@@ -245,9 +257,10 @@ function decodeHeader(archiveInput) {
     return {
         archive,
         header,
-        headerBytes: archive.subarray(headerStart, headerEnd),
-        ciphertext: archive.subarray(headerEnd, ciphertextEnd),
-        tag: archive.subarray(ciphertextEnd),
+        headerBytes,
+        ciphertext: file ? null : archive.subarray(headerEnd, ciphertextEnd),
+        ciphertextStream: file ? () => archive.stream(headerEnd, ciphertextEnd - 1) : null,
+        tag: file ? archive.readRange(ciphertextEnd, TAG_BYTES) : archive.subarray(ciphertextEnd),
     };
 }
 
@@ -400,6 +413,7 @@ function validateEntrySize(entry) {
 
 function safeEntryData(entry) {
     const size = validateEntrySize(entry);
+    if (size > ATRIA_PACKAGE_CONTAINER_LIMITS.maxBufferedFileBytes) throw new Error('Large Package entries require the streaming reader');
     let data;
     try {
         data = entry.getData();
@@ -510,13 +524,14 @@ function* admitPayloadEntries(entries, header, store = bytes => bytes, view = ma
         if (
             actualTotal > ATRIA_PACKAGE_CONTAINER_LIMITS.maxTotalUncompressedBytes
             || data.length !== item.size
-            || sha256(data) !== item.sha256
+            || (packagePayloadHash(data) ?? sha256(data)) !== item.sha256
         ) {
             throw new Error(`Integrity mismatch for .atria file '${name}'`);
         }
         // Inventory admission has already verified these exact bytes. Runtime
         // aliases (author media, compiled media and Assets) share one payload.
         const admitted = content.get(item.sha256) ?? store(data);
+        admitPackagePayload(admitted, item.sha256);
         content.set(item.sha256, admitted);
         if (name.startsWith('source/')) {
             sourceFiles.set(name.slice('source/'.length), admitted);
@@ -573,7 +588,7 @@ export function buildAtriaPackageContainer({
     const manifest = assertAtriaPackageManifest(manifestInput);
     validateFrontendResources(manifest, sourceFiles, assetPayloads);
     const payload = buildInnerPayload(manifest, sourceFiles, assetPayloads);
-    if (payload.length > ATRIA_PACKAGE_CONTAINER_LIMITS.maxContainerBytes) {
+    if (payload.length > PACKAGE_LIMITS.bufferedArchiveBytes) {
         throw new Error('.atria compressed payload exceeds size limit');
     }
     const salt = randomBytes(16);
@@ -590,6 +605,47 @@ export function buildAtriaPackageContainer({
     });
 }
 
+// The caller owns the returned file payload and must close it after publication.
+// The format and inventory authority are identical to the buffered builder.
+export async function buildAtriaPackageContainerFile({ manifest: manifestInput, sourceFiles = new Map(), assetPayloads = new Map() }) {
+    const manifest = assertAtriaPackageManifest(manifestInput);
+    const { contents, inventory, inventoryDoc } = containerContents(manifest, sourceFiles, assetPayloads, true);
+    for (const item of inventory) admitPackagePayload(contents.get(item.path), item.sha256);
+    validateFrontendResources(manifest, new PayloadView(sourceFiles), new PayloadView(assetPayloads));
+    const zip = archiver('zip', { zlib: { level: 6 } });
+    const staging = stageFilePayload(zip, PACKAGE_LIMITS.archiveBytes);
+    let plaintext;
+    try {
+        zip.append(Buffer.from(JSON.stringify(manifest)), { name: MANIFEST_PATH });
+        zip.append(Buffer.from(JSON.stringify(inventoryDoc)), { name: INVENTORY_PATH });
+        for (const item of inventory) {
+            const payload = contents.get(item.path);
+            async function* chunks() { yield* payload.stream(); }
+            zip.append(isFilePayload(payload) ? Readable.from(chunks()) : payload, { name: item.path, store: item.size > 1024 * 1024 });
+        }
+        await Promise.all([zip.finalize(), staging.then(value => { plaintext = value; })]);
+        const salt = randomBytes(16), nonce = randomBytes(12);
+        const header = buildHeader(manifest, plaintext, salt, nonce), headerBytes = Buffer.from(JSON.stringify(header));
+        if (headerBytes.length > ATRIA_PACKAGE_CONTAINER_LIMITS.maxHeaderBytes) throw new Error('Package header exceeds limit');
+        const cipher = createCipheriv('aes-256-gcm', deriveKey(salt), nonce); cipher.setAAD(headerBytes);
+        const prefix = Buffer.alloc(FIXED_PREFIX_BYTES); ATRIA_PACKAGE_CONTAINER_MAGIC.copy(prefix);
+        prefix.writeUInt32BE(headerBytes.length, ATRIA_PACKAGE_CONTAINER_MAGIC.length);
+        async function* envelope() {
+            yield prefix; yield headerBytes;
+            const input = plaintext.stream();
+            const encrypted = input.pipe(cipher);
+            const failed = error => encrypted.destroy(error); input.on('error', failed);
+            try { for await (const chunk of encrypted) yield chunk; yield cipher.getAuthTag(); } finally { input.off('error', failed); input.destroy(); encrypted.destroy(); }
+        }
+        const archive = await stageFilePayload(Readable.from(envelope()), PACKAGE_LIMITS.archiveBytes);
+        return Object.freeze({ archive, manifest, preflight: preflightAtriaPackageContainer(archive) });
+    } catch (error) {
+        zip.abort(); zip.destroy(error);
+        await (await staging.catch(() => null))?.close();
+        throw error;
+    } finally { zip.abort(); await plaintext?.close(); }
+}
+
 export function inspectAtriaPackageContainer(archiveInput) {
     const decoded = decodeHeader(archiveInput);
     const payload = decryptPayload(decoded);
@@ -602,17 +658,27 @@ export function inspectAtriaPackageContainer(archiveInput) {
 }
 
 export function hashAtriaPackageContainer(archiveInput) {
-    const archive = toBuffer(archiveInput, '.atria container');
-    return sha256(archive);
+    return payloadHash(archiveInput);
 }
 
 // This view deliberately does not retain materialized media. Admission only
 // needs a few graph/data resources; the runtime cache owns the backing records.
 class PayloadView extends Map {
+    #exposed = new Set();
+    #cleared = false;
+    constructor(source) {
+        super();
+        for (const [key, value] of source) super.set(key, value);
+        registerPackagePayloadView(this, source, key => !this.#cleared && !this.#exposed.has(key));
+    }
     get(key) {
+        this.#exposed.add(key);
         const value = super.get(key);
         return value === undefined || Buffer.isBuffer(value) ? value : copyPackagePayload(value);
     }
+    set(key, value) { this.#exposed.add(key); return super.set(key, value); }
+    delete(key) { this.#exposed.add(key); return super.delete(key); }
+    clear() { this.#cleared = true; return super.clear(); }
     * entries() { for (const key of super.keys()) yield [key, this.get(key)]; }
     * values() { for (const key of super.keys()) yield this.get(key); }
     [Symbol.iterator]() { return this.entries(); }
@@ -639,17 +705,32 @@ async function readZipEntries(zip) {
     });
 }
 
-async function readZipEntry(zip, entry) {
+async function readZipEntry(zip, entry, storage) {
     const size = validateEntrySize(entry);
+    const metadata = entry.entryName === MANIFEST_PATH || entry.entryName === INVENTORY_PATH;
+    if (metadata && size > ATRIA_PACKAGE_CONTAINER_LIMITS.maxBufferedFileBytes) throw new Error('Package metadata exceeds limits');
+    const resident = metadata || size <= storage.remaining;
+    const bytes = resident ? Buffer.allocUnsafeSlow(size) : null;
+    const start = storage.offset, hash = createHash('sha256');
     const stream = await new Promise((resolve, reject) => zip.openReadStream(entry.raw, (error, value) => error ? reject(error) : resolve(value)));
-    const bytes = Buffer.allocUnsafeSlow(size);
     let offset = 0, crc = 0;
     for await (const chunk of stream) {
         if (offset + chunk.length > size) throw new Error('Archive entry exceeds declared size');
-        chunk.copy(bytes, offset); offset += chunk.length; crc = crc32(chunk, crc);
+        if (bytes) chunk.copy(bytes, offset);
+        else {
+            let written = 0;
+            while (written < chunk.length) {
+                const result = await storage.file.write(chunk, written, chunk.length - written, start + offset + written);
+                if (!result.bytesWritten) throw new Error('Package backing write failed');
+                written += result.bytesWritten;
+            }
+        }
+        offset += chunk.length; crc = crc32(chunk, crc); hash.update(chunk);
     }
-    if (offset !== size || crc !== entry.raw.crc32) throw new Error(`Archive entry '${entry.entryName}' is corrupt or size-mismatched`);
-    return bytes;
+    if (offset !== size || crc !== entry.raw.crc32) throw new Error('Archive entry is corrupt or size-mismatched: ' + entry.entryName);
+    if (bytes && !metadata) storage.remaining -= size;
+    if (!bytes) storage.offset += size;
+    return admitPackagePayload(bytes ?? Object.freeze({ backing: storage.backing, offset: start, length: size }), hash.digest('hex'));
 }
 
 // The encrypted input remains caller-owned. Plaintext and admitted large media
@@ -669,31 +750,24 @@ export async function inspectAtriaPackageContainerAsync(archiveInput, { resident
         function* chunks() {
             for (let offset = 0; offset < decoded.ciphertext.length; offset += 1024 * 1024) yield decoded.ciphertext.subarray(offset, offset + 1024 * 1024);
         }
-        await pipeline(Readable.from(chunks()), decipher, verify, fs.createWriteStream(plaintext.path));
+        await pipeline(decoded.ciphertextStream ? decoded.ciphertextStream() : Readable.from(chunks()), decipher, verify, fs.createWriteStream(plaintext.path));
         if (length !== decoded.header.payloadBytes || digest.digest('hex') !== decoded.header.payloadSha256) throw new Error('.atria payload integrity mismatch');
         // No ZIP entry is inspected or exposed before GCM authentication succeeds.
         zip = await new Promise((resolve, reject) => yauzl.open(plaintext.path, { lazyEntries: true, autoClose: false, strictFileNames: true }, (error, value) => error ? reject(error) : resolve(value)));
         const entries = await readZipEntries(zip);
-        let resident = 0, offset = 0;
-        descriptor = fs.openSync(backing.path, 'w');
-        const store = bytes => {
-            if (resident + bytes.length <= residentBytes) { resident += bytes.length; return bytes; }
-            const record = { backing, offset, length: bytes.length };
-            let written = 0;
-            while (written < bytes.length) written += fs.writeSync(descriptor, bytes, written, bytes.length - written, offset + written);
-            offset += bytes.length; return record;
-        };
-        const admission = admitPayloadEntries(entries, decoded.header, store, map => new PayloadView(map));
+        descriptor = await fs.promises.open(backing.path, 'w');
+        const storage = { file: descriptor, backing, remaining: residentBytes, offset: 0 };
+        const admission = admitPayloadEntries(entries, decoded.header, value => value, map => new PayloadView(map));
         let step = admission.next();
-        while (!step.done) step = admission.next(await readZipEntry(zip, step.value));
-        fs.closeSync(descriptor); descriptor = undefined;
-        if (!offset) backing.dispose();
+        while (!step.done) step = admission.next(await readZipEntry(zip, step.value, storage));
+        await descriptor.close(); descriptor = undefined;
+        if (!storage.offset) backing.dispose();
         return Object.freeze({ ...step.value, preflight: preflightAtriaPackageContainer(decoded.archive) });
     } catch (error) {
-        if (descriptor !== undefined) { fs.closeSync(descriptor); descriptor = undefined; }
+        if (descriptor !== undefined) { await descriptor.close(); descriptor = undefined; }
         backing.dispose(); throw error;
     } finally {
-        if (descriptor !== undefined) fs.closeSync(descriptor);
+        if (descriptor !== undefined) await descriptor.close();
         if (zip) await new Promise(resolve => { zip.once('close', resolve); zip.close(); });
         plaintext.dispose();
     }

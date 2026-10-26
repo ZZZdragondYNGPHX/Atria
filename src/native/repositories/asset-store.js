@@ -1,5 +1,6 @@
 import { illustrationAssetIds } from '../../../public/shared/native-media-contract.js';
 import { admitBlob } from './blob-admission.js';
+import { filePayload, isFilePayload, payloadHash } from '../file-payload.js';
 import { withAccountFileGrowth, withAccountQuota } from '../../storage/account-quota.js';
 import { retainedBlobHashes, recoveryReferences } from '../recovery-roots.js';
 import { assertAccountPath } from '../../storage/path-boundary.js';
@@ -10,7 +11,6 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import path from 'node:path';
-import { createHash } from 'node:crypto';
 import { durableWriteAsync, durableRemoveAsync } from '../../storage/durable-file.js';
 import { resolveUserDirectory } from '../../constants.js';
 
@@ -25,13 +25,14 @@ const blobReaders = new Map();
 const blobIdentity = (handle, hash) => JSON.stringify([handle, hash]);
 
 function toBuffer(value) {
+    if (isFilePayload(value)) return value;
     if (Buffer.isBuffer(value)) return value;
     if (value instanceof Uint8Array) return Buffer.from(value);
     throw new TypeError('AssetStore bytes must be a Buffer or Uint8Array');
 }
 
 function digest(bytes) {
-    return createHash('sha256').update(bytes).digest('hex');
+    return payloadHash(bytes);
 }
 
 async function resourceSetupAssetReferences(tx, handle, assetId) {
@@ -109,8 +110,11 @@ export class AssetStore {
         const contentHash = digest(bytes);
         return this.withBlobLease(handle, contentHash, async () => {
             const blobPath = this._blobPath(handle, contentHash);
-            if (!fs.existsSync(blobPath)) await withAccountFileGrowth(handle, bytes.length, () => durableWriteAsync(blobPath, bytes), this._engine);
-            else if (digest(await fsp.readFile(blobPath)) !== contentHash) throw new Error('Native Blob integrity mismatch');
+            if (!fs.existsSync(blobPath)) await withAccountFileGrowth(handle, bytes.length, () => durableWriteAsync(blobPath, isFilePayload(bytes) ? bytes.stream() : bytes), this._engine);
+            else {
+                const file = await fsp.open(blobPath, 'r');
+                try { await admitBlob(file, handle, contentHash, bytes.length); } finally { await file.close(); }
+            }
             return contentHash;
         });
     }
@@ -166,6 +170,18 @@ export class AssetStore {
             await admitBlob(file, handle, contentHash);
             return await file.readFile();
         } catch (error) { if (error.code === 'ENOENT') return null; throw error; } finally { await file?.close(); }
+    }
+
+    async withBlobPayload(handle, contentHash, operation) {
+        if (!/^[a-f0-9]{64}$/.test(String(contentHash || ''))) throw new TypeError('Invalid AssetStore contentHash');
+        return this.withBlobLease(handle, contentHash, async () => {
+            const file = await fsp.open(this._blobPath(handle, contentHash), 'r'); let payload;
+            try {
+                await admitBlob(file, handle, contentHash);
+                payload = filePayload(file, Number((await file.stat()).size), contentHash);
+                return await operation(payload);
+            } finally { if (payload) await payload.close(); else await file.close(); }
+        });
     }
 
     async blobStamp(handle, contentHash) {

@@ -1,11 +1,12 @@
 import fs from 'node:fs';
 import { Readable } from 'node:stream';
+import { payloadHash } from './file-payload.js';
 import { freezePackagePromptPrograms } from './model-prompt-runtime/package-freeze.js';
 import { registerPackageDeclarations } from './package-declarations.js';
 import { validateExperienceResources } from './experience-validation.js';
 import { compileProjectFrontends } from './frontend/compiler.js';
 import { createHash } from 'node:crypto';
-import { copyPackagePayload } from './package-payload-cache.js';
+import { copyPackagePayload, registerPackagePayloadView, withPackageAssetPayloads } from './package-payload-cache.js';
 import { composeContent, contentDigest, readCommunity, validateContentComposition } from './content-composition.js';
 
 import {
@@ -51,21 +52,25 @@ const unreadBytes = Symbol('unread Package bytes');
 class PackageByteMap extends Map {
     #source;
     #pristine = true;
+    #exposed = new Set();
+    #cleared = false;
     get pristine() { return this.#pristine; }
     constructor(source) {
         super(); this.#source = source;
         for (const key of source.keys()) super.set(key, unreadBytes);
+        registerPackagePayloadView(this, source, key => !this.#cleared && !this.#exposed.has(key));
     }
     get(key) {
         const value = super.get(key);
+        this.#exposed.add(key);
         if (value !== undefined) this.#pristine = false;
         if (value !== unreadBytes) return value;
         const bytes = copyPackagePayload(this.#source.get(key));
         super.set(key, bytes); return bytes;
     }
-    set(key, value) { this.#pristine = false; return super.set(key, value); }
-    delete(key) { this.#pristine = false; return super.delete(key); }
-    clear() { this.#pristine = false; return super.clear(); }
+    set(key, value) { this.#pristine = false; this.#exposed.add(key); return super.set(key, value); }
+    delete(key) { this.#pristine = false; this.#exposed.add(key); return super.delete(key); }
+    clear() { this.#pristine = false; this.#cleared = true; return super.clear(); }
     stream(key, start, end) {
         const value = this.#source.get(key);
         if (!value) throw new TypeError('Missing Package payload');
@@ -308,12 +313,14 @@ export class PackageInstaller {
     }
 
     async install(handle, archive, { grantedPermissions = [], setCurrent = true } = {}) {
-        const inspected = packagePayloadView(await inspectAtriaPackageContainerAsync(archive));
-        function* payloads() { yield archive; yield* inspected.assets.values(); }
-        return this._assetStore.withBlobPublication(handle, payloads(), () => this._installPinned(handle, archive, inspected, { grantedPermissions, setCurrent }));
+        const inspected = await inspectAtriaPackageContainerAsync(archive);
+        return withPackageAssetPayloads(inspected.assets, assets => {
+            function* payloads() { yield archive; yield* assets.values(); }
+            return this._assetStore.withBlobPublication(handle, payloads(), () => this._installPinned(handle, archive, packagePayloadView(inspected), { grantedPermissions, setCurrent }, assets));
+        });
     }
 
-    async _installPinned(handle, archive, inspected, { grantedPermissions, setCurrent }) {
+    async _installPinned(handle, archive, inspected, { grantedPermissions, setCurrent }, assets) {
         const preflight = inspected.preflight;
         const granted = new Set(grantedPermissions);
         const missing = preflight.requiredPermissions.filter(permission => !granted.has(permission));
@@ -327,7 +334,7 @@ export class PackageInstaller {
         validateContentComposition(inspected);
         const manifest = inspected.manifest;
         validateExperienceResources(manifest, inspected.sourceFiles, inspected.assets);
-        const packageContentHash = digest(archive);
+        const packageContentHash = payloadHash(archive);
         const packageVersion = assertPackageVersion({
             packageVersionId: manifest.packageVersionId,
             packageId: manifest.packageId,
@@ -343,7 +350,7 @@ export class PackageInstaller {
             throw new Error('Stored Package container hash mismatch');
         }
         for (const ref of manifest.assets) {
-            const bytes = inspected.assets.get(ref.assetId);
+            const bytes = assets.get(ref.assetId);
             await this._assetStore.put(handle, ref, bytes);
         }
 
@@ -393,8 +400,8 @@ export class PackageInstaller {
         let cached = this.#cache.archives.get(cacheKey);
         const stamp = await this._assetStore.blobStamp(handle, version.packageContentHash);
         const reusable = !!stamp && cached?.blobStamp === stamp;
-        const archive = stamp !== null && (!reusable || includeArchive) ? await this._assetStore.readBlob(handle, version.packageContentHash) : null;
-        if (stamp === null || (!reusable || includeArchive) && !archive) {
+        const archive = stamp !== null && includeArchive ? await this._assetStore.readBlob(handle, version.packageContentHash) : null;
+        if (stamp === null || includeArchive && !archive) {
             const error = new Error('Installed Package content blob is missing');
             error.code = 'native_package_content_missing';
             throw error;
@@ -411,7 +418,9 @@ export class PackageInstaller {
             }
             cached = null;
         }
-        const inspected = cached?.inspected ?? await this.#inspect(JSON.stringify([cacheKey, stamp]), archive);
+        const inspected = cached?.inspected ?? (archive ? await this.#inspect(JSON.stringify([cacheKey, stamp]), archive)
+            : await this._assetStore.withBlobPayload(handle, version.packageContentHash, payload => this.#inspect(JSON.stringify([cacheKey, stamp]), payload)));
+        if (!reusable && stamp !== await this._assetStore.blobStamp(handle, version.packageContentHash)) throw new Error('Installed Package content changed during inspection');
         if (
             inspected.manifest.packageId !== packageId
             || inspected.manifest.packageVersionId !== packageVersionId

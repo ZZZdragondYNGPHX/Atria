@@ -22,12 +22,18 @@ import { SessionCore } from '../native/session-core.js';
 import { nativeMcpArtifacts, artifactRefFromQuery } from '../native/mcp-artifacts.js';
 import { mountNativeSessionArchives } from './native-session-archives.js';
 import { PACKAGE_LIMITS } from '../../public/shared/native-package-limits.js';
+import { isFilePayload, stageFilePayload } from '../native/file-payload.js';
 
 const MAX_ARCHIVE_BYTES = 128 * 1024 * 1024;
-const packageBinary = express.raw({ type: 'application/octet-stream', limit: PACKAGE_LIMITS.archiveBytes, inflate: false });
+const packageBinary = async (req, res, next) => {
+    if (!req.is('application/octet-stream')) return next();
+    if (req.headers['content-encoding'] && req.headers['content-encoding'] !== 'identity') return res.sendStatus(415);
+    if (Number(req.headers['content-length']) > PACKAGE_LIMITS.archiveBytes) return res.sendStatus(413);
+    try { req.body = await stageFilePayload(req, PACKAGE_LIMITS.archiveBytes); next(); } catch (error) { next(error); }
+};
 
 function packageOptions(req) {
-    if (!Buffer.isBuffer(req.body)) return req.body;
+    if (!Buffer.isBuffer(req.body) && !isFilePayload(req.body)) return req.body;
     const header = req.get('X-Atria-Package-Options') || '';
     if (header.length > 8192) throw new TypeError('Package options exceed budget');
     let options;
@@ -122,7 +128,7 @@ export function createNativeProductRouter(getServices = services, artifacts = na
                 ),
                 ...(error?.details === undefined && !error?.permissions ? {} : { details: sanitizeProductDetails(error.details || { permissions: error.permissions }) }),
             });
-        }
+        } finally { if (isFilePayload(request.body)) await request.body.close(); }
     };
 
     for (const command of ['preflight', 'apply']) router.post('/personas/migration/local/' + command, route(async (req, res, service, handle) => {
@@ -196,7 +202,7 @@ export function createNativeProductRouter(getServices = services, artifacts = na
         res.json(artifacts.cancel(handle, req.body.artifactRef));
     }));
     const withArchive = (handle, body, consume) => {
-        if (Buffer.isBuffer(body)) {
+        if (Buffer.isBuffer(body) || isFilePayload(body)) {
             if (!body.length || body.length > PACKAGE_LIMITS.archiveBytes) throw new TypeError('Package archive is empty or oversized');
             return consume(body);
         }

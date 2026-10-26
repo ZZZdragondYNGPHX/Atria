@@ -5,18 +5,19 @@ export const FRONTEND_SURFACES = Object.freeze(['app.root', 'chat.header', 'chat
 export const BRIDGE_VERSION = 1;
 export const FRONTEND_LIMITS = Object.freeze({
     bytes: 2 * 1024 * 1024, totalBytes: 32 * 1024 * 1024, resources: 256, nodes: 4096, depth: 64,
-    assetBytes: 16 * 1024 * 1024, assetTotalBytes: 256 * 1024 * 1024, assets: 4096,
+    assetBytes: 16 * 1024 * 1024, mediaBytes: 2 * 1024 * 1024 * 1024, assetTotalBytes: 64 * 1024 * 1024 * 1024, assets: 4096,
     assetCacheBytes: 64 * 1024 * 1024,
 });
 
-export const frontendResourceBytes = kind => kind === 'asset' ? FRONTEND_LIMITS.assetBytes : FRONTEND_LIMITS.bytes;
+export const frontendResourceBytes = (kind, mediaType = '') => kind === 'asset'
+    ? /^(audio|video)\//.test(mediaType) ? FRONTEND_LIMITS.mediaBytes : FRONTEND_LIMITS.assetBytes : FRONTEND_LIMITS.bytes;
 
 // Storage budgets do not widen executable/UI complexity or resident media.
 export function assertFrontendResourceBudget(resources) {
     if (!Array.isArray(resources) || resources.length > FRONTEND_LIMITS.resources + FRONTEND_LIMITS.assets) throw new TypeError('Frontend resource count exceeds budget');
     let assets = 0, structure = 0, assetBytes = 0, structureBytes = 0;
     for (const ref of resources) {
-        if (!Number.isSafeInteger(ref.size) || ref.size < 0 || ref.size > frontendResourceBytes(ref.kind)) throw new TypeError('Frontend resource exceeds byte budget');
+        if (!Number.isSafeInteger(ref.size) || ref.size < 0 || ref.size > frontendResourceBytes(ref.kind, ref.mediaType)) throw new TypeError('Frontend resource exceeds byte budget');
         if (ref.kind === 'asset') { assets++; assetBytes += ref.size; } else { structure++; structureBytes += ref.size; }
     }
     if (assets > FRONTEND_LIMITS.assets || structure > FRONTEND_LIMITS.resources || assetBytes > FRONTEND_LIMITS.assetTotalBytes || structureBytes > FRONTEND_LIMITS.totalBytes) throw new TypeError('Frontend graph exceeds resource budget');

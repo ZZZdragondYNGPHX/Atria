@@ -7,6 +7,7 @@ import { assertNode } from './aui-parser.js';
 import { canonicalJson, hash, validateCompiledBridge } from './bridge.js';
 import { validateCompiledStyle } from './styles.js';
 import { assertPresentationContract, valuePath } from '../../../public/shared/native-frontend-presentation.js';
+import { packagePayloadInfo } from '../package-payload-cache.js';
 
 export function componentDependencies(ir, bridge) {
     fields(ir, ['format', 'version', 'id', 'root', 'uses', 'styles', 'presentation', 'controller', 'a2ui']);
@@ -91,9 +92,9 @@ export function componentDependencies(ir, bridge) {
 // Hashes alone do not establish that an artifact is safe IR.
 export function validateFrontendGraph({ entry, files, mode, experienceContract = {}, transactions = [] }) {
     resourcePath(entry);
-    const read = (path, kind = 'structure') => {
+    const read = (path, kind = 'structure', mediaType = '') => {
         const bytes = files.get(path);
-        if (!bytes || bytes.length > frontendResourceBytes(kind)) throw new TypeError('Missing or oversized compiled Frontend resource: ' + path);
+        if (!bytes || bytes.length > frontendResourceBytes(kind, mediaType)) throw new TypeError('Missing or oversized compiled Frontend resource: ' + path);
         return Buffer.from(bytes);
     };
     const json = path => JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(read(path)));
@@ -108,8 +109,13 @@ export function validateFrontendGraph({ entry, files, mode, experienceContract =
         if (['bridge', 'provenance', 'media', 'localization', 'diagnostics'].includes(ref.kind) ? ref.id !== ref.kind : typeof ref.id !== 'string' || !ref.id.startsWith(ref.kind + ':')) throw new TypeError('Invalid resource identity');
         if (!['bridge', 'provenance', 'media', 'localization', 'diagnostics'].includes(ref.kind)) identifier(ref.id.slice(ref.kind.length + 1));
         if (!/^[a-f0-9]{64}$/.test(ref.contentHash) || ref.path !== prefix + ref.contentHash + (ref.mediaType === 'application/json' ? '.json' : '.bin')) throw new TypeError('Invalid exact resource path');
-        const bytes = read(ref.path, ref.kind);
-        if (bytes.length !== ref.size || hash(bytes) !== ref.contentHash) throw new TypeError('Frontend resource integrity mismatch');
+        const admitted = ref.kind === 'asset' && packagePayloadInfo(files, ref.path);
+        if (admitted) {
+            if (admitted.size !== ref.size || admitted.contentHash !== ref.contentHash) throw new TypeError('Frontend resource integrity mismatch');
+        } else {
+            const bytes = read(ref.path, ref.kind, ref.mediaType);
+            if (bytes.length !== ref.size || hash(bytes) !== ref.contentHash) throw new TypeError('Frontend resource integrity mismatch');
+        }
         list(ref.dependencies, id => { if (typeof id !== 'string') throw new TypeError('Invalid dependency'); return id; }, id => id);
         return ref;
     }, ref => ref.id, FRONTEND_LIMITS.resources + FRONTEND_LIMITS.assets);
