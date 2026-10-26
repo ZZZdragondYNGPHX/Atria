@@ -4,7 +4,7 @@
 - Primary Workspace: 产品语义分支；方案与累计结果分别位于本目录和 [Record](../../../records/refactor/game-platform-runtime.md)。
 - 起点：`main@519642ad`。本方案承接现有 Session/Revision、计算进程池、增量状态、包缓存与存储权威，不另建权威系统。
 - 实施结果：P0–P6 已落地并集成 `main@4401f527`；具体证据、实际规模和剩余全量成本见 [Record](../../../records/refactor/game-platform-runtime.md)。阶段划分不是自动暂停点。
-- 当前续作：P10 已完成冷包并发准入、四路条目读取、未压缩媒体范围复用、私有字段投影与不可变写入共享，以及宿主公平恢复和批处理超时控制。四会话三日加最终冷重载耗时减少 17–20%，运行阶段事件循环 P95 减少 39–41%，操作 P95 减少 15–16%；单会话九日仅减少约 3%，不把并发收益外推到单世界。详见 [assets](assets.md)、[world](world.md) 和 [Record](../../../records/refactor/game-platform-runtime.md)。P9 的 WAL/FULL、逐逻辑事务提交和原执行预算保留。
+- 当前续作：P11 已完成 JSON 所有权贯通、规范字节流哈希、SQL 延迟文档解码和冷编译检查下移，产品提交 `4e2af884`。同一真实游戏九日两轮完整流程平均减少 6.8%，逻辑事务吞吐增加 7.9%，首个冷操作减少 16%，动作阶段最大宿主停顿减少 41–59%；完整冷包加载本轮未改善。逐事务 WAL/FULL 与原执行预算保留。详见 [compute](compute.md) 和 [Record](../../../records/refactor/game-platform-runtime.md)。
 - 目标：复杂世界计算与大型资产的工作量随实际访问和变化增长；并行任务利用多核，同时保持交互、取消、确定性提交和数据耐久性。
 - 执行规则仅引用 [Governance](../../../README.md)。阶段完成后持续推进；性能数据与未完成项写入同一 Record。
 
