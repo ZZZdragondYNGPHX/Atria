@@ -4,7 +4,7 @@
 - Primary Workspace: 产品语义分支；方案与累计结果分别位于本目录和 [Record](../../../records/refactor/game-platform-runtime.md)。
 - 起点：`main@519642ad`。本方案承接现有 Session/Revision、计算进程池、增量状态、包缓存与存储权威，不另建权威系统。
 - 实施结果：P0–P6 已落地并集成 `main@4401f527`；具体证据、实际规模和剩余全量成本见 [Record](../../../records/refactor/game-platform-runtime.md)。阶段划分不是自动暂停点。
-- 当前续作：P7 已实现并本地集成 `main@486cd1f1`，以真实游戏推进验证完整冷历史读取、状态摘要和字段集合查询，详见 [world](world.md) 与 [Record](../../../records/refactor/game-platform-runtime.md)。执行预算未扩大。
+- 当前续作：P8 实现 `bf7e7e92`，按真实游戏剖析推进 JSON 子树准入、同事务不变量复用、池内编译与 FS 发布编码改造；九天完整流程减少约 20%，四真实会话并发减少约 16%。详见 [compute](compute.md) 与 [Record](../../../records/refactor/game-platform-runtime.md)。P7 的历史/摘要/集合工作继续保留，执行预算未扩大。
 - 目标：复杂世界计算与大型资产的工作量随实际访问和变化增长；并行任务利用多核，同时保持交互、取消、确定性提交和数据耐久性。
 - 执行规则仅引用 [Governance](../../../README.md)。阶段完成后持续推进；性能数据与未完成项写入同一 Record。
 
