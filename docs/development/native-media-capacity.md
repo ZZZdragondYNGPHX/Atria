@@ -37,6 +37,17 @@ backing; a cold installed-package open does not materialize the archive in RAM.
 Metadata and a bounded amount of small payloads remain resident. Temporary file
 space is required in addition to durable installation space.
 
+After metadata admission, up to four independent ZIP entries are read and
+inflated concurrently through filesystem/zlib workers. Resident bytes and spool
+ranges are reserved in archive order before I/O; parallelism does not multiply
+the 32 MiB payload allowance. Inventory admission stays ordered, and all pending
+readers finish before failure cleanup closes the shared backing.
+Stored, nonresident entries reuse authenticated plaintext ZIP ranges after their
+CRC and inventory digest pass, avoiding a second write of those bytes. Deflated
+entries still use decompressed backing. A retained range keeps its entire
+plaintext archive alive; mixed archives may retain that archive plus inflated
+backing. GC cleanup removes released backing asynchronously.
+
 Host package builders can import `buildAtriaPackageContainerFile` from
 `src/native/index.js`. It accepts the existing manifest/sourceFiles/assetPayloads
 inputs, including host-owned file payloads, and returns an archive payload plus
@@ -79,6 +90,9 @@ and creation times. Changed blobs are re-admitted. Host readers obtain owned
 byte copies without invalidating admitted declarations. Public Map reads expose
 mutable caller bytes and therefore invalidate declaration reuse; caller changes
 cannot mutate the archive cache. Large file-backed media is consumed with streams.
+Concurrent cold opens join the same admission before acquiring the blob lease;
+they do not serially decrypt the package again after waiting for that lease.
+Failed admission is removed so a subsequent open can retry.
 
 Controller snapshots are sent when their presentation version changes; time
 updates are independent. Same-size Canvas redraws reset drawing state without

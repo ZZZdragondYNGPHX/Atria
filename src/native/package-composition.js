@@ -297,10 +297,10 @@ export class PackageInstaller {
         return preflightAtriaPackageContainer(archive);
     }
 
-    async #inspect(key, archive) {
+    async #inspect(key, inspect) {
         let pending = this.#cache.inspections.get(key);
         if (!pending) {
-            pending = inspectAtriaPackageContainerAsync(archive, { residentBytes: RESIDENT_PACKAGE_PAYLOAD_BYTES }).then(inspected => {
+            pending = inspect().then(inspected => {
                 validateContentComposition(packagePayloadView(inspected));
                 freezeParsedJson(inspected.manifest); freezeParsedJson(inspected.preflight);
                 return inspected;
@@ -429,8 +429,11 @@ export class PackageInstaller {
             }
             cached = null;
         }
-        const inspected = cached?.inspected ?? (archive ? await this.#inspect(JSON.stringify([cacheKey, stamp]), archive)
-            : await this._assetStore.withBlobPayload(handle, version.packageContentHash, payload => this.#inspect(JSON.stringify([cacheKey, stamp]), payload)));
+        // Join admission before acquiring the Blob lease. A caller that waited
+        // for another inspection must not re-open and decode the entire archive.
+        const inspect = payload => inspectAtriaPackageContainerAsync(payload, { residentBytes: RESIDENT_PACKAGE_PAYLOAD_BYTES });
+        const inspected = cached?.inspected ?? await this.#inspect(JSON.stringify([cacheKey, stamp]), () => archive ? inspect(archive)
+            : this._assetStore.withBlobPayload(handle, version.packageContentHash, inspect));
         if (!reusable && stamp !== await this._assetStore.blobStamp(handle, version.packageContentHash)) throw new Error('Installed Package content changed during inspection');
         if (
             inspected.manifest.packageId !== packageId

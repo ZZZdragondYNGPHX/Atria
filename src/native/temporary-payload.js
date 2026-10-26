@@ -7,7 +7,11 @@ function remove(directory) {
     fs.rmSync(directory, { recursive: true, force: true });
     directories.delete(directory);
 }
-const released = new globalThis.FinalizationRegistry(remove);
+// GC cleanup must not synchronously delete large package files on the host
+// event loop. Retain failed removals for the existing exit cleanup to retry.
+const released = new globalThis.FinalizationRegistry(directory => {
+    fs.promises.rm(directory, { recursive: true, force: true }).then(() => directories.delete(directory), () => {});
+});
 process.once('exit', () => { for (const directory of directories) remove(directory); });
 
 // Private, disposable backing only; durable package/blob ownership stays with

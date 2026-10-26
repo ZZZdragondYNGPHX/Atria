@@ -81,6 +81,20 @@ export function cloneAdmittedDocument(value) {
     return copy;
 }
 
+// Internal state writes may borrow sealed record payloads. Copy every mutable
+// envelope before the first await, preserving the write's snapshot semantics.
+function copyStateDocument(value) {
+    if (value === null || typeof value !== 'object' || immutableRecordValue(value)) return value;
+    if (Array.isArray(value)) return value.map(copyStateDocument);
+    const copy = {};
+    for (const key of Object.keys(value)) {
+        const child = copyStateDocument(value[key]);
+        if (key === '__proto__') Object.defineProperty(copy, key, { value: child, enumerable: true, writable: true, configurable: true });
+        else copy[key] = child;
+    }
+    return copy;
+}
+
 export function serializeNativeDocument(value) {
     return stableJson(value);
 }
@@ -139,8 +153,9 @@ export function nativeRecord(value, {
     existing = null,
     createdAt = undefined,
     updatedAt = undefined,
+    shareImmutableValues = false,
 } = {}) {
-    const integrity = hashNativeDocument(value), doc = cloneNativeDocument(value);
+    const integrity = hashNativeDocument(value), doc = shareImmutableValues ? copyStateDocument(value) : cloneNativeDocument(value);
     const now = Date.now();
     return {
         doc,
@@ -150,8 +165,8 @@ export function nativeRecord(value, {
     };
 }
 
-export async function putImmutable(tx, key, value) {
-    const record = nativeRecord(value);
+export async function putImmutable(tx, key, value, { shareImmutableValues = false } = {}) {
+    const record = nativeRecord(value, { shareImmutableValues });
     const { doc, integrity } = record;
     const existing = await readNativeRecord(tx, key);
     if (existing) {

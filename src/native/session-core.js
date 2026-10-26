@@ -1,5 +1,6 @@
 import { initialSubjects, publishSubjects, validateSubjects } from './subject-authority.js';
 import { immutableRecordValue, freezeRecordValue } from './record-values.js';
+import { yieldHostWork } from './host-work.js';
 import { copyRecordState, copyReceiptState } from './record-state.js';
 import { assertPinnedWorldLawExecutions } from './world-law-execution.js';
 import { assertValidWorldState } from '../../public/scripts/native/experience/world/schema.js';
@@ -753,10 +754,16 @@ export class SessionCore {
             const run = async () => {
                 const started = performance.now(), identity = hashNativeDocument({ sessionId, expectedRevisionId, invocationId });
                 let result = await this.#applyAuthorityAction(handle, sessionId, { transactionId, input, invocationId }, expectedRevisionId, fs ? identity.slice(0, 32) : undefined);
-                for (let step = 1; fs && result.more && !result.replayed && step < 8 && performance.now() - started < 250; step++) {
+                let stepMs = performance.now() - started;
+                // A completed step is durable and may return a continuation.
+                // Reserve its observed cost before starting another atomic step;
+                // checking elapsed time alone routinely overshoots under load.
+                for (let step = 1; fs && result.more && !result.replayed && step < 8 && performance.now() - started + stepMs < 250; step++) {
                     const next = 'continue:' + identity + ':' + step;
+                    const stepStarted = performance.now();
                     result = await this.#applyAuthorityAction(handle, sessionId, { transactionId, input, invocationId: next }, result.snapshot.revision.revisionId,
                         hashNativeDocument({ identity, step }).slice(0, 32), { base: result.snapshot, installed: result.installed });
+                    stepMs = performance.now() - stepStarted;
                 }
                 return result;
             };
@@ -768,6 +775,8 @@ export class SessionCore {
     }
 
     async #applyAuthorityAction(handle, sessionId, { transactionId, input, invocationId }, expectedRevisionId, revisionEntropy, loaded = null) {
+        const pause = yieldHostWork();
+        if (pause) await pause;
         const { base, installed } = loaded ?? await this.#loadWithPackage(handle, sessionId);
         await this.runs.assert(handle, sessionId, 'write');
         const catalog = await authorityCatalog(base, installed);
@@ -798,6 +807,8 @@ export class SessionCore {
             states = { ...states, [RUN_NAMESPACE]: { ...states[RUN_NAMESPACE], status: 'dead' } };
         }
         const spoken = (prepared.speeches ?? []).map((draft, index) => this._newEntry(candidate, draft, candidate.timeline.length + index));
+        const publicationPause = yieldHostWork();
+        if (publicationPause) await publicationPause;
         const snapshot = await this._publish(handle, base, { states, timeline: [...candidate.timeline, ...spoken.map(item => item.entry)],
             entries: [...(player ? [player.entry] : []), ...spoken.map(item => item.entry)], variants: [...(player ? [player.variant] : []), ...spoken.map(item => item.variant)], authorityPrepared: true,
             actionRequest: { ...authorityActionRequest(prepared, selection, invocationId, expectedRevisionId, player), source: 'frontend', requestHash },

@@ -103,11 +103,19 @@ Collection and Subject jobs retain full evaluation. Deterministic due/priority/I
 ordering is unchanged.
 
 Internal `coalesceInput` and `continuationCondition` allow the FS caller to run
-up to eight logical actions, stopping after 250 ms or a terminal condition.
+up to eight logical actions within the existing 250 ms batching window or until
+a terminal condition. Before starting another atomic action, the caller reserves
+the observed duration of the preceding action. This reduces batch overshoot;
+an individual cold or expensive action can still exceed the window.
 The Session lock stays held, while each action has its own durable transaction,
 CAS, Revision, receipt and automatic-save handling. CPU preparation does not
 hold the account storage queue. If a later continuation fails, earlier committed
 actions remain committed; retries use their existing receipts.
+Between actions and before publication, ready host continuations share a 4 ms
+cooperative quantum and resume one at a time on successive event-loop turns.
+No yield occurs inside the durable storage transaction. This prevents several
+Sessions from simultaneously resuming long chains of resolved storage promises;
+it does not interrupt synchronous JavaScript or change computation budgets.
 
 ## State and history ownership
 
@@ -122,6 +130,12 @@ build up to eight field indexes per record view. Identical private copies share
 these indexes; value replacement copies only affected buckets, while removal or
 cognition rebinding invalidates them. Cold construction and hot lookups charge
 actual work without raising Authority budgets.
+Private read fields compile to a projection tree. Common prefixes are traversed
+once; a complete selection can share a sealed record subtree when field order
+is identical. Missing-field checks, exact grants and observable JSON key order
+are retained. Internal state writes likewise copy mutable envelopes while
+borrowing sealed payloads; ordinary repository writes and public mutable copies
+retain independent ownership.
 
 Host-owned frozen record values and append-only action receipts reuse canonical
 JSON and SHA256 results. Canonical text retention is bounded to 4096 entries and

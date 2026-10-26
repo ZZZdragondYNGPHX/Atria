@@ -126,7 +126,7 @@ export async function putStoredState(tx, key, value, previousHead = null) {
             }
         }
     }
-    await putImmutable(tx, key, doc);
+    await putImmutable(tx, key, doc, { shareImmutableValues: true });
     if (fullBytes <= cachedStateBytes) remember(stateCache(tx), cacheKey(key), Promise.resolve({ value: freezeRecords(key,
         key.namespace === 'atri_lifecycle' && value.domains ? copyRecordState(value)
             : key.namespace === 'atri_action_receipts' ? copyReceiptState(value) : cloneAdmittedDocument(value)), depth: doc.depth, bytes: fullBytes,

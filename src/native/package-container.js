@@ -440,7 +440,7 @@ function inspectPayload(payload, header) {
 }
 
 // One admission authority for both synchronous authoring and streamed runtime reads.
-function* admitPayloadEntries(entries, header, store = bytes => bytes, view = map => map) {
+function* admitPayloadEntries(entries, header, store = bytes => bytes, view = map => map, prepareContent = () => {}) {
     if (entries.length < 2 || entries.length > ATRIA_PACKAGE_CONTAINER_LIMITS.maxEntries) {
         throw new Error('.atria payload entry count is outside supported limits');
     }
@@ -510,6 +510,12 @@ function* admitPayloadEntries(entries, header, store = bytes => bytes, view = ma
     if (contentEntries.length !== expected.size) {
         throw new Error('.atria inventory does not match payload file count');
     }
+    for (const [name, entry] of contentEntries) {
+        const item = expected.get(name);
+        if (!item) throw new Error(`Undeclared .atria payload file '${name}'`);
+        if (entryUncompressedSize(entry) !== item.size) throw new Error(`Integrity mismatch for .atria file '${name}'`);
+    }
+    prepareContent(contentEntries.map(([, entry]) => entry));
 
     const sourceFiles = new Map();
     const assets = new Map();
@@ -518,7 +524,6 @@ function* admitPayloadEntries(entries, header, store = bytes => bytes, view = ma
     let actualTotal = 0;
     for (const [name, entry] of contentEntries) {
         const item = expected.get(name);
-        if (!item) throw new Error(`Undeclared .atria payload file '${name}'`);
         const data = yield entry;
         actualTotal += data.length;
         if (
@@ -711,13 +716,23 @@ async function readZipEntry(zip, entry, storage) {
     if (metadata && size > ATRIA_PACKAGE_CONTAINER_LIMITS.maxBufferedFileBytes) throw new Error('Package metadata exceeds limits');
     const resident = metadata || size <= storage.remaining;
     const bytes = resident ? Buffer.allocUnsafeSlow(size) : null;
-    const start = storage.offset, hash = createHash('sha256');
+    // Stored ZIP entries already occupy a contiguous authenticated file range.
+    // Validate their bytes, then retain that range instead of writing it again.
+    const borrow = !resident && entry.raw.compressionMethod === 0;
+    // Reserve before awaiting I/O: concurrent entry readers own disjoint ranges
+    // and share the same resident-byte limit, in archive order.
+    if (bytes && !metadata) storage.remaining -= size;
+    const allocated = storage.offset;
+    if (!bytes && !borrow) storage.offset += size;
+    const start = borrow ? (await new Promise((resolve, reject) => zip.readLocalFileHeader(entry.raw, { minimal: true },
+        (error, header) => error ? reject(error) : resolve(header)))).fileDataStart : allocated;
+    const hash = createHash('sha256');
     const stream = await new Promise((resolve, reject) => zip.openReadStream(entry.raw, (error, value) => error ? reject(error) : resolve(value)));
     let offset = 0, crc = 0;
     for await (const chunk of stream) {
         if (offset + chunk.length > size) throw new Error('Archive entry exceeds declared size');
         if (bytes) chunk.copy(bytes, offset);
-        else {
+        else if (!borrow) {
             let written = 0;
             while (written < chunk.length) {
                 const result = await storage.file.write(chunk, written, chunk.length - written, start + offset + written);
@@ -728,9 +743,8 @@ async function readZipEntry(zip, entry, storage) {
         offset += chunk.length; crc = crc32(chunk, crc); hash.update(chunk);
     }
     if (offset !== size || crc !== entry.raw.crc32) throw new Error('Archive entry is corrupt or size-mismatched: ' + entry.entryName);
-    if (bytes && !metadata) storage.remaining -= size;
-    if (!bytes) storage.offset += size;
-    return admitPackagePayload(bytes ?? Object.freeze({ backing: storage.backing, offset: start, length: size }), hash.digest('hex'));
+    if (borrow) storage.usesZip = true;
+    return admitPackagePayload(bytes ?? Object.freeze({ backing: borrow ? storage.zipBacking : storage.backing, offset: start, length: size }), hash.digest('hex'));
 }
 
 // The encrypted input remains caller-owned. Plaintext and admitted large media
@@ -740,7 +754,8 @@ export async function inspectAtriaPackageContainerAsync(archiveInput, { resident
     const decoded = decodeHeader(archiveInput);
     const plaintext = createTemporaryPayload('atria-package-zip-');
     const backing = createTemporaryPayload('atria-package-payloads-');
-    let zip, descriptor;
+    const pending = new Map();
+    let zip, descriptor, retainPlaintext = false;
     try {
         const decipher = createDecipheriv('aes-256-gcm', deriveKey(Buffer.from(decoded.header.protection.salt, 'base64')), Buffer.from(decoded.header.protection.nonce, 'base64'));
         decipher.setAAD(decoded.headerBytes); decipher.setAuthTag(decoded.tag);
@@ -756,19 +771,41 @@ export async function inspectAtriaPackageContainerAsync(archiveInput, { resident
         zip = await new Promise((resolve, reject) => yauzl.open(plaintext.path, { lazyEntries: true, autoClose: false, strictFileNames: true }, (error, value) => error ? reject(error) : resolve(value)));
         const entries = await readZipEntries(zip);
         descriptor = await fs.promises.open(backing.path, 'w');
-        const storage = { file: descriptor, backing, remaining: residentBytes, offset: 0 };
-        const admission = admitPayloadEntries(entries, decoded.header, value => value, map => new PayloadView(map));
+        const storage = { file: descriptor, backing, zipBacking: plaintext, usesZip: false, remaining: residentBytes, offset: 0 };
+        let content = [], next = 0;
+        const prefetch = () => {
+            // zlib and filesystem I/O can run on independent libuv workers.
+            // Keep only four reads ahead; admission itself remains ordered.
+            while (pending.size < 4 && next < content.length) {
+                const entry = content[next++];
+                pending.set(entry, readZipEntry(zip, entry, storage).then(value => ({ value }), error => ({ error })));
+            }
+        };
+        const admission = admitPayloadEntries(entries, decoded.header, value => value, map => new PayloadView(map), values => { content = values; });
         let step = admission.next();
-        while (!step.done) step = admission.next(await readZipEntry(zip, step.value, storage));
+        while (!step.done) {
+            prefetch();
+            let value;
+            if (pending.has(step.value)) {
+                const result = await pending.get(step.value); pending.delete(step.value);
+                if (result.error) throw result.error;
+                value = result.value;
+            } else value = await readZipEntry(zip, step.value, storage);
+            step = admission.next(value);
+        }
         await descriptor.close(); descriptor = undefined;
         if (!storage.offset) backing.dispose();
-        return Object.freeze({ ...step.value, preflight: preflightAtriaPackageContainer(decoded.archive) });
+        const inspected = Object.freeze({ ...step.value, preflight: preflightAtriaPackageContainer(decoded.archive) });
+        retainPlaintext = storage.usesZip;
+        return inspected;
     } catch (error) {
+        // Readers must finish before their shared descriptor/backing is closed.
+        await Promise.all(pending.values());
         if (descriptor !== undefined) { await descriptor.close(); descriptor = undefined; }
         backing.dispose(); throw error;
     } finally {
         if (descriptor !== undefined) await descriptor.close();
         if (zip) await new Promise(resolve => { zip.once('close', resolve); zip.close(); });
-        plaintext.dispose();
+        if (!retainPlaintext) plaintext.dispose();
     }
 }

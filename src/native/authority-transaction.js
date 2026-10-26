@@ -1,5 +1,6 @@
 import { readTaskArtifact, markTaskArtifactConsumption } from './task-artifact-authority.js';
 import { recordById, selectRecords } from './domain-record-index.js';
+import { immutableRecordValue } from './record-values.js';
 import { prepareSubjects, resolveSimulationSubject } from './subject-authority.js';
 import { prepareSpeechDraft } from './participant-authority.js';
 import { runPackageComputation } from './package-computation.js';
@@ -153,6 +154,42 @@ function budgetFor(policy, rngSeed, signal) {
     };
     return context;
 }
+const readSelections = new WeakMap();
+function readSelection(grant) {
+    let selection = readSelections.get(grant);
+    if (selection) return selection;
+    selection = { fields: new Map(), whole: false };
+    for (const field of grant.fields) {
+        let node = selection;
+        for (const part of field.split('.')) {
+            if (!node.fields.has(part)) node.fields.set(part, { fields: new Map(), whole: false });
+            node = node.fields.get(part);
+        }
+        node.whole = true;
+    }
+    if (Object.isFrozen(grant) && Object.isFrozen(grant.fields)) readSelections.set(grant, selection);
+    return selection;
+}
+function selectReadFields(value, selection) {
+    if (!selection.fields.size) return selection.whole ? value : {};
+    const selected = {};
+    for (const [field, child] of selection.fields) {
+        if (!value || !Object.hasOwn(value, field)) throw new TypeError('Private field unavailable');
+        selected[field] = selectReadFields(value[field], child);
+    }
+    // A whole-field grant also validates overlapping nested paths. Preserve
+    // field order: sandbox programs can observe Object.keys on their reads.
+    if (selection.whole) return value;
+    if (immutableRecordValue(value) && !Array.isArray(value)) {
+        const keys = Object.keys(value);
+        let index = 0;
+        if (keys.length === selection.fields.size) {
+            for (const field of selection.fields.keys()) if (keys[index++] !== field) return selected;
+            return value;
+        }
+    }
+    return selected;
+}
 export function privateReads(candidate, contract, grants, args, budget) {
     const result = {};
     for (const grant of grants) {
@@ -160,22 +197,10 @@ export function privateReads(candidate, contract, grants, args, budget) {
         const state = candidate.states.atri_lifecycle;
         if (state.scopes[domain.scopeId]?.status !== 'active') throw new TypeError('Private read scope inactive');
         const records = state.domains[domain.id].records;
+        const selection = readSelection(grant);
         const select = record => {
             if (!record || record.scopeId !== domain.scopeId) throw new TypeError('Private read unavailable');
-            const selected = {};
-            for (const field of grant.fields) {
-                const parts = field.split('.'); let value = record.value; let output = selected;
-                for (const part of parts) {
-                    if (!value || !Object.hasOwn(value, part)) throw new TypeError('Private field unavailable');
-                    value = value[part];
-                }
-                for (const part of parts.slice(0, -1)) {
-                    output[part] = Array.isArray(output[part]) ? output[part].slice() : { ...output[part] };
-                    output = output[part];
-                }
-                output[parts.at(-1)] = value;
-            }
-            return selected;
+            return selectReadFields(record.value, selection);
         };
         let selected;
         if (grant.collection) {
