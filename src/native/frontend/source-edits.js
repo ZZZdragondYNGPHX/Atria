@@ -1,9 +1,11 @@
-import ts from 'typescript';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
 
 // JSON is still strict JSON. TypeScript's JSON CST supplies offsets only; the
 // formal compiler owns all semantics. Unchanged tokens/trivia stay byte-stable.
 export function editJson(source, path, value) {
     JSON.parse(source);
+    const ts = require('typescript');
     const tree = ts.parseJsonText('source.json', source);
     const unique = node => {
         if (ts.isObjectLiteralExpression(node) && new Set(node.properties.map(item => item.name.text)).size !== node.properties.length) throw new TypeError('Ambiguous duplicate JSON keys');

@@ -1,7 +1,7 @@
 import { Readable } from 'node:stream';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { StringDecoder } from 'node:string_decoder';
-import pg from 'pg';
+import { createRequire } from 'node:module';
 import { PgTransaction } from './postgres-engine-transaction.js';
 import { initSchema } from './postgres-schema.js';
 import { withRetry, isKnownRollbackError } from '../retry.js';
@@ -12,6 +12,8 @@ import { TransactionScope } from './transaction-scope.js';
 import { assertNativeSqlTopology, inspectPgNativeTopology, assertNativeSqlSession } from '../native-sql-topology.js';
 
 const DEFAULT_ACQUIRE_TIMEOUT_MS = 30_000;
+const require = createRequire(import.meta.url);
+let pg;
 const DEFAULT_RETRIES = { transient: 3 };
 
 // User-data tables, listed in INSERT order (parent before child) so a
@@ -51,17 +53,6 @@ function normalizeDumpValue(v) {
     return v;
 }
 
-// Postgres returns BIGINT (OID 20) as a JavaScript string by default because
-// BIGINT can exceed JS Number.MAX_SAFE_INTEGER. All BIGINT columns in our
-// schema hold millisecond timestamps (~1.7e12 today, far below 2^53), so it
-// is safe to coerce them to Number for parity with mysql2's behavior and
-// better-sqlite3's behavior (both return integers as JS numbers). Done at
-// module load so it applies to every connection created by every engine
-// instance. This is process-global by design — pg.types is a singleton
-// shared by every pg.Pool / pg.Client in the process, mirroring how
-// mysql2/sqlite handlers all see Number-typed timestamps.
-pg.types.setTypeParser(20, (val) => (val === null ? null : Number(val)));
-
 export class PgEngine {
     constructor({
         url,
@@ -89,6 +80,12 @@ export class PgEngine {
         // bounds both the initial TCP connect AND the wait time when the
         // pool is exhausted (pg-pool releases queued waiters with a
         // 'timeout exceeded when trying to connect' error).
+        if (!pg) {
+            pg = require('pg');
+            // Our BIGINT columns hold safe millisecond timestamps. Configure
+            // the shared parser before the first pool/connection is created.
+            pg.types.setTypeParser(20, (val) => (val === null ? null : Number(val)));
+        }
         this._pool = new pg.Pool({
             connectionString: url,
             max: poolSize,

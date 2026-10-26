@@ -2,7 +2,7 @@ import { Readable } from 'node:stream';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHash } from 'node:crypto';
 import { StringDecoder } from 'node:string_decoder';
-import mysql from 'mysql2/promise';
+import { createRequire } from 'node:module';
 import { MysqlTransaction } from './mysql-engine-transaction.js';
 import { initSchema } from './mysql-schema.js';
 import { withRetry, isKnownRollbackError } from '../retry.js';
@@ -13,6 +13,8 @@ import { assertNativeSqlTopology, inspectMysqlNativeTopology, readMysqlNativeSes
 
 const DEFAULT_ACQUIRE_TIMEOUT_MS = 30_000;
 const DEFAULT_RETRIES = { transient: 3 };
+const require = createRequire(import.meta.url);
+let mysql;
 
 // User-data tables, listed in INSERT order (parent before child) so a
 // `restoreUser` stream that consumes this dump in order satisfies the FK
@@ -127,6 +129,7 @@ export class MysqlEngine {
         // leases so withTransaction queues past the limit instead of opening
         // unbounded sockets. connectTimeout bounds the initial TCP handshake;
         // pool acquire-wait is bounded separately via acquireWithTimeout.
+        mysql ??= require('mysql2/promise');
         this._pool = mysql.createPool({
             uri: url,
             connectionLimit: poolSize,

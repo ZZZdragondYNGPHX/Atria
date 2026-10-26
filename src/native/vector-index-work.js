@@ -2,11 +2,12 @@ import fs from 'node:fs/promises';
 import fsSync from 'node:fs';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
-import vectra from 'vectra';
+import { createRequire } from 'node:module';
 import { sync as writeFileAtomic } from 'write-file-atomic';
 import { assertWritable } from '../storage/read-only-mode.js';
 import sanitize from 'sanitize-filename';
 
+const require = createRequire(import.meta.url);
 const writes = new Map();
 let queued = 0;
 const MAX_BYTES = 16777216;
@@ -138,7 +139,7 @@ export async function queryNativeIndexes({ indexes, query, vector, topK, thresho
                 if ((bytes += stat.size) > MAX_BYTES) throw unavailable();
                 const raw = await fs.readFile(file), doc = JSON.parse(raw.toString('utf8'));
                 if ((values += indexValues(doc)) > 1048576 || (count += doc.items.length) > 10000 || raw.length > stat.size) throw unavailable();
-                stores.push({ ...row, ...(listing ? { doc } : { store: new vectra.LocalIndex(row.indexPath) }) });
+                stores.push({ ...row, ...(listing ? { doc } : { store: new (require('vectra').LocalIndex)(row.indexPath) }) });
             }
             // Existing empty indexes also have no candidates. No provider
             // usage is invented for this deterministic no-send decision.
@@ -216,7 +217,7 @@ export async function insertNativeIndex({ indexPath, items, getVectors, compute,
             const parent = path.dirname(indexPath);
             await fs.mkdir(parent, { recursive: true });
             stage = await fs.mkdtemp(path.join(parent, '.atri-index-work-'));
-            store = new vectra.LocalIndex(stage);
+            store = new (require('vectra').LocalIndex)(stage);
             if (existing) {
                 const original = await fs.readFile(indexFile);
                 const doc = JSON.parse(original.toString('utf8'));

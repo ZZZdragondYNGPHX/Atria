@@ -1,8 +1,6 @@
 import { createNativeMemoryRouter } from './endpoints/native-memory.js';
 import { router as nativeSkillsRouter } from './endpoints/native-skills.js';
 import { router as nativeSessionRouter } from './endpoints/native-session.js';
-import { router as nativeOrchestrationRouter } from './endpoints/native-orchestration.js';
-import { router as nativeGenerationRouter } from './endpoints/native-generation.js';
 import { router as nativeProductRouter } from './endpoints/native-product.js';
 import { router as nativeStudioRouter } from './endpoints/native-studio.js';
 import { router as nativeExtensionsRouter } from './endpoints/native-extensions.js';
@@ -24,11 +22,9 @@ import { router as themesRouter } from './endpoints/themes.js';
 import { router as openAiRouter } from './endpoints/openai.js';
 import { router as googleRouter } from './endpoints/google.js';
 import { router as anthropicRouter } from './endpoints/anthropic.js';
-import { router as tokenizersRouter } from './endpoints/tokenizers.js';
 import { router as presetsRouter } from './endpoints/presets.js';
 import { router as secretsRouter } from './endpoints/secrets.js';
 import { router as thumbnailRouter } from './endpoints/thumbnails.js';
-import { router as novelAiRouter } from './endpoints/novelai.js';
 import { router as filesRouter } from './endpoints/files.js';
 import { router as charactersRouter } from './endpoints/characters.js';
 import { router as chatsRouter } from './endpoints/chats.js';
@@ -40,12 +36,9 @@ import { router as bootstrapRouter } from './endpoints/bootstrap.js';
 import { router as settingsRouter } from './endpoints/settings.js';
 import { router as backgroundsRouter } from './endpoints/backgrounds.js';
 import { router as spritesRouter } from './endpoints/sprites.js';
-import { router as vectorsRouter } from './endpoints/vectors.js';
 import { router as openRouterRouter } from './endpoints/openrouter.js';
 import { router as nanogptRouter } from './endpoints/nanogpt.js';
-import { router as chatCompletionsRouter } from './endpoints/backends/chat-completions.js';
 import { router as koboldRouter } from './endpoints/backends/kobold.js';
-import { router as textCompletionsRouter } from './endpoints/backends/text-completions.js';
 import { router as dataMaidRouter } from './endpoints/data-maid.js';
 import { router as backupsRouter } from './endpoints/backups.js';
 import { router as imageMetadataRouter } from './endpoints/image-metadata.js';
@@ -85,19 +78,19 @@ export function setupPrivateEndpoints(app) {
     app.use('/api/openai', openAiRouter);
     app.use('/api/google', googleRouter);
     app.use('/api/anthropic', anthropicRouter);
-    app.use('/api/tokenizers', tokenizersRouter);
+    app.use('/api/tokenizers', createLazyRouter(() => import('./endpoints/tokenizers.js'), { label: 'tokenizers' }));
     app.use('/api/presets', presetsRouter);
     app.use('/api/secrets', secretsRouter);
     app.use('/thumbnail', thumbnailRouter);
-    app.use('/api/novelai', novelAiRouter);
+    app.use('/api/novelai', createLazyRouter(() => import('./endpoints/novelai.js'), { label: 'novelai' }));
     app.use('/api/files', filesRouter);
     app.use('/api/characters', charactersRouter);
     app.use('/api/chats', chatsRouter);
     app.use('/api/native/memory', createNativeMemoryRouter());
     app.use('/api/native/skills', nativeSkillsRouter);
     app.use('/api/native/session', nativeSessionRouter);
-    app.use('/api/native/orchestration', nativeOrchestrationRouter);
-    app.use('/api/native/generation', nativeGenerationRouter);
+    app.use('/api/native/orchestration', createLazyRouter(() => import('./endpoints/native-orchestration.js'), { label: 'native-orchestration' }));
+    app.use('/api/native/generation', createLazyRouter(() => import('./endpoints/native-generation.js'), { label: 'native-generation' }));
     app.use('/api/native/product', nativeProductRouter);
     app.use('/api/native/studio', nativeStudioRouter);
     app.use('/api/native/extensions', nativeExtensionsRouter);
@@ -113,16 +106,16 @@ export function setupPrivateEndpoints(app) {
         () => import('./endpoints/horde.js'),
         { exportName: 'router', label: 'horde' },
     ));
-    app.use('/api/vector', vectorsRouter);
+    app.use('/api/vector', createLazyRouter(() => import('./endpoints/vectors.js'), { label: 'vector' }));
     app.use('/api/search', createLazyRouter(
         () => import('./endpoints/search.js'),
         { exportName: 'router', label: 'search' },
     ));
-    app.use('/api/backends/text-completions', textCompletionsRouter);
+    app.use('/api/backends/text-completions', createLazyRouter(() => import('./endpoints/backends/text-completions.js'), { label: 'text-completions' }));
     app.use('/api/openrouter', openRouterRouter);
     app.use('/api/nanogpt', nanogptRouter);
     app.use('/api/backends/kobold', koboldRouter);
-    app.use('/api/backends/chat-completions', chatCompletionsRouter);
+    app.use('/api/backends/chat-completions', createLazyRouter(() => import('./endpoints/backends/chat-completions.js'), { label: 'chat-completions' }));
     app.use('/api/data-maid', dataMaidRouter);
     app.use('/api/backups', backupsRouter);
     app.use('/api/image-metadata', imageMetadataRouter);
