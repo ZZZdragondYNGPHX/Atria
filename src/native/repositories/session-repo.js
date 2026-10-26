@@ -2,6 +2,7 @@ import { illustrationManifest, materializeIllustrations, IMAGE_VERSION_NAMESPACE
 import { illustrationAssetIds } from '../../../public/shared/native-media-contract.js';
 import { maintainSession, cancelSessionMaintenance } from '../session-maintenance.js';
 import { PERSONA_NAMESPACE, personaAvatars } from '../persona-contract.js';
+import { prepareIndependent } from '../../../public/shared/native-independent-preparation.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { RunControl, assertRunAccess, readRunControl, writeRunControl, validRunPublication, runFailure, retireRunOperations } from '../run-control.js';
 import { RUN_NAMESPACE, assertRunState, assertRunContinuation } from '../../../public/shared/native-run-contract.js';
@@ -310,8 +311,7 @@ export class SessionRepo {
     }
 
     async _materializeTimelineSelections(tx, handle, sessionId, selections, variants = []) {
-        const result = [];
-        for (const selection of selections) {
+        const decoded = await prepareIndependent(selections, async selection => {
             const entry = assertTimelineEntry(await readCheckedDocument(tx, this._timelineKey(
                 handle,
                 sessionId,
@@ -336,16 +336,17 @@ export class SessionRepo {
                 || !selection.variantIds.includes(variant.variantId)) {
                 throw new TypeError('Timeline active Variant mismatch');
             }
-            result.push(assertTimelineEntry({
+            return { entry: assertTimelineEntry({
                 ...entry,
                 sequence: Number(selection.sequence ?? entry.sequence),
                 content: variant.content,
                 variantIds: [...selection.variantIds],
                 activeVariantId: variant.variantId,
-            }));
-            variants.push(variant);
-        }
-        return result;
+            }), variant };
+        }, { concurrency: 4 });
+        // Preserve canonical ordering even when independent reads finish early.
+        for (const item of decoded) variants.push(item.variant);
+        return decoded.map(item => item.entry);
     }
 
     /**

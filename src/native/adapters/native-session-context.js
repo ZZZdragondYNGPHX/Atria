@@ -6,13 +6,13 @@ import { createPackageContextDerivation } from '../context-computation.js';
 import { processPackageText } from '../processing-runtime.js';
 import { subjectTaskContext } from '../subject-authority.js';
 
-export function nativeSessionContextOptions({ handle, snapshot, resolver, contextPackage = null, role, taskPlan = null, lanePlan = null, authorityContext = null }) {
+export function nativeSessionContextOptions({ handle, snapshot, resolver, contextPackage = null, role, taskPlan = null, lanePlan = null, authorityContext = null, signal }) {
     const personalTask = subjectTaskContext(taskPlan);
     return {
         tokenScope: JSON.stringify([handle, snapshot.session.sessionId, snapshot.revision.branchId]),
         tokenizerFor: resolved => resolver.provider(resolved.connection.providerAdapter).contextTokenizer?.(resolved),
-        deriveContext: contextPackage ? createPackageContextDerivation(snapshot, contextPackage) : undefined,
-        processContext: contextPackage ? (text, sourceId) => processPackageText(contextPackage, snapshot.manifest.runtime.experienceContract.processingRuntime, 'context', text, sourceId) : undefined,
+        deriveContext: contextPackage ? createPackageContextDerivation(snapshot, contextPackage, { signal }) : undefined,
+        processContext: contextPackage ? (text, sourceId) => processPackageText(contextPackage, snapshot.manifest.runtime.experienceContract.processingRuntime, 'context', text, sourceId, { signal }) : undefined,
         personaBlockedReason: snapshot.manifest.runtime?.experienceContract?.sharedRuntime ? 'shared_scope_unsupported' : undefined,
         personaAllowed: !snapshot.manifest.runtime?.experienceContract?.sharedRuntime && (taskPlan
             ? taskPlan.task.context.includes('player_persona') && !['background', 'maintenance'].includes(taskPlan.task.executionClass)

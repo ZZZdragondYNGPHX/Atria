@@ -1,4 +1,6 @@
 import { WORLD_DATA_LIMITS } from '../../public/shared/native-world-data.js';
+import { compileWorldDataSchema } from '../../public/shared/native-data-schema.js';
+import { immutableRecordValue } from './record-values.js';
 import { initialLifetimes, validateLifetimes } from './lifetime-authority.js';
 import { recordById, invalidateRecordIndex } from './domain-record-index.js';
 import { initialHistory } from '../../public/shared/native-history-runtime.js';
@@ -17,6 +19,14 @@ import { actorAvailability } from '../../public/shared/native-information-runtim
 
 const copy = value => structuredClone(value);
 const retentionSizes = new WeakMap();
+const validatedRecordValues = new WeakMap();
+function validateRecordValue(value, schema) {
+    const reusable = immutableRecordValue(value);
+    const schemas = reusable ? validatedRecordValues.get(value) : undefined;
+    if (schemas?.has(schema)) return;
+    assertTaskValue(value, schema, { copy: false, limits: WORLD_DATA_LIMITS });
+    if (reusable) { const known = schemas || new WeakSet(); known.add(schema); validatedRecordValues.set(value, known); }
+}
 const commandReducers = new WeakMap();
 function commandReducer(command) {
     let reducer = commandReducers.get(command);
@@ -59,10 +69,11 @@ export function validateLifecycle(base) {
     }
     for (const clock of def.clocks) if (!integer(state.clocks[clock.id])) throw new TypeError('Invalid World Clock');
     for (const domain of def.domains) {
+        const recordSchema = compileWorldDataSchema(domain.recordSchema);
         const records = state.domains[domain.id]?.records;
         if (!Array.isArray(records) || records.length > domain.retention.maxItems || new Set(records.map(item => item.id)).size !== records.length) throw new TypeError('Invalid domain records');
         for (const record of records) {
-            taskId(record.id); assertTaskValue(record.value, domain.recordSchema, { copy: false, limits: WORLD_DATA_LIMITS });
+            taskId(record.id); validateRecordValue(record.value, recordSchema);
             if (!['active', 'terminal'].includes(record.status) || typeof record.pinned !== 'boolean') throw new TypeError('Invalid scoped record');
         }
     }

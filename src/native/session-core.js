@@ -440,7 +440,7 @@ export class SessionCore {
 
     async _publishLocked(handle, base, { timeline = base.timeline, states = base.states, knowledge = base.knowledge,
         graph = base.graph, branchId = base.revision?.branchId ?? base.session.activeBranchId,
-        entries = [], variants = [], branches = [], actionRequest = null, taskRecord = null, taskResolution = null, lifecycleReceipt = null, pendingIntentId = null, pendingRealmIntentId = null, sharedPublication = false, authorityPrepared = false, authorityBudget = null, runAction = 'write', illustrationHead = undefined, commitId, requestFingerprint, effectPolicy, deferred = null, revisionEntropy } = {}) {
+        entries = [], variants = [], branches = [], actionRequest = null, taskRecord = null, taskResolution = null, lifecycleReceipt = null, pendingIntentId = null, pendingRealmIntentId = null, sharedPublication = false, authorityPrepared = false, authorityBudget = null, runAction = 'write', illustrationHead = undefined, commitId, requestFingerprint, effectPolicy, revisionEntropy } = {}) {
         const control = await this.runs.assert(handle, base.session.sessionId, runAction);
         if (states[RUN_NAMESPACE]) {
             const run = assertRunState(states[RUN_NAMESPACE]);
@@ -566,7 +566,7 @@ export class SessionCore {
             updatedAt: Math.max(Date.now(), base.session.updatedAt) });
         const snapshot = await this._sessions.commitSnapshot(handle, { session, revision, states: documents,
             entries, variants, branches, expectedRevisionId: base.session.headRevisionId, historyCheckpoint: Boolean(checkpoint), runProof: runPublicationProof(), runAction, illustrationHead, commitId, requestFingerprint });
-        if (!deferred && effectPolicy !== 'no-background-model') requestVisualWake(this, handle, session.sessionId);
+        if (effectPolicy !== 'no-background-model') requestVisualWake(this, handle, session.sessionId);
         if (branchId !== base.session.activeBranchId) invalidateFrontendEpoch(handle, session.sessionId);
         if (snapshot.states[RUN_NAMESPACE]?.status === 'dead' && snapshot.states[RUN_NAMESPACE].mode === 'ironman') {
             invalidateFrontendEpoch(handle, session.sessionId);
@@ -575,11 +575,10 @@ export class SessionCore {
             }
             // Terminal ironman Sessions remain durable read-only history roots.
         }
-        if (taskRecord?.kind === 'turn' && deferred) deferred.push({ snapshot, now: Date.now() });
-        if (taskRecord?.kind === 'turn' && !deferred) {
+        if (taskRecord?.kind === 'turn') {
             try { await this._saves.maybeAutomatic(handle, snapshot); } catch (error) { snapshot.autoSaveDiagnostic = { saved: false, code: error.code ?? 'native_auto_save_failed' }; }
         }
-        if (taskRecord?.kind === 'turn' && !deferred) requestSessionMaintenance(this._sessions, handle, session.sessionId, this._packages._assetStore);
+        if (taskRecord?.kind === 'turn') requestSessionMaintenance(this._sessions, handle, session.sessionId, this._packages._assetStore);
         const continuity = continuityDefinition(base) ? await this._continuity.load(handle, base.session.packageId) : null;
         return loadRealm(this, handle, { ...snapshot, manifest: packageKnowledgeManifest(base.manifest, documents[KNOWLEDGE_NAMESPACE]), entryPoint: base.entryPoint,
             ...(continuityDefinition(base) ? { externalEffects: continuityEffects(continuity, base.session.sessionId), continuityRevisionId: continuity?.revisionId ?? null, continuityViews: continuityDisplay(base, continuity) } : {}),
@@ -733,23 +732,23 @@ export class SessionCore {
         return historyMetrics(await this.load(handle, sessionId));
     }
 
-    async prepareAuthorityTurn(handle, base, selection, player = null) {
+    async prepareAuthorityTurn(handle, base, selection, player = null, { signal } = {}) {
         await this.runs.assert(handle, base.session.sessionId, 'generation');
         if (selection.transactionId === base.manifest.runtime?.experienceContract?.storyStart?.transactionId) throw runFailure('native_story_start_only');
         const installed = await this._openPackage(handle, base.session.packageId, base.session.packageVersionId, base.session.entryPointId);
-        return prepareAuthorityTurn(this, handle, base, installed, selection, player);
+        return prepareAuthorityTurn(this, handle, base, installed, selection, player, { signal });
     }
 
     async applyAuthorityAction(handle, sessionId, { transactionId, input, invocationId }, { expectedRevisionId } = {}) {
         if (!expectedRevisionId || typeof invocationId !== 'string' || !/^[a-zA-Z0-9._:-]{1,128}$/.test(invocationId)) throw new TypeError('Authority action anchor and invocation required');
         return this._sessions.withRunLock(handle, sessionId, async () => {
-            const fs = this._sessions._engine.kind === 'fs', deferred = null;
+            const fs = this._sessions._engine.kind === 'fs';
             const run = async () => {
                 const started = performance.now(), identity = hashNativeDocument({ sessionId, expectedRevisionId, invocationId });
-                let result = await this.#applyAuthorityAction(handle, sessionId, { transactionId, input, invocationId }, expectedRevisionId, deferred, fs ? identity.slice(0, 32) : undefined);
+                let result = await this.#applyAuthorityAction(handle, sessionId, { transactionId, input, invocationId }, expectedRevisionId, fs ? identity.slice(0, 32) : undefined);
                 for (let step = 1; fs && result.more && !result.replayed && step < 8 && performance.now() - started < 250; step++) {
                     const next = 'continue:' + identity + ':' + step;
-                    result = await this.#applyAuthorityAction(handle, sessionId, { transactionId, input, invocationId: next }, result.snapshot.revision.revisionId, deferred,
+                    result = await this.#applyAuthorityAction(handle, sessionId, { transactionId, input, invocationId: next }, result.snapshot.revision.revisionId,
                         hashNativeDocument({ identity, step }).slice(0, 32), { base: result.snapshot, installed: result.installed });
                 }
                 return result;
@@ -757,20 +756,11 @@ export class SessionCore {
             // Session ordering is held above. CPU work must not hold the account
             // storage queue; each _publish retains its own durable CAS transaction.
             const result = await run();
-            // Preserve every logical Revision. Save anchors and background wakes
-            // run only after the enclosing durable publication has completed.
-            for (const item of deferred ?? []) {
-                try { await this._saves.maybeAutomatic(handle, item.snapshot, { now: item.now }); } catch (error) { result.snapshot.autoSaveDiagnostic = { saved: false, code: error.code ?? 'native_auto_save_failed' }; }
-            }
-            if (deferred?.length) {
-                requestVisualWake(this, handle, sessionId);
-                requestSessionMaintenance(this._sessions, handle, sessionId, this._packages._assetStore);
-            }
             return result.snapshot;
         });
     }
 
-    async #applyAuthorityAction(handle, sessionId, { transactionId, input, invocationId }, expectedRevisionId, deferred, revisionEntropy, loaded = null) {
+    async #applyAuthorityAction(handle, sessionId, { transactionId, input, invocationId }, expectedRevisionId, revisionEntropy, loaded = null) {
         const { base, installed } = loaded ?? await this.#loadWithPackage(handle, sessionId);
         await this.runs.assert(handle, sessionId, 'write');
         const catalog = await authorityCatalog(base, installed);
@@ -805,7 +795,7 @@ export class SessionCore {
             entries: [...(player ? [player.entry] : []), ...spoken.map(item => item.entry)], variants: [...(player ? [player.variant] : []), ...spoken.map(item => item.variant)], authorityPrepared: true,
             actionRequest: { ...authorityActionRequest(prepared, selection, invocationId, expectedRevisionId, player), source: 'frontend', requestHash },
             taskRecord: { kind: 'turn', invocationId, fingerprint: requestHash, requestHash, provenance: [], anchorRevisionId: expectedRevisionId,
-                branchId: base.revision.branchId, outcomes: [], status: 'applied', authorityReceipt: { kind: 'authority', authorityId: prepared.identity, inputHash: prepared.inputHash } }, deferred, revisionEntropy });
+                branchId: base.revision.branchId, outcomes: [], status: 'applied', authorityReceipt: { kind: 'authority', authorityId: prepared.identity, inputHash: prepared.inputHash } }, revisionEntropy });
         return { snapshot, installed, more: prepared.more, replayed: false };
     }
 

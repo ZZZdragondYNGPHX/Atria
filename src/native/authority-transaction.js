@@ -114,14 +114,14 @@ export function predicate(source, context) {
     if (typeof value !== 'boolean') throw new TypeError('Authority predicate must be boolean');
     return value;
 }
-function budgetFor(policy, rngSeed) {
+function budgetFor(policy, rngSeed, signal) {
     const counts = { effects: 0, worldEvents: 0, appCommands: 0, clockAdvances: 0, workflowTransitions: 0,
         readGrants: 0, readBytes: 0, valueBytes: 0, recordScans: 0, ruleEvaluations: 0, steps: 0 };
     const add = (key, amount, max) => { counts[key] += amount; if (counts[key] > max) throw new TypeError('Authority work limit'); };
     const protectedDomains = new Set();
     const context = {
-        rngSeed, counts, protectedDomains, publication: false,
-        step() { add('steps', 1, authorityExecutionLimits().steps); },
+        rngSeed, signal, counts, protectedDomains, publication: false,
+        step() { signal?.throwIfAborted(); add('steps', 1, authorityExecutionLimits().steps); },
         rule() { context.step(); add('ruleEvaluations', 1, authorityExecutionLimits().ruleEvaluations); },
         value(value) { const safe = bounded(value); add('valueBytes', bytes(safe), authorityExecutionLimits().totalValueBytes); return safe; },
         effect(effect) {
@@ -283,11 +283,11 @@ async function executeTransaction(candidate, installed, contract, logic, world, 
             scopeEpochs: Object.fromEntries(Object.entries(candidate.states.atri_lifecycle.scopes)
                 .filter(([, scope]) => scope.status === 'active').map(([id, scope]) => [id, scope.epoch])) } };
         if (transaction.computation.precondition !== false) {
-            const checked = await runPackageComputation(installed, transaction.computation.source, 'precondition', input);
+            const checked = await runPackageComputation(installed, transaction.computation.source, 'precondition', input, { signal: budget.signal });
             if (checked.value !== true) throw new TypeError('Domain precondition rejected');
             execution.push(checked.evidence);
         }
-        const prepared = await runPackageComputation(installed, transaction.computation.source, 'compute', input, { partitioned: transaction.computation.partitioned === true });
+        const prepared = await runPackageComputation(installed, transaction.computation.source, 'compute', input, { partitioned: transaction.computation.partitioned === true, signal: budget.signal });
         computed = assertTaskValue(budget.value(prepared.value), compileComputationSchema(transaction.computation.outputSchema), { limits: WORLD_DATA_LIMITS });
         execution.push(prepared.evidence);
     }
@@ -344,7 +344,7 @@ async function checkComputation(candidate, installed, contract, transaction, bud
     const available = { ...state, reads };
     const input = transaction.computation.invariantContext === undefined ? available
         : Object.fromEntries(transaction.computation.invariantContext.map(key => [key, available[key]]));
-    const checked = await runPackageComputation(installed, transaction.computation.invariantSource ?? transaction.computation.source, 'invariant', input);
+    const checked = await runPackageComputation(installed, transaction.computation.invariantSource ?? transaction.computation.source, 'invariant', input, { signal: budget.signal });
     if (checked.value !== true) throw new TypeError('Domain invariant rejected');
     evidence.push(checked.evidence);
     // Derived publications can only change candidate reads. A pure invariant
@@ -352,7 +352,7 @@ async function checkComputation(candidate, installed, contract, transaction, bud
     return grants.length === 0 || transaction.computation.invariantContext?.includes('reads') === false;
 }
 
-export async function prepareAuthorityTransaction(base, installed, rawRequest) {
+export async function prepareAuthorityTransaction(base, installed, rawRequest, { signal } = {}) {
     try {
         const contract = contractFor(base, installed); validateCandidate(base, contract); validateLifetimes(base, { complete: true }); validateHistory(base);
         if (contract.lifecycleRuntime && !base.states.atri_lifecycle.ready) throw new TypeError('Experience Ready Barrier required');
@@ -371,7 +371,7 @@ export async function prepareAuthorityTransaction(base, installed, rawRequest) {
         // Intent/provider retries must not seed mechanics from regenerated input.
         // Keep the input fingerprint separate for C3 idempotency/conflict checks.
         const inputHash = hashNativeDocument(request.input);
-        const budget = budgetFor(contract.authorityRuntime.policy, identity);
+        const budget = budgetFor(contract.authorityRuntime.policy, identity, signal);
         const { candidate, logic, world } = await createTaskWorld(base, installed, null, budget);
         const transaction = logic.transactions?.find(item => item.id === request.transactionId);
         if (!transaction || transaction.origin === 'simulation') throw new TypeError('Unknown player Transaction');
@@ -428,7 +428,7 @@ export async function prepareAuthorityTransaction(base, installed, rawRequest) {
         return freeze({ candidate, receipt, identity, inputHash, outcome: resolution.outcome, speeches: executed.speeches,
             more: executed.more && !executed.speeches.length && !candidate.states.atri_run
                 && !candidate.states.atri_lifecycle.outbox.some(item => item.status === 'pending'), work: { ...budget.counts } });
-    } catch (error) { throw failure('transaction preparation', authorityPublicRefusal(error)); }
+    } catch (error) { signal?.throwIfAborted(); throw failure('transaction preparation', authorityPublicRefusal(error)); }
 }
 
 // Server-internal system entrypoint. No caller-selected transaction or invented

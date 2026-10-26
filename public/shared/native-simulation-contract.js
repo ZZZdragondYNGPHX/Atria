@@ -1,4 +1,5 @@
-import { fields, json, assertJsonDeclaration } from './native-values.js';
+import { fields, assertJsonDeclaration } from './native-values.js';
+import { WORLD_DATA_LIMITS } from './native-world-data.js';
 import { taskId } from './native-task-contract.js';
 import { appraisalTargets } from './native-appraisal-contract.js';
 import { authorityInteger as integer, authorityList as list, authorityReference as reference } from './native-authority-contract.js';
@@ -6,7 +7,7 @@ import { reads, readContext, predicate, template } from '../scripts/native/exper
 
 // Calendar distance is not a work budget: sparse multi-year resolution uses
 // the same bounded jobs, steps, effects and deliberations as short advances.
-export const SIMULATION_LIMITS = Object.freeze({ jobs: 16, steps: 16, deliberations: 1, advanceTicks: Number.MAX_SAFE_INTEGER });
+export const SIMULATION_LIMITS = Object.freeze({ jobs: 4096, steps: 65536, deliberations: 1, advanceTicks: Number.MAX_SAFE_INTEGER });
 export const simulationInstantSchema = Object.freeze({ type: 'integer', minimum: 0, maximum: Number.MAX_SAFE_INTEGER });
 const relevanceSchema = { type: 'string', maxLength: 4, enum: ['hot', 'warm', 'cold'] };
 // targetTick is the requested interval end, not elapsed world state. It allows
@@ -23,7 +24,7 @@ export function simulationContext(job, lifecycle) {
 // Declaration-only. Private state can enter only explicit, schema-bounded Task
 // input; this is not a new state namespace or an ambient expression authority.
 export function assertSimulationRuntime(raw, lifecycle, tasks, authority, information) {
-    const value = assertJsonDeclaration(raw, 'World simulation', 1048576);
+    const value = assertJsonDeclaration(raw, 'World simulation', 16 * 1024 * 1024, WORLD_DATA_LIMITS);
     fields(value, ['schemaVersion', 'clockId', 'policy', 'jobs'], 'World simulation');
     if (value.schemaVersion !== 1 || !lifecycle || !authority) throw new TypeError('World simulation requires Lifecycle and Authority runtime');
     reference(lifecycle.clocks, value.clockId, 'simulation clock');
@@ -85,7 +86,7 @@ export function assertSimulationRuntime(raw, lifecycle, tasks, authority, inform
         } else throw new TypeError('Unknown simulation action');
         return job;
     }, 'simulation jobs');
-    return json({ ...value, jobs });
+    return assertJsonDeclaration({ ...value, jobs }, 'World simulation', 16 * 1024 * 1024, WORLD_DATA_LIMITS);
 }
 
 export function assertSimulationTransactions(simulation, transactions, lifecycle) {

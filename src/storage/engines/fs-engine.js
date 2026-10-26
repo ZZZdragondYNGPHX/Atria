@@ -2,6 +2,7 @@ import { recoverFsChatPatchJournals } from './fs-chat-range.js';
 import { FsTransaction } from './fs-engine-transaction.js';
 import { FsNativeJournal } from './fs-native-journal.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { FsNativeCache } from './fs-native-cache.js';
 
 const tails = new Map();
 const active = new AsyncLocalStorage();
@@ -16,6 +17,7 @@ export class FsEngine {
         this._recoveredPatchJournals = new Set();
         this._durabilityFault = durabilityFault;
         this._nativeStateCache = new Map();
+        this._nativeResourceCache = new FsNativeCache();
     }
 
     // `handle` is accepted but unused by FsTransaction — its per-kind handlers
@@ -43,7 +45,7 @@ export class FsEngine {
             recoverFsChatPatchJournals(this._directoriesByHandle(handle));
             this._recoveredPatchJournals.add(handle);
         }
-        const tx = new FsTransaction({ directoriesByHandle: this._directoriesByHandle });
+        const tx = new FsTransaction({ directoriesByHandle: this._directoriesByHandle, nativeResourceCache: this._nativeResourceCache, nativeStateCache: this._nativeStateCache });
         const journal = new FsNativeJournal(tx, root, handle, this._durabilityFault, this._nativeStateCache);
         await journal.recover();
         const scope = { root, tx: journal.tx, open: true };

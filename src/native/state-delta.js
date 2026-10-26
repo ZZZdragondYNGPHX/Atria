@@ -1,10 +1,18 @@
 import { cloneAdmittedDocument, putImmutable } from './repositories/common.js';
 import { NATIVE_RESOURCE_KINDS as K } from './contracts.js';
+import { freezeRecordValue, copyRecordState } from './record-values.js';
 
 const FORMAT = 'atria-world-state-v2';
 const namespaces = new Set(['atri_world_state', 'atri_lifecycle', 'atri_task_results', 'atri_action_receipts']);
 export const deltaStateNamespace = namespace => namespaces.has(namespace);
 const decoded = new WeakMap();
+const cachedStateBytes = 16 * 1024 * 1024;
+function freezeRecords(key, value) {
+    if (key.namespace === 'atri_lifecycle') for (const domain of Object.values(value.domains ?? {})) {
+        for (const record of domain.records ?? []) freezeRecordValue(record.value);
+    }
+    return value;
+}
 const cacheKey = key => [key.handle, key.sessionId, key.namespace, key.head].join('\0');
 function stateCache(tx) { if (tx.nativeStateCache) return tx.nativeStateCache; let cache = decoded.get(tx); if (!cache) { cache = new Map(); decoded.set(tx, cache); } return cache; }
 function remember(cache, key, value) { if (cache.size >= 8) cache.delete(cache.keys().next().value); cache.set(key, value); }
@@ -79,7 +87,7 @@ async function decodeState(tx, key, record, cache) {
     }
     // Clone the full snapshot once, not once per ancestor in the delta chain.
     for (const patch of patches.reverse()) value = apply(value, patch);
-    return { value, depth, bytes: Buffer.byteLength(JSON.stringify(value)), integrity };
+    return { value: freezeRecords(key, value), depth, bytes: Buffer.byteLength(JSON.stringify(value)), integrity };
 }
 async function storedState(tx, key, record) {
     const cache = stateCache(tx), id = cacheKey(key);
@@ -89,11 +97,13 @@ async function storedState(tx, key, record) {
         remember(cache, id, entry);
     }
     const result = await entry;
-    if (result.bytes > 4 * 1024 * 1024) cache.delete(id);
+    if (result.bytes > cachedStateBytes) cache.delete(id);
     return result;
 }
-export async function readStoredState(tx, key, record) {
-    return cloneAdmittedDocument((await storedState(tx, key, record)).value);
+export async function readStoredState(tx, key, record, { shareRecordValues = false } = {}) {
+    const value = (await storedState(tx, key, record)).value;
+    return shareRecordValues && key.namespace === 'atri_lifecycle' && value.domains
+        ? copyRecordState(value) : cloneAdmittedDocument(value);
 }
 export async function putStoredState(tx, key, value, previousHead = null) {
     if (key.kind !== K.sessionState || !deltaStateNamespace(key.namespace)) throw new TypeError('Invalid State identity');
@@ -114,6 +124,7 @@ export async function putStoredState(tx, key, value, previousHead = null) {
         }
     }
     await putImmutable(tx, key, doc);
-    if (fullBytes <= 4 * 1024 * 1024) remember(stateCache(tx), cacheKey(key), Promise.resolve({ value: cloneAdmittedDocument(value), depth: doc.depth, bytes: fullBytes,
-        integrity: (await tx.getResource(key)).integrity }));
+    if (fullBytes <= cachedStateBytes) remember(stateCache(tx), cacheKey(key), Promise.resolve({ value: freezeRecords(key,
+        key.namespace === 'atri_lifecycle' && value.domains ? copyRecordState(value) : cloneAdmittedDocument(value)), depth: doc.depth, bytes: fullBytes,
+    integrity: (await tx.getResource(key)).integrity }));
 }

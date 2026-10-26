@@ -6,6 +6,7 @@ import { simulationInstantSchema } from '../../public/shared/native-simulation-c
 import { addOutbox } from './lifecycle-authority.js';
 import { captureAppraisalEvent } from './appraisal-authority.js';
 import { projectInformation } from '../../public/shared/native-information-runtime.js';
+import { simulationEvaluator } from './simulation-evaluation.js';
 
 const relevanceSchema = { type: 'string', maxLength: 4, enum: ['hot', 'warm', 'cold'] };
 const compare = (a, b) => a.tick - b.tick || a.job.priority - b.job.priority || (a.job.id < b.job.id ? -1 : a.job.id > b.job.id ? 1 : 0);
@@ -45,12 +46,13 @@ export async function prepareWorldSimulation(base, installed, untilTick, budget,
         candidate = createTaskCandidate(base, budget);
     };
     const occurrences = new Set();
+    const evaluateJob = simulationEvaluator(contract, budget, evaluate);
     let steps = 0;
     while (true) {
         let next = null;
         for (const job of simulation.jobs) {
             if (job.action.kind !== 'transaction') continue;
-            const item = evaluate(candidate, contract, job, budget, untilTick, requestedTick);
+            const item = evaluateJob(candidate, job, untilTick, requestedTick);
             if (item && item.tick <= untilTick && (!next || compare(item, next) < 0)) next = item;
         }
         if (!next) break;

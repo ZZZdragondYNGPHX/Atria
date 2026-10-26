@@ -11,7 +11,7 @@ const outputSchema = { type: 'object', additionalProperties: false, properties: 
 
 // A trusted read port used by the same ContextCompiler for preview and send.
 // Installed resources and the declared matching audience are the only authority.
-export function createPackageContextDerivation(snapshot, installed) {
+export function createPackageContextDerivation(snapshot, installed, { signal } = {}) {
     return async declaration => {
         const fixed = snapshot.manifest.runtime.experienceContract.contextRuntime.derivations.find(item => item.id === declaration.id);
         if (!fixed || !equalNativeDocuments(fixed, declaration)
@@ -30,7 +30,7 @@ export function createPackageContextDerivation(snapshot, installed) {
         const projection = projectInformation(snapshot, fixed.viewId, { purpose: 'context', includeRollups: false });
         const result = await runPackageComputation(installed, fixed.source, 'derive', { projection, artifacts,
             seed: hashNativeDocument({ sessionId: snapshot.session.sessionId, branchId: snapshot.revision.branchId,
-                revisionId: snapshot.revision.revisionId, derivationId: fixed.id }) });
+                revisionId: snapshot.revision.revisionId, derivationId: fixed.id }) }, { signal });
         return { value: assertTaskValue(result.value, outputSchema), evidence: { ...result.evidence, derivationId: fixed.id, viewId: fixed.viewId, artifacts: sources } };
     };
 }

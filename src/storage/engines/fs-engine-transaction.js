@@ -9,7 +9,7 @@ import _ from 'lodash';
 import sanitizeFilename from 'sanitize-filename';
 import { sync as writeFileAtomic } from 'write-file-atomic';
 import { durableWriteAsync, durableRemoveAsync } from '../durable-file.js';
-import { encodeNativeJson, decodeNativeJson } from './native-json-codec.js';
+import { encodeNativeJsonAsync, decodeNativeJsonAsync } from './native-json-codec.js';
 
 import { SIDECAR_INFIX, buildSidecarFilename, parseSidecarFilename } from './sidecar-naming.js';
 import { PRESET_FOLDER_BY_API_ID } from '../repositories/preset-repo.js';
@@ -27,8 +27,10 @@ import {
 } from './native-resource-key.js';
 
 export class FsTransaction {
-    constructor({ directoriesByHandle }) {
+    constructor({ directoriesByHandle, nativeResourceCache = null, nativeStateCache = null }) {
         this._directoriesByHandle = directoriesByHandle;
+        this._nativeResourceCache = nativeResourceCache;
+        this._nativeStateCache = nativeStateCache;
         this._handlers = new Map();
         registerChatHandler(this);
         registerSettingsHandler(this);
@@ -48,6 +50,9 @@ export class FsTransaction {
 
     async getResource(key) {
         return this._h(key.kind, 'getResource').get(key);
+    }
+    async getImmutableResource(key) {
+        return this._h(key.kind, 'getResource').get(key, { immutable: true });
     }
 
     async putResource(key, record) {
@@ -774,7 +779,9 @@ function registerNativeResourceHandlers(tx) {
         const fp = filePath(normalized);
         let envelope;
         try {
-            envelope = decodeNativeJson(await fsp.readFile(fp));
+            envelope = tx._nativeResourceCache ? await tx._nativeResourceCache.read(fp, () => {
+                tx._nativeStateCache?.delete([normalized.handle, normalized.sessionId, normalized.namespace, normalized.head].join('\0'));
+            }) : await decodeNativeJsonAsync(await fsp.readFile(fp));
         } catch (error) {
             if (error.code === 'ENOENT') return null;
             throw new Error('Native resource envelope integrity mismatch');
@@ -803,8 +810,9 @@ function registerNativeResourceHandlers(tx) {
     };
 
     const handler = {
-        get(key) {
-            return readEnvelope(key);
+        async get(key, { immutable = false } = {}) {
+            const record = await readEnvelope(key);
+            return immutable ? record : structuredClone(record);
         },
         async put(key, record) {
             const normalized = normalizeNativeResourceKey(key);
@@ -818,11 +826,13 @@ function registerNativeResourceHandlers(tx) {
                 createdAt: Number(record.createdAt ?? existing?.createdAt ?? now),
             };
             const fp = filePath(normalized);
-            await durableWriteAsync(fp, encodeNativeJson(envelope));
+            await durableWriteAsync(fp, await encodeNativeJsonAsync(envelope));
+            await tx._nativeResourceCache?.written(fp);
         },
         async delete(key) {
             const normalized = normalizeNativeResourceKey(key);
             const fp = filePath(normalized);
+            tx._nativeResourceCache?.delete(fp);
             return durableRemoveAsync(fp);
         },
         async list(filter) {
@@ -844,7 +854,7 @@ function registerNativeResourceHandlers(tx) {
             const readEntry = async entry => {
                 let envelope;
                 try {
-                    envelope = decodeNativeJson(await fsp.readFile(path.join(dir, entry)));
+                    envelope = await decodeNativeJsonAsync(await fsp.readFile(path.join(dir, entry)));
                 } catch {
                     return null;
                 }

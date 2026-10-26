@@ -15,11 +15,11 @@ export const RESERVED_SESSION_NAMESPACES = Object.freeze([
     SESSION_CORE_NAMESPACE, TIMELINE_NAMESPACE, KNOWLEDGE_NAMESPACE, 'atri_subjects', 'atri_visual_image', 'atri_gc_progress', 'atri_timeline_index', ILLUSTRATION_NAMESPACE, 'atri_world_selection', 'atri_action_receipts', 'atri_task_results', 'atri_lifecycle', 'atri_transfers', 'atri_realm_transfers', 'atri_shared', 'atri_run', 'atri_player_persona',
 ]);
 
-export async function readCheckedDocument(tx, key) {
-    const record = await tx.getResource(key);
+export async function readCheckedDocument(tx, key, options) {
+    const record = await (options?.shareRecordValues && key.namespace === 'atri_lifecycle' && tx.getImmutableResource ? tx.getImmutableResource(key) : tx.getResource(key));
     if (!record) throw new NotFoundError('native session dependency', { key });
 
-    return key.kind === K.sessionState && deltaStateNamespace(key.namespace) ? readStoredState(tx, key, record) : record.doc;
+    return key.kind === K.sessionState && deltaStateNamespace(key.namespace) ? readStoredState(tx, key, record, options) : record.doc;
 }
 
 export async function readSessionSnapshot(tx, handle, session, value, publishedStates = null) {
@@ -28,7 +28,7 @@ export async function readSessionSnapshot(tx, handle, session, value, publishedS
     const sessionId = session.sessionId;
     const states = {};
     for (const [namespace, head] of Object.entries({ ...revision.stateHeads, [KNOWLEDGE_NAMESPACE]: revision.knowledgeHead })) {
-        const state = publishedStates ? publishedStates[namespace] : await readCheckedDocument(tx, { kind: K.sessionState, handle, sessionId, namespace, head });
+        const state = publishedStates ? publishedStates[namespace] : await readCheckedDocument(tx, { kind: K.sessionState, handle, sessionId, namespace, head }, { shareRecordValues: true });
 
         states[namespace] = state;
     }

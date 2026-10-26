@@ -1,5 +1,7 @@
 import { cloneAdmittedDocument, equalNativeDocuments } from './repositories/common.js';
+import { copyRecordState } from './record-values.js';
 import { packageDeclarationKey } from './package-declarations.js';
+import { readPackagePayload } from './package-payload-cache.js';
 import { compileDeclarativeLogic } from '../../public/scripts/native/experience/logic/declarative.js';
 import { createGameWorldSession } from '../../public/scripts/native/experience/world/session.js';
 import { createInterpretationMappingRegistry } from '../../public/scripts/native/experience/logic/interpretations.js';
@@ -44,12 +46,25 @@ const installedWorlds = new WeakMap();
 const candidates = new WeakMap();
 export function createTaskCandidate(base, authority) {
     if (authority && candidates.get(base) === authority && !Object.isFrozen(base)) return base;
-    const candidate = cloneAdmittedDocument(base);
+    const { states, ...readOnly } = base;
+    const candidate = cloneCandidate(readOnly);
+    candidate.states = Object.fromEntries(Object.entries(states).map(([namespace, state]) => [namespace,
+        namespace === 'atri_lifecycle' && state.domains ? copyRecordState(state, frozenDeclaration) : cloneAdmittedDocument(state)]));
     if (authority) candidates.set(candidate, authority);
     return candidate;
 }
-const frozenDeclaration = value => value === null || typeof value !== 'object'
-    || Object.isFrozen(value) && Object.values(value).every(frozenDeclaration);
+const immutableTrees = new WeakSet();
+function frozenDeclaration(value) {
+    if (value === null || typeof value !== 'object') return true;
+    if (immutableTrees.has(value)) return true;
+    if (!Object.isFrozen(value) || !Object.values(value).every(frozenDeclaration)) return false;
+    immutableTrees.add(value); return true;
+}
+function cloneCandidate(value) {
+    if (frozenDeclaration(value)) return value;
+    if (Array.isArray(value)) return value.map(cloneCandidate);
+    return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, cloneCandidate(child)]));
+}
 function pinnedLogic(bytes, data, experienceContract) {
     const cached = compiledWorlds.find(item => item.bytes.equals(bytes) && equalNativeDocuments(item.data, data)
         && (item.sourceContract === experienceContract || equalNativeDocuments(item.contract, experienceContract)));
@@ -72,11 +87,11 @@ export function loadTaskLogic(installed) {
     const identity = packageDeclarationKey(installed);
     const cached = identity && installedWorlds.get(identity)?.get(path);
     if (cached) return { runtime, ...cached };
-    const bytes = installed.sourceFiles.get(path);
+    const bytes = readPackagePayload(installed.sourceFiles, path);
     if (!bytes || bytes.length > 2 * 1024 * 1024) throw new TypeError('Pinned declarative logic required');
     const data = {};
     for (const ref of installed.manifest.runtime?.experienceContract?.dataResources ?? []) {
-        const bytes = installed.assets.get(ref.assetId);
+        const bytes = readPackagePayload(installed.assets, ref.assetId);
         if (!bytes || bytes.length > 2 * 1024 * 1024) throw new TypeError('Missing Package Data');
         const keys = ref.resourceId.split('.'); let target = data;
         for (const key of keys.slice(0, -1)) { target[key] ??= {}; target = target[key]; }

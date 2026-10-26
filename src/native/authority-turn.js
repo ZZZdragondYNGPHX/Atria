@@ -72,12 +72,13 @@ export function resolverRequest(catalog, observation, userInput) {
 // Private proof objects are not serializable authority. SessionCore owns their
 // provenance and refuses caller-created candidates at its public finalize seam.
 const preparations = new WeakMap();
-export async function prepareAuthorityTurn(core, owner, base, installed, selection, player = null) {
+export async function prepareAuthorityTurn(core, owner, base, installed, selection, player = null, { signal } = {}) {
     selection = immutable(authorityValue(selection));
     player = player ? immutable(player) : null;
     const source = player ? { ...base, timeline: [...base.timeline, player.entry], variants: [...base.variants, player.variant] } : base;
     const request = { ...selection, anchor: snapshotAnchor(source), playerMessageId: source.timeline.at(-1)?.messageId };
-    const prepared = await prepareAuthorityTransaction(source, installed, request);
+    const prepared = await prepareAuthorityTransaction(source, installed, request, { signal });
+    signal?.throwIfAborted();
     const { logic } = loadTaskLogic(installed);
     if (logic.transactions.find(item => item.id === selection.transactionId)?.savePointBefore && base.states.atri_run?.mode !== 'ironman') {
         await core.createSavePoint(owner, base.session.sessionId, { expectedRevisionId: base.revision.revisionId, kind: 'auto', displayName: 'Before choice' });

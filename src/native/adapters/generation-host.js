@@ -551,7 +551,7 @@ export class NativeGenerationHost {
         }
         checkCancellation(signal);
         try {
-            return await this.sessionCore.prepareAuthorityTurn(handle, base, selection, player);
+            return await this.sessionCore.prepareAuthorityTurn(handle, base, selection, player, { signal });
         } catch (error) {
             // A rejected candidate has never reached narration or publication.
             // Release only this preparation pin; uncertain provider/finalization
@@ -628,7 +628,7 @@ export class NativeGenerationHost {
         const processing = base.manifest.runtime.experienceContract.processingRuntime;
         if (processing?.processors.some(item => item.stage === 'output')) {
             const installed = await this.sessionCore._openPackage(handle, base.session.packageId, base.session.packageVersionId, base.session.entryPointId);
-            const processed = await processPackageText(installed, processing, 'output', draft.narrative, input.invocationId);
+            const processed = await processPackageText(installed, processing, 'output', draft.narrative, input.invocationId, { signal });
             // Existing authored projection is tied to the original canonical body.
             // Reject incompatible output instead of silently discarding its Blocks.
             draft = assertTurnEnvelope({ ...draft, narrative: processed.text });
@@ -1226,7 +1226,7 @@ export class NativeGenerationHost {
         const contextPackage = !prediction && snapshot && (snapshot.manifest.runtime?.experienceContract?.contextRuntime || snapshot.manifest.runtime?.experienceContract?.processingRuntime)
             ? (preflightPackage ?? await this.packageInstaller.open(handle, snapshot.session.packageId, snapshot.session.packageVersionId)) : null;
         const nativeContext = !prediction && snapshot && authorityContext?.mode !== 'resolver' ? createNativeSessionContextAdapter({ readSnapshot: async () => ({ source, snapshot }),
-            options: nativeSessionContextOptions({ handle, snapshot, resolver, contextPackage, role, taskPlan, lanePlan, authorityContext }) }) : null;
+            options: nativeSessionContextOptions({ handle, snapshot, resolver, contextPackage, role, taskPlan, lanePlan, authorityContext, signal }) }) : null;
         const localWorkAttempts = [];
         const localWork = async (kind, request, operation, publicInput, discardResult) => {
             if (preview) return operation();

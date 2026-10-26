@@ -3,7 +3,7 @@ import { runPackageComputation } from './package-computation.js';
 import { hashNativeDocument } from './repositories/common.js';
 
 // Receives only the already-authorized source text. No State/Task/Bridge handle.
-export async function processPackageText(installed, runtime, stage, raw, source) {
+export async function processPackageText(installed, runtime, stage, raw, source, { signal } = {}) {
     let text = raw; const evidence = [];
     const processors = runtime?.processors.filter(item => item.stage === stage) ?? [];
     if (!processors.length) return { text, evidence };
@@ -13,13 +13,14 @@ export async function processPackageText(installed, runtime, stage, raw, source)
         try {
             let execution;
             if (item.kind === 'script') {
-                const result = await runPackageComputation(installed, item.source, 'transform', { text, stage, source, seed: inputHash });
+                const result = await runPackageComputation(installed, item.source, 'transform', { text, stage, source, seed: inputHash }, { signal });
                 text = processingText(result.value); execution = result.evidence;
             } else text = transformProcessingText(item, text);
             total += text.length;
             if (total > PROCESSING_LIMITS.total) throw new TypeError('Processing cumulative limit');
             evidence.push({ processorId: item.id, stage, source, inputHash, outputHash: hashNativeDocument(text), ...(execution ? { execution } : {}) });
         } catch {
+            signal?.throwIfAborted();
             throw Object.assign(new TypeError('native_processing_failed:' + item.id + ':' + stage), { code: 'native_processing_failed', processorId: item.id, stage,
                 details: { resourceId: item.id, field: stage } });
         }
