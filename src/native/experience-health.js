@@ -34,7 +34,7 @@ export async function inspectExperienceHealth(core, handle, sessionId, { observe
         const installed = await core._openPackage(handle, base.session.packageId, base.session.packageVersionId, base.session.entryPointId);
         const graph = resolveNativeRuntimePackage(installed, base.session.entryPointId).frontendGraph;
         const ref = graph.resources.find(item => item.kind === 'diagnostics');
-        if (ref) for (const item of JSON.parse(installed.sourceFiles.get(ref.path).toString('utf8'))) diagnostics.push({ code: item.reasonCode, severity: 'warning', sourceId: item.sourceId, remediation: 'Review the Frontend source accessibility or localization diagnostic.' });
+        if (ref) for (const item of JSON.parse(readPackagePayload(installed.sourceFiles, ref.path).toString('utf8'))) diagnostics.push({ code: item.reasonCode, severity: 'warning', sourceId: item.sourceId, remediation: 'Review the Frontend source accessibility or localization diagnostic.' });
     }
     if (state && !state.ready) diagnostics.push({ code: 'experience.not_ready', severity: 'info', remediation: 'Complete Opening and configure required Task bindings.' });
     for (const effect of base.externalEffects ?? []) if (effect.status === 'prepared') diagnostics.push({
@@ -97,3 +97,4 @@ export async function applyExperienceRepair(core, handle, sessionId, raw) {
     return authority === 'realm' ? core.applyRealmCommand(handle, sessionId, command, { expectedRevisionId })
         : core.applyContinuityCommand(handle, sessionId, command, { expectedRevisionId });
 }
+import { readPackagePayload } from './package-payload-cache.js';

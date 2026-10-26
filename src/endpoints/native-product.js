@@ -23,6 +23,7 @@ import { nativeMcpArtifacts, artifactRefFromQuery } from '../native/mcp-artifact
 import { mountNativeSessionArchives } from './native-session-archives.js';
 import { PACKAGE_LIMITS } from '../../public/shared/native-package-limits.js';
 import { isFilePayload, stageFilePayload } from '../native/file-payload.js';
+import { deliverAssetResponse } from '../native/asset-delivery.js';
 
 const MAX_ARCHIVE_BYTES = 128 * 1024 * 1024;
 const packageBinary = async (req, res, next) => {
@@ -111,12 +112,13 @@ export function createNativeProductRouter(getServices = services, artifacts = na
                 request.user.profile.handle,
             );
         } catch (error) {
+            if (response.headersSent) { response.destroy(error); return; }
             const status = error?.code === 'storage_quota_exceeded' ? 413 : error?.code === 'storage_usage_unavailable' ? 503 : error?.code === 'native_persona_scope_denied' ? 403 : error?.code === 'native_persona_unavailable' ? 404 : error?.code === 'storage_read_only' ? 503 : error?.name === 'ConflictError' || String(error?.code || '').includes('conflict')
                 || String(error?.code || '').includes('referenced')
                 ? 409
                 : error?.name === 'NotFoundError'
                     ? 404
-                    : error instanceof TypeError
+                    : error instanceof RangeError ? 413 : error instanceof TypeError
                         ? 400
                         : 500;
             response.status(status).json({
@@ -221,6 +223,13 @@ export function createNativeProductRouter(getServices = services, artifacts = na
         const { clientInstanceId, packageId, packageVersionId, expectedContentHash } = req.body;
         const opened = await product.exportPackageArchive(handle, packageId, packageVersionId, expectedContentHash);
         res.set('Cache-Control', 'private, no-store').json(artifacts.capturePackage(handle, clientInstanceId, packageId, packageVersionId, expectedContentHash, opened.archive));
+    }));
+    router.get('/packages/:packageId/versions/:packageVersionId/archive', route(async (req, res, { product }, handle) => {
+        await product.withPackageArchive(handle, req.params.packageId, req.params.packageVersionId, req.query.contentHash, async archive => {
+            res.set('Content-Disposition', 'attachment; filename="' + req.params.packageVersionId + '.atria"');
+            await deliverAssetResponse(req, res, { ref: { size: archive.length, contentHash: archive.contentHash, mediaType: 'application/octet-stream' },
+                stream: (start, end) => archive.stream(start, end), close: async () => {} });
+        });
     }));
     router.post('/packages/install', packageBinary, route(async (req, res, { product }, handle) => {
         const options = packageOptions(req);

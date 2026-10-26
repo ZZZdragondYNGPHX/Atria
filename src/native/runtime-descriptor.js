@@ -1,4 +1,5 @@
 import { packageDeclarationKey } from './package-declarations.js';
+import { readPackagePayload } from './package-payload-cache.js';
 import { skillDeclarationId, validateSkillDeclarations } from '../../public/scripts/native/skill-declarations.js';
 import { assertExperienceDataClosure, assertSupportedExperienceContract } from '../../public/shared/native-experience-contract.js';
 import {
@@ -232,7 +233,7 @@ export function readFrontendRuntimeResource(opened, resolved, path) {
     const isIndex = path === resolved.runtime.experience.frontend.entry;
     const isGame = [resolved.runtime.game.logic, resolved.runtime.game.observations].filter(Boolean).includes(path);
     if (!ref && !isIndex && !isGame) throw new TypeError('Runtime cannot read Frontend author source or undeclared resource');
-    const bytes = opened.sourceFiles.get(path);
+    const bytes = readPackagePayload(opened.sourceFiles, path);
     if (!bytes) throw new TypeError('Missing compiled Runtime resource');
     return { bytes, mediaType: ref?.mediaType ?? 'application/json' };
 }

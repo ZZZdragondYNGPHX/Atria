@@ -1,6 +1,7 @@
 import { illustrationAssetIds } from '../../../public/shared/native-media-contract.js';
 import { admitBlob } from './blob-admission.js';
 import { filePayload, isFilePayload, payloadHash } from '../file-payload.js';
+import { PACKAGE_LIMITS } from '../../../public/shared/native-package-limits.js';
 import { withAccountFileGrowth, withAccountQuota } from '../../storage/account-quota.js';
 import { retainedBlobHashes, recoveryReferences } from '../recovery-roots.js';
 import { assertAccountPath } from '../../storage/path-boundary.js';
@@ -159,7 +160,7 @@ export class AssetStore {
         return fs.existsSync(this._blobPath(handle, contentHash));
     }
 
-    async readBlob(handle, contentHash) {
+    async readBlob(handle, contentHash, { maxBytes = PACKAGE_LIMITS.bufferedArchiveBytes } = {}) {
         if (!/^[a-f0-9]{64}$/.test(String(contentHash || ''))) {
             throw new TypeError('AssetStore contentHash must be a lowercase SHA-256 digest');
         }
@@ -167,6 +168,7 @@ export class AssetStore {
         let file;
         try {
             file = await fsp.open(blobPath, 'r');
+            if ((await file.stat()).size > maxBytes) throw new RangeError('Large Blob requires streaming access');
             await admitBlob(file, handle, contentHash);
             return await file.readFile();
         } catch (error) { if (error.code === 'ENOENT') return null; throw error; } finally { await file?.close(); }

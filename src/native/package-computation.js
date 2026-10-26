@@ -4,6 +4,7 @@ import { assertJsonDeclaration } from '../../public/shared/native-values.js';
 import { resourcePath } from '../../public/shared/native-frontend-contract.js';
 import { hashNativeDocument } from './repositories/common.js';
 import { packageDeclarationKey } from './package-declarations.js';
+import { readPackagePayload } from './package-payload-cache.js';
 import { computationPolicy } from './computation-policy.js';
 
 // Cache only exact immutable module declarations, never inputs or outcomes.
@@ -26,17 +27,17 @@ function pinnedArtifact(source, files) {
     // Build validation and execution share the exact linked program. A package
     // with many transactions must not transpile the same world rules per use.
     for (const [key, cached] of artifacts) {
-        if (cached.source !== source || !cached.modules.every(([path, bytes]) => files.has(path) && bytes.equals(files.get(path)))) continue;
+        if (cached.source !== source || !cached.modules.every(([path, bytes]) => files.has(path) && bytes.equals(readPackagePayload(files, path)))) continue;
         artifacts.delete(key); artifacts.set(key, cached);
         return cached;
     }
     const artifact = compileController(source, path => {
-        const bytes = files.get(path);
+        const bytes = readPackagePayload(files, path);
         if (!bytes || bytes.length > limits.computationModuleBytes) throw new TypeError('Missing computation module');
         return bytes.toString('utf8');
     }, { modules: limits.computationModules, moduleBytes: limits.computationModuleBytes, synchronous: true });
     freezeProgram(artifact);
-    const entry = { source, artifact, modules: artifact.modules.map(module => [module.id, Buffer.from(files.get(module.id))]),
+    const entry = { source, artifact, modules: artifact.modules.map(module => [module.id, Buffer.from(readPackagePayload(files, module.id))]),
         resourceHash: hashNativeDocument(artifact) };
     if (artifacts.size >= 8) artifacts.delete(artifacts.keys().next().value);
     artifacts.set(entry.resourceHash, entry);

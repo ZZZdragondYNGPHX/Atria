@@ -392,6 +392,12 @@ export class NativeProductService {
         return this._installer.exportArchive(handle, packageId, packageVersionId, expectedContentHash);
     }
 
+    withPackageArchive(handle, packageId, packageVersionId, expectedContentHash, operation) {
+        assertNativeId(packageId, 'package', 'packageId');
+        assertNativeId(packageVersionId, 'packageVersion', 'packageVersionId');
+        return this._installer.withArchivePayload(handle, packageId, packageVersionId, expectedContentHash, operation);
+    }
+
     async preflightPackageUpdate(handle, archive) {
         const preflight = this.preflightPackage(archive), record = await this._packages.get(handle, preflight.packageId);
         let previous = null;

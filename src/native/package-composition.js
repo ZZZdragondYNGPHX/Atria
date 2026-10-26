@@ -381,11 +381,22 @@ export class PackageInstaller {
     }
 
     async exportArchive(handle, packageId, packageVersionId, expectedContentHash) {
+        return this.withArchivePayload(handle, packageId, packageVersionId, expectedContentHash, async (archive, packageVersion) => {
+            if (archive.length > 128 * 1024 * 1024) throw new RangeError('Large Package export requires the streaming archive endpoint');
+            const chunks = [];
+            for await (const chunk of archive.stream()) chunks.push(chunk);
+            return { archive: Buffer.concat(chunks, archive.length), packageVersion };
+        });
+    }
+
+    async withArchivePayload(handle, packageId, packageVersionId, expectedContentHash, operation) {
         if (typeof expectedContentHash !== 'string' || !/^[a-f0-9]{64}$/.test(expectedContentHash)) throw new TypeError('Exact Package content hash required');
-        return this._assetStore.withBlobLease(handle, expectedContentHash, async () => {
-            const opened = await this.open(handle, packageId, packageVersionId, { includeArchive: true });
-            if (!opened || opened.packageVersion.packageContentHash !== expectedContentHash) throw new TypeError('Exact installed PackageVersion required');
-            return { archive: Buffer.from(opened.archive), packageVersion: opened.packageVersion };
+        const version = await this._packageRepo.getVersion(handle, packageId, packageVersionId);
+        if (!version || version.packageId !== packageId || version.packageVersionId !== packageVersionId
+            || version.packageContentHash !== expectedContentHash) throw new TypeError('Exact installed PackageVersion required');
+        assertPackageVersion(version);
+        return this._assetStore.withBlobPayload(handle, expectedContentHash, archive => {
+            return operation(archive, version);
         });
     }
 
@@ -400,7 +411,7 @@ export class PackageInstaller {
         let cached = this.#cache.archives.get(cacheKey);
         const stamp = await this._assetStore.blobStamp(handle, version.packageContentHash);
         const reusable = !!stamp && cached?.blobStamp === stamp;
-        const archive = stamp !== null && includeArchive ? await this._assetStore.readBlob(handle, version.packageContentHash) : null;
+        const archive = stamp !== null && includeArchive ? await this._assetStore.readBlob(handle, version.packageContentHash, { maxBytes: 128 * 1024 * 1024 }) : null;
         if (stamp === null || includeArchive && !archive) {
             const error = new Error('Installed Package content blob is missing');
             error.code = 'native_package_content_missing';

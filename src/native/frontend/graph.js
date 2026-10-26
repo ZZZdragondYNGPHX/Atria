@@ -7,7 +7,7 @@ import { assertNode } from './aui-parser.js';
 import { canonicalJson, hash, validateCompiledBridge } from './bridge.js';
 import { validateCompiledStyle } from './styles.js';
 import { assertPresentationContract, valuePath } from '../../../public/shared/native-frontend-presentation.js';
-import { packagePayloadInfo } from '../package-payload-cache.js';
+import { packagePayloadInfo, readPackagePayload } from '../package-payload-cache.js';
 
 export function componentDependencies(ir, bridge) {
     fields(ir, ['format', 'version', 'id', 'root', 'uses', 'styles', 'presentation', 'controller', 'a2ui']);
@@ -93,9 +93,9 @@ export function componentDependencies(ir, bridge) {
 export function validateFrontendGraph({ entry, files, mode, experienceContract = {}, transactions = [] }) {
     resourcePath(entry);
     const read = (path, kind = 'structure', mediaType = '') => {
-        const bytes = files.get(path);
+        const bytes = readPackagePayload(files, path);
         if (!bytes || bytes.length > frontendResourceBytes(kind, mediaType)) throw new TypeError('Missing or oversized compiled Frontend resource: ' + path);
-        return Buffer.from(bytes);
+        return bytes;
     };
     const json = path => JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(read(path)));
     const index = json(entry);

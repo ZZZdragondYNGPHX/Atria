@@ -41,7 +41,7 @@ export class FrontendBridgeService {
         const graph = resolved.frontendGraph;
         if (!graph) throw bridgeFailure('bridge_unavailable');
         const scopes = new Map(graph.resources.filter(ref => ref.kind === 'component').map(ref => {
-            const ir = JSON.parse(installed.sourceFiles.get(ref.path).toString('utf8')); return [ir.id, new Set(ir.uses)];
+            const ir = JSON.parse(readPackagePayload(installed.sourceFiles, ref.path).toString('utf8')); return [ir.id, new Set(ir.uses)];
         }));
         const epoch = randomUUID();
         const revision = terminal?.deathRevisionId ?? snapshot.revision.revisionId;
@@ -138,7 +138,7 @@ export class FrontendBridgeService {
             }
             if (request.revision !== base.revision.revisionId) throw bridgeFailure('bridge_revision_stale');
             const values = binding.target.service ? await readFixedHost(services.core, owner, state, base, binding, mapBridgeInput(binding, input)) : binding.target.resourceId
-                ? JSON.parse(state.installed.assets.get(state.installed.manifest.runtime.experienceContract.dataResources.find(ref => ref.resourceId === binding.target.resourceId).assetId).toString('utf8'))
+                ? JSON.parse(readPackagePayload(state.installed.assets, state.installed.manifest.runtime.experienceContract.dataResources.find(ref => ref.resourceId === binding.target.resourceId).assetId).toString('utf8'))
                 : projectApplication(base, binding.target.domainId).map(({ id, value }) => ({ id, value }));
             if (state.revoked) throw bridgeFailure('bridge_epoch_stale');
             if (!binding.collection) {
@@ -230,3 +230,4 @@ export class FrontendBridgeService {
     }
 }
 export const frontendBridgeService = new FrontendBridgeService();
+import { readPackagePayload } from '../package-payload-cache.js';

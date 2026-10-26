@@ -1,4 +1,5 @@
 import { hashNativeDocument } from './repositories/common.js';
+import { readPackagePayload } from './package-payload-cache.js';
 import { compileDeclarativeLogic } from '../../public/scripts/native/experience/logic/declarative.js';
 import { lowerDeclarativeMutations } from '../../public/scripts/native/experience/logic/mutations.js';
 
@@ -13,7 +14,7 @@ export function readLawMechanisms(manifest, files) {
     const paths = [...new Set(manifest.entryPoints.map(entry => entry.runtime?.game?.logic ?? manifest.runtime?.game?.logic).filter(Boolean))];
     const items = [];
     for (const logicPath of paths) {
-        const bytes = files.get(logicPath);
+        const bytes = readPackagePayload(files, logicPath);
         if (!bytes || bytes.length > 2 * 1024 * 1024) throw new TypeError('Law mechanism requires bounded pinned Game Logic');
         const raw = JSON.parse(bytes.toString('utf8'));
         const logic = raw.schemaVersion === 2 ? lowerDeclarativeMutations(raw) : raw;
@@ -47,7 +48,7 @@ export function assertPinnedWorldLawExecutions(worlds, manifest, files) {
     const paths = new Set(worlds.flatMap(world => (world.revision.annotations ?? []).map(note => note.execution?.logicPath).filter(Boolean)));
     const logicByPath = new Map();
     for (const path of paths) {
-        const bytes = declared.has(path) ? files.get(path) : null;
+        const bytes = declared.has(path) ? readPackagePayload(files, path) : null;
         if (!bytes) continue;
         const raw = JSON.parse(bytes.toString('utf8'));
         logicByPath.set(path, raw.schemaVersion === 2 ? lowerDeclarativeMutations(raw) : raw);

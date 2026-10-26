@@ -5,10 +5,21 @@ const digests = new WeakMap(), views = new WeakMap();
 export function admitPackagePayload(payload, contentHash) { digests.set(payload, contentHash); return payload; }
 export function packagePayloadHash(payload) { return digests.get(payload); }
 export function registerPackagePayloadView(view, source, pristine = () => true) { views.set(view, { source, pristine }); }
+// Host readers receive an owned copy without exposing the Map's mutable value.
+// Ordinary get() remains mutable and continues to invalidate declaration trust.
+export function readPackagePayload(view, path) {
+    const entry = views.get(view);
+    if (!entry?.pristine(path)) return view.get(path);
+    const payload = entry.source.get(path);
+    return payload === undefined ? undefined : copyPackagePayload(payload);
+}
 export function packagePayloadInfo(view, path) {
     const entry = views.get(view);
     if (!entry?.pristine(path)) return null;
-    const payload = entry.source.get(path), contentHash = payload && digests.get(payload);
+    const payload = entry.source.get(path);
+    // Buffers can have external aliases. Only file-backed admitted payloads
+    // retain an immutable identity; bounded resident bytes are hashed again.
+    const contentHash = payload && !Buffer.isBuffer(payload) && digests.get(payload);
     return contentHash ? { size: payload.length, contentHash } : null;
 }
 
@@ -20,7 +31,7 @@ export async function withPackageAssetPayloads(assets, operation) {
             let file = files.get(record.backing);
             if (!file) {
                 const handle = await fs.promises.open(record.backing.path, 'r');
-                file = filePayload(handle, Number((await handle.stat()).size), null);
+                try { file = filePayload(handle, Number((await handle.stat()).size), null); } catch (error) { await handle.close(); throw error; }
                 files.set(record.backing, file);
             }
             payloads.set(id, file.range(record.offset, record.length, packagePayloadHash(record)));
