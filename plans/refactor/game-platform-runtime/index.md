@@ -3,6 +3,7 @@
 - Task ID: `refactor/game-platform-runtime`
 - Primary Workspace: 产品语义分支；方案与累计结果分别位于本目录和 [Record](../../../records/refactor/game-platform-runtime.md)。
 - 起点：`main@519642ad`。本方案承接现有 Session/Revision、计算进程池、增量状态、包缓存与存储权威，不另建权威系统。
+- 实施结果：P0–P6 已落地并集成 `main@4401f527`；具体证据、实际规模和剩余全量成本见 [Record](../../../records/refactor/game-platform-runtime.md)。阶段划分不是自动暂停点。
 - 目标：复杂世界计算与大型资产的工作量随实际访问和变化增长；并行任务利用多核，同时保持交互、取消、确定性提交和数据耐久性。
 - 执行规则仅引用 [Governance](../../../README.md)。阶段完成后持续推进；性能数据与未完成项写入同一 Record。
 
