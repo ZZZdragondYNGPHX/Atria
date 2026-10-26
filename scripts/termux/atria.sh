@@ -129,13 +129,15 @@ start_server() {
 
   : > "${LOG_FILE}"
   cd "${REPO_ROOT}"
+  bash "${SCRIPT_DIR}/fix-better-sqlite3.sh"
 
   if [[ "${ATRIA_TERMUX_WAKE_LOCK:-0}" == "1" ]] && command -v termux-wake-lock >/dev/null 2>&1; then
     termux-wake-lock >/dev/null 2>&1 || true
   fi
 
   log "Starting Atria on ${URL}..."
-  ATRIA_WEBPACK_CACHE_ROOT="${WEBPACK_CACHE_ROOT}" nohup node server.js \
+  NODE_COMPILE_CACHE="${NODE_COMPILE_CACHE:-${REPO_ROOT}/node_modules/.cache/atria-node}" \
+    ATRIA_WEBPACK_CACHE_ROOT="${WEBPACK_CACHE_ROOT}" nohup node server.js \
     --port "${PORT}" \
     --listen false \
     --enableIPv4 true \

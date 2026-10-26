@@ -31,6 +31,14 @@ if verify_sqlite; then
   exit 0
 fi
 
+for build_tool in python make clang pkg-config; do
+  if ! command -v "${build_tool}" >/dev/null 2>&1; then
+    log "Installing missing native build tools..."
+    pkg install -y python make clang pkg-config
+    break
+  fi
+done
+
 log "Applying the minimal Termux/Android gyp compatibility patch to better-sqlite3..."
 python - "${MODULE_DIR}/deps/common.gypi" "${MODULE_DIR}/binding.gyp" <<'PY'
 from pathlib import Path

@@ -1,5 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# Atria Toolbox launcher - v0.3.11
+# Atria Toolbox launcher - v0.3.12
+# v0.3.12：补齐 SQLite 原生模块修复与安装预构建，复用 Node 编译缓存并按实际时间报告启动耗时。
 # v0.3.11：安装仅浅克隆 main；更新只取 main 增量，Tag/Commit 按需下载。
 # v0.3.10：卸载、重装前离开程序目录，修复 npm/Git 因当前目录被删除而失败。
 # v0.3.9：卸载管理收敛为“保留用户数据卸载”和“彻底卸载 Atria”两种安全模式。
@@ -21,10 +22,10 @@ cd -- "$HOME" || {
     exit 1
 }
 
-SCRIPT_VERSION="v0.3.11"
+SCRIPT_VERSION="v0.3.12"
 RUNTIME_URL="${ATRIA_TOOLBOX_RUNTIME_URL:-https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria/main/scripts/termux/atria_toolbox.runtime.sh.gz}"
 # v0.3.0 完整运行时；本启动器在执行前注入后续就绪检测、main 分支策略与启动缓存优化。
-RUNTIME_SHA256="${ATRIA_TOOLBOX_RUNTIME_SHA256:-b7b5bca93ab61064564d35d4681ab6a4abdf74c39b7351f0a06db642f142cb84}"
+RUNTIME_SHA256="${ATRIA_TOOLBOX_RUNTIME_SHA256:-a24f23fcd9e8746c7f25e90ad29b30da36c6dcd05d773759a07505cf2219cac3}"
 CANONICAL_REPO_URL="https://github.com/ZZZdragondYNGPHX/Atria.git"
 CANONICAL_REPO_WEB="https://github.com/ZZZdragondYNGPHX/Atria"
 CANONICAL_RAW_BASE="https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria"
@@ -150,16 +151,13 @@ wait_for_server_ready() {
     local pid="$1"
     local timeout="${2:-$STARTUP_WAIT_SECONDS}"
     local port="${3:-$(get_port)}"
-    local poll=0
-    local polls_per_second=5
-    local max_polls elapsed
+    local started_at=$SECONDS elapsed next_notice=10
 
     [[ "$timeout" =~ ^[0-9]+$ ]] || timeout=180
     [ "$timeout" -gt 0 ] 2>/dev/null || timeout=180
-    max_polls=$((timeout * polls_per_second))
 
     info "等待 Atria Web 服务就绪..."
-    while [ "$poll" -lt "$max_polls" ]; do
+    while (( SECONDS - started_at < timeout )); do
         if ! kill -0 "$pid" 2>/dev/null; then
             rm -f "$PID_FILE"
             error "Atria 进程在启动阶段退出。最近日志："
@@ -168,16 +166,16 @@ wait_for_server_ready() {
         fi
 
         if server_http_ready "$port"; then
-            elapsed=$((poll / polls_per_second))
+            elapsed=$((SECONDS - started_at))
             info "Atria Web 服务已就绪（约 ${elapsed}s）。"
             log_launcher_event "ready-detected"
             return 0
         fi
 
-        poll=$((poll + 1))
-        if [ "$poll" -gt 0 ] && [ $((poll % 50)) -eq 0 ]; then
-            elapsed=$((poll / polls_per_second))
+        elapsed=$((SECONDS - started_at))
+        if [ "$elapsed" -ge "$next_notice" ]; then
             info "仍在初始化... ${elapsed}s / ${timeout}s"
+            next_notice=$(((elapsed / 10 + 1) * 10))
         fi
         sleep 0.2
     done
@@ -202,7 +200,8 @@ start_background_process() {
     mkdir -p "$TOOLBOX_HOME"
     : > "$LOG_FILE"
 
-    ATRIA_WEBPACK_CACHE_ROOT="$WEBPACK_CACHE_ROOT" nohup node "$ATRIA_DIR/server.js" >>"$LOG_FILE" 2>&1 &
+    NODE_COMPILE_CACHE="${NODE_COMPILE_CACHE:-$ATRIA_DIR/node_modules/.cache/atria-node}" \
+        ATRIA_WEBPACK_CACHE_ROOT="$WEBPACK_CACHE_ROOT" nohup node "$ATRIA_DIR/server.js" >>"$LOG_FILE" 2>&1 &
     local pid=$!
     local port
     port=$(get_port)
@@ -317,7 +316,7 @@ open_browser() {
 # ============================================================================
 # v0.3.2 main-branch policy
 # ============================================================================
-SCRIPT_VERSION="v0.3.11"
+SCRIPT_VERSION="v0.3.12"
 DEFAULT_BRANCH="main"
 SCRIPT_URL="${ATRIA_TOOLBOX_URL:-https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria/main/scripts/termux/atria_toolbox.sh}"
 CANONICAL_REPO_URL="https://github.com/ZZZdragondYNGPHX/Atria.git"
@@ -407,16 +406,6 @@ prebuild_frontend_cache() {
         return 1
     }
 }
-
-# Keep the runtime's existing dependency/config/native-module repair sequence,
-# then warm the versioned frontend cache for every code-change path (main/tag/commit).
-if declare -F post_code_change >/dev/null 2>&1; then
-    eval "$(declare -f post_code_change | sed '1s/post_code_change/post_code_change_base/')"
-    post_code_change() {
-        post_code_change_base "$@" || return 1
-        prebuild_frontend_cache || return 1
-    }
-fi
 
 heal_known_restore_sentinel_dirty_state() {
     local sentinel="public/scripts/extensions/third-party/.gitkeep"
