@@ -23,17 +23,9 @@ process.on('message', async ({ compile, artifact, resourceHash, source, method, 
     let context;
     try {
         if (compile) {
-            const [{ compileController }, { hashNativeDocument }] = await Promise.all([
-                import('./frontend/script-compiler.js'), import('./repositories/common.js'),
-            ]);
-            const modules = new Map(compile.modules.map(module => [module.id, module.source]));
-            const artifact = compileController(source, path => {
-                if (!modules.has(path)) throw new TypeError('Missing computation module');
-                return modules.get(path);
-            }, { modules: limits.computationModules, moduleBytes: limits.computationModuleBytes, synchronous: true });
-            const resourceHash = hashNativeDocument(artifact);
-            rememberProgram(resourceHash, artifact);
-            process.send({ value: { artifact, resourceHash }, programs: [...programs.keys()] });
+            const { transpileComputationAsync } = await import('./computation-transpiler.js');
+            const artifact = await transpileComputationAsync(source, compile.modules);
+            process.send({ value: artifact, programs: [...programs.keys()] });
             return;
         }
         isolate ??= new ivm.Isolate({ memoryLimit: limits.computationHeapBytes / 1048576,

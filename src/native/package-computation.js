@@ -1,5 +1,6 @@
 import { runComputationJob } from './package-computation-pool.js';
-import { compileController, collectControllerSources } from './frontend/script-compiler.js';
+import { collectControllerSources, validateScriptArtifact } from './frontend/script-compiler.js';
+import { transpileComputation } from './computation-transpiler.js';
 import { assertJsonDeclaration, parseJsonDeclaration, jsonDeclarationBytes } from '../../public/shared/native-values.js';
 import { resourcePath } from '../../public/shared/native-frontend-contract.js';
 import { hashNativeDocument } from './repositories/common.js';
@@ -9,6 +10,12 @@ import { computationPolicy } from './computation-policy.js';
 
 // Cache only exact immutable module declarations, never inputs or outcomes.
 const artifacts = new Map(), installedArtifacts = new WeakMap();
+const preparations = new Set();
+function sameSources(source, files, entry) {
+    if (entry.source !== source) return false;
+    for (const [path, bytes] of entry.modules) if (!files.has(path) || !bytes.equals(readPackagePayload(files, path))) return false;
+    return true;
+}
 function freezeProgram(value) {
     if (value && typeof value === 'object') {
         for (const child of Object.values(value)) freezeProgram(child);
@@ -26,7 +33,8 @@ function pinnedArtifact(source, files) {
     if (!/\.(js|ts)$/.test(source)) throw new TypeError('Package computation requires JS/TS');
     const cached = cachedArtifact(source, files);
     if (cached) return cached;
-    const artifact = compileController(source, path => moduleText(files, path, limits), compilerLimits(limits));
+    const modules = collectControllerSources(source, path => moduleText(files, path, limits), compilerLimits(limits));
+    const artifact = validateScriptArtifact(transpileComputation(source, modules), compilerLimits(limits));
     return rememberArtifact(source, files, artifact, hashNativeDocument(artifact));
 }
 const compilerLimits = limits => ({ modules: limits.computationModules, moduleBytes: limits.computationModuleBytes, synchronous: true });
@@ -39,7 +47,7 @@ function cachedArtifact(source, files) {
     // Build validation and execution share the exact linked program. A package
     // with many transactions must not transpile the same world rules per use.
     for (const [key, cached] of artifacts) {
-        if (cached.source !== source || !cached.modules.every(([path, bytes]) => files.has(path) && bytes.equals(readPackagePayload(files, path)))) continue;
+        if (!sameSources(source, files, cached)) continue;
         artifacts.delete(key); artifacts.set(key, cached);
         return cached;
     }
@@ -54,10 +62,12 @@ function rememberArtifact(source, files, artifact, resourceHash, captured = null
 }
 
 async function prepareArtifact(source, files, signal) {
+    signal?.throwIfAborted();
     resourcePath(source);
     if (!/\.(js|ts)$/.test(source)) throw new TypeError('Package computation requires JS/TS');
     const cached = cachedArtifact(source, files);
     if (cached) return cached;
+    for (const entry of preparations) if (!entry.controller.signal.aborted && sameSources(source, files, entry)) return joinPreparation(entry, signal);
     const limits = computationPolicy();
     // Only exact reachable sources cross IPC, never an entire package/asset Map.
     const captured = new Map();
@@ -67,9 +77,33 @@ async function prepareArtifact(source, files, signal) {
         return text;
     }, compilerLimits(limits));
     const bytes = modules.reduce((sum, module) => sum + Buffer.byteLength(module.source), 0);
-    const { artifact, resourceHash } = await runComputationJob({ compile: { modules }, source, method: 'compile',
-        resourceHash: null, bytes, limits }, { signal });
-    return rememberArtifact(source, files, artifact, resourceHash, captured);
+    const entry = { source, modules: captured, controller: new AbortController(), callers: 0, done: false };
+    preparations.add(entry);
+    entry.promise = runComputationJob({ compile: { modules }, source, method: 'compile',
+        resourceHash: null, bytes, limits }, { signal: entry.controller.signal }).then(artifact => {
+        validateScriptArtifact(artifact, compilerLimits(limits));
+        return rememberArtifact(source, files, artifact, hashNativeDocument(artifact), captured);
+    }).finally(() => { entry.done = true; preparations.delete(entry); });
+    return joinPreparation(entry, signal);
+}
+
+// Concurrent cold sessions share compilation, but cancelling one caller must
+// not kill another's job. The last departing caller still retires the worker.
+function joinPreparation(entry, signal) {
+    entry.callers++;
+    return new Promise((resolve, reject) => {
+        let settled = false;
+        const finish = (callback, value) => {
+            if (settled) return;
+            settled = true; signal?.removeEventListener('abort', abort);
+            if (--entry.callers === 0 && !entry.done) entry.controller.abort();
+            callback(value);
+        };
+        const abort = () => finish(reject, signal.reason);
+        signal?.addEventListener('abort', abort, { once: true });
+        entry.promise.then(value => finish(resolve, value), error => finish(reject, error));
+        if (signal?.aborted) abort();
+    });
 }
 
 export async function runPackageComputation(installed, source, method, input, { partitioned = false, signal } = {}) {

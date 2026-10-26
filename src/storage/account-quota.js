@@ -95,7 +95,7 @@ export function installAccountQuota(engine, { directoriesByHandle, limit, makeDe
             const priorTx = scope.tx; scope.tx = proxy;
             try {
                 const result = await operation(proxy);
-                // Native writes are staged by FsNativeJournal / SQL. Admit the
+                // Native writes are staged in the SQL transaction. Admit the
                 // complete transaction net change before the durable commit.
                 if (finite && netNative > 0 && scope.used > scope.limit && scope.used > initialUsed) throw new AccountQuotaError('storage_quota_exceeded', { usedBytes: initialUsed, requestedBytes: netNative, quotaBytes: scope.limit });
                 return result;

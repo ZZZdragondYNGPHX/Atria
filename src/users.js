@@ -1506,10 +1506,12 @@ async function writeBackupArchive(handle, response, selectionInput, options) {
     // than `fs`, the on-disk file tree is NOT the full backup — repo data
     // lives in a database the user can't ship as files. Capture it as an
     // opaque dump alongside a meta descriptor so the restore side can
-    // validate engine kind before consuming. fs mode early-returns null from
-    // dumpUser and we skip both entries entirely, leaving the legacy ZIP
-    // shape unchanged.
+    // validate engine kind before consuming. FS Native records instead carry
+    // an online database snapshot at their normal archive path.
     const engine = getStorageEngine();
+    if (engine.kind === 'fs' && selection.native) {
+        archive.append(await engine.dumpNative(handle), { name: 'atria-native/resources.sqlite' });
+    }
     if (engine.kind !== 'fs') {
         const dumpStream = await engine.dumpUser(handle, { tables: selectionToDumpTables(selection) });
         if (dumpStream != null) {
@@ -1544,6 +1546,10 @@ async function writeBackupArchive(handle, response, selectionInput, options) {
         const archivePath = getBackupArchivePath(directories.root, directoryPath);
         if (!selection.native && path.resolve(directoryPath) === path.resolve(directories.assets)) {
             archive.glob('**/*', { cwd: directoryPath, dot: true, ignore: ['atria-native', 'atria-native/**'] }, { prefix: archivePath });
+        } else if (engine.kind === 'fs' && path.resolve(directoryPath) === path.resolve(resolveUserDirectory(directories, 'native'))) {
+            archive.glob('**/*', { cwd: directoryPath, dot: true,
+                ignore: ['resources.sqlite', 'resources.sqlite-wal', 'resources.sqlite-shm', 'pre-wal-resources', 'pre-wal-resources/**'],
+            }, { prefix: archivePath });
         } else {
             archive.directory(directoryPath, archivePath);
         }

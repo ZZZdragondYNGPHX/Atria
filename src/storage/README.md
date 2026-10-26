@@ -4,7 +4,7 @@ Repository methods are the only API that endpoints should use to read or write s
 
 ## Layers
 
-- **`engines/`** — how data is read and written. Four engines ship: `FsEngine` (one file per resource under `<dataRoot>/<handle>/`), `SqliteEngine` (per-user `atria-storage.sqlite`, WAL, FK on, real transactions), `MysqlEngine` and `PgEngine` (shared-DB backends keyed by `handle` column). All are swappable behind the same Engine / Transaction interface. The active engine is picked at boot from `storage.mode` in `config.yaml` (`fs` default; `sqlite` / `mysql` / `postgres` opt-in).
+- **`engines/`** — how data is read and written. Four engines ship: `FsEngine` (legacy files plus a per-account Native WAL database), `SqliteEngine` (per-user `atria-storage.sqlite`, WAL, FK on, real transactions), `MysqlEngine` and `PgEngine` (shared-DB backends keyed by `handle` column). All are swappable behind the same Engine / Transaction interface. The active engine is picked at boot from `storage.mode` in `config.yaml` (`fs` default; `sqlite` / `mysql` / `postgres` opt-in).
 - **`repositories/`** — what a chat / preset / lorebook *is*.
 - **`errors.js`** — typed errors that endpoints translate into HTTP status codes:
   - `ConflictError` → 409
@@ -94,8 +94,8 @@ Repository methods are the only API that endpoints should use to read or write s
 
 ## What FS mode does NOT provide
 
-- **Cross-resource transactions.** `withTransaction(fn)` on FsEngine runs `fn` sequentially; if a write inside the closure throws after earlier writes succeeded, the earlier writes are NOT rolled back. SqliteEngine provides true transactions.
-- Other resources have no OCC at all — concurrent writers to the same file race. FS whole-message patch uses a transient adjacent Atria recovery journal, not a persistent journal directory or alternate primary chat format; multi-process writers still require external coordination.
+- **Legacy cross-resource transactions.** Native records have atomic WAL transactions and CAS. Legacy file writes inside the same closure retain their original semantics: a later failure does not roll back an already completed file write. SqliteEngine provides transactions across its SQL resource kinds.
+- Legacy resources have no general OCC. FS whole-message patch uses a transient adjacent Atria recovery journal, not a persistent journal directory or alternate primary chat format; multi-process writers still require external coordination.
 
 ## Selecting an engine
 
@@ -315,12 +315,12 @@ In db modes (sqlite / mysql / postgres), the resources below live in the engine.
 A backup ZIP in db mode includes `_engine_dump.bin` + `_engine_meta.json` for the engine rows, plus the on-disk files above. A restore in matching engine kind round-trips both halves. Cross-engine restore must go through `scripts/storage-migrate.js` first to convert.
 # Native durable commit contract
 
- The prepared journal is synced before an atomic rename publishes it;
-recovery installs the entire committed journal before admitting a reader. Native
-files and directory entries cross synchronous durability barriers before ACK.
-Legacy non-Native FS resources retain their existing semantics. FS requires a
-single server process per data root; missing directory-sync support fails the
-write rather than silently reducing its durability.
+FS Native records live in `atria-native/resources.sqlite`, using the existing
+SQLite resource table, queries and CAS. Each logical transaction has one
+`BEGIN IMMEDIATE` / `COMMIT`, with WAL and `synchronous=FULL`; ACK follows COMMIT.
+No deferred durable acknowledgement or cross-action group commit is used.
+Legacy non-Native files retain their existing semantics. The original exclusive
+Host ownership of the local data root remains required.
 
 Android/Termux may use the toolbox's primary shared data directory under
 `/storage/emulated/<user>/`. Its FUSE type is accepted only on Android when the
@@ -344,11 +344,16 @@ or automatic fallback is certified S2 by configuration alone.
 
 ### Native maintenance and format
 
-Native FS envelopes live under `atria-native/resources/<kind>/<sessionId>/` for
-Session resources (other kinds remain directly under `<kind>`). This dev format
-is a hard cut; old flat envelopes are not read or migrated. The redo journal
-continues to publish and recover the complete dependency set before readers
-enter. File and directory barriers use asynchronous filesystem operations.
+On first access, FS recovers any committed JSON/ATRZ1/ATRJ2 redo journal, then
+streams the existing `atria-native/resources/<kind>/<sessionId>/` envelopes into
+one SQL transaction with an account/version marker. Failure before COMMIT can
+retry; after COMMIT only the database is authoritative. Old files are retained
+under `atria-native/pre-wal-resources` as an inactive recovery copy and never
+read as fallback. Maintenance cursors restart because their ordering changed.
+Native backups use SQLite's online backup API and exclude the active DB/WAL/SHM
+and inactive recovery copy from the file walk. Restore rebinds the snapshot's
+account through the existing transient-source conversion path. A Native WAL
+snapshot requires its engine; copying the live database alone is unsupported.
 
 Session and Blob cleanup share the existing NativeTaskScheduler. Retained
 Revision IDs protect their dependency closure; export/read and Blob publication
@@ -358,8 +363,9 @@ A scan/sweep limits records and estimated bytes, with one indivisible record
 allowed to exceed the scan-byte candidate budget. Root traversal still examines
 the full reachable closure and can yield between reads.
 
-SQLite retains WAL/FULL and a 1000-page automatic checkpoint safety net; explicit
-PASSIVE checkpoints queue on the transaction connection tail. Logical deletion,
+Both local Native stores retain WAL/FULL and a 1000-page automatic checkpoint
+safety net. Explicit checkpoints queue on the transaction tail (FS: TRUNCATE;
+SQLite: PASSIVE). Logical deletion,
 WAL checkpoint, and physical database compaction are distinct. No automatic
 VACUUM or destructive history retention policy is introduced. These protocols
 and process interruption tests do not certify physical power-loss behavior on

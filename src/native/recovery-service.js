@@ -242,7 +242,7 @@ export class NativeRecoveryService {
                 dependencies: closure.dependencies, dependencyChecks: closure.dependencyChecks, hashes: closure.hashes, version: closure.version,
                 createdAt: now, expiresAt: now + RECOVERY_RETENTION_MS, effectPolicy: 'no-background-model' };
             // One engine commit holds both the closed recovery source and the
-            // removal. FsNativeJournal durably publishes both before ACK.
+            // removal. The Native transaction durably publishes both before ACK.
             await withRecoveryPublication(async () => {
                 if (target.type === 'session') await this.sessions.delete(handle, target.id, { expectedRevisionId: closure.records.find(row => row.key.kind === K.session).doc.headRevisionId });
                 else if (target.type === 'package') await this.packages.delete(handle, target.id);

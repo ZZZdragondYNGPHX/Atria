@@ -1,14 +1,19 @@
 import { recoverFsChatPatchJournals } from './fs-chat-range.js';
 import { FsTransaction } from './fs-engine-transaction.js';
-import { FsNativeJournal } from './fs-native-journal.js';
+import { FsNativeStore, NATIVE_DATABASE } from './fs-native-store.js';
+import path from 'node:path';
+import fs from 'node:fs';
+import os from 'node:os';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { FsNativeCache } from './fs-native-cache.js';
 
 const tails = new Map();
 const active = new AsyncLocalStorage();
-// All engines for a root share the same transaction queue. A failed transaction
-// invalidates the known-clean journal state, including in other engine instances.
-const recoveryRequired = new Set();
+async function enqueue(root, operation) {
+    const next = (tails.get(root) ?? Promise.resolve()).catch(() => {}).then(operation);
+    tails.set(root, next);
+    try { return await next; } finally { if (tails.get(root) === next) tails.delete(root); }
+}
 
 export class FsEngine {
     constructor({ directoriesByHandle, durabilityFault = () => {} }) {
@@ -18,16 +23,12 @@ export class FsEngine {
         this.kind = 'fs';
         this._directoriesByHandle = directoriesByHandle;
         this._recoveredPatchJournals = new Set();
-        this._recoveredNativeJournals = new Set();
+        this._nativeStores = new Map();
         this._durabilityFault = durabilityFault;
         this._nativeStateCache = new Map();
         this._nativeResourceCache = new FsNativeCache();
     }
 
-    // `handle` is accepted but unused by FsTransaction — its per-kind handlers
-    // extract `handle` from key.handle / filter.handle themselves. SqliteEngine
-    // *does* need it to pick the per-user DB before the transaction begins, so
-    // the engine contract takes (handle, fn) uniformly.
     hasActiveTransaction(handle) {
         return Boolean(active.getStore()?.open && active.getStore()?.root === this._directoriesByHandle(handle).root);
     }
@@ -35,10 +36,7 @@ export class FsEngine {
     async withTransaction(handle, fn) {
         const root = this._directoriesByHandle(handle).root;
         if (active.getStore()?.open && active.getStore()?.root === root) return fn(active.getStore().tx);
-        const previous = tails.get(root) ?? Promise.resolve();
-        const next = previous.catch(() => {}).then(() => this._withTransaction(handle, root, fn));
-        tails.set(root, next);
-        try { return await next; } finally { if (tails.get(root) === next) tails.delete(root); }
+        return enqueue(root, () => this._withTransaction(handle, root, fn));
     }
 
     async _withTransaction(handle, root, fn) {
@@ -50,19 +48,17 @@ export class FsEngine {
             this._recoveredPatchJournals.add(handle);
         }
         const tx = new FsTransaction({ directoriesByHandle: this._directoriesByHandle, nativeResourceCache: this._nativeResourceCache, nativeStateCache: this._nativeStateCache });
-        const journal = new FsNativeJournal(tx, root, handle, this._durabilityFault, this._nativeStateCache);
-        if (!this._recoveredNativeJournals.has(handle) || recoveryRequired.has(root)) {
-            await journal.recover();
-            this._recoveredNativeJournals.add(handle); recoveryRequired.delete(root);
+        let store = this._nativeStores.get(handle);
+        if (!store) {
+            store = await FsNativeStore.open({ root, handle, files: tx, directoriesByHandle: this._directoriesByHandle,
+                stateCache: this._nativeStateCache, fault: this._durabilityFault });
+            this._nativeStores.set(handle, store);
         }
-        const scope = { root, tx: journal.tx, open: true };
-        return active.run(scope, async () => {
-            try {
-                const result = await fn(journal.tx); await journal.commit(); return result;
-            } catch (error) {
-                recoveryRequired.add(root);
-                this._nativeStateCache.clear(); throw error;
-            } finally { scope.open = false; }
+        return store.run(tx, native => {
+            const scope = { root, tx: native, open: true };
+            return active.run(scope, async () => {
+                try { return await fn(native); } finally { scope.open = false; }
+            });
         });
     }
 
@@ -70,48 +66,41 @@ export class FsEngine {
     // Maintenance enumeration is speculative; the GC root generation is
     // revalidated under engine isolation before any deletion.
     async scanNativeCandidates(handle, filter) {
-        return new FsTransaction({ directoriesByHandle: this._directoriesByHandle }).listResources({ ...filter, scan: true });
+        return this.withTransaction(handle, tx => tx.listResources({ ...filter, scan: true }));
     }
 
-    /**
-     * No-op by design: the fs engine has no engine-internal rows to wipe —
-     * every byte of a user's data lives in the on-disk directory tree. The
-     * admin `/delete` handler's `purge=true` branch is the single, explicit
-     * owner of removing that directory; `deleteUser` here runs unconditionally
-     * and must therefore preserve the dir when the admin chose `purge=false`.
-     * Idempotent (it does nothing).
-     * @param {string} _handle
-     */
-    async deleteUser(_handle) {
-        // intentionally empty — see jsdoc above
-    }
+    // The account directory owns both files and the Native WAL database.
+    // Purging it is the admin handler's decision; detach connections either way.
+    async deleteUser(handle) { this.closeHandle(handle); }
 
-    /**
-     * The fs engine has no engine-internal rows to dump. The on-disk
-     * directory tree (already included by createBackupArchive's
-     * file/directory loop) IS the backup. createBackupArchive's
-     * `kind !== 'fs'` guard ensures this method is never called in
-     * production. Returning null is the documented "nothing to dump"
-     * signal.
-     * @param {string} _handle
-     * @returns {Promise<null>}
-     */
-    async dumpUser(_handle) {
-        return null;
+    // FS archives carry a standalone Native database snapshot at its normal
+    // relative path. Engine-wide SQL dumps are only for non-FS adapters.
+    async dumpUser(_handle) { return null; }
+    async restoreUser(_handle, _stream) { /* Restored through Native resource conversion. */ }
+    closeHandle(handle) {
+        this._nativeStores.get(handle)?.close(); this._nativeStores.delete(handle);
+        this._nativeStateCache.clear(); this._recoveredPatchJournals.delete(handle);
     }
-
-    /**
-     * fs restore is a no-op. Backup files for fs mode are
-     * regular files inside the ZIP; restoreUserBackupArchive extracts them
-     * via fs writes, not via this method. The engine.kind === 'fs' branch
-     * in the restore handler does not call this.
-     * @param {string} _handle
-     * @param {import('node:stream').Readable} _stream
-     * @returns {Promise<void>}
-     */
-    async restoreUser(_handle, _stream) {
-        // Intentionally empty.
+    async checkpoint(handle) {
+        await this.withTransaction(handle, () => {});
+        const root = this._directoriesByHandle(handle).root;
+        return enqueue(root, () => this._nativeStores.get(handle).checkpoint());
     }
-
-    async close() { /* nothing to do */ }
+    async snapshotNative(handle, destinationRoot) {
+        await this.withTransaction(handle, () => {});
+        const destination = path.join(destinationRoot, NATIVE_DATABASE);
+        await fs.promises.mkdir(path.dirname(destination), { recursive: true });
+        await enqueue(this._directoriesByHandle(handle).root, () => this._nativeStores.get(handle).backup(destination));
+    }
+    async dumpNative(handle) {
+        const temporary = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'atria-native-backup-'));
+        const cleanup = () => fs.promises.rm(temporary, { recursive: true, force: true });
+        try {
+            await this.snapshotNative(handle, temporary);
+            const stream = fs.createReadStream(path.join(temporary, NATIVE_DATABASE));
+            stream.once('close', () => { void cleanup().catch(() => { /* Temporary snapshot cleanup is best-effort. */ }); });
+            return stream;
+        } catch (error) { await cleanup(); throw error; }
+    }
+    async close() { for (const handle of [...this._nativeStores.keys()]) this.closeHandle(handle); }
 }

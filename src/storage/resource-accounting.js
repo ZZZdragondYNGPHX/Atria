@@ -7,15 +7,16 @@ import { visualSessionOwner } from '../native/visual-store.js';
 import { runtimeCheckpointOwner } from '../native/model-prompt-runtime/runtime-checkpoint-store.js';
 import { SNAPSHOT_META_ENTRY } from './migration/backup.js';
 import { ENGINE_META_ENTRY } from './engine-backup-entries.js';
+import { nativeDatabaseFile } from './engines/fs-native-store.js';
 import {
     classifyNativeRecord, emptyResourceTotals, nativeResourceIdentity,
     resourceContentBytes, resourceFingerprint, resourceCapabilities,
 } from './resource-catalog.js';
 
-const engineFile = name => /^atria-storage\.sqlite(?:-(?:wal|shm))?$/.test(name) || /^native-commit\.journal(?:\.prepared)?$/.test(name);
+const engineFile = name => nativeDatabaseFile(name) || /^atria-storage\.sqlite(?:-(?:wal|shm))?$/.test(name) || /^native-commit\.journal(?:\.prepared)?$/.test(name);
 const fileCategory = relative => relative.startsWith('projects/') ? 'projects'
     : relative.startsWith('assets/atria-native/blobs/') ? 'media'
-        : relative.startsWith('backups/') ? 'recovery'
+        : relative.startsWith('backups/') || relative.startsWith('atria-native/pre-wal-resources/') ? 'recovery'
             : relative.startsWith('thumbnails/') ? 'cache'
                 : relative === 'secrets.json' || relative === 'settings.json' || relative.startsWith('themes/') ? 'settings' : 'advanced';
 const structuredLegacyFile = relative => /^(settings\.json|stats\.json)$/.test(relative)

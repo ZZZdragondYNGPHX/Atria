@@ -4,6 +4,7 @@ import path from 'node:path';
 import { ENGINE_META_ENTRY, ENGINE_DUMP_ENTRY } from '../engine-backup-entries.js';
 import { withChatWrite } from '../repositories/chat-write-boundary.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../../native/contracts.js';
+import { nativeSnapshotExcluded, NATIVE_DATABASE } from '../engines/fs-native-store.js';
 
 export const SNAPSHOT_META_ENTRY = '_atria_snapshot_meta.json';
 export const SNAPSHOT_GLOBAL_EXTENSIONS_ENTRY = '_atria_global_extensions';
@@ -24,29 +25,10 @@ export async function assertSnapshotRestoreAllowed({ engine, handle, userRoot })
  * Snapshot a user's directory tree into <backupRoot>/<timestamp>-<handle>/.
  * Returns the absolute backup path.
  *
- * The snapshot is a verbatim recursive copy of the user's per-handle directory.
- * For SQLite users this copies the .sqlite file too (better-sqlite3 keeps it
- * consistent on close, but during normal operation the WAL/SHM files coexist —
- * the recursive copy captures all of them.
- *
- * The timestamp uses ISO-8601 with `:` and `.` replaced by `-` so it's both
- * filename-safe and lexicographically sortable.
- *
- * Engine-dump capture:
- *  - For mysql/postgres engines (and sqlite, for parity) the on-disk user dir
- *    holds only secrets/binaries — the actual user state lives in db rows.
- *    When `engine` is passed and its `kind !== 'fs'`, this also captures
- *    `engine.dumpUser(handle)` into `<dest>/_engine_dump.bin` plus a
- *    `<dest>/_engine_meta.json` sidecar so `restoreFromSnapshot` can replay it.
- *  - When `engine` is null/undefined OR `engine.kind === 'fs'`, the dump step
- *    is skipped — fs users have no engine-side state and the directory copy
- *    alone is a faithful snapshot. This makes the parameter strictly opt-in: callers
- *    that pre-date engine-dump capture (auto-rollback test, runner.test.js
- *    fs↔sqlite paths) keep working without modification.
- *
- * The dump is streamed straight to disk via `fs.createWriteStream` so very
- * large user payloads (multi-GB chat archives) don't have to materialize in
- * memory between engine and snapshot dir.
+ * Native FS records use an online SQLite snapshot; active DB/WAL/SHM and
+ * inactive pre-upgrade copies are excluded from the file walk. An open Native
+ * database requires its engine. Non-FS engines also stream their logical dump
+ * into the snapshot. Callers hold the existing account/migration write boundary.
  *
  * @param {object} args
  * @param {string} args.handle
@@ -66,7 +48,14 @@ export async function snapshotUser({ handle, userRoot, backupRoot, engine = null
     fs.mkdirSync(backupRoot, { recursive: true });
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const dest = path.join(backupRoot, `${timestamp}-${handle}`);
-    await fs.promises.cp(userRoot, dest, { recursive: true });
+    // WAL databases require an online snapshot; copying the main file (or
+    // racing copies of main/WAL/SHM) does not define a consistent commit.
+    if (!engine && fs.existsSync(path.join(userRoot, NATIVE_DATABASE))) throw new Error('Native WAL snapshot requires its storage engine');
+    if (engine?.kind === 'fs') await engine.withTransaction(handle, () => {});
+    await fs.promises.cp(userRoot, dest, { recursive: true,
+        filter: source => engine?.kind !== 'fs' || !nativeSnapshotExcluded(path.relative(userRoot, source)),
+    });
+    if (engine?.kind === 'fs') await engine.snapshotNative(handle, dest);
 
     if (metadata && typeof metadata === 'object' && !Array.isArray(metadata)) {
         const snapshotMeta = {
@@ -126,7 +115,7 @@ export async function snapshotUser({ handle, userRoot, backupRoot, engine = null
  *    replayed into a pg engine would either error mid-stream or, worse, only
  *    overwrite rows whose shapes happen to match).
  *  - When `engine.kind === 'fs'` or `engine` is null/undefined, only the fs
- *    tree is restored — fs engine has no separate per-user state and the
+ *    tree (including the standalone Native database) is restored; the
  *    cpSync already covers everything.
  *  - Engine state living inside the user dir (the sqlite .sqlite file) is
  *    restored by the cpSync too. Passing `engine` for sqlite is harmless —
@@ -169,7 +158,7 @@ async function restoreSnapshot({ handle, userRoot, backupPath, engine = null }) 
     // SQLite holds the file open. Close/evict this user's connection before
     // replacing the directory, especially on Windows where a partial removal
     // could otherwise delete blobs before failing on the database file.
-    if (engine?.kind === 'sqlite') engine.closeHandle(handle);
+    engine?.closeHandle?.(handle);
     if (fs.existsSync(userRoot)) {
         await fs.promises.rm(userRoot, { recursive: true, force: true });
     }

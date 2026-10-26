@@ -220,7 +220,7 @@ export function attachNativeHostLifecycle(engine, { directoriesByHandle, dataRoo
         });
     };
 
-    for (const method of ['ping', 'dumpUser', 'scanNativeCandidates']) {
+    for (const method of ['ping', 'dumpUser', 'dumpNative', 'snapshotNative', 'checkpoint', 'scanNativeCandidates']) {
         if (typeof engine[method] !== 'function') continue;
         const original = engine[method].bind(engine);
         engine[method] = async (handle, ...args) => track(handle, async () => {

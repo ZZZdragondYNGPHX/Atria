@@ -44,12 +44,16 @@ serializes its original input once on the host, but IPC and guest parsing still
 copy data into each process. This is not shared-memory or GPU computation. Each
 stage has a fresh guest context; module globals do not persist between calls.
 On the first runtime use, the host collects bounded static dependencies and the
-same child-process pool performs TypeScript/JavaScript compilation. Build and
-runtime use the same compiler and artifact hash. Source bytes are pinned before
-the asynchronous boundary; modifying an authoring Map cannot poison the compiled
-identity. Compiler startup can increase the first-action latency, but no longer
-holds the host thread throughout transpilation. Compilation jobs share queue
-backpressure, cancellation and process deadlines with computation jobs.
+same child-process pool performs TypeScript/JavaScript transpilation through
+esbuild's native service. Source and generated-code AST admission remain on the
+host; workers do not load the full TypeScript compiler. Build and runtime share
+the same world transpiler and artifact hash; the frontend controller compiler
+is unchanged. Source bytes are pinned before the asynchronous boundary. Concurrent
+requests for identical source bytes share compilation and validation; cancelling
+one caller leaves other callers active, while cancelling the last retires the job.
+Compilation jobs share queue backpressure and process deadlines with computation
+jobs. The compiler change intentionally changes world artifact evidence hashes;
+old stored receipts are preserved, not relabelled as new artifacts.
 
 Host settings under `native.computation` are read at startup:
 
@@ -130,8 +134,8 @@ is not a Merkle format or a constant-time hash of arbitrary changes. The existin
 delta format preserves field deletion, array truncation, ancestry and GC dependencies.
 
 History windows and complete snapshots use the same materialization path over
-the persistent Timeline index. SQL fetches at most 256 exact keys per query;
-FS has at most 16 concurrent dependency reads and observes pending journal writes.
+the persistent Timeline index. SQL, including FS Native records, fetches at most
+256 exact keys per query and observes its transaction's pending writes.
 Both preserve ordering, missing-dependency errors and account boundaries. Stored
 immutable entry/variant metadata is admitted by repository writes and Save import;
 ordinary reads validate identity, ancestry and selection joins without admitting
@@ -141,22 +145,12 @@ history instead of re-reading every old Variant. Rewrites, branch changes and
 checkpoints reconstruct history. A fresh full snapshot still loads full history;
 this API does not silently truncate a game or its save data.
 
-FS compression/decompression uses asynchronous zlib for request paths. Independent
-state writes and resource encoding run in bounded batches of four. The `ATRJ2`
-redo journal stores the exact encoded target-file bytes, with a hashed index and
-payload, so installation does not serialize and compress every resource again.
-Recovery also accepts the previous JSON/`ATRZ1` journals. Target files retain their
-existing JSON/`ATRZ1` format; durable redo ordering, file sync and publication
-barriers remain. An engine recovers a root on first access and again after any
-failed transaction; the shared account queue invalidates this known-clean state
-across engine instances. It does not scan the journal on every successful read.
-Internal integrity comparisons borrow records; public mutable reads still copy.
-A stamp-checked
-file cache holds at most 4096 envelopes / 64 MiB of decoded JSON bytes, with a
-16 MiB per-entry limit. The materialized state cache holds eight heads of up to
-16 MiB each. These are cache weights, not process RSS limits. File changes,
-managed writes/deletes, transaction failures and journal recovery invalidate the
-relevant cached state. Ordinary mutable repository reads return copies; internal
-snapshot reads can borrow immutable record values.
+FS Native publication uses the [storage durable commit contract](../../src/storage/README.md#native-durable-commit-contract).
+The previous per-file journal writer/overlay is removed; its decoder remains
+only for migration recovery. SQL rows own their decoded JSON; internal integrity
+comparisons borrow those rows and public mutable reads remain independent.
+The materialized state cache holds eight heads of up to 16 MiB each. Writes,
+rollback, connection close and another connection's `data_version` invalidate
+cached state. These are cache weights, not process RSS limits.
 
 For package and media transport, see [Native media capacity](native-media-capacity.md).

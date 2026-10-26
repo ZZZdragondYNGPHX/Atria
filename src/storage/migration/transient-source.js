@@ -132,7 +132,9 @@ async function buildFsTransient({ scratchRoot, scratchHandle, zipPath }) {
 
     // FS envelopes include the owning handle. Rebind only that storage key;
     // resource IDs, exact revisions and document contents remain unchanged.
-    for (const kind of NATIVE_STORAGE_KINDS) {
+    const nativeDatabase = path.join(scratchRoot, 'atria-native/resources.sqlite');
+    if (fs.existsSync(nativeDatabase)) rewriteSqliteHandleInPlace(nativeDatabase, scratchHandle);
+    for (const kind of fs.existsSync(nativeDatabase) ? [] : NATIVE_STORAGE_KINDS) {
         const root = path.join(scratchDirs.nativeResources, kind);
         if (!fs.existsSync(root)) continue;
         const pending = [root];
@@ -169,7 +171,7 @@ async function buildFsTransient({ scratchRoot, scratchHandle, zipPath }) {
         async cleanup() {
             if (cleanedUp) return;
             cleanedUp = true;
-            try { await engine.close(); } catch { /* fs engine close is a no-op */ }
+            try { await engine.close(); } catch { /* retain cleanup failure isolation */ }
             await fsPromises.rm(scratchRoot, { recursive: true, force: true }).catch(() => { /* best-effort */ });
         },
     };
@@ -244,6 +246,9 @@ function rewriteSqliteHandleInPlace(sqlitePath, scratchHandle) {
         const tx = db.transaction(() => {
             if (db.prepare('SELECT name FROM sqlite_master WHERE type = ? AND name = ?').get('table', 'native_resources')) {
                 db.prepare('UPDATE native_resources SET handle = ?').run(scratchHandle);
+            }
+            if (db.prepare('SELECT name FROM sqlite_master WHERE type = ? AND name = ?').get('table', 'native_file_store')) {
+                db.prepare('UPDATE native_file_store SET handle = ?').run(scratchHandle);
             }
             for (const tbl of TABLES_WITH_HANDLE) {
                 db.prepare(`UPDATE ${tbl} SET handle = ?`).run(scratchHandle);

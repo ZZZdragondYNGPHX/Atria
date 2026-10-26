@@ -946,8 +946,7 @@ export function registerNativeResourceHandlers(tx) {
     };
     const parseRow = (kind, handle, row) => {
         if (!row) return null;
-        let doc;
-        try { doc = JSON.parse(row.doc); } catch { return null; }
+        const doc = JSON.parse(row.doc);
         return {
             key: decodeNativeResourceKey(kind, handle, row.resource_key),
             doc,
