@@ -1,4 +1,4 @@
-import { cloneAdmittedDocument, equalNativeDocuments, putImmutable } from './repositories/common.js';
+import { cloneAdmittedDocument, putImmutable } from './repositories/common.js';
 import { NATIVE_RESOURCE_KINDS as K } from './contracts.js';
 
 const FORMAT = 'atria-world-state-v2';
@@ -11,7 +11,7 @@ function remember(cache, key, value) { if (cache.size >= 8) cache.delete(cache.k
 const object = value => value !== null && !Array.isArray(value) && typeof value === 'object';
 const container = value => object(value) || Array.isArray(value);
 function difference(before, after, path = [], result = []) {
-    if (equalNativeDocuments(before, after)) return result;
+    if (before === after) return result;
     if (Array.isArray(before) && Array.isArray(after)) {
         for (let index = 0; index < after.length; index++) {
             if (index < before.length) difference(before[index], after[index], [...path, index], result);

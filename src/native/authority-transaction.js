@@ -3,14 +3,15 @@ import { recordById } from './domain-record-index.js';
 import { prepareSubjects, resolveSimulationSubject } from './subject-authority.js';
 import { prepareSpeechDraft } from './participant-authority.js';
 import { runPackageComputation } from './package-computation.js';
-import { AUTHORITY_EXECUTION_LIMITS } from './authority-execution-limits.js';
+import { AUTHORITY_EXECUTION_LIMITS, authorityExecutionLimits } from './authority-execution-limits.js';
 import { prepareLifetimes, validateLifetimes } from './lifetime-authority.js';
 import { lifetimePolicy } from '../../public/shared/native-lifetime-contract.js';
 import { prepareHistory, historySources, validateHistory } from './history-authority.js';
 import { assertNativeExperienceContract } from '../../public/shared/native-experience-contract.js';
 import { assertJsonDeclaration, fields } from '../../public/shared/native-values.js';
+import { WORLD_DATA_LIMITS } from '../../public/shared/native-world-data.js';
 import { assertTaskValue, taskId } from '../../public/shared/native-task-contract.js';
-import { compileDataSchema } from '../../public/shared/native-data-schema.js';
+import { compileDataSchema, compileWorldDataSchema } from '../../public/shared/native-data-schema.js';
 import { compileComputationSchema } from '../../public/shared/native-computation-schema.js';
 import { simulationInstantSchema } from '../../public/shared/native-simulation-contract.js';
 import { AUTHORITY_LIMITS, authorityPublicRefusal } from '../../public/shared/native-authority-contract.js';
@@ -19,7 +20,7 @@ import { compileFormula, evaluateFormulaAst } from '../../public/scripts/native/
 import { createDeterministicRng } from '../../public/scripts/native/experience/logic/rng.js';
 import { createRulesEngine } from '../../public/scripts/native/experience/logic/rules.js';
 import { assertNativeId } from './identity.js';
-import { cloneAdmittedDocument, hashNativeDocument, equalNativeDocuments } from './repositories/common.js';
+import { hashNativeDocument, equalNativeDocuments } from './repositories/common.js';
 import { createTaskWorld, loadTaskLogic } from './task-authority.js';
 import { applyLifecycleCandidate, validateLifecycle } from './lifecycle-authority.js';
 import { packageKnowledgeManifest } from './session-knowledge.js';
@@ -34,8 +35,8 @@ function freeze(value) {
     }
     return value;
 }
-function bounded(value, maxBytes = AUTHORITY_EXECUTION_LIMITS.valueBytes) {
-    return assertJsonDeclaration(value, 'Authority value', maxBytes);
+function bounded(value, maxBytes = authorityExecutionLimits().valueBytes) {
+    return assertJsonDeclaration(value, 'Authority value', maxBytes, WORLD_DATA_LIMITS);
 }
 function contractFor(base, installed = null) {
     const contract = installed ? loadTaskLogic(installed).contract : assertNativeExperienceContract(base.manifest.runtime?.experienceContract);
@@ -79,7 +80,7 @@ export function buildAuthorityObservation(base) {
         let scanned = 0;
         for (const viewId of policy.viewIds) {
             const projection = projectInformation(base, viewId, { purpose: 'display', includeRollups: false,
-                onScan: count => { scanned += count; if (scanned > AUTHORITY_EXECUTION_LIMITS.recordScans) throw new TypeError('Observation scan limit'); } });
+                onScan: count => { scanned += count; if (scanned > authorityExecutionLimits().recordScans) throw new TypeError('Observation scan limit'); } });
             result.truncated ||= projection.truncated;
             for (const item of projection.items) {
                 const safe = bounded({ viewId, ...item });
@@ -100,7 +101,7 @@ export function template(raw, context) {
         if (Object.hasOwn(raw, 'computed')) {
             let value = context.computed;
             for (const key of raw.computed.split('.')) value = value[key];
-            return cloneAdmittedDocument(value);
+            return value;
         }
         if (Object.hasOwn(raw, 'formula')) return expression(raw.formula, context);
         if (Array.isArray(raw)) return raw.map(item => template(item, context));
@@ -120,9 +121,9 @@ function budgetFor(policy, rngSeed) {
     const protectedDomains = new Set();
     const context = {
         rngSeed, counts, protectedDomains, publication: false,
-        step() { add('steps', 1, AUTHORITY_EXECUTION_LIMITS.steps); },
-        rule() { context.step(); add('ruleEvaluations', 1, AUTHORITY_EXECUTION_LIMITS.ruleEvaluations); },
-        value(value) { const safe = bounded(value); add('valueBytes', bytes(safe), AUTHORITY_EXECUTION_LIMITS.totalValueBytes); return safe; },
+        step() { add('steps', 1, authorityExecutionLimits().steps); },
+        rule() { context.step(); add('ruleEvaluations', 1, authorityExecutionLimits().ruleEvaluations); },
+        value(value) { const safe = bounded(value); add('valueBytes', bytes(safe), authorityExecutionLimits().totalValueBytes); return safe; },
         effect(effect) {
             context.step(); context.value(effect); add('effects', 1, policy.maxEffects);
             const families = { 'world.event': ['worldEvents', policy.maxWorldEvents], 'app.command': ['appCommands', policy.maxAppCommands],
@@ -131,12 +132,12 @@ function budgetFor(policy, rngSeed) {
             else if (!['world.command', 'task'].includes(effect.kind)) throw new TypeError('Unsupported expanded authority effect');
             if (effect.kind === 'app.command' && protectedDomains.has(effect.domainId) && !context.publication) throw new TypeError('Derived output is not authority');
         },
-        typed(value, schema) { return assertTaskValue(context.value(value), compileDataSchema(schema)); },
-        read(records) { add('readGrants', 1, policy.maxReadGrants); add('recordScans', records, AUTHORITY_EXECUTION_LIMITS.recordScans); },
-        scan(records) { add('recordScans', records, AUTHORITY_EXECUTION_LIMITS.recordScans); },
+        typed(value, schema) { return assertTaskValue(context.value(value), compileWorldDataSchema(schema), { limits: WORLD_DATA_LIMITS }); },
+        read(records) { add('readGrants', 1, policy.maxReadGrants); add('recordScans', records, authorityExecutionLimits().recordScans); },
+        scan(records) { add('recordScans', records, authorityExecutionLimits().recordScans); },
         readValue(value) {
             const safe = context.value(value);
-            add('readBytes', bytes(safe), AUTHORITY_EXECUTION_LIMITS.readBytes);
+            add('readBytes', bytes(safe), authorityExecutionLimits().readBytes);
             return safe;
         },
         validateEvents(drafts, reducers) {
@@ -159,7 +160,6 @@ export function privateReads(candidate, contract, grants, args, budget) {
         const state = candidate.states.atri_lifecycle;
         if (state.scopes[domain.scopeId]?.status !== 'active') throw new TypeError('Private read scope inactive');
         const records = state.domains[domain.id].records;
-        budget.read(grant.collection ? records.length : 1);
         const select = record => {
             if (!record || record.scopeId !== domain.scopeId) throw new TypeError('Private read unavailable');
             const selected = {};
@@ -182,15 +182,22 @@ export function privateReads(candidate, contract, grants, args, budget) {
             const where = grant.collection.where;
             const selector = grant.collection.ids;
             const ids = selector ? new Set(selector.field.split('.').reduce((value, key) => value?.[key], result[selector.read])) : null;
-            const matching = records.filter(record => {
+            const indexed = ids && grant.collection.match !== 'any';
+            budget.read(indexed ? ids.size : records.length);
+            const candidates = indexed ? [...ids].map(id => recordById(records, id)).filter(Boolean) : records;
+            const expected = where ? template(where.equals, { args }) : undefined;
+            const matching = candidates.filter(record => {
                 const byId = !ids || ids.has(record.id);
-                const byField = !where || where.field.split('.').reduce((value, key) => value?.[key], record.value) === template(where.equals, { args });
+                const byField = !where || where.field.split('.').reduce((value, key) => value?.[key], record.value) === expected;
                 return grant.collection.match === 'any' ? byId || byField : byId && byField;
             });
             if (matching.length > grant.collection.maxItems) throw new TypeError('Private collection read limit');
             selected = { records: [...matching].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
                 .map(record => ({ id: record.id, value: select(record), ...(grant.collection.recordHash ? { hash: hashNativeDocument(record.value) } : {}) })) };
-        } else selected = select(recordById(records, taskId(template(grant.recordId, { args }))));
+        } else {
+            budget.read(1);
+            selected = select(recordById(records, taskId(template(grant.recordId, { args }))));
+        }
         // Admission already returns an isolated immutable copy. Retain it
         // instead of copying once here and discarding a second copy below.
         result[grant.id] = budget.readValue(selected);
@@ -281,7 +288,7 @@ async function executeTransaction(candidate, installed, contract, logic, world, 
             execution.push(checked.evidence);
         }
         const prepared = await runPackageComputation(installed, transaction.computation.source, 'compute', input, { partitioned: transaction.computation.partitioned === true });
-        computed = assertTaskValue(budget.value(prepared.value), compileComputationSchema(transaction.computation.outputSchema));
+        computed = assertTaskValue(budget.value(prepared.value), compileComputationSchema(transaction.computation.outputSchema), { limits: WORLD_DATA_LIMITS });
         execution.push(prepared.evidence);
     }
     const rng = createDeterministicRng(identity);

@@ -1078,7 +1078,7 @@ export function registerNativeResourceHandlers(tx) {
                 values.push(JSON.stringify(filter[field]));
                 predicates.push(`resource_key::jsonb -> ${index} = $${values.length}::jsonb`);
             });
-            const order = { updatedAt: 'updated_at', createdAt: 'created_at' }[filter.orderBy];
+            const order = filter.orderBy === 'updatedAt' ? 'updated_at' : filter.orderBy === 'createdAt' ? 'created_at' : null;
             let suffix = predicates.length ? ' AND ' + predicates.join(' AND ') : '';
             if (order) {
                 suffix += ' ORDER BY ' + order + ' DESC';

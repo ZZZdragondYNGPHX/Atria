@@ -1,5 +1,5 @@
 import { fields, json, text } from './native-values.js';
-import { compileDataSchema } from './native-data-schema.js';
+import { compileDataSchema, isCompiledDataSchema } from './native-data-schema.js';
 import { validateSchemaValue } from '../scripts/native/experience/world/schema.js';
 import { normalizeEventInterpretationRequest, validateEventInterpretation } from '../scripts/native/experience/llm/event-interpreter.js';
 import { assertOutcomeShape } from './native-message-contract.js';
@@ -27,9 +27,15 @@ function exact(value) {
     if (!text(value.revision, 128)) throw new TypeError('Task resource revision required');
     return value;
 }
-export function assertTaskValue(value, schema, { copy = true } = {}) {
-    const result = json(value, 0, { nodes: 0 }, copy);
+const typedValues = new WeakMap();
+export function assertTaskValue(value, schema, { copy = true, limits = {} } = {}) {
+    const result = json(value, 0, { ...limits, nodes: 0 }, copy);
+    const cached = result && typeof result === 'object' ? typedValues.get(result) : undefined;
+    if (cached?.has(schema)) return result;
     if (!validateSchemaValue(result, schema, { details: false }).ok) throw new TypeError('Task value violates schema');
+    if (copy && result && typeof result === 'object' && isCompiledDataSchema(schema)) {
+        const schemas = cached || new WeakSet(); schemas.add(schema); typedValues.set(result, schemas);
+    }
     return result;
 }
 /** Original GenerationHost Task normalization, shared with completion evidence. */

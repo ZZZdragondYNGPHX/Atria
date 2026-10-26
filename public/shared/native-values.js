@@ -9,15 +9,16 @@ export function text(value, limit = 8192) {
     return value;
 }
 export function json(value, depth = 0, budget = { nodes: 0 }, copy = true) {
-    if (depth > 24 || ++budget.nodes > 32768) throw new Error('Native JSON exceeds complexity limit');
+    const { maxNodes = 32768, maxDepth = 24, maxString = 65536 } = budget;
+    if (depth > maxDepth || ++budget.nodes > maxNodes) throw new Error('Native JSON exceeds complexity limit');
     const admitted = value && typeof value === 'object' ? declarations.get(value) : undefined;
     if (admitted) {
         budget.nodes += admitted.nodes - 1;
-        if (depth + admitted.height > 24 || budget.nodes > 32768 || admitted.maxString > 65536) throw new Error('Native JSON exceeds complexity limit');
+        if (depth + admitted.height > maxDepth || budget.nodes > maxNodes || admitted.maxString > maxString) throw new Error('Native JSON exceeds complexity limit');
         return value;
     }
     if (value === null || typeof value === 'boolean') return value;
-    if (typeof value === 'string') return text(value, 65536);
+    if (typeof value === 'string') return text(value, maxString);
     if (typeof value === 'number' && Number.isFinite(value)) return value;
     if (Array.isArray(value)) {
         if (copy) return Object.freeze(value.map(child => json(child, depth + 1, budget)));

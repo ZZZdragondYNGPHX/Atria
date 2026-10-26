@@ -184,7 +184,7 @@ function normalizeAssignments(raw, type, options = {}) {
     });
 }
 
-function applyAssignment(target, assignment, value) {
+function applyAssignment(target, assignment, value, structuralSharing = false) {
     let cursor = target;
     for (let index = 0; index < assignment.segments.length - 1; index += 1) {
         const segment = assignment.segments[index];
@@ -195,6 +195,8 @@ function applyAssignment(target, assignment, value) {
             throw new Error(
                 `Cannot assign '${assignment.path}': '${assignment.segments.slice(0, index + 1).join('.')}' is not an object`,
             );
+        } else if (structuralSharing) {
+            cursor[segment] = { ...existing };
         }
         cursor = cursor[segment];
     }
@@ -268,15 +270,17 @@ export function compileDeclarativeReducer(raw, options = {}) {
         type,
         ...(raw.payloadSchema === undefined ? {} : { payloadSchema: clone(raw.payloadSchema) }),
         reduce(state, event) {
-            const sourceWorld = clone(state);
-            const next = clone(state);
+            // Formula evaluation is read-only. Every assignment observes the
+            // original state, including overlapping destination paths.
+            const sourceWorld = state;
+            const next = options.structuralSharing ? { ...state } : clone(state);
             for (const assignment of assignments) {
                 const value = evaluateTemplate(assignment.value, {
                     world: sourceWorld,
                     args: event.payload ?? {},
                     selectors: {},
                 });
-                applyAssignment(next, assignment, value);
+                applyAssignment(next, assignment, value, options.structuralSharing);
             }
             return next;
         },

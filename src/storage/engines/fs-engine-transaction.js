@@ -832,7 +832,8 @@ function registerNativeResourceHandlers(tx) {
             const normalizedFilter = { ...filter, handle: String(filter.handle || '') };
             if (!filter.scan && getNativeResourceKeyFields(filter.kind).every(field => normalizedFilter[field] !== undefined)) {
                 if (filter.limit === 0) return [];
-                const record = await handler.get(normalizedFilter);
+                const key = Object.fromEntries(['kind', ...getNativeResourceKeyFields(filter.kind)].map(field => [field, normalizedFilter[field]]));
+                const record = await handler.get(key);
                 return record ? [record] : [];
             }
             const dir = rootFor(normalizedFilter);

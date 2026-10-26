@@ -1,3 +1,4 @@
+import { WORLD_DATA_LIMITS } from '../../public/shared/native-world-data.js';
 import { initialLifetimes, validateLifetimes } from './lifetime-authority.js';
 import { recordById, invalidateRecordIndex } from './domain-record-index.js';
 import { initialHistory } from '../../public/shared/native-history-runtime.js';
@@ -16,6 +17,16 @@ import { actorAvailability } from '../../public/shared/native-information-runtim
 
 const copy = value => structuredClone(value);
 const retentionSizes = new WeakMap();
+const commandReducers = new WeakMap();
+function commandReducer(command) {
+    let reducer = commandReducers.get(command);
+    if (!reducer) {
+        const { terminal: _terminal, ...mutation } = command;
+        reducer = compileDeclarativeLogic({ schemaVersion: 2, mutations: [mutation] }, { structuralSharing: true }).reducers[0];
+        if (Object.isFrozen(command)) commandReducers.set(command, reducer);
+    }
+    return reducer;
+}
 function retentionCache(authority, reset = false) {
     if (!authority) return null;
     if (reset || !retentionSizes.has(authority)) retentionSizes.set(authority, new WeakMap());
@@ -51,7 +62,7 @@ export function validateLifecycle(base) {
         const records = state.domains[domain.id]?.records;
         if (!Array.isArray(records) || records.length > domain.retention.maxItems || new Set(records.map(item => item.id)).size !== records.length) throw new TypeError('Invalid domain records');
         for (const record of records) {
-            taskId(record.id); assertTaskValue(record.value, domain.recordSchema, { copy: false });
+            taskId(record.id); assertTaskValue(record.value, domain.recordSchema, { copy: false, limits: WORLD_DATA_LIMITS });
             if (!['active', 'terminal'].includes(record.status) || typeof record.pinned !== 'boolean') throw new TypeError('Invalid scoped record');
         }
     }
@@ -115,6 +126,10 @@ export function compactLifecycle(base, state, { reserveTask = false, pruneIntera
         const records = state.domains[domain.id].records;
         const policy = domain.retention;
         let logicalBytes = byteCache?.get(records) ?? Buffer.byteLength(JSON.stringify(records));
+        if (!policy.terminalTtl && records.length <= policy.maxItems && logicalBytes <= policy.maxLogicalBytes) {
+            byteCache?.set(records, logicalBytes);
+            continue;
+        }
         for (let index = 0; index < records.length;) {
             const record = records[index];
             const expired = policy.terminalTtl && state.clocks[policy.terminalTtl.clockId] - record.terminalTicks?.[policy.terminalTtl.clockId] >= policy.terminalTtl.ticks;
@@ -172,7 +187,7 @@ function scheduleInteraction(base, candidate, mapping, record) {
     if (!integer(payload.dueTick) || payload.dueTick < clock || payload.dueTick - clock > mapping.maxDelay) throw new TypeError('Scheduled interaction WorldInstant outside declared bounds');
     const domain = lifecycleDefinition(base).domains.find(item => item.id === mapping.domainId);
     const command = domain.commands.find(item => item.id === mapping.commandId);
-    const args = assertTaskValue(payload.args, command.argsSchema);
+    const args = assertTaskValue(payload.args, command.argsSchema, { limits: WORLD_DATA_LIMITS });
     if (state.interactions.length >= 128) compactLifecycle(candidate, state);
     if (state.interactions.length >= 128) throw new TypeError('Scheduled interaction backpressure');
     state.interactions.push({ proposalId: record.invocationId, interactionId: mapping.id, scopeId: mapping.scopeId,
@@ -261,17 +276,15 @@ export async function applyLifecycleCandidate(candidate, installed, action, auth
             const domain = def.domains.find(item => item.id === request.domainId); const command = domain?.commands.find(item => item.id === request.commandId);
             if (!command) throw new TypeError('Unknown App Command');
             active(state, domain.scopeId); taskId(request.recordId);
-            const args = authority ? authority.typed(request.args, command.argsSchema) : assertTaskValue(request.args, command.argsSchema);
+            const args = authority ? authority.typed(request.args, command.argsSchema) : assertTaskValue(request.args, command.argsSchema, { limits: WORLD_DATA_LIMITS });
             const records = state.domains[domain.id].records, logicalBytes = byteCache?.get(records);
             let record = recordById(records, request.recordId);
             const beforeBytes = logicalBytes === undefined ? 0 : record ? Buffer.byteLength(JSON.stringify(record)) : -Number(records.length > 0);
             if (record?.status === 'terminal') throw new TypeError('App record is terminal');
             if (!record) { record = { id: request.recordId, scopeId: domain.scopeId, value: copy(domain.initial), status: 'active', pinned: false, createdLogicalTime: state.logicalTime }; records.push(record); }
-            const { terminal: _terminal, ...mutation } = command;
-            const logic = compileDeclarativeLogic({ schemaVersion: 2, mutations: [mutation] });
             const event = { type: command.event, payload: args };
-            const nextValue = logic.reducers[0].reduce(record.value, event);
-            record.value = authority ? authority.typed(nextValue, domain.recordSchema) : assertTaskValue(nextValue, domain.recordSchema);
+            const nextValue = commandReducer(command).reduce(record.value, event);
+            record.value = authority ? authority.typed(nextValue, domain.recordSchema) : assertTaskValue(nextValue, domain.recordSchema, { limits: WORLD_DATA_LIMITS });
             record.updatedLogicalTime = state.logicalTime + 1;
             if (command.terminal) { record.status = 'terminal'; record.terminalTicks = copy(state.clocks); }
             if (logicalBytes !== undefined) byteCache.set(records, logicalBytes - beforeBytes + Buffer.byteLength(JSON.stringify(record)));

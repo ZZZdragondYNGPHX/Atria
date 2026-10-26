@@ -1,5 +1,6 @@
 import { fields, text } from '../../../../shared/native-values.js';
-import { compileDataSchema } from '../../../../shared/native-data-schema.js';
+import { compileWorldDataSchema as compileDataSchema } from '../../../../shared/native-data-schema.js';
+import { WORLD_CAPACITY } from '../../../../shared/native-world-data.js';
 import { assertTaskValue, taskId } from '../../../../shared/native-task-contract.js';
 import { AUTHORITY_LIMITS as LIMITS, authorityInteger as integer, authorityList as list,
     authorityReference as reference } from '../../../../shared/native-authority-contract.js';
@@ -131,7 +132,7 @@ export function reads(raw, lifecycle, args) {
             fields(grant.collection, ['maxItems', 'where', 'recordHash', 'ids', 'match'], 'Transaction collection read');
             if (grant.collection.match !== undefined && (!['all', 'any'].includes(grant.collection.match) || !grant.collection.ids || !grant.collection.where)) throw new TypeError('Collection match requires identities and predicate');
             if (grant.collection.recordHash !== undefined && typeof grant.collection.recordHash !== 'boolean') throw new TypeError('Invalid collection record hash policy');
-            integer(grant.collection.maxItems, 1, 256, 'collection records');
+            integer(grant.collection.maxItems, 1, WORLD_CAPACITY.domainRecords, 'collection records');
             if (grant.recordId !== undefined) throw new TypeError('Collection read cannot select a record');
         } else recordSelector(grant.recordId, args ? { args } : {});
         const schema = objectSchema(domain.recordSchema);
@@ -142,7 +143,7 @@ export function reads(raw, lifecycle, args) {
             const prior = previous.get(selector.read), parts = fieldPath(selector.field, true);
             if (!prior || !prior.fields.some(field => selector.field === field || selector.field.startsWith(field + '.'))) throw new TypeError('Collection identities outside prior private grant');
             const selected = schemaAt(prior.schema, parts);
-            if (selected.type !== 'array' || selected.items.type !== 'string' || selected.maxItems > 256) throw new TypeError('Collection identities require a bounded string array');
+            if (selected.type !== 'array' || selected.items.type !== 'string' || selected.maxItems > WORLD_CAPACITY.arrayItems) throw new TypeError('Collection identities require a bounded string array');
         }
         if (grant.collection?.where) {
             fields(grant.collection.where, ['field', 'equals'], 'Transaction collection predicate');

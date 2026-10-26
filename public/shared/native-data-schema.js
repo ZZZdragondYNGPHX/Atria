@@ -1,5 +1,6 @@
 import { validateSchemaValue } from '../scripts/native/experience/world/schema.js';
 import { fields, json, text } from './native-values.js';
+import { WORLD_CAPACITY } from './native-world-data.js';
 
 const SCHEMA_FIELDS = {
     string: ['minLength', 'maxLength', 'enum'],
@@ -18,6 +19,16 @@ function integerBound(value, minimum, maximum, label) {
 // Validate the schema itself before reusing the existing deterministic data
 // validator. In particular, unsupported keywords must never be silently ignored.
 const frozenSchemas = new WeakMap();
+const worldSchemas = new WeakMap();
+export function isCompiledDataSchema(schema) { return frozenSchemas.has(schema) || worldSchemas.has(schema); }
+export function compileWorldDataSchema(raw) {
+    const cached = worldSchemas.get(raw);
+    if (cached) return cached;
+    const schema = compileDataSchema(raw, 0, { nodes: 0, maxArrayItems: WORLD_CAPACITY.arrayItems });
+    if (deeplyFrozen(raw)) worldSchemas.set(raw, schema);
+    worldSchemas.set(schema, schema);
+    return schema;
+}
 function deeplyFrozen(value) {
     return value === null || typeof value !== 'object'
         || Object.isFrozen(value) && Object.values(value).every(deeplyFrozen);

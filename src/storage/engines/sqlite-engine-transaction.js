@@ -1026,7 +1026,7 @@ export function registerNativeResourceHandlers(tx) {
                 }
                 return { records, cursor, done: records.length < filter.limit && bytes < filter.maxBytes, bytes, scanned: records.length };
             }
-            const order = { updatedAt: 'updated_at', createdAt: 'created_at' }[filter.orderBy];
+            const order = filter.orderBy === 'updatedAt' ? 'updated_at' : filter.orderBy === 'createdAt' ? 'created_at' : null;
             let suffix = predicates.length ? ' AND ' + predicates.join(' AND ') : '';
             if (order) {
                 suffix += ' ORDER BY ' + order + ' DESC';

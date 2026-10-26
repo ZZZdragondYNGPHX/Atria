@@ -1,7 +1,8 @@
 import { assertLifetimePolicy } from './native-lifetime-contract.js';
 import { assertHistoryPolicy } from './native-history-contract.js';
 import { fields, json, assertJsonDeclaration } from './native-values.js';
-import { compileDataSchema } from './native-data-schema.js';
+import { compileDataSchema, compileWorldDataSchema } from './native-data-schema.js';
+import { WORLD_DATA_LIMITS, WORLD_CAPACITY } from './native-world-data.js';
 import { compileDeclarativeLogic } from '../scripts/native/experience/logic/declarative.js';
 import { assertTaskRuntime, assertTaskValue, taskId } from './native-task-contract.js';
 import { APPRAISAL_INPUT_SCHEMA, APPRAISAL_OUTPUT_SCHEMA, appraisalTargets } from './native-appraisal-contract.js';
@@ -64,7 +65,7 @@ function logicalBytes(value) {
 const declaration = value => assertJsonDeclaration(value, 'Lifecycle', MAX_BYTES);
 export { declaration as assertLifecycleJson };
 function objectSchema(value) {
-    const schema = compileDataSchema(value);
+    const schema = compileWorldDataSchema(value);
     if (schema.type !== 'object') throw new TypeError('Lifecycle record/args schema must be a closed object');
     return schema;
 }
@@ -87,8 +88,8 @@ function clockPoint(item, clocks, field) {
 }
 function retention(item, clocks) {
     fields(item, ['maxItems', 'maxLogicalBytes', 'terminalTtl', 'keepPinned', 'keepReferenced'], 'Lifecycle domain retention');
-    integer(item.maxItems, 1, 4096);
-    integer(item.maxLogicalBytes, 1, MAX_BYTES);
+    integer(item.maxItems, 1, WORLD_CAPACITY.domainRecords);
+    integer(item.maxLogicalBytes, 1, WORLD_CAPACITY.domainBytes);
     if (item.keepPinned !== true || item.keepReferenced !== true) throw new TypeError('Lifecycle retention must preserve pinned/referenced records');
     if (item.terminalTtl !== undefined) clockPoint(item.terminalTtl, clocks, 'ticks');
     return item;
@@ -116,7 +117,7 @@ function domain(item, scopes, clocks) {
     reference(scopes, item.scopeId, 'scope');
     if (item.schemaVersion !== 1) throw new TypeError('Lifecycle domain schemaVersion must be 1');
     const recordSchema = objectSchema(item.recordSchema);
-    const initial = assertTaskValue(item.initial, recordSchema);
+    const initial = assertTaskValue(item.initial, recordSchema, { limits: WORLD_DATA_LIMITS });
     retention(item.retention, clocks);
     if (logicalBytes(initial) > item.retention.maxLogicalBytes) throw new TypeError('Lifecycle initial data exceeds retention bytes');
     const commands = list(item.commands, 64, command => {
