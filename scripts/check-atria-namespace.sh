@@ -19,19 +19,4 @@ then
   exit 1
 fi
 
-runtime="scripts/termux/atria_toolbox.runtime.sh.gz"
-if gzip -dc "${runtime}" | grep -n -E "${pattern}"; then
-  echo "Unexpected legacy product namespace remains in Termux runtime."
-  exit 1
-fi
-
-parts=(
-  scripts/termux/dist/atria_toolbox_v0.3.0.b64.part1
-  scripts/termux/dist/atria_toolbox_v0.3.0.b64.part2
-)
-if cat "${parts[@]}" | base64 -d | grep -n -E "${pattern}"; then
-  echo "Unexpected legacy product namespace remains in Termux distribution."
-  exit 1
-fi
-
 echo "Atria namespace guard passed."

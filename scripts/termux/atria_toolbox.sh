@@ -1,720 +1,529 @@
-#!/data/data/com.termux/files/usr/bin/bash
-# Atria Toolbox launcher - v0.3.12
-# v0.3.12：补齐 SQLite 原生模块修复与安装预构建，复用 Node 编译缓存并按实际时间报告启动耗时。
-# v0.3.11：安装仅浅克隆 main；更新只取 main 增量，Tag/Commit 按需下载。
-# v0.3.10：卸载、重装前离开程序目录，修复 npm/Git 因当前目录被删除而失败。
-# v0.3.9：卸载管理收敛为“保留用户数据卸载”和“彻底卸载 Atria”两种安全模式。
-# v0.3.8：修复 curl | bash 启动后菜单 stdin 已耗尽导致反复清屏/“无效选项”。
-# v0.3.7：适配 Atria 独立 Git 历史切割；旧本地主线自动保留安全分支后对齐新 main。
-# v0.3.6：强制安装/更新仓库指向 ZZZdragondYNGPHX/Atria，并自动修正旧产品仓库 origin。
-# v0.3.5：前端 bundle/cache 改用 Termux 私有高速存储，用户 dataRoot 保持不变。
-# v0.3.4：代码更新后预构建前端 bundle，正常启动复用缓存，跳过现场 Webpack。
-# v0.3.3：自动修复完整恢复误删的 third-party/.gitkeep，再执行工作区清洁校验。
-# v0.3.2：Termux 日常安装/更新统一跟随 Atria main；保留 Tag/Commit 调试入口。
-# v0.3.1 修复：后台进程存活不代表 Web 服务已经监听；启动/打开网页前等待 HTTP 就绪。
-
-set -e
+#!/usr/bin/env bash
+# One readable implementation for the Termux menu and CLI.
 set -o pipefail
+umask 077
+SCRIPT_VERSION="v0.4.0"
+REPO_URL="https://github.com/ZZZdragondYNGPHX/Atria.git"
+SCRIPT_URL="${ATRIA_TOOLBOX_URL:-https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria/main/scripts/termux/atria_toolbox.sh}"
+SELF="${BASH_SOURCE[0]:-}"
+[[ -z "$SELF" || ! -f "$SELF" ]] || SELF=$(realpath "$SELF")
+cd -- "$HOME" || exit 1
+APP="${ATRIA_TERMUX_ROOT:-$HOME/Atria}"
+STATE="${ATRIA_TERMUX_STATE_DIR:-$HOME/.atria_toolbox}"
+PRIVATE_DATA="${XDG_DATA_HOME:-$HOME/.local/share}/atria/data"
+BACKUPS="${ATRIA_TERMUX_BACKUP_DIR:-$HOME/storage/shared/Atria/backups}"
+CACHE="${ATRIA_TERMUX_WEBPACK_CACHE_ROOT:-$HOME/.cache/atria-webpack}"
+PID_FILE="$STATE/atria.pid"
+LOG_FILE="$STATE/atria.log"
+WAKE_FILE="$STATE/atria.keepalive"
+SAVED_SCRIPT="$STATE/atria_toolbox.sh"
+PORT=8000
+DATA_ROOT=''
+STORAGE_MODE=''
 
-# A previous toolbox session may have removed the caller's current directory.
-cd -- "$HOME" || {
-    echo "[ERROR] 无法进入 Termux 主目录：$HOME" >&2
-    exit 1
+info() { printf '[INFO] %s\n' "$*"; }
+error() { printf '[ERROR] %s\n' "$*" >&2; return 1; }
+confirm() {
+    local answer
+    read -r -p "$1 [y/N] " answer || return 1
+    [[ "$answer" == y || "$answer" == Y ]]
+}
+pause() { read -r -p '按回车键返回…' _ || return 0; }
+require_repo() {
+    [[ -f "$APP/server.js" && -f "$APP/package.json" ]] || { error '尚未安装 Atria，请先安装。'; return 1; }
+}
+runtime() { node "$APP/scripts/termux/runtime-tools.js" "$1" "$APP" "${@:2}"; }
+
+read_settings() {
+    require_repo || return 1
+    [[ -f "$APP/scripts/termux/runtime-tools.js" ]] || { error '主程序需要更新，请选择“更新 Atria”。'; return 1; }
+    local values fields=()
+    values=$(runtime paths) || return 1
+    mapfile -t fields <<< "$values"
+    DATA_ROOT="${fields[0]}" PORT="${fields[1]}" STORAGE_MODE="${fields[2]}"
+    PLUGINS="${fields[3]}" EXTENSIONS="${fields[4]}"
+    URL="http://127.0.0.1:$PORT"
 }
 
-SCRIPT_VERSION="v0.3.12"
-RUNTIME_URL="${ATRIA_TOOLBOX_RUNTIME_URL:-https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria/main/scripts/termux/atria_toolbox.runtime.sh.gz}"
-# v0.3.0 完整运行时；本启动器在执行前注入后续就绪检测、main 分支策略与启动缓存优化。
-RUNTIME_SHA256="${ATRIA_TOOLBOX_RUNTIME_SHA256:-a24f23fcd9e8746c7f25e90ad29b30da36c6dcd05d773759a07505cf2219cac3}"
-CANONICAL_REPO_URL="https://github.com/ZZZdragondYNGPHX/Atria.git"
-CANONICAL_REPO_WEB="https://github.com/ZZZdragondYNGPHX/Atria"
-CANONICAL_RAW_BASE="https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria"
-LEGACY_PRODUCT_TITLE="Lu""ker"
-LEGACY_REPO_WEB="https://github.com/ZZZdragondYNGPHX/${LEGACY_PRODUCT_TITLE}"
-LEGACY_REPO_SSH="git@github.com:ZZZdragondYNGPHX/${LEGACY_PRODUCT_TITLE}.git"
-LEGACY_RAW_BASE="https://raw.githubusercontent.com/ZZZdragondYNGPHX/${LEGACY_PRODUCT_TITLE}"
-BOOT_DIR="${TMPDIR:-${PREFIX:-/data/data/com.termux/files/usr}/tmp}/atria-toolbox-$$"
-GZ_FILE="$BOOT_DIR/runtime.sh.gz"
-BASE_FILE="$BOOT_DIR/runtime.base.sh"
-RUNTIME_FILE="$BOOT_DIR/runtime.sh"
-
-cleanup() {
-    rm -rf "$BOOT_DIR" 2>/dev/null || true
-}
-trap cleanup EXIT
-
-command -v curl >/dev/null 2>&1 || {
-    echo "[ERROR] 缺少 curl。请先执行：pkg install curl" >&2
-    exit 1
-}
-
-if ! command -v gzip >/dev/null 2>&1; then
-    if command -v pkg >/dev/null 2>&1; then
-        echo "[INFO] 正在安装 gzip..."
-        pkg install gzip -y || exit 1
-    else
-        echo "[ERROR] 缺少 gzip，且无法自动安装。" >&2
-        exit 1
-    fi
-fi
-
-mkdir -p "$BOOT_DIR"
-curl -fsSL "$RUNTIME_URL" -o "$GZ_FILE" || {
-    echo "[ERROR] 无法下载 Atria 工具箱运行时。" >&2
-    exit 1
-}
-
-if command -v sha256sum >/dev/null 2>&1; then
-    actual=$(sha256sum "$GZ_FILE" | awk '{print $1}')
-    if [ "$actual" != "$RUNTIME_SHA256" ]; then
-        echo "[ERROR] 工具箱运行时校验失败，已停止执行。" >&2
-        echo "expected: $RUNTIME_SHA256" >&2
-        echo "actual:   $actual" >&2
-        exit 1
-    fi
-fi
-
-gzip -dc "$GZ_FILE" > "$BASE_FILE" || {
-    echo "[ERROR] 无法解压工具箱运行时。" >&2
-    exit 1
-}
-
-# The compressed runtime predates the standalone Atria repository. Normalize
-# every known legacy transport before the runtime can clone or fetch anything.
-normalize_runtime_repository_urls() {
-    sed -i \
-        -e "s#${LEGACY_REPO_WEB}\\.git#${CANONICAL_REPO_URL}#g" \
-        -e "s#${LEGACY_REPO_WEB}#${CANONICAL_REPO_WEB}#g" \
-        -e "s#${LEGACY_REPO_SSH}#${CANONICAL_REPO_URL}#g" \
-        -e "s#${LEGACY_RAW_BASE}#${CANONICAL_RAW_BASE}#g" \
-        "$BASE_FILE"
-
-    if grep -Fq "ZZZdragondYNGPHX/${LEGACY_PRODUCT_TITLE}" "$BASE_FILE"; then
-        echo "[ERROR] 工具箱运行时仍包含旧产品仓库地址，已停止执行。" >&2
-        exit 1
-    fi
-}
-normalize_runtime_repository_urls
-
-# v0.3.0 运行时最后一行是 main_menu。先移除入口，再覆盖需要修复的函数。
-if [ "$(tail -n 1 "$BASE_FILE")" != "main_menu" ]; then
-    echo "[ERROR] 工具箱运行时入口结构发生变化，已停止执行。" >&2
-    exit 1
-fi
-# The runtime saves itself for later launches, so it needs the same recovery.
-sed -e '1a cd -- "$HOME" || exit 1' -e '$d' "$BASE_FILE" > "$RUNTIME_FILE"
-
-cat >> "$RUNTIME_FILE" <<'ATRIA_V031_READY_FIX'
-
-# ============================================================================
-# v0.3.1 startup readiness fix
-# ============================================================================
-SCRIPT_VERSION="v0.3.1"
-STARTUP_WAIT_SECONDS="${ATRIA_STARTUP_WAIT_SECONDS:-180}"
-BROWSER_WAIT_SECONDS="${ATRIA_BROWSER_WAIT_SECONDS:-60}"
-
-server_http_ready() {
-    local port="${1:-$(get_port)}"
-    command -v curl >/dev/null 2>&1 || return 1
-    # HEAD confirms the server is ready without downloading the full SPA HTML.
-    curl -fsSI --connect-timeout 1 --max-time 2 "http://127.0.0.1:${port}/" >/dev/null 2>&1
-}
-
-launcher_epoch_ms() {
-    date +%s%3N 2>/dev/null || printf '%s000\n' "$(date +%s)"
-}
-
-log_launcher_event() {
-    local event="$1"
-    local method="${2:-}"
-    local now port event_url
-    now="$(launcher_epoch_ms)"
-    if [ -n "$method" ]; then
-        printf '[atria-termux-launch] event=%s epoch_ms=%s method=%s\n' "$event" "$now" "$method" >>"$LOG_FILE" 2>/dev/null || true
-    else
-        printf '[atria-termux-launch] event=%s epoch_ms=%s\n' "$event" "$now" >>"$LOG_FILE" 2>/dev/null || true
-    fi
-
-    # Also send the same boundary to the local Atria process. This makes the
-    # timing visible in Atria's backend log UI instead of only in raw shell logs.
-    port="$(get_port 2>/dev/null || true)"
-    if [[ "$port" =~ ^[0-9]+$ ]]; then
-        event_url="http://127.0.0.1:${port}/api/startup/launcher-event?event=${event}&epoch_ms=${now}"
-        if [ -n "$method" ]; then
-            event_url+="&method=${method}"
-        fi
-        curl -fsS --connect-timeout 0.2 --max-time 0.5 "$event_url" >/dev/null 2>&1 || true
+ensure_tools() {
+    command -v pkg >/dev/null && [[ "${PREFIX:-}" == *com.termux* ]] || { error '安装/修复须在 Android Termux 内执行。'; return 1; }
+    local packages=() executable package
+    for package in git:git curl:curl tar:tar python:python flock:util-linux pgrep:procps; do
+        executable="${package%%:*}"
+        command -v "$executable" >/dev/null || packages+=("${package#*:}")
+    done
+    command -v node >/dev/null || packages+=(nodejs-lts)
+    command -v npm >/dev/null || packages+=(npm)
+    if (( ${#packages[@]} )); then
+        info "安装缺少的环境：${packages[*]}"
+        pkg install -y "${packages[@]}" || return 1
     fi
 }
 
-wait_for_server_ready() {
-    local pid="$1"
-    local timeout="${2:-$STARTUP_WAIT_SECONDS}"
-    local port="${3:-$(get_port)}"
-    local started_at=$SECONDS elapsed next_notice=10
+save_entrypoints() {
+    local source="${1:-$SELF}" temporary
+    [[ -f "$source" ]] || return 1
+    mkdir -p "$STATE" || return 1
+    temporary=$(mktemp "$STATE/toolbox.XXXXXX") || return 1
+    cp -- "$source" "$temporary" && bash -n "$temporary" && mv -f -- "$temporary" "$SAVED_SCRIPT" || {
+        rm -f -- "$temporary"; return 1;
+    }
+    {
+        printf '#!/usr/bin/env bash\n'
+        printf 'if [[ -z ${ATRIA_TERMUX_ROOT:-} ]]; then export ATRIA_TERMUX_ROOT=%q; fi\n' "$APP"
+        printf 'if [[ -z ${ATRIA_TERMUX_STATE_DIR:-} ]]; then export ATRIA_TERMUX_STATE_DIR=%q; fi\n' "$STATE"
+        printf 'exec bash %q "$@"\n' "$SAVED_SCRIPT"
+    } > "$HOME/atria_toolbox.sh" || return 1
+    chmod +x "$HOME/atria_toolbox.sh"
+    if [[ -n "${PREFIX:-}" && -d "$PREFIX/bin" ]]; then
+        { printf '#!%s/bin/bash\n' "$PREFIX"; tail -n +2 "$HOME/atria_toolbox.sh"; } > "$PREFIX/bin/atria-termux" || return 1
+        chmod +x "$PREFIX/bin/atria-termux"
+    fi
+}
 
-    [[ "$timeout" =~ ^[0-9]+$ ]] || timeout=180
-    [ "$timeout" -gt 0 ] 2>/dev/null || timeout=180
+with_lock() {
+    command -v flock >/dev/null || { error '缺少 flock；请执行 pkg install util-linux 或运行 setup。'; return 1; }
+    (
+        flock -n 9 || { error '另一项 Atria 操作正在进行，请等它完成。'; exit 1; }
+        "$@"
+    ) 9>"$STATE/operation.lock"
+}
 
-    info "等待 Atria Web 服务就绪..."
-    while (( SECONDS - started_at < timeout )); do
+process_matches() {
+    local pid="$1" executable cwd argv=()
+    [[ "$pid" =~ ^[0-9]+$ && -r "/proc/$pid/cmdline" ]] || return 1
+    kill -0 "$pid" 2>/dev/null || return 1
+    mapfile -d '' -t argv < "/proc/$pid/cmdline" 2>/dev/null || return 1
+    executable="${argv[0]##*/}"
+    [[ "$executable" == node || "$executable" == nodejs ]] || return 1
+    [[ "${argv[1]:-}" == "$APP/server.js" ]] && return 0
+    [[ "${argv[1]:-}" == server.js ]] || return 1
+    cwd=$(readlink -f "/proc/$pid/cwd" 2>/dev/null) || return 1
+    [[ "$cwd" == "$APP" ]]
+}
+
+owned_pids() {
+    local pid file candidates=()
+    for file in "$PID_FILE" "$HOME/.local/state/atria-termux/server.pid"; do
+        [[ -f "$file" ]] && candidates+=("$(cat "$file")")
+    done
+    while IFS= read -r pid; do candidates+=("$pid"); done < <(pgrep -f 'node.*server\.js' 2>/dev/null || true)
+    for pid in "${candidates[@]}"; do process_matches "$pid" && printf '%s\n' "$pid"; done | sort -un
+}
+
+release_wake() {
+    if [[ -f "$WAKE_FILE" ]]; then
+        command -v termux-wake-unlock >/dev/null && termux-wake-unlock || true
+        rm -f -- "$WAKE_FILE"
+    fi
+}
+
+stop_server() {
+    local pids pid started=$SECONDS force="${1:-}"
+    pids=$(owned_pids)
+    if [[ -z "$pids" ]]; then
+        rm -f -- "$PID_FILE" "$STATE/ready"
+        release_wake
+        info 'Atria 已停止。'
+        return 0
+    fi
+    info '正在保存并停止 Atria…'
+    for pid in $pids; do process_matches "$pid" && kill -TERM "$pid"; done
+    while (( SECONDS - started < 30 )); do
+        [[ -z "$(owned_pids)" ]] && break
+        sleep 0.2
+    done
+    pids=$(owned_pids)
+    if [[ -n "$pids" ]]; then
+        [[ "$force" == --force ]] || { error '30 秒内未正常退出，后续操作已取消；查看日志后可显式执行 stop --force。'; return 1; }
+        for pid in $pids; do process_matches "$pid" && kill -KILL "$pid"; done
+        sleep 0.2
+        [[ -z "$(owned_pids)" ]] || { error '进程仍存在，已停止后续操作。'; return 1; }
+    fi
+    rm -f -- "$PID_FILE" "$STATE/ready"
+    release_wake
+    info 'Atria 已停止。'
+}
+
+http_ready() { curl -fsSI --connect-timeout 0.3 --max-time 1 "$URL/" >/dev/null 2>&1; }
+
+open_browser() {
+    read_settings || return 1
+    http_ready || { error 'HTTP 尚未就绪，请先启动或查看日志。'; return 1; }
+    if command -v termux-open-url >/dev/null; then termux-open-url "$URL";
+    elif command -v am >/dev/null; then am start -a android.intent.action.VIEW -d "$URL" >/dev/null;
+    else info "请在浏览器打开 $URL"; fi
+}
+
+wait_ready() {
+    local pid="$1" started=$SECONDS next=10 state timeout="${ATRIA_STARTUP_WAIT_SECONDS:-180}"
+    [[ "$timeout" =~ ^[1-9][0-9]*$ ]] || timeout=180
+    while (( SECONDS - started < timeout )); do
+        # This is our freshly spawned child; it may not have exec'd node yet.
         if ! kill -0 "$pid" 2>/dev/null; then
-            rm -f "$PID_FILE"
-            error "Atria 进程在启动阶段退出。最近日志："
-            tail -n 80 "$LOG_FILE" 2>/dev/null || true
+            release_wake
+            error '服务在启动阶段退出。最近日志：'
+            tail -n 50 "$LOG_FILE"
             return 1
         fi
-
-        if server_http_ready "$port"; then
-            elapsed=$((SECONDS - started_at))
-            info "Atria Web 服务已就绪（约 ${elapsed}s）。"
-            log_launcher_event "ready-detected"
+        if http_ready; then
+            state=$(runtime probe "$URL") || { error "HTTP 已响应，但应用检查失败。日志：$LOG_FILE"; return 1; }
+            printf '%s:%s\n' "$pid" "$state" > "$STATE/ready"
+            if [[ "$state" == login-required ]]; then info 'HTTP 已就绪，请在浏览器登录；尚未验证账号内页面。';
+            else info '服务、存储和页面初始化均已就绪。'; fi
+            info "等待耗时 $((SECONDS - started))s；地址：$URL"
             return 0
         fi
-
-        elapsed=$((SECONDS - started_at))
-        if [ "$elapsed" -ge "$next_notice" ]; then
-            info "仍在初始化... ${elapsed}s / ${timeout}s"
-            next_notice=$(((elapsed / 10 + 1) * 10))
+        if (( SECONDS - started >= next )); then
+            info "正在启动… $((SECONDS - started))s / ${timeout}s"
+            next=$((SECONDS - started + 10))
         fi
         sleep 0.2
     done
-
-    if kill -0 "$pid" 2>/dev/null; then
-        warn "Atria 进程仍在运行，但 ${timeout}s 内 Web 端口尚未就绪。"
-        warn "它可能仍在初始化；可稍后查看状态或后台日志。"
-        echo "--- 最近启动日志 ---"
-        tail -n 40 "$LOG_FILE" 2>/dev/null || true
-        echo "--------------------"
-        return 2
-    fi
-
-    rm -f "$PID_FILE"
-    error "Atria 进程已退出。最近日志："
-    tail -n 80 "$LOG_FILE" 2>/dev/null || true
-    return 1
+    error "启动等待超时，进程仍保留供诊断。请查看 $LOG_FILE"
 }
 
-start_background_process() {
-    cd "$ATRIA_DIR" || return 1
-    mkdir -p "$TOOLBOX_HOME"
+start_server() {
+    local mode="${1:-start}" wake="${ATRIA_TERMUX_WAKE_LOCK:-1}" pid
+    read_settings || return 1
+    if [[ -n "$(owned_pids)" ]]; then info '当前实例已有进程；请使用 status、logs 或 restart。'; return 0; fi
+    http_ready && { error "端口 $PORT 已有其他 HTTP 服务，未启动新进程。"; return 1; }
+    runtime node || return 1
+    bash "$APP/scripts/termux/fix-native.sh" check || return 1
+    [[ "$mode" == normal || "$mode" == foreground ]] && wake=0
+    mkdir -p "$CACHE" || return 1
+    if [[ "$wake" == 1 ]]; then
+        command -v termux-wake-lock >/dev/null || { error '缺少 termux-wake-lock；请安装 termux-tools 或选择普通启动。'; return 1; }
+        termux-wake-lock || return 1
+        touch "$WAKE_FILE"
+    fi
     : > "$LOG_FILE"
-
-    NODE_COMPILE_CACHE="${NODE_COMPILE_CACHE:-$ATRIA_DIR/node_modules/.cache/atria-node}" \
-        ATRIA_WEBPACK_CACHE_ROOT="$WEBPACK_CACHE_ROOT" nohup node "$ATRIA_DIR/server.js" >>"$LOG_FILE" 2>&1 &
-    local pid=$!
-    local port
-    port=$(get_port)
-    echo "$pid" > "$PID_FILE"
-
-    info "Atria 后台进程已启动。PID=$pid"
-    info "日志：$LOG_FILE"
-
-    wait_for_server_ready "$pid" "$STARTUP_WAIT_SECONDS" "$port"
-    local ready_rc=$?
-    case "$ready_rc" in
-        0)
-            info "地址：http://127.0.0.1:$port"
-            return 0
-            ;;
-        2)
-            # 进程仍存活，只是服务还没监听；保持后台进程，状态页显示“启动中”。
-            return 0
-            ;;
-        *)
-            return 1
-            ;;
-    esac
-}
-
-atria_status() {
-    refresh_instance_storage_paths
-    cleanup_stale_keepalive_flags
-
-    echo -e "${BOLD}实例：${NC}$CURRENT_INSTANCE"
-    echo "目录：$ATRIA_DIR"
-    echo "版本：$(current_ref_label)"
-    if ! repo_ok; then
-        echo -e "状态：${YELLOW}未安装${NC}"
-        return 0
-    fi
-
-    local port pid pids ready=0
-    port=$(get_port)
-    pid=$(read_pid 2>/dev/null || true)
-    pids=$(find_atria_pids)
-    echo "端口：$port"
-    echo "存储：$(get_storage_mode)"
-    echo "数据：$(resolve_config_data_dir 2>/dev/null || echo 未配置)"
-    echo "备份：$BACKUP_DIR"
-
-    server_http_ready "$port" && ready=1
-
-    if [ -n "$pid" ]; then
-        if [ "$ready" -eq 0 ]; then
-            if [ -f "$KEEPALIVE_FLAG_FILE" ]; then
-                echo -e "状态：${YELLOW}启动中${NC}（保活后台，PID $pid；端口 $port 尚未就绪）"
-            else
-                echo -e "状态：${YELLOW}启动中${NC}（后台 PID $pid；端口 $port 尚未就绪）"
-            fi
-        elif [ -f "$KEEPALIVE_FLAG_FILE" ]; then
-            echo -e "状态：${GREEN}运行中${NC}（保活后台，PID $pid）"
-        else
-            echo -e "状态：${GREEN}运行中${NC}（普通后台，PID $pid）"
-        fi
-    elif [ -n "$pids" ]; then
-        if [ "$ready" -eq 0 ]; then
-            echo -e "状态：${YELLOW}进程存在但服务未就绪${NC}（PID: $(echo "$pids" | tr '\n' ' ')）"
-        elif [ -f "$KEEPALIVE_FLAG_FILE" ]; then
-            echo -e "状态：${GREEN}运行中${NC}（保活模式，PID: $(echo "$pids" | tr '\n' ' ')）"
-        else
-            echo -e "状态：${GREEN}运行中${NC}（前台/外部进程，PID: $(echo "$pids" | tr '\n' ' ')）"
-        fi
-    else
-        echo -e "状态：${RED}未运行${NC}"
-    fi
-}
-
-open_browser() {
-    local port url pid pids
-    port=$(get_port)
-    url="http://127.0.0.1:$port"
-
-    if ! server_http_ready "$port"; then
-        pid=$(read_pid 2>/dev/null || true)
-        pids=$(find_atria_pids)
-        if [ -z "$pid" ] && [ -z "$pids" ]; then
-            error "Atria 当前未运行，无法打开网页。"
-            return 1
-        fi
-
-        [ -z "$pid" ] && pid=$(echo "$pids" | head -n 1)
-        warn "Atria 进程已存在，但 Web 服务尚未就绪。"
-        info "先等待服务完成初始化，再打开浏览器。"
-        wait_for_server_ready "$pid" "$BROWSER_WAIT_SECONDS" "$port" || {
-            error "服务仍未就绪，已取消打开浏览器。请查看“后台日志”。"
-            return 1
-        }
-    fi
-
-    info "打开：$url"
-    if command -v termux-open-url >/dev/null 2>&1; then
-        log_launcher_event "browser-open-start" "termux-open-url"
-        termux-open-url "$url" || true
-        log_launcher_event "browser-open-return" "termux-open-url"
-    elif command -v am >/dev/null 2>&1; then
-        log_launcher_event "browser-open-start" "am"
-        am start -a android.intent.action.VIEW -d "$url" >/dev/null 2>&1 || true
-        log_launcher_event "browser-open-return" "am"
-    else
-        log_launcher_event "browser-open-manual"
-        echo "$url"
-    fi
-}
-
-
-# ============================================================================
-# v0.3.2 main-branch policy
-# ============================================================================
-SCRIPT_VERSION="v0.3.12"
-DEFAULT_BRANCH="main"
-SCRIPT_URL="${ATRIA_TOOLBOX_URL:-https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria/main/scripts/termux/atria_toolbox.sh}"
-CANONICAL_REPO_URL="https://github.com/ZZZdragondYNGPHX/Atria.git"
-HISTORY_CUTOVER_LEGACY_ANCHOR="91ae97aed557be9439317a67d0ec516f7512fe2e"
-
-ensure_atria_origin() {
-    if ! git -C "$ATRIA_DIR" rev-parse --git-dir >/dev/null 2>&1; then
-        return 0
-    fi
-
-    local current_origin
-    current_origin=$(git -C "$ATRIA_DIR" remote get-url origin 2>/dev/null || true)
-    if [ "$current_origin" = "$CANONICAL_REPO_URL" ]; then
-        return 0
-    fi
-
-    if [ -z "$current_origin" ]; then
-        git -C "$ATRIA_DIR" remote add origin "$CANONICAL_REPO_URL" || return 1
-    else
-        git -C "$ATRIA_DIR" remote set-url origin "$CANONICAL_REPO_URL" || return 1
-    fi
-    info "已校正 Atria 项目地址：$CANONICAL_REPO_URL"
-}
-
-history_cutover_required() {
-    local local_sha="$1"
-    local remote_sha="$2"
-
-    # The 2026-09-20 Atria history cutover intentionally severed main from the
-    # legacy predecessor ancestry. Only auto-realign a clean checkout when its current
-    # HEAD still descends from that known legacy anchor and has no merge-base
-    # with the canonical origin/main.
-    git -C "$ATRIA_DIR" merge-base "$local_sha" "$remote_sha" >/dev/null 2>&1 && return 1
-    git -C "$ATRIA_DIR" cat-file -e "$HISTORY_CUTOVER_LEGACY_ANCHOR^{commit}" 2>/dev/null || return 1
-    git -C "$ATRIA_DIR" merge-base --is-ancestor "$HISTORY_CUTOVER_LEGACY_ANCHOR" "$local_sha"
-}
-
-align_main_after_history_cutover() {
-    local old_sha="$1"
-    local stamp backup_branch suffix=0
-
-    stamp=$(date +%Y%m%d-%H%M%S)
-    backup_branch="history-cutover-backup-$stamp"
-    while git -C "$ATRIA_DIR" show-ref --verify --quiet "refs/heads/$backup_branch"; do
-        suffix=$((suffix + 1))
-        backup_branch="history-cutover-backup-${stamp}-${suffix}"
-    done
-
-    git -C "$ATRIA_DIR" branch "$backup_branch" "$old_sha" || return 1
-    info "检测到 Atria 独立历史切割；旧代码历史已保留为本地安全分支：$backup_branch"
-
-    git -C "$ATRIA_DIR" switch -C main origin/main || return 1
-    git -C "$ATRIA_DIR" branch --set-upstream-to=origin/main main >/dev/null 2>&1 || true
-    info "main 已安全对齐新的 Atria 独立历史。"
-}
-# Keep daily updates on the canonical repository. Tag/commit downloads check
-# the same origin directly before fetching the selected target.
-if declare -F fetch_repo_refs >/dev/null 2>&1; then
-    eval "$(declare -f fetch_repo_refs | sed '1s/fetch_repo_refs/fetch_repo_refs_base/')"
-    fetch_repo_refs() {
-        ensure_atria_origin || return 1
-        fetch_repo_refs_base "$@"
-    }
-fi
-
-WEBPACK_CACHE_ROOT="${ATRIA_TERMUX_WEBPACK_CACHE_ROOT:-${HOME}/.cache/atria-webpack}"
-mkdir -p "$WEBPACK_CACHE_ROOT"
-
-prebuild_frontend_cache() {
-    if [ ! -f "$ATRIA_DIR/scripts/prebuild-frontend-cache.js" ]; then
-        return 0
-    fi
-
-    local data_root=""
-    data_root=$(resolve_config_data_dir 2>/dev/null || true)
-
-    info "正在预构建当前版本前端资源；完成后日常启动将跳过 Webpack..."
+    rm -f -- "$STATE/ready"
     (
-        cd "$ATRIA_DIR" || exit 1
-        if [ -n "$data_root" ]; then
-            ATRIA_WEBPACK_CACHE_ROOT="$WEBPACK_CACHE_ROOT" npm run frontend:prebuild-cache -- --dataRoot "$data_root"
-        else
-            ATRIA_WEBPACK_CACHE_ROOT="$WEBPACK_CACHE_ROOT" npm run frontend:prebuild-cache
-        fi
-    ) || {
-        error "前端缓存预构建失败。"
-        return 1
-    }
+        cd -- "$APP" || exit 1
+        export NODE_ENV=production
+        export NODE_COMPILE_CACHE="${NODE_COMPILE_CACHE:-$APP/node_modules/.cache/atria-node}"
+        export ATRIA_WEBPACK_CACHE_ROOT="$CACHE"
+        exec nohup node "$APP/server.js" --dataRoot "$DATA_ROOT" --port "$PORT" \
+            --listen false --enableIPv4 true --enableIPv6 false --browserLaunchEnabled false
+    ) >> "$LOG_FILE" 2>&1 < /dev/null 9>&- &
+    pid=$!
+    printf '%s\n' "$pid" > "$PID_FILE"
+    info "进程 PID=$pid；日志：$LOG_FILE"
+    if [[ "$mode" == foreground ]]; then
+        info '调试模式：输出日志，Ctrl+C 停止服务。'
+        trap 'stop_server; exit 130' INT TERM
+        tail --pid="$pid" -n +1 -f "$LOG_FILE" 9>&-
+        wait "$pid"
+        local result=$?
+        trap - INT TERM
+        return "$result"
+    fi
+    wait_ready "$pid" || return 1
+    [[ "${ATRIA_TERMUX_OPEN_BROWSER:-1}" == 0 ]] || open_browser
 }
 
-heal_known_restore_sentinel_dirty_state() {
-    local sentinel="public/scripts/extensions/third-party/.gitkeep"
-    local status
-    status=$(git -C "$ATRIA_DIR" status --porcelain -- "$sentinel" 2>/dev/null || true)
-
-    # A buggy full-restore path could delete this tracked empty-directory
-    # sentinel before the archive finished. It contains no user data, so it is
-    # safe to restore automatically before the normal dirty-worktree guard.
-    if [ "$status" = " D $sentinel" ]; then
-        if git -C "$ATRIA_DIR" cat-file -e "HEAD:$sentinel" 2>/dev/null; then
-            git -C "$ATRIA_DIR" restore --worktree -- "$sentinel" || return 1
-            info "已自动恢复仓库占位文件：$sentinel"
-        fi
-    fi
+restart_server() {
+    local wake=0
+    [[ -f "$WAKE_FILE" ]] && wake=1
+    stop_server || return 1
+    ATRIA_TERMUX_WAKE_LOCK="$wake" start_server
 }
 
-update_main_branch() {
-    ensure_repo || return 1
-    heal_known_restore_sentinel_dirty_state || return 1
-    require_clean_worktree || return 1
-
-    local branch old_sha remote_sha running
-    branch=$(git -C "$ATRIA_DIR" symbolic-ref --short -q HEAD 2>/dev/null || true)
-
-    fetch_repo_refs || return 1
-    if ! git -C "$ATRIA_DIR" show-ref --verify --quiet "refs/remotes/origin/main"; then
-        error "远程 main 分支不存在。"
-        return 1
+prepare_runtime() {
+    require_repo || return 1
+    runtime node || return 1
+    local stamp installed=''
+    stamp=$(runtime fingerprint) || return 1
+    [[ -f "$STATE/prepared" ]] && installed=$(cat "$STATE/prepared")
+    if [[ "${1:-}" == --force || ! -d "$APP/node_modules" || "$stamp" != "$installed" ]]; then
+        info '按锁文件安装生产依赖…'
+        (cd "$APP" && npm ci --omit=dev --ignore-scripts --no-audit --no-fund) || return 1
     fi
-
-    old_sha=$(git -C "$ATRIA_DIR" rev-parse HEAD)
-    remote_sha=$(git -C "$ATRIA_DIR" rev-parse "origin/main")
-    if [ "$branch" = "main" ] && [ "$old_sha" = "$remote_sha" ]; then
-        info "main 已经是最新：main @ ${old_sha:0:10}"
-        prebuild_frontend_cache || return 1
-        return 0
-    fi
-
-    running=$(find_atria_pids 2>/dev/null || true)
-    if [ -n "$running" ]; then
-        confirm "切换/更新到 main 前停止正在运行的 Atria？" y || return 1
-        stop_atria || return 1
-    fi
-    if confirm "切换/更新到 main 前创建数据备份？" y; then
-        backup_data || { error "备份失败，操作已停止。"; return 1; }
-    fi
-
-    if history_cutover_required "$old_sha" "$remote_sha"; then
-        align_main_after_history_cutover "$old_sha" || return 1
-    else
-        switch_to_remote_branch "main" || return 1
-    fi
-    post_code_change
+    runtime init "$PRIVATE_DATA" || return 1
+    read_settings || return 1
+    mkdir -p "$DATA_ROOT" "$CACHE" || return 1
+    bash "$APP/scripts/termux/fix-native.sh" || return 1
+    info '准备前端缓存…'
+    (cd "$APP" && ATRIA_WEBPACK_CACHE_ROOT="$CACHE" node scripts/prebuild-frontend-cache.js --dataRoot "$DATA_ROOT") || return 1
+    save_entrypoints "$APP/scripts/termux/atria_toolbox.sh" || return 1
+    printf '%s\n' "$stamp" > "$STATE/prepared"
+    info "准备完成。数据目录：$DATA_ROOT"
 }
 
-update_current_branch() {
-    update_main_branch
-}
+setup_existing() { stop_server && prepare_runtime "${1:-}"; }
 
-switch_branch_interactive() {
-    info "Atria Termux 日常分支固定为 main。"
-    update_main_branch
-}
-
-version_menu() {
-    while true; do
-        clear
-        echo -e "${CYAN}========== Atria 版本管理 ==========${NC}"
-        echo "当前：$(current_ref_label)"
-        echo ""
-        echo "1. 更新 / 切换到 main"
-        echo "2. 切换到 Tag"
-        echo "3. 切换到 Commit"
-        echo "4. 查看最近提交"
-        echo "0. 返回"
-        read -r -p "请选择：" choice
-        case "$choice" in
-            1) update_main_branch; pause ;;
-            2) switch_tag_interactive; pause ;;
-            3) switch_commit_interactive; pause ;;
-            4) show_recent_commits; pause ;;
-            0) return ;;
-            *) error "无效选项"; pause ;;
-        esac
-    done
-}
-
-
-# ============================================================================
-# v0.3.9 uninstall modes
-# ============================================================================
-
-# Installation can follow an uninstall in the same menu session. Begin outside
-# the checkout before its original reinstall flow removes and clones it again.
-eval "$(declare -f install_atria | sed '1s/install_atria/install_atria_base/')"
 install_atria() {
-    cd -- "$HOME" || { error "无法进入 Termux 主目录：$HOME"; return 1; }
-    install_atria_base "$@"
-}
-
-atria_uninstall_assert_owned_path() {
-    local path="$1"
-    local kind="${2:-path}"
-
-    [ -n "$path" ] || {
-        error "拒绝删除空的 ${kind} 路径。"
-        return 1
-    }
-
-    case "$path" in
-        "/"|"$HOME"|"$PREFIX"|"$SHARED_STORAGE_LINK")
-            error "拒绝删除不安全的 ${kind} 路径：$path"
-            return 1
-            ;;
-    esac
-
-    case "$kind" in
-        program)
-            [ "$path" = "$ATRIA_MAIN_DIR" ] || [ "$path" = "$ATRIA_SECOND_DIR" ] || {
-                error "拒绝删除非 Atria 程序目录：$path"
-                return 1
-            }
-            ;;
-        shared)
-            [ "$path" = "$ATRIA_MAIN_SHARED_DIR" ] || [ "$path" = "$ATRIA_SECOND_SHARED_DIR" ] || {
-                error "拒绝删除非 Atria 共享目录：$path"
-                return 1
-            }
-            ;;
-        toolbox)
-            [ "$path" = "$TOOLBOX_HOME" ] || [ "$path" = "$TOOLBOX_PATH" ] || {
-                error "拒绝删除非 Atria 工具箱路径：$path"
-                return 1
-            }
-            ;;
-        cli)
-            [ "$path" = "${PREFIX}/bin/atria-termux" ] || [ "$path" = "${HOME}/.local/state/atria-termux" ] || {
-                error "拒绝删除非 Atria CLI 路径：$path"
-                return 1
-            }
-            ;;
-        *)
-            error "未知卸载路径类型：$kind"
-            return 1
-            ;;
-    esac
-}
-
-atria_uninstall_default_cache_path() {
-    printf '%s\n' "${HOME}/.cache/atria-webpack"
-}
-
-stop_all_atria_instances() {
-    local original="main"
-
-    [ "$ATRIA_DIR" = "$ATRIA_SECOND_DIR" ] && original="second"
-
-    set_instance main
-    stop_atria || true
-
-    set_instance second
-    stop_atria || true
-
-    set_instance "$original"
-}
-
-uninstall_current_keep_data() {
-    refresh_instance_storage_paths
-
-    echo ""
-    echo -e "${BOLD}将卸载当前实例程序，但保留全部共享用户数据：${NC}"
-    echo "程序：$ATRIA_DIR"
-    echo "保留：$ATRIA_SHARED_DIR"
-    echo "  - data"
-    echo "  - backups"
-    echo "  - exports"
-    echo ""
-    info "之后可重新安装 Atria，并继续使用这些共享数据。"
-
-    atria_uninstall_assert_owned_path "$ATRIA_DIR" program || return 1
-    safe_delete_confirm "卸载当前 Atria 程序（保留用户数据）" || return 1
-
-    cd -- "$HOME" || { error "无法进入 Termux 主目录：$HOME"; return 1; }
-    stop_atria || true
-    rm -rf -- "$ATRIA_DIR"
-
-    info "当前 Atria 程序已卸载。"
-    info "用户数据已保留：$ATRIA_SHARED_DIR"
-    info "工具箱仍保留，可随时使用“安装 / 重装 Atria”恢复程序。"
-}
-
-confirm_complete_uninstall() {
-    local input
-
-    echo ""
-    warn "这会永久删除 Atria 的主实例、分身实例及其全部共享用户数据。"
-    warn "包括 data、backups、exports；删除后工具箱无法恢复这些文件。"
-    echo ""
-    echo "将删除："
-    echo "  程序：$ATRIA_MAIN_DIR"
-    echo "  程序：$ATRIA_SECOND_DIR"
-    echo "  数据：$ATRIA_MAIN_SHARED_DIR"
-    echo "  数据：$ATRIA_SECOND_SHARED_DIR"
-    echo "  工具箱：$TOOLBOX_PATH"
-    echo "  工具箱状态：$TOOLBOX_HOME"
-    echo "  CLI 状态：$HOME/.local/state/atria-termux"
-    echo "  CLI 入口：$PREFIX/bin/atria-termux"
-    echo ""
-
-    read -r -p '第一次确认：请输入 DELETE ATRIA ：' input
-    [ "$input" = "DELETE ATRIA" ] || {
-        warn "确认文本不匹配，已取消彻底卸载。"
-        return 1
-    }
-
-    safe_delete_confirm "最终确认：彻底卸载 Atria 并永久删除全部 Atria 用户数据" || return 1
-}
-
-uninstall_atria_completely() {
-    local default_cache
-    default_cache="$(atria_uninstall_default_cache_path)"
-
-    ensure_shared_storage || return 1
-    refresh_instance_storage_paths
-
-    atria_uninstall_assert_owned_path "$ATRIA_MAIN_DIR" program || return 1
-    atria_uninstall_assert_owned_path "$ATRIA_SECOND_DIR" program || return 1
-    atria_uninstall_assert_owned_path "$ATRIA_MAIN_SHARED_DIR" shared || return 1
-    atria_uninstall_assert_owned_path "$ATRIA_SECOND_SHARED_DIR" shared || return 1
-    atria_uninstall_assert_owned_path "$TOOLBOX_PATH" toolbox || return 1
-    atria_uninstall_assert_owned_path "$TOOLBOX_HOME" toolbox || return 1
-    atria_uninstall_assert_owned_path "${PREFIX}/bin/atria-termux" cli || return 1
-    atria_uninstall_assert_owned_path "${HOME}/.local/state/atria-termux" cli || return 1
-
-    confirm_complete_uninstall || return 1
-
-    cd -- "$HOME" || { error "无法进入 Termux 主目录：$HOME"; return 1; }
-    stop_all_atria_instances
-    disable_toolbox_autostart
-
-    rm -rf -- "$ATRIA_MAIN_DIR" "$ATRIA_SECOND_DIR"
-    rm -rf -- "$ATRIA_MAIN_SHARED_DIR" "$ATRIA_SECOND_SHARED_DIR"
-    rm -rf -- "${HOME}/.local/state/atria-termux"
-    rm -f -- "${PREFIX}/bin/atria-termux"
-
-    if [ "$WEBPACK_CACHE_ROOT" = "$default_cache" ]; then
-        rm -rf -- "$default_cache"
-    elif [ -n "$WEBPACK_CACHE_ROOT" ]; then
-        warn "检测到自定义 Webpack 缓存路径，出于安全考虑未自动删除：$WEBPACK_CACHE_ROOT"
+    if [[ -e "$APP" ]]; then error '程序目录已存在，未覆盖。已有安装请使用 update 或 repair。'; return 1; fi
+    local stage="${APP}.install-$$"
+    [[ ! -e "$stage" ]] || return 1
+    info '下载 main 最新版本，不下载其他分支及完整历史…'
+    if ! git clone --depth 1 --single-branch --no-tags --branch main "$REPO_URL" "$stage"; then
+        error "下载失败，临时目录保留供检查：$stage"; return 1
     fi
-
-    rm -f -- "$TOOLBOX_PATH"
-    rm -rf -- "$TOOLBOX_HOME"
-
-    echo ""
-    info "Atria 已彻底卸载。"
-    info "主实例、分身实例、共享用户数据、备份、导出、工具箱和默认缓存均已删除。"
-    info "Termux、Node.js、git、curl 等通用环境未删除。"
-    exit 0
+    mv -- "$stage" "$APP" || return 1
+    prepare_runtime
 }
 
-uninstall_menu() {
-    while true; do
-        refresh_instance_storage_paths
-        clear
-        echo -e "${CYAN}========== Atria 卸载 ==========${NC}"
-        echo "当前：$CURRENT_INSTANCE"
-        echo ""
-        echo "1. 卸载当前 Atria（保留用户数据）"
-        echo "   删除程序，保留 data / backups / exports 和工具箱"
-        echo ""
-        echo "2. 彻底卸载 Atria"
-        echo "   删除主实例 + 分身 + 全部共享用户数据 + 工具箱"
-        echo ""
-        echo "0. 返回"
-        read -r -p "请选择：" choice
-        case "$choice" in
-            1)
-                uninstall_current_keep_data
-                pause
-                ;;
-            2)
-                uninstall_atria_completely
-                ;;
-            0) return ;;
-            *) error "无效选项"; pause ;;
+update_atria() {
+    require_repo || return 1
+    [[ -z "$(git -C "$APP" status --porcelain)" ]] || { error '工作区有修改，更新已停止，不覆盖本地文件。'; return 1; }
+    local branch old new running=0 wake=0
+    branch=$(git -C "$APP" branch --show-current)
+    [[ "$branch" == main ]] || { error '当前不在 main；请先自行保存开发改动并切回 main。'; return 1; }
+    git -C "$APP" remote set-url origin "$REPO_URL" || return 1
+    git -C "$APP" fetch --no-tags origin '+refs/heads/main:refs/remotes/origin/main' || return 1
+    old=$(git -C "$APP" rev-parse HEAD) new=$(git -C "$APP" rev-parse origin/main)
+    git -C "$APP" merge-base --is-ancestor "$old" "$new" || { error '本地历史已分叉，未重置或覆盖。'; return 1; }
+    [[ -n "$(owned_pids)" ]] && running=1
+    [[ -f "$WAKE_FILE" ]] && wake=1
+    stop_server || return 1
+    git -C "$APP" merge --ff-only origin/main || return 1
+    # Preparation comes from the updated checkout, not an old menu in memory.
+    ATRIA_TERMUX_PREPARING=1 bash "$APP/scripts/termux/atria_toolbox.sh" prepare || return 1
+    info "当前 main @ $(git -C "$APP" rev-parse --short HEAD)"
+    if (( running )); then ATRIA_TERMUX_WAKE_LOCK="$wake" start_server; fi
+}
+
+ensure_backups() {
+    if [[ "$BACKUPS" == "$HOME/storage/shared/"* && ! -d "$HOME/storage/shared" ]]; then
+        error '共享存储未授权。先执行 termux-setup-storage，或设置 ATRIA_TERMUX_BACKUP_DIR。'; return 1
+    fi
+    mkdir -p "$BACKUPS"
+}
+
+archive_action() {
+    local action="$1" file="$2" snapshot result
+    snapshot=$(mktemp "$STATE/paths.XXXXXX") || return 1
+    runtime snapshot > "$snapshot" || { rm -f "$snapshot"; return 1; }
+    python "$APP/scripts/termux/data-archive.py" "$action" "$snapshot" "$file"
+    result=$?
+    rm -f -- "$snapshot"
+    return "$result"
+}
+
+backup_data() {
+    read_settings && ensure_backups || return 1
+    local running=0 wake=0 result file
+    [[ -n "$(owned_pids)" ]] && running=1
+    [[ -f "$WAKE_FILE" ]] && wake=1
+    stop_server || return 1
+    file="$BACKUPS/atria_backup_$(date +%Y%m%d_%H%M%S)_$$.tar.gz"
+    archive_action backup "$file"; result=$?
+    if (( result == 0 )); then info "备份完成：$file"; fi
+    if (( running )); then ATRIA_TERMUX_WAKE_LOCK="$wake" start_server || return 1; fi
+    return "$result"
+}
+
+restore_data() {
+    local file="${1:-}" snapshot
+    read_settings && ensure_backups || return 1
+    [[ -f "$file" ]] || { error '请提供现有 .tar.gz 备份的完整路径。'; return 1; }
+    archive_action check "$file" || return 1
+    info "恢复到：$DATA_ROOT（保留当前路径与端口）"
+    confirm '恢复将替换当前数据和备份内的配置/插件，继续？' || return 1
+    stop_server || return 1
+    snapshot="$BACKUPS/atria_before_restore_$(date +%Y%m%d_%H%M%S)_$$.tar.gz"
+    archive_action backup "$snapshot" || { error '当前数据快照失败，未执行恢复。'; return 1; }
+    info "恢复前快照：$snapshot"
+    archive_action restore "$file" || return 1
+    info '恢复完成；服务保持停止，请检查后再启动。'
+}
+
+status_server() {
+    printf '\nAtria Termux %s\n程序：%s\n' "$SCRIPT_VERSION" "$APP"
+    require_repo || return 1
+    printf '版本：%s\n' "$(git -C "$APP" log -1 --format='%h %s' 2>/dev/null)"
+    read_settings || return 1
+    printf '数据：%s\n存储：%s\n地址：%s\n备份：%s\n' "$DATA_ROOT" "$STORAGE_MODE" "$URL" "$BACKUPS"
+    local pids
+    pids=$(owned_pids)
+    if [[ -z "$pids" ]]; then info '状态：未运行'; return 1; fi
+    if http_ready; then info "状态：HTTP 可访问，PID ${pids//$'\n'/ }（完整检查用 doctor）";
+    else info "状态：进程存在，HTTP 尚不可访问，PID ${pids//$'\n'/ }"; return 1; fi
+}
+
+show_logs() {
+    [[ -f "$LOG_FILE" ]] || { error "没有日志：$LOG_FILE"; return 1; }
+    if [[ "${1:-}" == -f ]]; then tail -n 100 -f "$LOG_FILE"; else tail -n 100 "$LOG_FILE"; fi
+}
+
+doctor() {
+    local failed=0
+    read_settings || return 1
+    runtime node || failed=1
+    bash "$APP/scripts/termux/fix-native.sh" check || failed=1
+    printf '数据目录：%s\n前端缓存：%s\n日志：%s\n' "$DATA_ROOT" "$CACHE" "$LOG_FILE"
+    [[ -d "$DATA_ROOT" && -w "$DATA_ROOT" ]] || { error '数据目录不存在或不可写。'; failed=1; }
+    if [[ -n "$(owned_pids)" ]]; then runtime probe "$URL" || failed=1; else info '服务未运行，未执行 HTTP 检查。'; fi
+    [[ ! -f "$LOG_FILE" ]] || runtime timings "$LOG_FILE"
+    (( failed == 0 )) && info '基础检查通过。'
+    return "$failed"
+}
+
+change_port() {
+    read_settings || return 1
+    [[ -z "$(owned_pids)" ]] || { error '请先停止服务再修改端口。'; return 1; }
+    local port="${1:-}"
+    [[ -n "$port" ]] || read -r -p '新端口：' port
+    runtime port "$port"
+}
+
+uninstall_atria() {
+    require_repo && read_settings || return 1
+    local purge="${1:-}" answer
+    case "$APP" in /|"$HOME"|"${PREFIX:-/}") error '拒绝删除根目录或环境目录。'; return 1 ;; esac
+    case "$HOME/" in "$APP/"*) error '拒绝删除包含 HOME 的目录。'; return 1 ;; esac
+    local protected
+    for protected in "${PREFIX:-/}" "$STATE" "$BACKUPS"; do
+        protected=$(realpath -m "$protected") || return 1
+        case "$protected/" in "$APP/"*) error '程序目录包含运行环境、工具箱或备份，拒绝卸载。'; return 1 ;; esac
+    done
+    if [[ "$DATA_ROOT" == "$APP" || "$DATA_ROOT" == "$APP/"* ]]; then
+        error '数据位于程序目录内部；请先通过应用迁移到独立目录再卸载。'; return 1
+    fi
+    info "删除程序：$APP"
+    info "数据：$DATA_ROOT"
+    if [[ "$purge" == --purge ]]; then
+        case "$DATA_ROOT" in "$PRIVATE_DATA"|"$HOME/storage/shared/Atria/data"|/storage/emulated/*/Atria/data) ;;
+            *) error '自定义数据目录不自动删除；请用保留数据卸载。'; return 1 ;;
         esac
+        read -r -p '输入 DELETE ATRIA 删除程序及上述数据（保留备份）：' answer
+        [[ "$answer" == 'DELETE ATRIA' ]] || return 1
+    else confirm '卸载程序并保留数据？将先备份配置和插件。' || return 1; fi
+    stop_server && ensure_backups || return 1
+    archive_action backup "$BACKUPS/atria_before_uninstall_$(date +%Y%m%d_%H%M%S)_$$.tar.gz" || return 1
+    cd -- "$HOME" || return 1
+    rm -rf -- "$APP" || return 1
+    if [[ "$purge" == --purge ]]; then rm -rf -- "$DATA_ROOT" || return 1; fi
+    rm -f -- "$STATE/prepared"
+    info '程序已卸载，工具箱和备份已保留。'
+}
+
+update_toolbox() {
+    local temporary
+    temporary=$(mktemp "$STATE/download.XXXXXX") || return 1
+    if ! curl -fsSL "$SCRIPT_URL" -o "$temporary" || ! bash -n "$temporary"; then
+        rm -f -- "$temporary"; error '工具箱下载失败，旧版保持不变。'; return 1
+    fi
+    grep -q '^SCRIPT_VERSION=' "$temporary" || { rm -f "$temporary"; return 1; }
+    mv -f -- "$temporary" "$SAVED_SCRIPT" || return 1
+}
+
+usage() {
+    cat <<'HELP'
+atria-termux [command]
+  menu                 打开菜单（默认）
+  install              首次安装 main
+  setup / repair       准备环境 / 重装依赖并修复
+  update               增量更新 main；原来运行则恢复运行
+  start [--normal]     保活启动 / 普通后台启动
+  debug                前台日志调试，Ctrl+C 停止
+  stop [--force]       正常停止 / 显式允许强停
+  restart              保持原保活模式重启
+  status / doctor      状态 / 原生模块与应用检查
+  logs [-f]            最近日志 / 跟随日志
+  open / url           打开网页 / 显示地址
+  backup               停机一致备份，完成后恢复原运行状态
+  restore <archive>    校验、备份当前数据、恢复；保持停止
+  port <number>        停止状态下修改端口
+  uninstall [--purge]  卸载程序 / 同时删除标准数据目录
+  self-update          更新工具箱
+
+新安装数据：~/.local/share/atria/data；已有 config.yaml 的 dataRoot 保持不变。
+默认备份：~/storage/shared/Atria/backups，需要 termux-setup-storage 授权。
+可配置 ATRIA_TERMUX_ROOT、ATRIA_TERMUX_BACKUP_DIR、ATRIA_TERMUX_PORT。
+HELP
+}
+
+dispatch() {
+    local command="${1:-menu}"; shift || true
+    case "$command" in install|setup|repair|update) ensure_tools || return 1 ;; esac
+    case "$command" in
+        menu|--skip-init) menu ;;
+        install) with_lock install_atria ;;
+        setup) with_lock setup_existing ;;
+        repair) with_lock setup_existing --force ;;
+        prepare)
+            [[ -n "${ATRIA_TERMUX_PREPARING:-}" ]] || { error 'prepare 是更新内部入口，请使用 setup。'; return 1; }
+            prepare_runtime ;;
+        update) with_lock update_atria ;;
+        start) with_lock start_server "$([[ "${1:-}" == --normal ]] && echo normal || echo start)" ;;
+        debug) with_lock start_server foreground ;;
+        stop) with_lock stop_server "${1:-}" ;;
+        restart) with_lock restart_server ;;
+        status) status_server ;;
+        doctor) doctor ;;
+        logs) show_logs "${1:-}" ;;
+        open) open_browser ;;
+        url) read_settings && printf '%s\n' "$URL" ;;
+        backup) with_lock backup_data ;;
+        restore) with_lock restore_data "${1:-}" ;;
+        port) with_lock change_port "${1:-}" ;;
+        uninstall) with_lock uninstall_atria "${1:-}" ;;
+        self-update) with_lock update_toolbox && exec bash "$SAVED_SCRIPT" menu ;;
+        help|-h|--help) usage ;;
+        *) error '未知命令。'; usage; return 1 ;;
+    esac
+}
+
+menu() {
+    [[ -t 0 ]] || { error '菜单需要终端输入；也可以使用 atria-termux help 中的命令。'; return 1; }
+    local choice archive
+    while true; do
+        printf '\n========== Atria Termux %s ==========\n' "$SCRIPT_VERSION"
+        printf '1. 启动并打开网页    2. 停止    3. 重启\n4. 状态与诊断        5. 日志与启动耗时\n6. 安装 / 更新 / 修复\n7. 备份 / 恢复      8. 端口与运行选项\n9. 卸载            0. 退出\n'
+        read -r -p '请选择：' choice || return 0
+        case "$choice" in
+            1) dispatch start ;;
+            2) dispatch stop ;;
+            3) dispatch restart ;;
+            4) status_server; doctor ;;
+            5) show_logs; [[ ! -f "$APP/scripts/termux/runtime-tools.js" ]] || runtime timings "$LOG_FILE" ;;
+            6)
+                printf '1. 首次安装  2. 更新 Atria  3. 修复依赖和缓存  4. 更新工具箱  0. 返回\n'
+                read -r -p '请选择：' choice || return 0
+                case "$choice" in 1) dispatch install ;; 2) dispatch update ;; 3) dispatch repair ;; 4) dispatch self-update ;; esac ;;
+            7)
+                printf '1. 创建备份  2. 恢复备份  3. 授权共享存储  0. 返回\n'
+                read -r -p '请选择：' choice || return 0
+                case "$choice" in
+                    1) dispatch backup ;;
+                    2) printf '备份目录：%s\n' "$BACKUPS"; read -r -p '备份完整路径：' archive; dispatch restore "$archive" ;;
+                    3) termux-setup-storage ;;
+                esac ;;
+            8)
+                printf '1. 修改端口  2. 普通后台启动  3. 前台调试  4. 打开网页\n'
+                read -r -p '请选择：' choice || return 0
+                case "$choice" in 1) dispatch port ;; 2) dispatch start --normal ;; 3) dispatch debug ;; 4) dispatch open ;; esac ;;
+            9)
+                printf '1. 保留数据卸载  2. 删除程序及标准数据目录  0. 返回\n'
+                read -r -p '请选择：' choice || return 0
+                case "$choice" in 1) dispatch uninstall ;; 2) dispatch uninstall --purge ;; esac ;;
+            0) return 0 ;;
+            *) error '无效选项。' ;;
+        esac
+        pause
     done
 }
 
-ensure_atria_origin || {
-    error "无法校正 Atria 项目地址：$CANONICAL_REPO_URL"
-    exit 1
+main() {
+    mkdir -p "$STATE" || return 1
+    APP=$(realpath -m "$APP") || return 1
+    if [[ ! -f "$SELF" ]]; then
+        # curl | bash cannot use the consumed script pipe as menu input.
+        local temporary
+        temporary=$(mktemp "$STATE/download.XXXXXX") || return 1
+        curl -fsSL "$SCRIPT_URL" -o "$temporary" && bash -n "$temporary" || { rm -f "$temporary"; return 1; }
+        mv -f -- "$temporary" "$SAVED_SCRIPT" || return 1
+        if [[ "${1:-menu}" == menu || "${1:-}" == --skip-init ]]; then
+            [[ -r /dev/tty ]] || { error '请在 Termux 终端打开工具箱。'; return 1; }
+            exec bash "$SAVED_SCRIPT" "${@:-menu}" </dev/tty
+        fi
+        exec bash "$SAVED_SCRIPT" "$@" </dev/null
+    fi
+    if [[ "${1:-menu}" == menu || "${1:-}" == --skip-init ]]; then save_entrypoints || return 1; fi
+    dispatch "$@"
 }
-main_menu
-ATRIA_V031_READY_FIX
 
-bash -n "$RUNTIME_FILE" || {
-    echo "[ERROR] 工具箱运行时语法检查失败。" >&2
-    exit 1
-}
-chmod +x "$RUNTIME_FILE"
-
-# The documented "curl ... | bash" launch form consumes stdin while Bash reads
-# this launcher. The interactive runtime must read from the controlling terminal
-# instead of inheriting the exhausted pipe, otherwise every menu read sees EOF.
-if [ ! -r /dev/tty ]; then
-    echo "[ERROR] 当前启动方式没有可用的交互终端。请直接在 Termux 终端中运行工具箱。" >&2
-    exit 1
-fi
-exec bash "$RUNTIME_FILE" "$@" </dev/tty
+main "$@"
