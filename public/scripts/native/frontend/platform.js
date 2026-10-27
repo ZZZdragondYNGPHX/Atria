@@ -30,6 +30,7 @@ export function createPresentationEnvironment(window, frame, changed, host = {})
         const visualHeight = visual?.height ?? window.innerHeight, visualTop = visual?.offsetTop ?? 0;
         const safeArea = window.getComputedStyle(probe);
         current = { locale: host.locale?.() ?? 'en', direction: host.direction?.() ?? 'ltr', inputModality: modality,
+            visible: !frame.ownerDocument.hidden, focused: frame.ownerDocument.hasFocus(),
             visualViewportWidth: visual?.width ?? window.innerWidth, visualViewportHeight: visualHeight,
             visualViewportTop: visualTop, visualViewportLeft: visual?.offsetLeft ?? 0,
             visualViewportScale: visual?.scale ?? 1,
@@ -46,6 +47,8 @@ export function createPresentationEnvironment(window, frame, changed, host = {})
         changed?.(current);
     }
     listen(window.visualViewport, 'resize', update); listen(window.visualViewport, 'scroll', update);
+    listen(window, 'focus', update); listen(window, 'blur', update);
+    listen(frame.ownerDocument, 'visibilitychange', update);
     listen(frame, 'keydown', () => { modality = 'keyboard'; update(); });
     listen(frame, 'pointerdown', event => { modality = event.pointerType === 'touch' ? 'touch' : 'pointer'; update(); });
     window.addEventListener('resize', update); cleanups.push(() => window.removeEventListener('resize', update));

@@ -354,8 +354,10 @@ export async function mountNativeFrontend(options) {
         listen('pointerdown', event => { if (instance.pointers.size < 16) instance.pointers.add(event.pointerId); });
         listen('pointerup', event => instance.pointers.delete(event.pointerId));
         listen('pointercancel', event => instance.pointers.delete(event.pointerId));
-        if (instance.ir.controller && instance.contract.nodeRefs.includes(definition.id)) for (const type of ['click', 'pointerdown', 'pointermove', 'pointerup', 'keydown', 'keyup', 'input', 'change']) listen(type, event => {
+        if (instance.ir.controller && instance.contract.nodeRefs.includes(definition.id)) for (const type of ['click', 'pointerdown', 'pointermove', 'pointerup', 'pointercancel', 'keydown', 'keyup', 'input', 'change']) listen(type, event => {
             if ((event.isComposing || composing.has(node)) && ['keydown', 'keyup', 'input'].includes(type)) return;
+            if (['keydown', 'keyup'].includes(type) && event.target === node && !event.altKey && !event.ctrlKey && !event.metaKey
+                && definition.attributes['keyboard-capture']?.split(' ').includes(event.key === ' ' ? 'Space' : event.key)) event.preventDefault();
             void instance.controller?.invoke('event', { ...eventValue(event), type, node: definition.id });
         });
         if (definition.events?.drop) listen('dragover', event => event.preventDefault());
