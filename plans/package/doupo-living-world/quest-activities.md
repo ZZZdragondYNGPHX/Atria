@@ -4,6 +4,8 @@
 
 ## 职责、实现位置与边界
 
+v0.75制作依赖：[新副职完整方案](crafting-and-materials-plan.md)推荐考核调用同一工单与真实制作成果，详细生产规则归 [crafting-materials.md](crafting-materials.md)；活动仍负责报名、考官、四阶段评价和资格。普通10–20秒小游戏不把每炉变成完整考核，技艺成长也不自动授予公会认证。下文是既有考核实现，不能视为新材料、环境、器具或自创药物已接入。
+
 活动领域规则位于 `source/rules/quest-activities.js`，空状态工厂位于 `source/rules/quest-state.js`，显式作者 Schema 位于 `tools/quest-activities-schema.mjs`。活动只有一份领域状态：解码后的 `world.questActivities`；人物余额、库存、技能、身体和所知沿用现有权威。实际接口唯一见 [frontend-contract.md 的 C5](frontend-contract.md#c5--quests1-活动接口2026-10-23)，通用合同仍归 [quest-system.md](quest-system.md)，QC 内容归 [quest-content.md](quest-content.md)。
 
 拍卖与考核不是原有 `buy/sell/refine` 的重命名。模型和旁白只能解释已经发生的操作，不能创造拍品、补材料、代交成果、改分或发证。人物与场所沿用包内来源；新增具体场次、考题、周边差事与评分为游戏原创实现，不保证任何原著人物重演固定结局。

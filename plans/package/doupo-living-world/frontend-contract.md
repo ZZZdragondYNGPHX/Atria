@@ -1,6 +1,8 @@
 # 前后端共用契约 — C0 语义与 C6 实际接口
 
-状态：C0语义继续生效；当前实际接口以文末C6战斗／功法增量及仍适用的C4/C5领域为准。C2/C3与旧版本验证段落保留历史边界。当前源码和闭合schema是字段事实，不能把候选扩展当成已实现。
+状态：C0语义继续生效；当前实际接口以文末C7秘境／魔兽增量及仍适用的C4/C5/C6领域为准。旧版本验证段落保留历史边界。当前源码和闭合schema是字段事实，不能把候选扩展当成已实现。
+
+v0.75规划路由：[副职与素材完整方案](crafting-and-materials-plan.md)提出材料批次、认识、配方册、生产条件、工单与小游戏等扩展。其公开语义和实现路径见 [工程安排](implementation-readiness.md#副职与素材实施安排v075)，当前尚无对应新接口版本；正式实施在本文件补实际契约，不将候选字段当作C7已可调用，也不另建平行契约。
 
 当前路由：2026-10-24按正式指令实装C6。详细领域设计见 [combat-system.md](combat-system.md)、[arts-reconstruction.md](arts-reconstruction.md)，工程与验证见 [implementation-readiness.md](implementation-readiness.md)。下文v0.36以前的未实施陈述仅适用其历史版本。
 
@@ -490,3 +492,43 @@ C5公开字段、操作与停止/恢复语义不变。隐藏doupo.continue声明
 QC28要求实际送达出口、QC29要求当前接触终止且当事人存活、QC30要求约定演武完成与真实参与。开始／结果凭据由规则产生，未结束、未参与或提前退出不能伪领成果。具体已执行的规则、Native、浏览器、服务与容量证据归同一Record；契约存在不替代验证。
 
 接受投降／停战同时在原promises权威登记一项已履行的truce安排；NPC不以同一旧理由立刻重开攻击，新的亲历／来信归因仍可改变后续安排。它不是永久阵营归属。容量不足时拒绝完成接受，不虚报交割。
+
+## C7 — 秘境、魔兽与全游戏补图（2026-10-25）
+
+`0.1.0-dungeon.1` 继续使用原有 Authority、共同世界时钟、人物身体和库存。`world.exploration` 保存现场／投放／队伍／贡献／通过／有限库存／防护／残存物，`roster` 只索引实际人物位置与下一时点，不建立第二份身体。居民上限96与魔兽活跃上限384分开；身体读取为当前区域、到期区域及实际依赖组成的至多100名非玩家窗口。尸身／查验容量改为8192，仍受宿主实际字节容量约束。
+
+公开 `screen.dungeon` 包含 `current/name/area/status/deadline/remaining/warning/completed/team/terms/party/entrances/map/options`。`map` 仅为当前内部区域的合法场景、障碍和素材引用；不公开未进入区域、他人库存或隐藏追踪。`options` 为当下已知操作的 `label/detail/target/item/qty/text/ticks/reason/object/x/y`，前端同时校对参数令牌与当前选项，失效则要求重读。
+
+入口为 `kind=dungeon`，其余必填字段沿原动作结构。`detail` 支持 discover、open、enter、leave、portal、observe、mechanism、nodes、gather、vault、rescue、chest-store/chest-take/chest-close、seal/unseal/recover、reward/supply、sell、recruit/dismiss/lead、follow/hold、terms/agree、transfer/request-share。`target` 为公开轮次／模板／交割对象，`item` 为区域、公开资源／实例或操作方式，其他参数复制当前公开选项；enter／leave／agree 可在授权条件下以 item 指定实际同行人。
+
+耗时操作通过 `operation` 串行续行；deadline_risk 不推进时间，确认后才重交 `text=risk-confirmed`。过门必须严格提前完成，同刻先崩解。战中使用 `kind=battle, detail=dungeon, target=操作detail, item=实际参数, qty=当前回合`，只接纳合法机关／节点／逐件防护操作，占一个主要行动。试炼场地完成、个人通过、外部核验领奖分别记录。
+
+正式入口为场景中的秘境图标；玩家选中对象、沿真实路径走近后执行过门。通道、机关、采点、遗藏、告示与活动场所使用现场短面板，人物当面商议与交割。江湖录改为记录、追踪与寻人寻路，不再发动远程探索与活动。队伍栏显示在场、赶路、等候与暂离；跟随和过门分别结算，等待不妨碍遇险自保。共享原有焦点、忙碌、取消、保存／恢复和风险确认机制，按钮与文字解释器进入同一规则。全游戏补图使用同一 appearances 与 Native 媒体引用：当前48位作者人物、12种普通居民年龄／性别外观、20类兽／阵灵、48个场所场景（含16内部区域）、46物品和3装备均有已实装素材引用。新50类人物／兽形象各使用同一透明完整立绘的 portrait/map 别名，未另画不同脸的Q版。
+
+最终包与实际规则、Native及浏览器证据见同一 [Record](../../../records/package/doupo-living-world.md)。本节描述当前契约，不以字段存在代替未执行的服务、设备或长时验证。
+
+C7 补充（前端 v2，2026-10-25）：`combat.participants[]` 增加 `warn:{x,y,radius,skill}`，即魔兽已蓄势招式的公开落点；没有蓄势时 `radius=-1`。另增加 `phase`，即首领或阵灵当前阶段名，非首领为空串。两项都只投影原本可观察、已写入公开日志的事实，不公开阈值、技能表或不可见个体。
+
+
+## C8 副职与材料（2026-10-27，本地候选）
+
+`screen.crafting`为不超过20000字符的JSON字符串，由同一Authority投影。包含等级、已学结构、分页公开批次、配方进度、场地报价与租期、节点、工具、工单、结果、寄存和有效作用。批次每页12项、配方每页8项；不投影隐藏成分数值。工单固定种子、操作配置、已存事件和逻辑时间随正式存档恢复。
+
+`kind=craft`沿用`doupo.act`，`detail`包括start/batch/save/checkpoint/finish/abandon/rent/study/identify/gather/collect/treatment/repair/store/retrieve/equip/page/forget。配材JSON放在text，包含profession、form、inputs及可选tool/name/note/count。inputs以item/qty/lot/treatment指向实物；target指向当前公开工单、批次、房间或节点。成品服用沿用consume，战斗施符沿用battle/talisman。模型只从公开crafting信息映射意图，不能生成小游戏输入轨迹或指定成功品质。
+
+三个小游戏固定50ms逻辑步、15秒操作；输入在前端有界累计，显式暂停和收卷提交checkpoint，finish重放验证后开始真实制作工时。失焦、指针取消和长帧解除按住并暂停。宿主环境增加visible/focused，Controller收到pointercancel；操作面使用`keyboard-capture="Space Enter ArrowUp ArrowDown ArrowLeft ArrowRight"`，仅焦点在该div/canvas本体且非IME、非系统组合键时抑制所列键的原生滚动。Tab/Escape不在捕获名单。界面等待渲染帧后再移动焦点。
+
+### C8.1 紧凑投影与百工前端（2026-10-28）
+
+为在64KiB单次输出内容纳真实中期库存，`screen.crafting`改为紧凑格式，语义不变：
+
+- `lots`只列材料批次，为空格分隔的`id~item~qty~tier~处理~寒热~鉴定`令牌；寒热`c`偏寒、`h`偏热、空为平和；鉴定`u`未鉴定、`c`质地较净、`i`杂质偏多、`t`毒性残留。`pages`按材料批次计。名称与用途标签由前端从公开目录取得。`storage`用同一令牌。
+- `recipes[].inputs`为`item*qty[*处理]`令牌串（处理为raw时省略）；`image`由投影推导；`failures/favorite/note`只在非默认时出现。存储的配方记录同样省略默认字段。
+- `job.events`仅在`status=playing`时给出，为`<tick><d|u|h|f|p>[x,y]`令牌串；笔迹坐标保留一位小数，前端每两逻辑步最多记一笔。`job.tier`为本炉制作级。
+- `rooms[].publicTool`表示本人有效租约是否含公用器具；`craft`为配方页当前副职筛选（作业室内固定为房间副职）。`detail=page`的`item`可设alchemy/smith/scribe或空串。
+- `last`成功时另含`item/effects/score/batch`，失败时含`score/batch`，失败`text`区分材料冲突、器形承载不足、未达合格线和无可用药效。
+- 同一配方、同一品质与成分的成品批次堆叠（来源记为配方而非工单）；购入或库存中的加工材料带其处理方式。`equip`未给target时取第一件实际制成的器物。
+
+意图投影仍给出对象形式的`lots`与`recipes[].inputs`，供模型照方复制。
+
+实际验证与服务限制统一见[Record](../../../records/package/doupo-living-world.md)。
