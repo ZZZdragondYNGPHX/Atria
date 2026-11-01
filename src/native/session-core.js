@@ -43,7 +43,7 @@ import { TASK_STATE_NAMESPACE, assertTaskValue, assertSemanticOutcome } from '..
 import { prepareTaskAuthority, validateTaskRecords } from './task-authority.js';
 import { checkpointHistory, retiredInvocation, validateHistory, prepareHistory } from './history-authority.js';
 import { queryHistory, historyMetrics } from '../../public/shared/native-history-runtime.js';
-import { initialLifecycle, lifecycleDefinition, validateLifecycle, prepareLifecycle, compactLifecycle, prepareDeclaredTaskResult } from './lifecycle-authority.js';
+import { initialLifecycle, lifecycleDefinition, validateLifecycle, prepareLifecycle, compactLifecycle, prepareDeclaredTaskResult, AppCommandPreconditionError } from './lifecycle-authority.js';
 import { validateCognitionTransition, rebindCognitionBranch, publishMemoryAcquisitions } from './cognition-authority.js';
 import { consumeAppraisalDelivery } from './appraisal-authority.js';
 import { fields } from '../../public/shared/native-values.js';
@@ -907,7 +907,19 @@ export class SessionCore {
                 const { simulationTaskCurrent } = await import('./simulation-authority.js');
                 if (!authorityBudget || !simulationTaskCurrent(base, queued, authorityBudget)) throw new TypeError('Simulation proposal is stale');
             }
-            const prepared = await prepareDeclaredTaskResult(base, installed, queued, task, variant, { ...record, payload }, authorityBudget);
+            let prepared;
+            try {
+                prepared = await prepareDeclaredTaskResult(base, installed, queued, task, variant, { ...record, payload }, authorityBudget);
+            } catch (error) {
+                if (!(error instanceof AppCommandPreconditionError)) throw error;
+                // Record the exact invocation's refusal without adopting any
+                // candidate effects or knowledge. Workflow can then replan.
+                const { authorityReceipt: _unadoptedReceipt, ...rejected } = record;
+                return this._publish(handle, base, { authorityBudget, taskRecord: {
+                    ...rejected, payload, kind: 'task', status: 'rejected', resultClass: task.resultPolicy.resultClass,
+                    anchorRevisionId: expectedRevisionId, branchId: base.revision.branchId,
+                } });
+            }
             if (queued?.simulation) {
                 const { prepareWorldSimulation } = await import('./simulation-authority.js');
                 const candidate = { ...base, states: prepared.states };

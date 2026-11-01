@@ -140,6 +140,9 @@ body.no-blur .atria-studio-topbar .atria-studio-actions { -webkit-backdrop-filte
 .atri-studio-value-editor { display: grid; gap: 16px; min-width: 0; }
 .atri-studio-value-fields .atria-studio-field { padding: 8px 0; }
 .atri-studio-value-fields details { padding-left: 12px; border-left: 1px solid var(--line-2); }
+.atria-studio-workflows { display: grid; gap: 12px; min-width: 0; overflow-wrap: anywhere; }
+.atria-studio-workflows ol { padding-inline-start: 24px; }
+.atria-studio-workflows li { padding-block: 6px; }
 
 /* Activity: collapsed to one summary line (counts stay visible); expands in place. */
 .atria-studio-activity { min-height: 0; min-width: 0; display: grid; grid-template-rows: 40px minmax(0, 1fr); margin-top: 6px; border: 0; border-top: 1px solid var(--line-2); border-radius: 0; background: transparent; box-shadow: none; overflow: hidden; }

@@ -1,6 +1,7 @@
 import { assertNativeExperienceContract } from '../../shared/native-experience-contract.js';
 import { mountStudioValueEditor } from './studio-value-editor.js';
 import { translateShellText as t } from '../atria-shell/localization.js';
+import { renderWorkflowStructure, workflowFieldOptions } from './studio-workflow-editor.js';
 
 // Same project draft / Review / ChangeSet path as the other Studio editors.
 export function mountStudioRuntimeEditor({ document: doc, root, value, onReview, onPreview }) {
@@ -24,15 +25,18 @@ export function mountStudioRuntimeEditor({ document: doc, root, value, onReview,
         });
     }
     const initial = value ?? { schemaVersion: 1, capabilities: [], dataResources: [] };
+    let currentDraft = initial;
     return mountStudioValueEditor({ document: doc, root, label: 'Experience contract JSON', value: initial, onReview,
         validate: assertNativeExperienceContract,
-        fieldOptions: path => path.startsWith('processingRuntime.') ? path.endsWith('.stage') ? ['output', 'context', 'presentation'] : path.endsWith('.kind') ? ['trim', 'replace', 'script'] : undefined : undefined,
+        fieldOptions: path => path.startsWith('processingRuntime.') ? path.endsWith('.stage') ? ['output', 'context', 'presentation'] : path.endsWith('.kind') ? ['trim', 'replace', 'script'] : undefined : workflowFieldOptions(path, currentDraft),
         renderFields({ parent, draft, renderValue, rerender }) {
+            currentDraft = draft;
             if (!draft || typeof draft !== 'object' || Array.isArray(draft) || (draft.capabilities !== undefined && !Array.isArray(draft.capabilities))
                 || (draft.processingRuntime !== undefined && (!draft.processingRuntime || !Array.isArray(draft.processingRuntime.processors)))) {
                 renderValue(parent, draft, '', () => {});
                 node('p', 'Use Source to repair the Runtime contract before adding Processors.', parent); return;
             }
+            renderWorkflowStructure({ document: doc, parent, draft, rerender });
             const add = node('button', 'Add Processor', parent); add.type = 'button';
             add.addEventListener('click', () => {
                 draft.capabilities ||= [];

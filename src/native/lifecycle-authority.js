@@ -16,8 +16,12 @@ import { prepareTaskAuthority } from './task-authority.js';
 import { captureAppraisalEvent, prepareAppraisalCommands } from './appraisal-authority.js';
 import { subjectTaskContext } from './subject-authority.js';
 import { actorAvailability } from '../../public/shared/native-information-runtime.js';
+import { workflowTransitionBlock } from '../../public/shared/native-workflow-runtime.js';
 
 const copy = value => structuredClone(value);
+export class AppCommandPreconditionError extends TypeError {
+    constructor() { super('App Command precondition failed'); }
+}
 const retentionSizes = new WeakMap();
 const validatedRecordValues = new WeakMap();
 function validateRecordValue(value, schema) {
@@ -27,15 +31,16 @@ function validateRecordValue(value, schema) {
     assertTaskValue(value, schema, { copy: false, limits: WORLD_DATA_LIMITS });
     if (reusable) { const known = schemas || new WeakSet(); known.add(schema); validatedRecordValues.set(value, known); }
 }
-const commandReducers = new WeakMap();
-function commandReducer(command) {
-    let reducer = commandReducers.get(command);
-    if (!reducer) {
+const commandRuntimes = new WeakMap();
+function commandRuntime(command) {
+    let runtime = commandRuntimes.get(command);
+    if (!runtime) {
         const { terminal: _terminal, ...mutation } = command;
-        reducer = compileDeclarativeLogic({ schemaVersion: 2, mutations: [mutation] }, { structuralSharing: true }).reducers[0];
-        if (Object.isFrozen(command)) commandReducers.set(command, reducer);
+        const compiled = compileDeclarativeLogic({ schemaVersion: 2, mutations: [mutation] }, { structuralSharing: true });
+        runtime = { command: compiled.commands[0], reducer: compiled.reducers[0] };
+        if (Object.isFrozen(command)) commandRuntimes.set(command, runtime);
     }
-    return reducer;
+    return runtime;
 }
 function retentionCache(authority, reset = false) {
     if (!authority) return null;
@@ -52,10 +57,10 @@ export function initialLifecycle(definition) {
         clocks: Object.fromEntries(definition.clocks.map(clock => [clock.id, clock.initialTick])),
         scopes: Object.fromEntries(definition.scopes.map(scope => [scope.id, { status: 'active', epoch: 0 }])),
         domains: Object.fromEntries(definition.domains.map(domain => [domain.id, { records: [] }])),
-        workflows: Object.fromEntries(definition.workflows.map(flow => [flow.id, { phase: flow.initial, instance: 0, status: 'active', entered: false }])),
+        workflows: Object.fromEntries(definition.workflows.map(flow => [flow.id, { phase: flow.initial, instance: 0, status: 'active', entered: false, enteredTicks: {} }])),
         ...(definition.history ? { history: initialHistory() } : {}),
         ...(definition.lifetimes ? { lifetimes: initialLifetimes(definition.lifetimes) } : {}),
-        ready: false, automations: {}, outbox: [], interactions: [], receipts: [], taskTombstones: [] };
+        ready: false, workflowCursor: 0, automations: {}, outbox: [], interactions: [], receipts: [], taskTombstones: [] };
 }
 
 export function validateLifecycle(base) {
@@ -81,7 +86,11 @@ export function validateLifecycle(base) {
         const current = state.workflows[flow.id];
         if (!current || !flow.nodes.some(node => node.id === current.phase) || !integer(current.instance)
             || !['active', 'completed', 'cancelled'].includes(current.status)) throw new TypeError('Invalid Workflow state');
+        if (typeof current.entered !== 'boolean' || !current.enteredTicks || typeof current.enteredTicks !== 'object'
+            || Object.entries(current.enteredTicks).some(([id, tick]) => !Object.hasOwn(state.clocks, id) || !integer(tick) || tick > state.clocks[id])
+            || current.entered && def.clocks.some(clock => !integer(current.enteredTicks[clock.id]))) throw new TypeError('Invalid Workflow entry time');
     }
+    if (!integer(state.workflowCursor) || state.workflowCursor >= Math.max(1, def.workflows.length)) throw new TypeError('Invalid Workflow cursor');
     if (!Array.isArray(state.interactions) || state.interactions.length > 128) throw new TypeError('Scheduled interaction retention limit');
     if (!Array.isArray(state.receipts) || state.receipts.length + state.taskTombstones.length + (state.activityTombstones?.length ?? 0) > def.retention.maxReceipts
         || !Array.isArray(state.outbox) || state.outbox.length > 128) throw new TypeError('Lifecycle retention limit');
@@ -211,6 +220,10 @@ export async function prepareDeclaredTaskResult(base, installed, queued, task, v
     const state = base.states[NS];
     if (!state?.ready || !queued || task.resultPolicy.sink !== 'app_command') throw new TypeError('Declared App Command requires durable Lifecycle intent');
     const binding = variant.resultBinding;
+    if (queued.workflowId) {
+        const flow = state.workflows[queued.workflowId];
+        if (flow?.status !== 'active' || flow.taskInvocationId !== record.invocationId) throw new TypeError('Workflow Task result is no longer current');
+    }
     if (binding.kind === 'cognition.appraise') {
         let candidate = { ...base, states: copy(base.states) };
         const receipt = await prepareAppraisalCommands(base, task, variant, queued, record, async action => {
@@ -272,6 +285,8 @@ export async function applyLifecycleCandidate(candidate, installed, action, auth
     const state = candidate.states[NS];
     let byteCache = retentionCache(authority, ['app.pin', 'information.rollup'].includes(action.kind));
     const events = []; let budget = 32; let taskResolution = null; const drafts = [];
+    let transitioned = false;
+    const workflowRecord = (domainId, recordId) => recordById(state.domains[domainId].records, recordId);
     const queue = (...args) => {
         const item = addOutbox(...args);
         const task = base.manifest.runtime.experienceContract.taskRuntime?.tasks.find(task => task.id === item.taskId);
@@ -293,9 +308,18 @@ export async function applyLifecycleCandidate(candidate, installed, action, auth
             const previousValue = record?.value;
             const beforeBytes = logicalBytes === undefined ? 0 : record ? nativeDocumentBytes(record) : -Number(records.length > 0);
             if (record?.status === 'terminal') throw new TypeError('App record is terminal');
+            const runtime = commandRuntime(command);
+            for (const validator of runtime.command.validators) {
+                authority?.step();
+                // Recheck the current record at delivery, including scheduled/model
+                // commands. Do not disclose the private predicate or its values.
+                let accepted = false;
+                try { accepted = validator({ world: record?.value ?? domain.initial, args }) === true; } catch { /* Reject malformed or stale candidate data. */ }
+                if (!accepted) throw new AppCommandPreconditionError();
+            }
             if (!record) { record = { id: request.recordId, scopeId: domain.scopeId, value: copy(domain.initial), status: 'active', pinned: false, createdLogicalTime: state.logicalTime }; records.push(record); }
             const event = { type: command.event, payload: args };
-            const nextValue = commandReducer(command).reduce(record.value, event);
+            const nextValue = runtime.reducer.reduce(record.value, event);
             record.value = freezeRecordValue(authority ? authority.typed(nextValue, domain.recordSchema) : assertTaskValue(nextValue, domain.recordSchema, { limits: WORLD_DATA_LIMITS }));
             updateRecordIndex(records, record, previousValue);
             record.updatedLogicalTime = state.logicalTime + 1;
@@ -312,13 +336,11 @@ export async function applyLifecycleCandidate(candidate, installed, action, auth
             fields(request, ['kind', 'workflowId', 'transitionId'], 'Workflow transition');
             const flow = def.workflows.find(item => item.id === request.workflowId); const current = state.workflows[request.workflowId];
             const edge = flow?.transitions.find(item => item.id === request.transitionId);
-            if (!edge || current.status !== 'active' || edge.from !== current.phase) throw new TypeError('Workflow transition is stale or closed');
-            active(state, flow.scopeId);
-            const node = flow.nodes.find(item => item.id === current.phase);
-            if (node.kind === 'wait_until' && state.clocks[node.wait.clockId] < node.wait.tick) throw new TypeError('Workflow temporal wait is not due');
-            if (node.kind === 'model_task' && (!current.taskInvocationId || !candidate.states.atri_task_results?.records.some(item => item.invocationId === current.taskInvocationId))) throw new TypeError('Workflow Task is not complete');
-            if (node.kind === 'action' && !current.entered) throw new TypeError('Workflow Action is not complete');
-            current.phase = edge.to; current.instance++; current.entered = false; delete current.taskInvocationId;
+            const blocked = workflowTransitionBlock(flow, current, edge, state, candidate.states.atri_task_results?.records, workflowRecord);
+            if (blocked) throw new TypeError('Workflow transition blocked: ' + blocked);
+            for (const item of state.outbox) if (item.workflowId === flow.id && item.status === 'pending') item.status = 'cancelled';
+            current.phase = edge.to; current.instance++; current.entered = false; current.enteredTicks = {}; delete current.taskInvocationId;
+            transitioned = true;
             events.push({ type: 'workflow.transition', workflowId: flow.id, transitionId: edge.id, instance: current.instance });
             await enter(flow);
         } else throw new TypeError('Unsupported lifecycle action');
@@ -327,6 +349,8 @@ export async function applyLifecycleCandidate(candidate, installed, action, auth
         const current = state.workflows[flow.id]; const node = flow.nodes.find(item => item.id === current.phase);
         if (current.status !== 'active' || current.entered || state.scopes[flow.scopeId].status !== 'active') return;
         authority?.step();
+        current.enteredTicks = copy(state.clocks);
+        if (node.kind === 'wait_for' && !integer(state.clocks[node.wait.clockId] + node.wait.ticks)) throw new TypeError('Workflow relative deadline overflow');
         if (node.kind === 'model_task') {
             authority?.effect(node.action);
             const occurrence = `workflow:${flow.id}:${current.instance}`;
@@ -346,7 +370,16 @@ export async function applyLifecycleCandidate(candidate, installed, action, auth
             authority?.step();
             if (!remaining || item.status !== 'scheduled' || state.clocks[item.clockId] < item.dueTick) continue;
             if (state.scopes[item.scopeId].status !== 'active' || state.scopes[item.scopeId].epoch !== item.scopeEpoch) { item.status = 'stale'; continue; }
-            await apply({ kind: 'app.command', domainId: item.domainId, recordId: item.recordId, commandId: item.commandId, args: item.args });
+            try {
+                await apply({ kind: 'app.command', domainId: item.domainId, recordId: item.recordId, commandId: item.commandId, args: item.args });
+            } catch (error) {
+                if (!(error instanceof AppCommandPreconditionError)) throw error;
+                // A stale scheduled candidate is terminal, not a poison item
+                // that prevents every later due interaction from progressing.
+                item.status = 'rejected'; remaining--;
+                events.push({ type: 'interaction.rejected', proposalId: item.proposalId, clockId: item.clockId, dueTick: item.dueTick });
+                continue;
+            }
             item.status = 'delivered'; item.deliveredLogicalTime = state.logicalTime + 1; remaining--;
             events.push({ type: 'interaction.delivered', proposalId: item.proposalId, clockId: item.clockId, dueTick: item.dueTick });
         }
@@ -377,6 +410,19 @@ export async function applyLifecycleCandidate(candidate, installed, action, auth
                 await apply(automation.action, `automation:${automation.id}:${tick}`, automation.scopeId);
                 state.automations[automation.id] = { cursor: tick, epoch }; remaining--;
             }
+        }
+        // Use the existing bounded pump, after due domain updates. Never spin
+        // through a branch cycle or skip a player's intervention gate.
+        if (!transitioned && !(authority?.counts?.workflowTransitions >= 1)) for (let offset = 0; offset < def.workflows.length; offset++) {
+            const index = (state.workflowCursor + offset) % def.workflows.length;
+            const flow = def.workflows[index];
+            const current = state.workflows[flow.id];
+            const edge = flow.transitions.find(edge => edge.automatic
+                && !workflowTransitionBlock(flow, current, edge, state, candidate.states.atri_task_results?.records, workflowRecord));
+            if (!edge) continue;
+            await apply({ kind: 'workflow.transition', workflowId: flow.id, transitionId: edge.id });
+            state.workflowCursor = (index + 1) % def.workflows.length;
+            break;
         }
     };
     if (action.kind === 'experience.ready') {

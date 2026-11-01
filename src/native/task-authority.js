@@ -6,7 +6,7 @@ import { compileDeclarativeLogic } from '../../public/scripts/native/experience/
 import { createGameWorldSession } from '../../public/scripts/native/experience/world/session.js';
 import { createInterpretationMappingRegistry } from '../../public/scripts/native/experience/logic/interpretations.js';
 import { assertSemanticOutcome } from '../../public/shared/native-task-contract.js';
-import { assertTaskValue } from '../../public/shared/native-task-contract.js';
+import { assertTaskValue, TASK_RESULT_STATUSES } from '../../public/shared/native-task-contract.js';
 import { assertNativeId } from './identity.js';
 import { prepareLifecycle } from './lifecycle-authority.js';
 import { selectedWorlds } from './session-worlds.js';
@@ -32,7 +32,7 @@ export function validateTaskRecords(base) {
         } else if (record.kind === 'task') {
             const task = tasks.find(item => item.id === record.taskId);
             const variant = task?.variants.find(item => item.id === record.variantId);
-            if (!variant || task.resultPolicy.resultClass !== record.resultClass || !['draft', 'applied', 'rejected', 'completed'].includes(record.status)) throw new TypeError('Invalid Task result');
+            if (!variant || task.resultPolicy.resultClass !== record.resultClass || !TASK_RESULT_STATUSES.includes(record.status)) throw new TypeError('Invalid Task result');
             assertTaskValue(record.payload, variant.outputSchema);
             if (task.interpretation) assertSemanticOutcome({ requestId: task.interpretation.id, interpretation: record.payload }, task.interpretation);
         } else throw new TypeError('Unknown Task record');

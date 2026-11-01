@@ -4,9 +4,10 @@ import { fields, json, assertJsonDeclaration } from './native-values.js';
 import { compileDataSchema, compileWorldDataSchema } from './native-data-schema.js';
 import { WORLD_DATA_LIMITS, WORLD_CAPACITY } from './native-world-data.js';
 import { compileDeclarativeLogic } from '../scripts/native/experience/logic/declarative.js';
-import { assertTaskRuntime, assertTaskValue, taskId } from './native-task-contract.js';
+import { assertTaskRuntime, assertTaskValue, taskId, TASK_RESULT_STATUSES } from './native-task-contract.js';
 import { APPRAISAL_INPUT_SCHEMA, APPRAISAL_OUTPUT_SCHEMA, appraisalTargets } from './native-appraisal-contract.js';
 import { TOM_OUTPUT_SCHEMA } from './native-tom-contract.js';
+import { assertWorkflowCondition } from './native-workflow-runtime.js';
 
 export const LIFECYCLE_STATE_NAMESPACE = 'atri_lifecycle';
 
@@ -36,7 +37,7 @@ export function lifecycleBridgeTarget(target, runtime) {
 }
 
 const MAX_BYTES = 1048576;
-const NODE_KINDS = ['user_gate', 'model_task', 'wait_until', 'action', 'automation_gate', 'projection', 'terminal'];
+export const WORKFLOW_NODE_KINDS = Object.freeze(['user_gate', 'model_task', 'wait_until', 'wait_for', 'action', 'automation_gate', 'projection', 'terminal']);
 
 function integer(value, min, max = Number.MAX_SAFE_INTEGER) {
     if (!Number.isSafeInteger(value) || value < min || value > max) throw new TypeError('Lifecycle integer out of bounds');
@@ -121,12 +122,19 @@ function domain(item, scopes, clocks) {
     retention(item.retention, clocks);
     if (logicalBytes(initial) > item.retention.maxLogicalBytes) throw new TypeError('Lifecycle initial data exceeds retention bytes');
     const commands = list(item.commands, 64, command => {
-        fields(command, ['id', 'argsSchema', 'event', 'assign', 'terminal'], 'Lifecycle command');
+        fields(command, ['id', 'argsSchema', 'event', 'assign', 'terminal', 'validators'], 'Lifecycle command');
         taskId(command.id);
         if (typeof command.event !== 'string' || !/^[a-z][a-z0-9._-]{0,127}$/.test(command.event)
             || ['constructor', 'prototype', '__proto__'].includes(command.event)) throw new TypeError('Invalid lifecycle event');
         if (command.terminal !== undefined && typeof command.terminal !== 'boolean') throw new TypeError('Lifecycle terminal must be boolean');
         const argsSchema = objectSchema(command.argsSchema);
+        if (command.validators !== undefined) list(command.validators, 16, validator => {
+            fields(validator, ['id', 'formula', 'error'], 'Lifecycle command validator');
+            taskId(validator.id);
+            if (!hasFormula({ formula: validator.formula })) throw new TypeError('Lifecycle validator requires a formula');
+            if (validator.error !== undefined && (typeof validator.error !== 'string' || validator.error.length > 256)) throw new TypeError('Lifecycle validator error limit');
+            return validator;
+        }, 'command validator');
         fields(command.assign, Object.keys(command.assign ?? {}), 'Lifecycle assignments');
         const paths = Object.keys(command.assign);
         if (!paths.length || paths.length > 128) throw new TypeError('Lifecycle fixed assignment limit');
@@ -238,30 +246,37 @@ function trigger(item, clocks) {
     if (item.at !== undefined) integer(item.at, 0);
     return { ...item, catchUp: choice(item.catchUp ?? 'skip', ['all', 'latest', 'skip']) };
 }
-function workflow(item, scopes, clocks) {
+function workflow(item, scopes, clocks, domains) {
     fields(item, ['id', 'scopeId', 'initial', 'nodes', 'transitions'], 'Lifecycle workflow');
     taskId(item.id);
     reference(scopes, item.scopeId, 'scope');
     const nodes = list(item.nodes, 64, node => {
         fields(node, ['id', 'kind', 'action', 'wait'], 'Lifecycle workflow node');
         taskId(node.id);
-        choice(node.kind, NODE_KINDS);
+        choice(node.kind, WORKFLOW_NODE_KINDS);
         if (['action', 'model_task'].includes(node.kind)) {
             if (!node.action) throw new TypeError('Lifecycle action node requires action');
             if (node.kind === 'model_task' && node.action.kind !== 'task') throw new TypeError('Lifecycle model_task node requires Task action');
         } else if (node.action !== undefined) throw new TypeError('Lifecycle gate/projection cannot execute action');
         if (node.kind === 'wait_until') clockPoint(node.wait, clocks, 'tick');
-        else if (node.wait !== undefined) throw new TypeError('Lifecycle wait only belongs to wait_until');
+        else if (node.kind === 'wait_for') clockPoint(node.wait, clocks, 'ticks');
+        else if (node.wait !== undefined) throw new TypeError('Lifecycle wait only belongs to a temporal node');
         return node;
     }, 'node');
     reference(nodes, item.initial, 'initial node');
     const transitions = list(item.transitions, 128, transition => {
-        fields(transition, ['id', 'from', 'to'], 'Lifecycle transition');
+        fields(transition, ['id', 'from', 'to', 'when', 'automatic', 'interrupt', 'taskStatus'], 'Lifecycle transition');
         taskId(transition.id);
         const from = reference(nodes, transition.from, 'transition source');
         reference(nodes, transition.to, 'transition target');
         if (from.kind === 'terminal') throw new TypeError('Lifecycle terminal node cannot transition');
-        return transition;
+        if (transition.taskStatus !== undefined) {
+            if (from.kind !== 'model_task') throw new TypeError('Workflow Task status requires a model_task source');
+            choice(transition.taskStatus, TASK_RESULT_STATUSES);
+        }
+        for (const key of ['automatic', 'interrupt']) if (transition[key] !== undefined && typeof transition[key] !== 'boolean') throw new TypeError('Workflow transition policy must be boolean');
+        if (transition.interrupt && transition.when === undefined) throw new TypeError('Workflow interruption requires a fact condition');
+        return { ...transition, ...(transition.when === undefined ? {} : { when: assertWorkflowCondition(transition.when, domains) }) };
     }, 'transition');
     return { ...item, nodes, transitions };
 }
@@ -285,7 +300,7 @@ export function assertLifecycleRuntime(value, taskRuntime) {
         integer(item.maxTicks, 1);
         return item;
     }, 'advance');
-    const workflows = list(value.workflows, 32, item => workflow(item, scopes, clocks), 'workflow');
+    const workflows = list(value.workflows, 32, item => workflow(item, scopes, clocks, domains), 'workflow');
     const runtime = { schemaVersion: 1, scopes, domains, clocks, advances, workflows };
     runtime.interactions = list(value.interactions === undefined ? [] : value.interactions, 128, item => interaction(item, runtime, tasks), 'interaction');
     for (const task of tasks?.tasks ?? []) for (const variant of task.variants) {

@@ -18,6 +18,7 @@ const definitions = [
     ['messages', 'Message projection, Turn envelope and narrative-only presentation', 'public/shared/native-message-contract.js'],
     ['tasks', 'Model Tasks, result policy, binding slots and variants', 'public/shared/native-task-contract.js'],
     ['lifecycle', 'App domains, commands, retention, scopes, workflows and logical time', 'public/shared/native-lifecycle-contract.js'],
+    ['story-workflows', 'Natural-language story scripts, fact conditions, relative waits, intervention, interruption and preview', 'src/native/authoring-examples/story-workflows.md'],
     ['presentation', 'Activity, Scene, Cue, AssetRef and Host capabilities', 'public/shared/native-presentation-contract.js'],
     ['information', 'Data projection, Truth/Belief, memory, rollup and exposure', 'public/shared/native-information-contract.js'],
     ['continuity', 'Player continuity and independent transfer Saga', 'public/shared/native-continuity-contract.js'],

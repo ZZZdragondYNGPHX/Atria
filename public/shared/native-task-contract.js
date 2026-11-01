@@ -6,6 +6,7 @@ import { assertOutcomeShape } from './native-message-contract.js';
 import { assertAppraisalBinding } from './native-appraisal-contract.js';
 
 export const TASK_STATE_NAMESPACE = 'atri_task_results';
+export const TASK_RESULT_STATUSES = Object.freeze(['draft', 'applied', 'rejected', 'completed']);
 export const EXECUTION_CLASSES = Object.freeze(['turn_blocking', 'interactive', 'background', 'maintenance']);
 export function taskId(value) {
     if (typeof value !== 'string' || !/^[a-z][a-z0-9._-]{0,63}$/.test(value) || ['constructor', 'prototype', '__proto__'].includes(value)) throw new TypeError('Invalid Task identifier');
