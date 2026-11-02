@@ -2,6 +2,11 @@ import { translateShellText as tl } from '../atria-shell/localization.js';
 import { sanitizeProductDetails } from './product-error-details.js';
 
 const messages = {
+    native_package_source_package: 'Import this source package in Studio. Ask the author for a .atria runtime package to play.',
+    native_source_runtime_package: 'Runtime packages cannot be opened for editing. Ask the author for a .atriasource package.',
+    native_source_container_invalid: 'This source package is invalid or incomplete. Choose an intact .atriasource file.',
+    native_source_password_required: 'Enter the source package password.',
+    native_source_authentication_failed: 'The source package could not be unlocked. Check the password and file integrity.',
     native_world_knowledge_dependency_conflict: 'A selected World requires its fixed Knowledge configuration. Keep that source or select a World revision that uses the new source.',
     native_resource_setup_stale: 'The available resource updates changed. Reopen resource choices and review the exact versions before saving.',
     storage_quota_exceeded: 'There is not enough account quota for this operation. Export or permanently remove selected data first.',

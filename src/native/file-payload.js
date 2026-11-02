@@ -7,6 +7,7 @@ import { createTemporaryPayload } from './temporary-payload.js';
 // Only host-owned, admitted files carry this identity. Request JSON cannot
 // supply a local path or manufacture an admitted digest.
 const payloads = new WeakSet();
+export function registerFilePayload(payload) { payloads.add(payload); return payload; }
 export const isFilePayload = value => value !== null && typeof value === 'object' && payloads.has(value);
 export const payloadHash = value => isFilePayload(value) ? value.contentHash : createHash('sha256').update(value).digest('hex');
 

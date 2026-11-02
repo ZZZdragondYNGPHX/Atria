@@ -139,7 +139,7 @@ export function compileFrontend({ source, files, mode, namespace = 'package', ex
 // Called once by the formal Project Build path, also used by Studio Preview.
 // Never called during install or activation.
 export function compileProjectFrontends(packageSource, inputFiles) {
-    const result = structuredClone(packageSource), files = new Map(inputFiles), consumed = new Set();
+    const result = structuredClone(packageSource), files = new Map();
     const owners = [{ value: result, namespace: 'package' }, ...result.entryPoints.map(value => ({ value, namespace: value.entryPointId }))];
     for (const { value, namespace } of owners) {
         if (!value.runtime?.experience) continue;
@@ -148,10 +148,9 @@ export function compileProjectFrontends(packageSource, inputFiles) {
         const compiled = compileFrontend({ source: experience.frontend.source, files: inputFiles, mode: experience.mode, namespace,
             experienceContract: result.runtime?.experienceContract, transactions: () => frontendTransactions(result, value, inputFiles) });
         for (const [path, bytes] of compiled.files) {
-            if (files.has(path)) throw new TypeError('Author source collides with compiled artifact: ' + path);
+            if (inputFiles.has(path) || files.has(path)) throw new TypeError('Author source collides with compiled artifact: ' + path);
             files.set(path, bytes);
         }
-        compiled.consumed.forEach(path => consumed.add(path));
         value.runtime.experience = { ...experience, frontend: { kind: 'native', version: 3, entry: compiled.entry } };
     }
     // Shared pure modules may also belong to Authority's exact source closure.
@@ -163,6 +162,7 @@ export function compileProjectFrontends(packageSource, inputFiles) {
         compilePackageComputation(derivation.source, inputFiles).modules.forEach(module => retained.add(module.id));
     }
     for (const { value } of owners) {
+        for (const path of Object.values(value.runtime?.game ?? {})) retained.add(path);
         const logicPath = value.runtime?.game?.logic ?? result.runtime?.game?.logic;
         const bytes = logicPath && inputFiles.get(logicPath);
         if (!bytes) continue;
@@ -173,6 +173,8 @@ export function compileProjectFrontends(packageSource, inputFiles) {
             if (transaction.computation.invariantSource) compilePackageComputation(transaction.computation.invariantSource, inputFiles).modules.forEach(module => retained.add(module.id));
         }
     }
-    consumed.forEach(path => { if (!retained.has(path)) files.delete(path); });
+    // Runtime packages carry compiled UI and the exact authority/game sources,
+    // not editor files, tools, unused media or a recoverable project snapshot.
+    for (const path of retained) if (inputFiles.has(path)) files.set(path, inputFiles.get(path));
     return { packageSource: result, files };
 }

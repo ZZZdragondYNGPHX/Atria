@@ -150,6 +150,18 @@ function field(documentRef, label, control) {
     return wrapper;
 }
 
+function downloadStudioFile(documentRef, blob, fileName) {
+    const url = URL.createObjectURL(blob), link = documentRef.createElement('a');
+    link.href = url; link.download = fileName; link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function sourcePasswordInput(documentRef, label, autocomplete) {
+    const input = textInput(documentRef, '', label);
+    input.type = 'password'; input.autocomplete = autocomplete; input.maxLength = 1024;
+    return input;
+}
+
 function textInput(documentRef, value, label) {
     const input = documentRef.createElement('input');
     input.className = 'text_pole';
@@ -274,6 +286,51 @@ async function renderProjectList(documentRef, root, host) {
         } finally { creation.inert = false; }
     }, { primary: true }));
     surface.append(creation);
+    const importing = documentRef.createElement('details'); importing.className = 'atri-studio-details';
+    const importTitle = documentRef.createElement('summary'); importTitle.textContent = t('Import source package');
+    const importFile = documentRef.createElement('input'); importFile.type = 'file'; importFile.accept = '.atriasource';
+    const importPassword = sourcePasswordInput(documentRef, 'Source package password', 'current-password');
+    const passwordField = field(documentRef, 'Source package password', importPassword); passwordField.hidden = true;
+    const importStatus = documentRef.createElement('p'); importStatus.setAttribute('role', 'status');
+    let fileSequence = 0, encrypted = false;
+    const importForm = documentRef.createElement('form');
+    const importButton = button(documentRef, 'Import source package', async event => {
+        event.preventDefault();
+        const file = importFile.files[0]; if (!file) return;
+        if (encrypted && !importPassword.value) { importPassword.required = true; importPassword.reportValidity(); importPassword.focus(); return; }
+        importing.inert = true; importStatus.textContent = t('Importing source package...');
+        try {
+            const result = await nativeStudioClient.importSource(file, encrypted ? importPassword.value : null);
+            importPassword.value = ''; importStatus.textContent = t('Source package imported.');
+            if (root.isConnected) host.openBuild(result.source.project.projectId, result.source.project.displayName);
+        } catch (error) { importStatus.textContent = error.message; } finally { importing.inert = false; }
+        if (encrypted && importPassword.value) importPassword.focus();
+    }, { primary: true, disabled: true });
+    importButton.type = 'submit';
+    importForm.addEventListener('submit', event => event.preventDefault());
+    importFile.addEventListener('change', async () => {
+        const sequence = ++fileSequence, file = importFile.files[0];
+        importButton.disabled = true; importPassword.value = ''; importPassword.required = false; passwordField.hidden = true; encrypted = false; importStatus.textContent = '';
+        if (!file) return;
+        try {
+            const prefix = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+            if (new TextDecoder().decode(prefix.subarray(0, 8)) === 'ATRIAS01') {
+                const size = new DataView(prefix.buffer).getUint32(8);
+                if (size > 0 && size <= 16384) {
+                    const header = JSON.parse(await file.slice(12, 12 + size).text());
+                    if (sequence !== fileSequence) return;
+                    encrypted = header.encrypted === true;
+                }
+            }
+            if (sequence !== fileSequence) return;
+            passwordField.hidden = !encrypted; importButton.disabled = false;
+            if (encrypted) importPassword.focus();
+        } catch { if (sequence === fileSequence) importStatus.textContent = t('This source package is invalid or incomplete. Choose an intact .atriasource file.'); }
+    });
+    importFile.name = 'source-package';
+    importForm.append(field(documentRef, 'Source package file', importFile), passwordField, importButton, importStatus);
+    importing.append(importTitle, heading(documentRef, 'Editable source', 'Source imports create a separate project. Runtime packages are for playing, not editing.'), importForm);
+    surface.append(importing);
     const search = textInput(documentRef, '', 'Search projects'); search.type = 'search';
     surface.append(field(documentRef, 'Search projects', search));
     const list = documentRef.createElement('div'); list.className = 'atri-studio-project-list'; surface.append(list);
@@ -908,30 +965,27 @@ async function mountProjectStudio(documentRef, root, projectId, host, initialTas
     }
 
     async function runBuild({ download = false } = {}) {
-        if (!state.confirmEditorLeave() || state.refreshRequired) return;
+        if (state.exporting || !state.confirmEditorLeave() || state.refreshRequired) return;
+        state.exporting = true;
         const editorToken = state.editorSequence, baseRevision = state.revision.revision;
         try {
-            const report = await nativeStudioClient.preflight(projectId, baseRevision);
+            const report = await (download ? nativeStudioClient.build(projectId, baseRevision) : nativeStudioClient.preflight(projectId, baseRevision));
             if (state.disposed || editorToken !== state.editorSequence || baseRevision !== state.revision.revision) return;
             state.buildReport = report;
             log('success', 'Build preflight completed.', report.preflight);
             if (download) {
-                const built = await nativeStudioClient.build(projectId, baseRevision);
-                if (state.disposed || editorToken !== state.editorSequence || baseRevision !== state.revision.revision) return;
+                const built = report;
                 const bytes = Uint8Array.from(globalThis.atob(built.data), char => char.charCodeAt(0));
-                const url = URL.createObjectURL(new Blob([bytes], { type: built.mediaType || 'application/octet-stream' }));
-                const link = documentRef.createElement('a');
-                link.href = url;
-                link.download = built.fileName || (projectId + '.atria');
-                link.click();
-                URL.revokeObjectURL(url);
-                log('success', formatProductText('Built ${0} from exact revision ${1}.', [link.download, state.revision.revision.slice(0, 12)]));
+                const fileName = built.fileName || (projectId + '.atria');
+                downloadStudioFile(documentRef, new Blob([bytes], { type: built.mediaType || 'application/octet-stream' }), fileName);
+                log('success', formatProductText('Built ${0} from exact revision ${1}.', [fileName, state.revision.revision.slice(0, 12)]));
+                delete state.buildReport.data;
             }
             state.activeView = 'build'; state.mobileView = 'editor'; updateMobile();
             renderEditor();
         } catch (error) {
             log('error', error?.message || String(error));
-        }
+        } finally { state.exporting = false; }
     }
 
     async function renderInspector() {
@@ -1305,12 +1359,53 @@ async function mountProjectStudio(documentRef, root, projectId, host, initialTas
     }
 
     function renderBuild(body) {
-        body.append(heading(documentRef, 'Build', 'Build resolves the exact dependency closure into a self-contained immutable .atria package.'));
+        body.append(heading(documentRef, 'Runtime package', 'Protected by default. Players can import and play without a password; this package cannot restore an editable project.'));
         body.append(actionRow(
             documentRef,
             button(documentRef, 'Run Preflight', () => runBuild({ download: false })),
-            button(documentRef, 'Build .atria', () => runBuild({ download: true }), { primary: true }),
+            button(documentRef, 'Export runtime package', () => runBuild({ download: true }), { primary: true }),
         ));
+        const sourceExport = documentRef.createElement('form'); sourceExport.className = 'atri-studio-details';
+        sourceExport.dataset.atriaDraftDirty = 'false';
+        sourceExport.addEventListener('submit', event => event.preventDefault());
+        sourceExport.append(heading(documentRef, 'Source package', 'Back up or share editable source and exact dependencies. Keep this package private when publishing your game.'));
+        const encrypt = documentRef.createElement('input'); encrypt.type = 'checkbox';
+        const password = sourcePasswordInput(documentRef, 'Source package password', 'new-password');
+        const confirmation = sourcePasswordInput(documentRef, 'Confirm password', 'new-password');
+        const passwords = documentRef.createElement('div'); passwords.hidden = true;
+        const note = documentRef.createElement('p'); note.textContent = t('Use a strong password. There is no password recovery.');
+        passwords.append(field(documentRef, 'Source package password', password), field(documentRef, 'Confirm password', confirmation), note);
+        encrypt.addEventListener('change', () => {
+            passwords.hidden = !encrypt.checked;
+            password.required = confirmation.required = encrypt.checked;
+            if (encrypt.checked) password.focus(); else { password.value = confirmation.value = ''; confirmation.setCustomValidity(''); }
+        });
+        confirmation.addEventListener('input', () => confirmation.setCustomValidity(''));
+        password.addEventListener('input', () => confirmation.setCustomValidity(''));
+        const status = documentRef.createElement('p'); status.setAttribute('role', 'status');
+        const exportSource = button(documentRef, 'Export source package', async event => {
+            event.preventDefault();
+            if (state.exporting || !state.confirmEditorLeave() || state.refreshRequired) return;
+            if (encrypt.checked) {
+                if (!password.reportValidity()) return;
+                confirmation.setCustomValidity(password.value === confirmation.value ? '' : t('Passwords do not match.'));
+                if (!confirmation.reportValidity()) return;
+            }
+            state.exporting = true; sourceExport.inert = true; status.textContent = t('Exporting source package...');
+            const editorToken = state.editorSequence, revision = state.revision.revision;
+            try {
+                const blob = await nativeStudioClient.exportSource(projectId, revision, encrypt.checked ? password.value : null);
+                if (state.disposed || editorToken !== state.editorSequence || revision !== state.revision.revision) return;
+                downloadStudioFile(documentRef, blob, projectId + '.atriasource'); password.value = confirmation.value = '';
+                status.textContent = t('Source package exported.');
+            } catch (error) { status.textContent = error.message; } finally {
+                state.exporting = false; sourceExport.inert = false; exportSource.disabled = false;
+                if (!state.disposed && sourceExport.isConnected) exportSource.focus();
+            }
+        }, { primary: true });
+        exportSource.type = 'submit';
+        const encryptionField = field(documentRef, 'Encrypt with a password', encrypt); encryptionField.className = 'checkbox_label'; encryptionField.prepend(encrypt);
+        sourceExport.append(encryptionField, passwords, exportSource, status); body.append(sourceExport);
         if (state.buildReport) {
             const pre = documentRef.createElement('pre');
             pre.textContent = JSON.stringify({

@@ -8,20 +8,22 @@ function requestHeaders() {
     };
 }
 
-async function request(path, { method = 'GET', body = undefined, responseType = 'json' } = {}) {
+async function request(path, { method = 'GET', body = undefined, responseType = 'json', binary = false, headers = {} } = {}) {
     const response = await fetch('/api/native/studio/' + String(path || '').replace(/^\/+/, ''), {
         method,
-        headers: requestHeaders(),
-        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+        headers: { ...requestHeaders(), ...(binary ? { 'Content-Type': 'application/octet-stream' } : {}), ...headers },
+        ...(body === undefined ? {} : { body: binary ? body : JSON.stringify(body) }),
     });
 
     let payload = null;
-    if (responseType === 'json') {
+    if (responseType === 'json' || !response.ok) {
         try {
             payload = await response.json();
         } catch {
             payload = null;
         }
+    } else if (responseType === 'blob') {
+        payload = await response.blob();
     } else {
         payload = await response.arrayBuffer();
     }
@@ -52,6 +54,11 @@ function query(values) {
 export const nativeStudioClient = Object.freeze({
     listProjects: ({ summary = false } = {}) => request('projects' + (summary ? '?summary=true' : '')),
     createProject: source => request('projects', { method: 'POST', body: { source } }),
+    importSource: (file, password = null) => request('projects/import-source', { method: 'POST', body: file, binary: true,
+        headers: password === null ? {} : { 'X-Atria-Source-Password': encodeURIComponent(password) } }),
+    exportSource: (projectId, baseRevision, password = null) => request(`projects/${encode(projectId)}/export-source`, {
+        method: 'POST', body: { baseRevision, password }, responseType: 'blob',
+    }),
     getProject: projectId => request(`projects/${encode(projectId)}`),
     deleteProject: (projectId, baseRevision) => request(`projects/${encode(projectId)}`, { method: 'DELETE', body: { baseRevision } }),
     getRevision: projectId => request(`projects/${encode(projectId)}/revision`),

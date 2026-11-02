@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import { filePayload, isFilePayload } from './file-payload.js';
+import { protectedPayloadReader, storedFilePayload } from './protected-payload.js';
 
 const digests = new WeakMap(), views = new WeakMap();
 export function admitPackagePayload(payload, contentHash) { digests.set(payload, contentHash); return payload; }
@@ -31,7 +32,7 @@ export async function withPackageAssetPayloads(assets, operation) {
             let file = files.get(record.backing);
             if (!file) {
                 const handle = await fs.promises.open(record.backing.path, 'r');
-                try { file = filePayload(handle, Number((await handle.stat()).size), null); } catch (error) { await handle.close(); throw error; }
+                try { file = record.backing.protected ? await storedFilePayload(handle, null) : filePayload(handle, Number((await handle.stat()).size), null); } catch (error) { await handle.close(); throw error; }
                 files.set(record.backing, file);
             }
             payloads.set(id, file.range(record.offset, record.length, packagePayloadHash(record)));
@@ -49,6 +50,10 @@ export function copyPackagePayload(payload) {
     } else {
         const descriptor = fs.openSync(payload.backing.path, 'r');
         try {
+            if (payload.backing.protected) {
+                protectedPayloadReader(descriptor, fs.fstatSync(descriptor).size).readRange(payload.offset, payload.length).copy(copy);
+                return copy;
+            }
             let read = 0;
             while (read < copy.length) {
                 const count = fs.readSync(descriptor, copy, read, copy.length - read, payload.offset + read);

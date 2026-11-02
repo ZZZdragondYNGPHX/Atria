@@ -1,6 +1,7 @@
 import { illustrationAssetIds } from '../../../public/shared/native-media-contract.js';
 import { admitBlob } from './blob-admission.js';
-import { filePayload, isFilePayload, payloadHash } from '../file-payload.js';
+import { isFilePayload, payloadHash } from '../file-payload.js';
+import { protectPayload, protectedPayloadSize, storedFilePayload } from '../protected-payload.js';
 import { PACKAGE_LIMITS } from '../../../public/shared/native-package-limits.js';
 import { withAccountFileGrowth, withAccountQuota } from '../../storage/account-quota.js';
 import { retainedBlobHashes, recoveryReferences } from '../recovery-roots.js';
@@ -12,6 +13,7 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import path from 'node:path';
+import { Readable } from 'node:stream';
 import { durableWriteAsync, durableRemoveAsync } from '../../storage/durable-file.js';
 import { resolveUserDirectory } from '../../constants.js';
 
@@ -105,17 +107,25 @@ export class AssetStore {
         return assertAccountPath(this._directoriesByHandle(handle).root, path.join(this._blobRoot(handle), contentHash.slice(0, 2), contentHash));
     }
 
-    async putBlob(handle, bytesValue) {
+    async putBlob(handle, bytesValue, { protected: protect = false } = {}) {
         assertWritable();
         const bytes = toBuffer(bytesValue);
         const contentHash = digest(bytes);
         return this.withBlobLease(handle, contentHash, async () => {
             const blobPath = this._blobPath(handle, contentHash);
-            if (!fs.existsSync(blobPath)) await withAccountFileGrowth(handle, bytes.length, () => durableWriteAsync(blobPath, isFilePayload(bytes) ? bytes.stream() : bytes), this._engine);
-            else {
+            let oldSize = 0, rewrite = !fs.existsSync(blobPath);
+            if (!rewrite) {
                 const file = await fsp.open(blobPath, 'r');
-                try { await admitBlob(file, handle, contentHash, bytes.length); } finally { await file.close(); }
+                try {
+                    const payload = await storedFilePayload(file, contentHash);
+                    await admitBlob(file, handle, contentHash, bytes.length, payload);
+                    oldSize = Number((await file.stat()).size);
+                    rewrite = protect && !payload.protected;
+                } finally { await file.close(); }
             }
+            if (rewrite) await withAccountFileGrowth(handle, (protect ? protectedPayloadSize(bytes.length) : bytes.length) - oldSize,
+                () => durableWriteAsync(blobPath, protect ? protectPayload(isFilePayload(bytes) ? bytes.stream() : Readable.from([bytes]), bytes.length)
+                    : isFilePayload(bytes) ? bytes.stream() : bytes), this._engine);
             return contentHash;
         });
     }
@@ -168,9 +178,12 @@ export class AssetStore {
         let file;
         try {
             file = await fsp.open(blobPath, 'r');
-            if ((await file.stat()).size > maxBytes) throw new RangeError('Large Blob requires streaming access');
-            await admitBlob(file, handle, contentHash);
-            return await file.readFile();
+            const payload = await storedFilePayload(file, contentHash);
+            if (payload.length > maxBytes) throw new RangeError('Large Blob requires streaming access');
+            await admitBlob(file, handle, contentHash, undefined, payload);
+            const bytes = Buffer.allocUnsafeSlow(payload.length); let offset = 0;
+            for await (const chunk of payload.stream()) { chunk.copy(bytes, offset); offset += chunk.length; }
+            return bytes;
         } catch (error) { if (error.code === 'ENOENT') return null; throw error; } finally { await file?.close(); }
     }
 
@@ -179,8 +192,8 @@ export class AssetStore {
         return this.withBlobLease(handle, contentHash, async () => {
             const file = await fsp.open(this._blobPath(handle, contentHash), 'r'); let payload;
             try {
-                await admitBlob(file, handle, contentHash);
-                payload = filePayload(file, Number((await file.stat()).size), contentHash);
+                payload = await storedFilePayload(file, contentHash);
+                await admitBlob(file, handle, contentHash, undefined, payload);
                 return await operation(payload);
             } finally { if (payload) await payload.close(); else await file.close(); }
         });
@@ -212,7 +225,7 @@ export class AssetStore {
         }));
     }
 
-    async put(handle, refValue, bytesValue) {
+    async put(handle, refValue, bytesValue, options = {}) {
         assertWritable();
         const ref = assertAssetRef(refValue);
         const bytes = toBuffer(bytesValue);
@@ -230,7 +243,7 @@ export class AssetStore {
         // Blob first, logical reference last. A crash between these operations
         // leaves only an unreferenced content-addressed blob, which GC can reap.
         return this.withBlobPublication(handle, [bytes], async () => {
-            await this.putBlob(handle, bytes);
+            await this.putBlob(handle, bytes, options);
 
             await this._engine.withTransaction(handle, tx => putImmutable(
                 tx,
@@ -277,8 +290,9 @@ export class AssetStore {
         let file;
         try {
             file = await fs.promises.open(this._blobPath(handle, ref.contentHash), 'r');
-            await admitBlob(file, handle, ref.contentHash, ref.size);
-            return { ref, stream: (start, end) => file.createReadStream({ start, end, autoClose: false }), close: () => file.close() };
+            const payload = await storedFilePayload(file, ref.contentHash);
+            await admitBlob(file, handle, ref.contentHash, ref.size, payload);
+            return { ref, stream: (start, end) => payload.stream(start, end), close: () => payload.close() };
         } catch (error) {
             await file?.close();
             if (error.code === 'ENOENT') throw new NotFoundError('native asset blob', { assetId });

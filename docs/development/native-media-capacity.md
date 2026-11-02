@@ -42,11 +42,15 @@ inflated concurrently through filesystem/zlib workers. Resident bytes and spool
 ranges are reserved in archive order before I/O; parallelism does not multiply
 the 32 MiB payload allowance. Inventory admission stays ordered, and all pending
 readers finish before failure cleanup closes the shared backing.
-Stored, nonresident entries reuse authenticated plaintext ZIP ranges after their
-CRC and inventory digest pass, avoiding a second write of those bytes. Deflated
-entries still use decompressed backing. A retained range keeps its entire
-plaintext archive alive; mixed archives may retain that archive plus inflated
-backing. GC cleanup removes released backing asynchronously.
+Stored, nonresident entries reuse authenticated ranges of an encrypted ZIP
+backing after CRC and inventory admission. Deflated entries use separate
+encrypted backings. A retained range keeps its encrypted archive alive; mixed
+archives may retain that archive plus encrypted expanded entries. GC cleanup
+removes released backing asynchronously. Package asset blobs also stay encrypted
+on disk. Storage uses 256 KiB AES-GCM blocks bound to their position and file
+length, allowing range reads without decrypting entire files. Existing plaintext
+asset blobs are converted when their package is reinstalled; no background scan
+or migration of user data is performed.
 
 Host package builders can import `buildAtriaPackageContainerFile` from
 `src/native/index.js`. It accepts the existing manifest/sourceFiles/assetPayloads
