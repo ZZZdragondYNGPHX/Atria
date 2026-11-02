@@ -188,6 +188,10 @@ export class SessionCore {
 
     /** Observe one committed Revision without synchronizing current Package edits. */
     async observe(handle, sessionId, { revisionId } = {}) {
+        return nativeTaskScheduler.withForegroundWork(handle, () => this.#observe(handle, sessionId, revisionId));
+    }
+
+    async #observe(handle, sessionId, revisionId) {
         assertNativeId(sessionId, 'session');
         if (revisionId !== undefined) assertNativeId(revisionId, 'revision');
         // Resolve HEAD once through the owning repository, then keep load on its
@@ -197,7 +201,7 @@ export class SessionCore {
     }
 
     async load(handle, sessionId, options = {}) {
-        return (await this.#loadWithPackage(handle, sessionId, options)).base;
+        return nativeTaskScheduler.withForegroundWork(handle, async () => (await this.#loadWithPackage(handle, sessionId, options)).base);
     }
 
     async #loadWithPackage(handle, sessionId, options = {}, loadedSnapshot = null) {
@@ -247,6 +251,10 @@ export class SessionCore {
     }
 
     async create(handle, input) {
+        return nativeTaskScheduler.withForegroundWork(handle, () => this.#createForeground(handle, input));
+    }
+
+    async #createForeground(handle, input) {
         if (!this.personas) {
             if (Object.hasOwn(input, 'personaSelection')) throw personaFailure('native_persona_unavailable');
             return this._create(handle, input);
@@ -670,6 +678,10 @@ export class SessionCore {
     }
 
     async applyLifecycleCommand(handle, sessionId, command, { expectedRevisionId, hostProof = null } = {}) {
+        return nativeTaskScheduler.withForegroundWork(handle, () => this.#applyLifecycleCommand(handle, sessionId, command, { expectedRevisionId, hostProof }));
+    }
+
+    async #applyLifecycleCommand(handle, sessionId, command, { expectedRevisionId, hostProof }) {
         const control = await this.runs.status(handle, sessionId);
         if (control?.mode) {
             const ready = command?.action?.kind === 'experience.ready' && control.status === 'pending';
@@ -752,7 +764,7 @@ export class SessionCore {
         // Capture the caller's input before waiting for the run lock. Internal
         // continuation steps share this admitted value, not the caller's tree.
         input = authorityValue({ transactionId, input }).input;
-        return this._sessions.withRunLock(handle, sessionId, async () => {
+        return nativeTaskScheduler.withForegroundWork(handle, () => this._sessions.withRunLock(handle, sessionId, async () => {
             const fs = this._sessions._engine.kind === 'fs';
             const run = async () => {
                 const started = performance.now(), identity = hashNativeDocument({ sessionId, expectedRevisionId, invocationId });
@@ -774,7 +786,7 @@ export class SessionCore {
             // storage queue; each _publish retains its own durable CAS transaction.
             const result = await run();
             return result.snapshot;
-        });
+        }));
     }
 
     async #applyAuthorityAction(handle, sessionId, { transactionId, input, invocationId }, expectedRevisionId, revisionEntropy, loaded = null) {

@@ -1,5 +1,6 @@
 import { NATIVE_RESOURCE_KINDS } from '../../native/contracts.js';
 import { decodeNativeResourceKey } from './native-resource-key.js';
+import { decodeNativeJson } from './native-json-codec.js';
 
 export const ACCOUNT_CONTENT_TABLES = Object.freeze([
     'native_resources', 'chats', 'chat_states', 'settings', 'presets',
@@ -14,7 +15,8 @@ export async function listSqlAccountContent(handle, query) {
         try { rows = await query(table, handle); } catch (error) { errors.push({ source: table, reason: 'unreadable-table', message: error.code || error.message }); continue; }
         for (const row of rows) {
             try {
-                const doc = typeof row.doc === 'string' ? JSON.parse(row.doc) : row.doc;
+                const doc = typeof row.doc === 'string' ? JSON.parse(row.doc)
+                    : table === 'native_resources' && Buffer.isBuffer(row.doc) ? decodeNativeJson(row.doc) : row.doc;
                 if (table === 'native_resources') {
                     const known = Object.values(NATIVE_RESOURCE_KINDS).includes(row.kind);
                     const key = known ? decodeNativeResourceKey(row.kind, handle, row.resource_key)

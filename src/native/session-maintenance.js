@@ -83,7 +83,7 @@ export async function maintainSession(repo, handle, sessionId, options = {}) {
 }
 async function maintain(repo, handle, sessionId, { now, graceMs, batchSize, scanLimit, maxScanBytes, signal, retainRevisionIds = [] }) {
     const key = { kind: K.maintenance, handle, scope: 'session:' + sessionId };
-    const pause = () => signal?.aborted || nativeTaskScheduler.hasForegroundWork(handle)
+    const pause = () => signal?.aborted || nativeTaskScheduler.hasForegroundWork(handle, { includeRecent: true })
         || Date.now() - (maintenanceTimes.get(repo._engine)?.get(leaseKey(handle, sessionId))?.lastWriteAt ?? 0) < 1000;
     const held = () => Boolean(leases.get(leaseKey(handle, sessionId))?.size);
     if (pause()) return { phase: 'paused', deleted: [] };
@@ -142,6 +142,11 @@ export function scheduleSessionMaintenance(repo, handle, sessionId, assetStore, 
             return Boolean(session);
         },
         run: async ({ signal }) => {
+            assertWritable();
+            const pause = () => signal.aborted || nativeTaskScheduler.hasForegroundWork(handle, { includeRecent: true });
+            // Encoding old rows is bounded and lossless, independent of GC's
+            // full-history proof. New writes already use the same codec.
+            if (!pause()) await repo._engine.compressNativeStorage?.(handle, { shouldPause: pause });
             let result;
             // A short safe slice; durable cursor resumes on the next request.
             for (let i = 0; i < 5; i++) {
@@ -153,7 +158,7 @@ export function scheduleSessionMaintenance(repo, handle, sessionId, assetStore, 
                 result = await (expectedRevisionId ? repo.withRunLock(handle, sessionId, slice) : slice());
                 if (['complete', 'quarantine', 'paused', 'absent'].includes(result.phase)) break;
             }
-            if (!signal.aborted && !nativeTaskScheduler.hasForegroundWork(handle)) {
+            if (!pause()) {
                 if (assetStore) await assetStore.gcBlobs(handle, { signal });
                 await repo._engine.checkpoint?.(handle);
             }

@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { FsNativeCache } from './fs-native-cache.js';
+import { compressNativeRows } from './sqlite-native-compression.js';
 
 const tails = new Map();
 const active = new AsyncLocalStorage();
@@ -67,6 +68,10 @@ export class FsEngine {
     // revalidated under engine isolation before any deletion.
     async scanNativeCandidates(handle, filter) {
         return this.withTransaction(handle, tx => tx.listResources({ ...filter, scan: true }));
+    }
+
+    async compressNativeStorage(handle, options) {
+        return this.withTransaction(handle, () => compressNativeRows(this._nativeStores.get(handle).db, handle, options));
     }
 
     // The account directory owns both files and the Native WAL database.

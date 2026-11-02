@@ -2,7 +2,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runMigrationsSync } from './schema-runner.js';
 
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 3;
 
 // SQLite schema mirroring mysql/postgres counterparts. Statements live in
 // ./migrations/sqlite/0001-initial.sql; this module bootstraps nothing — sqlite
@@ -15,6 +15,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MIGRATIONS_DIR = path.join(__dirname, 'migrations');
 
 export function initSchema(db) {
+    // New stores can release free pages incrementally. Upgrading an existing
+    // store must never run a full VACUUM on the first foreground read.
+    if (db.pragma('user_version', { simple: true }) === 0) db.pragma('auto_vacuum = INCREMENTAL');
     // Wrap the whole migration sweep in a transaction so a mid-DDL failure
     // rolls back cleanly and leaves user_version untouched (the runner only
     // calls writeVersion after a successful executor call, but ROLLBACK gives

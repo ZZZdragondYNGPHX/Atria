@@ -1,6 +1,7 @@
 import { isDeepStrictEqual } from 'node:util';
 import { readNativeSqlBatch } from './native-resource-batch.js';
 import { listSqlAccountContent } from './account-content.js';
+import { encodeNativeJson, decodeNativeJson, nativeJsonBytes } from './native-json-codec.js';
 import { getNativeResourceKeyFields } from '../../native/contracts.js';
 import { NotFoundError } from '../errors.js';
 import { assertSafeRepoNameShape } from '../name-validation.js';
@@ -918,6 +919,8 @@ export function registerStatsHandler(tx) {
 
 export function registerNativeResourceHandlers(tx) {
     const db = tx._db;
+    const createdStmt = db.prepare('SELECT created_at FROM native_resources WHERE handle=? AND kind=? AND resource_key=?');
+    const decode = doc => typeof doc === 'string' ? JSON.parse(doc) : decodeNativeJson(doc);
     const getStmt = db.prepare(`SELECT doc, integrity, updated_at, created_at
         FROM native_resources WHERE handle=? AND kind=? AND resource_key=?`);
     const upsertStmt = db.prepare(`INSERT INTO native_resources
@@ -953,13 +956,13 @@ export function registerNativeResourceHandlers(tx) {
             updatedAt: Number(row.updated_at || 0),
             createdAt: Number(row.created_at || 0),
         };
-        if (!lazy) record.doc = JSON.parse(row.doc);
+        if (!lazy) record.doc = decode(row.doc);
         else {
             // Internal identity/CAS reads often never need the document. Keep
-            // the row's captured text, so delayed decoding still sees this read.
+            // the row's captured bytes, so delayed decoding still sees this read.
             let decoded = false, value;
             Object.defineProperty(record, 'doc', { enumerable: true, get() {
-                if (!decoded) { value = JSON.parse(row.doc); decoded = true; }
+                if (!decoded) { value = decode(row.doc); decoded = true; }
                 return value;
             } });
         }
@@ -979,12 +982,12 @@ export function registerNativeResourceHandlers(tx) {
         put(key, record) {
             const p = params(key);
             const now = Date.now();
-            const existing = getStmt.get(p.key.handle, p.key.kind, p.resourceKey);
+            const existing = createdStmt.get(p.key.handle, p.key.kind, p.resourceKey);
             upsertStmt.run(
                 p.key.handle,
                 p.key.kind,
                 p.resourceKey,
-                JSON.stringify(record.doc),
+                encodeNativeJson(record.doc),
                 String(record.integrity || ''),
                 Number(record.updatedAt ?? now),
                 Number(record.createdAt ?? existing?.created_at ?? now),
@@ -998,7 +1001,7 @@ export function registerNativeResourceHandlers(tx) {
                     p.key.handle,
                     p.key.kind,
                     p.resourceKey,
-                    JSON.stringify(record.doc),
+                    encodeNativeJson(record.doc),
                     String(record.integrity || ''),
                     Number(record.updatedAt ?? now),
                     Number(record.createdAt ?? now),
@@ -1006,7 +1009,7 @@ export function registerNativeResourceHandlers(tx) {
                 return { updated: result.changes === 1 };
             }
             const result = updateIfMatchStmt.run(
-                JSON.stringify(record.doc),
+                encodeNativeJson(record.doc),
                 String(record.integrity || ''),
                 Number(record.updatedAt ?? now),
                 p.key.handle,
@@ -1037,7 +1040,8 @@ export function registerNativeResourceHandlers(tx) {
                     ORDER BY resource_key LIMIT ?`).iterate(...values);
                 const records = []; let bytes = 0, cursor = filter.after ?? '';
                 for (const row of rows) {
-                    cursor = row.resource_key; bytes += row.doc.length * 2;
+                    cursor = row.resource_key;
+                    bytes += typeof row.doc === 'string' ? row.doc.length * 2 : nativeJsonBytes(row.doc) * 2;
                     records.push(parseRow(filter.kind, filter.handle, row));
                     if (bytes >= filter.maxBytes) break;
                 }

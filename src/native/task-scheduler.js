@@ -32,6 +32,8 @@ function assertOperationFrame(scheduler, boundary, captured, expected, statuses,
 // Workers that ignore abort retain their permits until they actually settle.
 export class NativeTaskScheduler {
     #submittingGroup = null;
+    #foreground = new Map();
+    #foregroundQuietUntil = new Map();
     constructor({ concurrency = 4, perResource = 2, queueLimit = 64, retention = 256, timeoutMs = NATIVE_GENERATION_DEFAULTS.timeoutMs, retries = 1, backoffMs = 250 } = {}) {
         for (const value of [concurrency, perResource, queueLimit, retention, timeoutMs]) if (!Number.isSafeInteger(value) || value < 1) throw new TypeError('Invalid scheduler limit');
         Object.assign(this, { concurrency, perResource, queueLimit, retention, timeoutMs, retries, backoffMs });
@@ -43,7 +45,20 @@ export class NativeTaskScheduler {
     }
     hasOwnerWork(owner) { return [...this.operations.values()].some(operation => operation.owner === owner && (!terminal.has(operation.view.status) || this.running.has(operation) || this.suspended.has(operation))); }
     hasProjectWork(owner, projectId) { return [...this.operations.values()].some(operation => operation.owner === owner && operation.view.anchor?.projectId === projectId && (!terminal.has(operation.view.status) || this.running.has(operation) || this.suspended.has(operation))); }
-    hasForegroundWork(owner) {
+    async withForegroundWork(owner, operation) {
+        this.#foreground.set(owner, (this.#foreground.get(owner) ?? 0) + 1);
+        try { return await operation(); } finally {
+            const remaining = this.#foreground.get(owner) - 1;
+            if (remaining) this.#foreground.set(owner, remaining); else this.#foreground.delete(owner);
+            // Keep maintenance out of the gaps between paced world pulses.
+            this.#foregroundQuietUntil.set(owner, Date.now() + 1000);
+        }
+    }
+    hasForegroundWork(owner, { includeRecent = false } = {}) {
+        const now = Date.now();
+        for (const [key, until] of this.#foregroundQuietUntil) if (until <= now) this.#foregroundQuietUntil.delete(key);
+        if (owner === undefined ? this.#foreground.size : this.#foreground.has(owner)) return true;
+        if (includeRecent && (owner === undefined ? this.#foregroundQuietUntil.size : this.#foregroundQuietUntil.has(owner))) return true;
         return [...this.running, ...this.suspended, ...this.queue].some(item => (owner === undefined || item.owner === owner)
             && ['turn_blocking', 'interactive'].includes(item.view.executionClass));
     }

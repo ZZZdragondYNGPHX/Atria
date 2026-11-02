@@ -26,9 +26,12 @@ export async function decodeNativeJsonAsync(bytes) {
 }
 
 // The resource and journal identities stay unchanged; this is only a lossless
-// file encoding. Larger documents retain their original JSON representation.
+// storage encoding. Larger documents retain their original JSON representation.
 export function encodeNativeJson(value) {
-    const bytes = Buffer.from(JSON.stringify(value));
+    return encodeNativeJsonBytes(Buffer.from(JSON.stringify(value)));
+}
+
+export function encodeNativeJsonBytes(bytes) {
     if (bytes.length < 4096 || bytes.length > maxBytes) return bytes;
     const compressed = deflateRawSync(bytes, { level: 1 });
     if (compressed.length + 10 >= bytes.length) return bytes;

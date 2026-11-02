@@ -7,6 +7,7 @@ import Database from 'better-sqlite3';
 import { SqliteTransaction } from './sqlite-engine-transaction.js';
 import { initSchema } from './sqlite-schema.js';
 import { TransactionScope } from './transaction-scope.js';
+import { compressNativeRows } from './sqlite-native-compression.js';
 
 export class SqliteEngine {
     constructor({ directoriesByHandle }) {
@@ -200,6 +201,10 @@ export class SqliteEngine {
     }
     async scanNativeCandidates(handle, filter) {
         return this.withTransaction(handle, tx => tx.listResources({ ...filter, scan: true }));
+    }
+
+    async compressNativeStorage(handle, options) {
+        return this.withTransaction(handle, () => compressNativeRows(this._dbFor(handle), handle, options));
     }
 
     close() {

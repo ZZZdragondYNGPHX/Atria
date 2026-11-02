@@ -848,9 +848,13 @@ export class SessionRepo {
     }
 
     async reachabilitySnapshot(handle, sessionId, { retainRevisionIds = [], shouldPause = () => false } = {}) {
-        let reads = 0;
+        let reads = 0, yieldedAt = performance.now();
         const tx = { getResource: async key => {
-            if (++reads % 32 === 0) await new Promise(resolve => setImmediate(resolve));
+            // A row count alone is not a time slice when old states are large.
+            if (++reads % 32 === 0 || performance.now() - yieldedAt >= 8) {
+                await new Promise(resolve => setImmediate(resolve));
+                yieldedAt = performance.now();
+            }
             if (shouldPause()) throw Object.assign(new Error('Native maintenance paused'), { code: 'native_maintenance_paused' });
             return this._engine.withTransaction(handle, tx => tx.getResource(key));
         },
