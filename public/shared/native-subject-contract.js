@@ -6,7 +6,19 @@ export const SUBJECT_NAMESPACE = 'atri_subjects';
 export const SUBJECT_KINDS = Object.freeze(['person', 'organization', 'place', 'item', 'other']);
 export const SUBJECT_ID_SCHEMA = Object.freeze({ type: 'string', minLength: 36, maxLength: 36 });
 export const isPerspectiveIdentity = value => typeof value === 'string' && /^(actor|sub)_[a-f0-9]{32}$/.test(value);
-export const subjectPerspectiveId = (subjectId, templateId) => 'perspective.' + contentSha256(JSON.stringify([subjectId, templateId])).slice(0, 32);
+const perspectiveIds = new Map();
+export function subjectPerspectiveId(subjectId, templateId) {
+    const input = JSON.stringify([subjectId, templateId]);
+    const cacheable = typeof subjectId === 'string' && subjectId.length <= 64 && typeof templateId === 'string' && templateId.length <= 64;
+    if (cacheable && perspectiveIds.has(input)) return perspectiveIds.get(input);
+    const id = 'perspective.' + contentSha256(input).slice(0, 32);
+    // Identity depends only on these two bounded strings, not mutable state.
+    if (cacheable) {
+        if (perspectiveIds.size >= 4096) perspectiveIds.delete(perspectiveIds.keys().next().value);
+        perspectiveIds.set(input, id);
+    }
+    return id;
+}
 export function hasPerspectiveIdentity(snapshot, id) {
     return snapshot.manifest.actors.some(actor => actor.actorId === id)
         || snapshot.states[SUBJECT_NAMESPACE]?.subjects.some(subject => subject.subjectId === id && subject.kind === 'person') === true;

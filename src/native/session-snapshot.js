@@ -17,7 +17,9 @@ export const RESERVED_SESSION_NAMESPACES = Object.freeze([
 ]);
 
 export async function readCheckedDocument(tx, key, options) {
-    const record = await (options?.shareRecordValues && key.namespace === 'atri_lifecycle' && tx.getImmutableResource ? tx.getImmutableResource(key) : tx.getResource(key));
+    // A cached delta state needs only integrity. Do not inflate/parse task and
+    // action history before readStoredState can reuse its admitted value.
+    const record = await (key.kind === K.sessionState && options?.shareRecordValues && deltaStateNamespace(key.namespace) && tx.getImmutableResource ? tx.getImmutableResource(key) : tx.getResource(key));
     if (!record) throw new NotFoundError('native session dependency', { key });
 
     return key.kind === K.sessionState && deltaStateNamespace(key.namespace) ? readStoredState(tx, key, record, options) : record.doc;
