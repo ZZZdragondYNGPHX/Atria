@@ -40,7 +40,9 @@ function normalizeRelativePath(input, { allowManifest = false } = {}) {
         throw new TypeError('Project source path must be project-relative');
     }
     const segments = input.split('/');
-    if (segments.some(segment => !segment || segment === '.' || segment === '..')) {
+    if (segments.some(segment => !segment || segment === '.' || segment === '..'
+        || /[<>:"|?*\x00-\x1f]/.test(segment) || /[. ]$/.test(segment)
+        || /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(segment))) {
         throw new TypeError('Project source path contains an illegal segment');
     }
     if (segments[0].toLowerCase() === '.git') {

@@ -18,6 +18,7 @@ import { nativeMcpArtifacts } from '../native/mcp-artifacts.js';
 import { NativeProjectAgentExecutor } from '../native/project-agent-executor.js';
 import { mountMcpResourceBundles } from '../native/mcp-resource-bundles.js';
 import { assertObject } from '../../public/shared/native-orchestration-contracts.js';
+import { PACKAGE_LIMITS } from '../../public/shared/native-package-limits.js';
 
 let studioService = null;
 let projectAgentService = null;
@@ -109,7 +110,7 @@ export function createNativeStudioRouter(getServices = services, artifacts = nat
                     ? 404
                     : error?.code === 'storage_read_only'
                         ? 503
-                        : error instanceof TypeError
+                        : error instanceof RangeError ? 413 : error instanceof TypeError
                             ? 400
                             : 500;
             response.status(status).json({
@@ -198,6 +199,12 @@ export function createNativeStudioRouter(getServices = services, artifacts = nat
         res.json(await studio.createProject(handle, req.body.source, {
             files: decodeProjectFiles(req.body.files),
         }));
+    }));
+
+    router.post('/projects/import-source', express.raw({ type: 'application/octet-stream', limit: PACKAGE_LIMITS.bufferedArchiveBytes }), route(async (req, res, { studio }, handle) => {
+        res.set('Cache-Control', 'private, no-store');
+        const password = req.get('X-Atria-Source-Password');
+        res.json(await studio.importSourcePackage(handle, req.body, password === undefined ? null : decodeURIComponent(password)));
     }));
 
     router.get('/projects/:projectId', route(async (req, res, { studio }, handle) => {
@@ -430,6 +437,13 @@ export function createNativeStudioRouter(getServices = services, artifacts = nat
             fileName: `${req.params.projectId}.atria`,
             mediaType: 'application/octet-stream',
         });
+    }));
+
+    router.post('/projects/:projectId/export-source', route(async (req, res, { studio }, handle) => {
+        const result = await studio.exportSourcePackage(handle, req.params.projectId, req.body || {});
+        res.set('Cache-Control', 'private, no-store');
+        res.set('Content-Disposition', `attachment; filename="${req.params.projectId}.atriasource"`);
+        res.type('application/octet-stream').send(result.archive);
     }));
 
     router.post('/projects/:projectId/preview', route(async (req, res, { studio }, handle) => {

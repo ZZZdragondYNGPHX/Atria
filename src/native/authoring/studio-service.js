@@ -13,6 +13,7 @@ import {
     assertProjectRevisionConflict,
 } from '../authoring-contracts.js';
 import { buildProjectPackage, PackageInstaller } from '../package-composition.js';
+import { buildSourcePackage, importSourcePackage } from '../source-package.js';
 import { validateAtriaProjectSource } from '../project-source.js';
 import { StudioPreviewHost } from '../studio-preview.js';
 import { readStudioWorldPreview } from '../studio-world-preview.js';
@@ -1214,6 +1215,21 @@ export class StudioService {
 
     async buildProject(handle, projectId, { baseRevision = null } = {}) {
         return this._queue(projectId, () => this._buildUnlocked(handle, projectId, baseRevision));
+    }
+
+    async exportSourcePackage(handle, projectId, { baseRevision, password = null } = {}) {
+        return this.withProjectWrite(handle, projectId, async () => {
+            const revision = await this._assertBaseRevision(handle, projectId, baseRevision);
+            const built = await buildSourcePackage({ handle, projectId, password, projectStore: this._projects,
+                worldRepo: this._worlds, knowledgeRepo: this._knowledge, assetStore: this._assets,
+                versionedJsonResources: this._versionedJsonResources });
+            return { revision, ...built };
+        });
+    }
+
+    async importSourcePackage(handle, archive, password) {
+        const { source, files } = await importSourcePackage(archive, password);
+        return this.createProject(handle, source, { files });
     }
 
     async preflightProject(handle, projectId, { baseRevision = null } = {}) {

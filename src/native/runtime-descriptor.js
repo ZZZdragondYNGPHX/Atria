@@ -224,9 +224,8 @@ export function resolveNativeRuntimePackage(opened, entryPointId) {
     return resolved;
 }
 
-// Transport gate for native@3. Author source may exist as optional remix data,
-// but only validated compiled graph resources (and the existing game contract)
-// can be requested by an installed Runtime.
+// Transport gate for native@3. Only validated compiled graph resources and
+// the existing game contract can be requested by an installed Runtime.
 export function readFrontendRuntimeResource(opened, resolved, path) {
     if (!resolved.frontendGraph) throw new TypeError('Compiled Frontend graph required');
     const ref = resolved.frontendGraph.resources.find(item => item.path === path);

@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import { Readable } from 'node:stream';
 import { payloadHash } from './file-payload.js';
+import { protectedPayloadReader } from './protected-payload.js';
 import { freezePackagePromptPrograms } from './model-prompt-runtime/package-freeze.js';
 import { registerPackageDeclarations } from './package-declarations.js';
 import { validateExperienceResources } from './experience-validation.js';
@@ -75,8 +76,13 @@ class PackageByteMap extends Map {
         const value = this.#source.get(key);
         if (!value) throw new TypeError('Missing Package payload');
         // Keep the backing owner reachable until the stream closes.
-        const stream = Buffer.isBuffer(value) ? Readable.from([value.subarray(start, end + 1)])
-            : fs.createReadStream(value.backing.path, { start: value.offset + start, end: value.offset + end });
+        let stream;
+        if (Buffer.isBuffer(value)) stream = Readable.from([value.subarray(start, end + 1)]);
+        else if (value.backing.protected) {
+            const fd = fs.openSync(value.backing.path, 'r');
+            try { stream = protectedPayloadReader(fd, fs.fstatSync(fd).size).stream(value.offset + start, value.offset + end); } catch (error) { fs.closeSync(fd); throw error; }
+            stream.once('close', () => fs.closeSync(fd));
+        } else stream = fs.createReadStream(value.backing.path, { start: value.offset + start, end: value.offset + end });
         stream.once('close', () => { void value.backing; });
         return stream;
     }
@@ -351,7 +357,7 @@ export class PackageInstaller {
         }
         for (const ref of manifest.assets) {
             const bytes = assets.get(ref.assetId);
-            await this._assetStore.put(handle, ref, bytes);
+            await this._assetStore.put(handle, ref, bytes, { protected: true });
         }
 
         const existing = await this._packageRepo.get(handle, manifest.packageId);
