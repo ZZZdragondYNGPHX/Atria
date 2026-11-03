@@ -1,6 +1,7 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes, scryptSync } from 'node:crypto';
 
 import AdmZip from 'adm-zip';
+import { packSaveStates, unpackSaveStates } from './save-state-packs.js';
 
 import {
     NATIVE_SCHEMA_VERSION,
@@ -23,6 +24,9 @@ export const ATRIA_SAVE_CONTAINER_LIMITS = Object.freeze({
 });
 
 const SAVE_PATH = 'save.json';
+const SAVE_CHUNKS_FORMAT = 'atria-save-document-chunks-v1';
+const SAVE_CHUNK_BYTES = 16 * 1024 * 1024;
+const saveChunkPath = index => 'save/' + String(index).padStart(4, '0') + '.part';
 const INVENTORY_PATH = 'inventory.json';
 const TAG_BYTES = 16;
 const FIXED_PREFIX_BYTES = ATRIA_SAVE_CONTAINER_MAGIC.length + 4;
@@ -107,9 +111,54 @@ function normalizeAssetPayloads(save, input) {
     return out;
 }
 
+// The large collections are the Save closure arrays, not individual records.
+// Encode those one record at a time; a full-history document can exceed V8's
+// single-string limit before the existing archive limit has a chance to reject it.
+function* saveDocumentParts(document) {
+    yield '{';
+    let first = true;
+    for (const [key, value] of Object.entries(document)) {
+        if (value === undefined) continue;
+        if (!first) yield ',';
+        first = false; yield JSON.stringify(key) + ':';
+        if (key === 'save' || key === 'closure') yield* saveDocumentParts(value);
+        else if (Array.isArray(value)) {
+            yield '[';
+            for (let index = 0; index < value.length; index++) {
+                if (index) yield ',';
+                yield JSON.stringify(value[index]);
+            }
+            yield ']';
+        } else yield JSON.stringify(value);
+    }
+    yield '}';
+}
+
+function writeSaveDocument(document, contents) {
+    const limit = ATRIA_SAVE_CONTAINER_LIMITS.maxTotalUncompressedBytes - [...contents.values()].reduce((sum, bytes) => sum + bytes.length, 0);
+    const chunks = []; let parts = [], size = 0, total = 0;
+    for (const text of saveDocumentParts(document)) {
+        const bytes = Buffer.from(text, 'utf8'); total += bytes.length;
+        if (total > limit) throw new Error('.atriasave payload exceeds total uncompressed size limit');
+        for (let offset = 0; offset < bytes.length;) {
+            const count = Math.min(SAVE_CHUNK_BYTES - size, bytes.length - offset);
+            parts.push(bytes.subarray(offset, offset + count)); offset += count; size += count;
+            if (size === SAVE_CHUNK_BYTES) { chunks.push(Buffer.concat(parts, size)); parts = []; size = 0; }
+        }
+    }
+    if (size) chunks.push(Buffer.concat(parts, size));
+    if (total <= ATRIA_SAVE_CONTAINER_LIMITS.maxFileBytes) contents.set(SAVE_PATH, Buffer.concat(chunks, total));
+    else {
+        // Split the authenticated document, not its history. Keep the existing
+        // per-file and total expansion bounds instead of lifting ZIP limits.
+        const paths = chunks.map((bytes, index) => { const name = saveChunkPath(index); contents.set(name, bytes); return name; });
+        contents.set(SAVE_PATH, Buffer.from(JSON.stringify({ format: SAVE_CHUNKS_FORMAT, bytes: total, parts: paths })));
+    }
+}
+
 function buildInnerPayload(save, assetPayloads) {
-    const saveBytes = Buffer.from(JSON.stringify(save), 'utf8');
-    const contents = new Map([[SAVE_PATH, saveBytes], ...normalizeAssetPayloads(save, assetPayloads)]);
+    const contents = normalizeAssetPayloads(save, assetPayloads);
+    writeSaveDocument(packSaveStates(save, contents), contents);
     if (contents.size > ATRIA_SAVE_CONTAINER_LIMITS.maxEntries - 1) {
         throw new Error('.atriasave payload exceeds the archive entry limit');
     }
@@ -182,7 +231,7 @@ function validateHeader(header) {
     if (
         header.format !== ATRIA_SAVE_CONTAINER_FORMAT
         || header.containerVersion !== ATRIA_SAVE_CONTAINER_VERSION
-        || ![1, 2, 3].includes(header.saveSchemaVersion)
+        || ![1, 2, 3, 4].includes(header.saveSchemaVersion)
         || header.nativeSchemaVersion !== NATIVE_SCHEMA_VERSION
     ) {
         throw new Error('Unsupported .atriasave container version');
@@ -346,7 +395,7 @@ function inspectPayload(payload, header) {
     let save;
     let inventory;
     try {
-        save = assertAtriaSave(JSON.parse(saveEntry.getData().toString('utf8')));
+        save = JSON.parse(saveEntry.getData().toString('utf8'));
         inventory = JSON.parse(inventoryEntry.getData().toString('utf8'));
     } catch (error) {
         throw new Error('.atriasave metadata is invalid: ' + (error?.message || String(error)));
@@ -378,6 +427,24 @@ function inspectPayload(payload, header) {
             throw new Error('Integrity mismatch for .atriasave file: ' + name);
         }
     }
+
+    if (save?.format === SAVE_CHUNKS_FORMAT) {
+        if (Object.keys(save).sort().join(',') !== 'bytes,format,parts'
+            || !Number.isSafeInteger(save.bytes) || save.bytes <= ATRIA_SAVE_CONTAINER_LIMITS.maxFileBytes
+            || save.bytes > ATRIA_SAVE_CONTAINER_LIMITS.maxTotalUncompressedBytes
+            || !Array.isArray(save.parts) || save.parts.length !== Math.ceil(save.bytes / SAVE_CHUNK_BYTES)) {
+            throw new Error('Invalid .atriasave document chunks');
+        }
+        const buffers = save.parts.map((name, index) => {
+            const entry = byName.get(name), size = Math.min(SAVE_CHUNK_BYTES, save.bytes - index * SAVE_CHUNK_BYTES);
+            if (name !== saveChunkPath(index) || !entry || expected.get(name)?.size !== size) {
+                throw new Error('Missing or invalid .atriasave document chunk');
+            }
+            return entry.getData();
+        });
+        save = JSON.parse(Buffer.concat(buffers, save.bytes).toString('utf8'));
+    }
+    save = assertAtriaSave(unpackSaveStates(save, name => byName.get(name)?.getData(), ATRIA_SAVE_CONTAINER_LIMITS.maxEntries - 2));
 
     if (
         save.schemaVersion !== header.saveSchemaVersion
@@ -440,7 +507,6 @@ export function buildAtriaSaveContainer({
     const protection = buildProtection(password);
     const header = buildHeader(save, payload, protection);
     const archive = encodeEnvelope(header, payload, password);
-    inspectAtriaSaveContainer(archive, { password });
     return Object.freeze({
         archive,
         save,

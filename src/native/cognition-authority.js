@@ -6,7 +6,14 @@ import { hashNativeDocument, equalNativeDocuments } from './repositories/common.
 import { validateHypothesisEvidence } from './tom-authority.js';
 import { INFORMATION_LIMITS } from '../../public/shared/native-information-contract.js';
 import { subjectTaskContext } from './subject-authority.js';
-import { invalidateRecordIndex } from './domain-record-index.js';
+import { invalidateRecordIndex, selectRecordsInOrder } from './domain-record-index.js';
+import { mutableRecord, mutableRecords } from './record-state.js';
+
+function selectApplicationRecords(records, source, view, selection, scan) {
+    const ids = selection ? new Set([...selection].filter(id => id.startsWith(source.id + ':')).map(id => id.slice(source.id.length + 1))) : undefined;
+    return selectRecordsInOrder(records, { ids, ...(view.actorId && source.actorField
+        ? { where: { field: source.actorField }, expected: view.actorId } : {}) }, scan);
+}
 
 // Only SessionCore's coherent branch recovery calls this. Keep the immutable
 // source Revision untouched; copy current evidence into the derived Branch in
@@ -20,7 +27,7 @@ export function rebindCognitionBranch(base, candidate) {
     const destination = { ...candidate, states };
     const views = new Map(), eligible = new Map(), completed = new Set();
     let scans = 0;
-    const project = (snapshot, id) => projectInformation(snapshot, id, { purpose: 'context', includeRollups: false,
+    const project = (snapshot, id) => projectInformation(snapshot, id, { purpose: 'context', includeRollups: false, selectApplicationRecords,
         onScan: count => { scans += count; if (scans > INFORMATION_LIMITS.views * INFORMATION_LIMITS.records) throw new TypeError('Cognition recovery scan budget'); } });
     for (const source of def.sources.filter(source => isCognitionSource(source) || hasInformationBasis(source))) {
         for (const record of states.atri_lifecycle.domains[source.domainId]?.records ?? []) {
@@ -73,7 +80,7 @@ export function validateCognitionTransition(base, candidate, { taskId = null, ta
         || base.states.atri_lifecycle.scopes[pending.scopeId].epoch !== pending.scopeEpoch)) throw new TypeError('Personal cognition requires the original pending Task');
     const personalTask = variant?.resultBinding?.subjectPerspective ? subjectTaskContext({ task, variant, intent: pending }) : null;
     const acquisitions = [];
-    let scans = 0;
+    let sourceScans = 0, dependencyScans = 0;
     const projections = new Map();
     for (const source of (def?.sources ?? []).filter(source => isCognitionSource(source) || hasInformationBasis(source))) {
         const old = new Map((base.states.atri_lifecycle.domains[source.domainId]?.records ?? []).map(record => [record.id, record.value]));
@@ -117,9 +124,17 @@ export function validateCognitionTransition(base, candidate, { taskId = null, ta
             if (previous && ['emotion', 'relationship'].includes(source.semantic)
                 && (previous.target !== value.target || previous.dimension !== value.dimension)) throw new TypeError('Appraisal subject is immutable');
             assertInformationAnchor(base, value.basis.anchor);
-            if (!projections.has(view.id)) projections.set(view.id, projectInformation(base, view.id, { purpose: 'context', includeRollups: false,
-                onScan: count => { scans += count; if (scans > 4096) throw new TypeError('Cognition source scan budget'); } }));
-            const projection = projections.get(view.id);
+            // Deterministic author rules may cite an actor's retained personal
+            // beliefs, not just the first context page. Reuse the same projector
+            // and disclosure bounds; model Tasks keep their original leaf set.
+            const authoredBeliefs = !taskId && isAppraisalSource(source) && value.basis.sourceRefs.every(ref =>
+                def.sources.some(item => item.kind === 'application' && item.semantic === 'belief' && item.actorField
+                    && !hasInformationBasis(item) && ref.itemId.startsWith(item.id + ':')));
+            const itemIds = authoredBeliefs ? value.basis.sourceRefs.map(ref => ref.itemId) : null;
+            const projectionKey = itemIds ? JSON.stringify([view.id, itemIds]) : view.id;
+            if (!projections.has(projectionKey)) projections.set(projectionKey, projectInformation(base, view.id, { purpose: 'context', includeRollups: false, itemIds, selectApplicationRecords,
+                onScan: count => { sourceScans += count; if (sourceScans > INFORMATION_LIMITS.views * INFORMATION_LIMITS.records) throw new TypeError('Cognition source scan budget'); } }));
+            const projection = projections.get(projectionKey);
             if (hashNativeDocument(value.basis.anchor) !== hashNativeDocument(projection.anchor)) throw new TypeError('Cognition exact source anchor required');
             if (projection.availability.some(actor => !actor.available)) throw new TypeError('Cognition Actor unavailable');
             const mayUseCognition = ['desire', 'intention'].includes(source.semantic) || source.causalBasis;
@@ -130,7 +145,9 @@ export function validateCognitionTransition(base, candidate, { taskId = null, ta
             if (value.basis.sourceRefs.some(ref => !leaves.has(ref.itemId) || informationItemFingerprint(leaves.get(ref.itemId)) !== ref.fingerprint)) throw new TypeError('Cognition source changed or denied');
             const derived = item => isCognitionSource(item) || hasInformationBasis(def.sources.find(source => source.id === item.sourceId));
             const walk = (itemId, path = [], depth = 0) => {
-                if (++scans > 4096) throw new TypeError('Cognition dependency scan budget');
+                // Retained source ledgers do not consume the disclosed graph's
+                // separate traversal budget. Both remain independently bounded.
+                if (++dependencyScans > 4096) throw new TypeError('Cognition dependency scan budget');
                 const item = leaves.get(itemId);
                 if (!item || depth > 4 || path.includes(itemId) || def.sources.find(peer => peer.id === item.sourceId)?.domainId === source.domainId && item.recordId === id) throw new TypeError('Cognitive dependency cycle or depth exceeded');
                 if (!derived(item)) return;
@@ -160,9 +177,10 @@ export function validateCognitionTransition(base, candidate, { taskId = null, ta
 // Called after evidence validation and only inside the original publication.
 export function publishMemoryAcquisitions(states, acquisitions, revisionId) {
     for (const item of acquisitions) {
-        const record = states.atri_lifecycle.domains[item.domainId].records.find(record => record.id === item.recordId);
+        const records = mutableRecords(states.atri_lifecycle.domains[item.domainId]);
+        const record = mutableRecord(records, records.find(record => record.id === item.recordId));
         record.value = { ...record.value, basis: { ...record.value.basis,
             received: { revisionId, clockId: item.clockId, tick: states.atri_lifecycle.clocks[item.clockId] } } };
-        invalidateRecordIndex(states.atri_lifecycle.domains[item.domainId].records);
+        invalidateRecordIndex(records);
     }
 }

@@ -13,8 +13,21 @@ export const SESSION_CORE_NAMESPACE = 'atri_session_core';
 export const TIMELINE_NAMESPACE = 'atri_timeline';
 export const KNOWLEDGE_NAMESPACE = 'atri_knowledge';
 export const RESERVED_SESSION_NAMESPACES = Object.freeze([
-    SESSION_CORE_NAMESPACE, TIMELINE_NAMESPACE, KNOWLEDGE_NAMESPACE, 'atri_subjects', 'atri_visual_image', 'atri_gc_progress', 'atri_timeline_index', ILLUSTRATION_NAMESPACE, 'atri_world_selection', 'atri_action_receipts', 'atri_task_results', 'atri_lifecycle', 'atri_transfers', 'atri_realm_transfers', 'atri_shared', 'atri_run', 'atri_player_persona',
+    SESSION_CORE_NAMESPACE, TIMELINE_NAMESPACE, KNOWLEDGE_NAMESPACE, 'atri_subjects', 'atri_visual_image', 'atri_gc_progress', 'atri_timeline_index', 'atri_history_replay', 'atri_history_replay_node', 'atri_record_value', 'atri_record_page', ILLUSTRATION_NAMESPACE, 'atri_world_selection', 'atri_action_receipts', 'atri_task_results', 'atri_lifecycle', 'atri_transfers', 'atri_realm_transfers', 'atri_shared', 'atri_run', 'atri_player_persona',
 ]);
+
+// Only operational anchors require another playable Revision. Provenance IDs
+// in settled memories/receipts are evidence, not an ever-growing rewind chain.
+export function activeRevisionDependencies(states) {
+    const lifecycle = states.atri_lifecycle;
+    return [...new Set([
+        ...(states.atri_task_results?.records ?? []).filter(item => item.pinned || item.kind !== 'turn' && item.status === 'draft')
+            .flatMap(item => [item.anchorRevisionId, item.storedRevisionId]),
+        ...(lifecycle?.outbox ?? []).filter(item => item.status === 'pending').map(item => item.cause?.revisionId),
+        ...(lifecycle?.interactions ?? []).filter(item => item.status === 'scheduled').map(item => item.anchorRevisionId),
+        ...(lifecycle?.activities ?? []).filter(item => !['completed', 'cancelled', 'stale'].includes(item.status)).map(item => item.observation?.committedRevisionId),
+    ].filter(Boolean))];
+}
 
 export async function readCheckedDocument(tx, key, options) {
     // A cached delta state needs only integrity. Do not inflate/parse task and
@@ -25,12 +38,16 @@ export async function readCheckedDocument(tx, key, options) {
     return key.kind === K.sessionState && deltaStateNamespace(key.namespace) ? readStoredState(tx, key, record, options) : record.doc;
 }
 
-export async function readSessionSnapshot(tx, handle, session, value, publishedStates = null, publishedHistory = null) {
+export async function readSessionSnapshot(tx, handle, session, value, publishedStates = null, publishedHistory = null, { metadataOnly = false } = {}) {
     const revision = assertSessionRevision(value);
     if (revision.sessionId !== session.sessionId) throw new TypeError('Revision belongs to another Session');
     const sessionId = session.sessionId;
     const states = {};
     for (const [namespace, head] of Object.entries({ ...revision.stateHeads, [KNOWLEDGE_NAMESPACE]: revision.knowledgeHead })) {
+        // Import has already checked every state's content hash and dependency.
+        // Its historical pass verifies branch/timeline coherence, not another
+        // full population decode. Normal reads still load the complete state.
+        if (metadataOnly && ![SESSION_CORE_NAMESPACE, TIMELINE_NAMESPACE, KNOWLEDGE_NAMESPACE].includes(namespace)) continue;
         const state = publishedStates ? publishedStates[namespace] : await readCheckedDocument(tx, { kind: K.sessionState, handle, sessionId, namespace, head }, { shareRecordValues: true });
 
         states[namespace] = state;
@@ -42,6 +59,16 @@ export async function readSessionSnapshot(tx, handle, session, value, publishedS
         throw new TypeError('Missing Native Session Core snapshot');
     }
     if (core.parentRevisionId !== null) assertNativeId(core.parentRevisionId, 'revision');
+    for (const field of ['retainedRevisionIds', 'personaHeads']) {
+        if (core[field] !== undefined && (!Array.isArray(core[field]) || new Set(core[field]).size !== core[field].length)) throw new TypeError('Invalid retained Core dependencies');
+    }
+    for (const id of core.retainedRevisionIds ?? []) assertNativeId(id, 'revision');
+    if (core.branchSequence !== undefined && (!Number.isSafeInteger(core.branchSequence) || core.branchSequence < 0)) throw new TypeError('Invalid Branch sequence');
+    for (const field of ['storyHeadRevisionId', 'storyParentRevisionId']) if (core[field] != null) {
+        assertNativeId(core[field], 'revision');
+        if (core[field] !== revision.revisionId && !core.retainedRevisionIds?.includes(core[field])) throw new TypeError('Missing narrative Revision anchor');
+    }
+    for (const head of core.personaHeads ?? []) if (!/^[a-f0-9]{64}$/.test(head)) throw new TypeError('Invalid retained Persona head');
     const graph = [];
     const ids = new Set();
     for (const node of core.branches) {

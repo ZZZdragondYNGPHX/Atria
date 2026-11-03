@@ -13,7 +13,7 @@ import { PERSONA_NAMESPACE, assertPersonaState, personaIdentity, personaFailure 
 import { RunControl, runFailure, runPublicationProof } from './run-control.js';
 import { RUN_NAMESPACE, assertRunState } from '../../public/shared/native-run-contract.js';
 import { nativeTaskScheduler } from './task-scheduler.js';
-import { requestSessionMaintenance } from './session-maintenance.js';
+import { requestSessionMaintenance, maintainSessionCheckpoint } from './session-maintenance.js';
 import { prepareLifetimes, validateLifetimes } from './lifetime-authority.js';
 import { hasAuthorityTransactions, prepareAuthorityTurn, authorityTurnProof, authorityActionRequest, authorityFailure, authorityCatalog, authoritySelection, authorityPlayerEntry, authorityValue } from './authority-turn.js';
 import { prepareAuthorityPublications, createAuthorityPublicationBudget } from './authority-transaction.js';
@@ -35,15 +35,16 @@ import { resolveSessionKnowledge, validateKnowledgeBindingSet, packageKnowledgeM
 import { assertSpeechDraft, validateParticipants } from './participant-authority.js';
 import { equalNativeDocuments, cloneNativeDocument, cloneAdmittedDocument, hashNativeDocument } from './repositories/common.js';
 import {
-    SESSION_CORE_NAMESPACE, TIMELINE_NAMESPACE, KNOWLEDGE_NAMESPACE, RESERVED_SESSION_NAMESPACES,
+    SESSION_CORE_NAMESPACE, TIMELINE_NAMESPACE, KNOWLEDGE_NAMESPACE, RESERVED_SESSION_NAMESPACES, activeRevisionDependencies,
 } from './session-snapshot.js';
 import { ConflictError, NotFoundError } from '../storage/errors.js';
 import { ACTION_RECEIPTS_NAMESPACE, assertActionRequest, actionReceipts, assertCompensation } from './action-receipts.js';
 import { TASK_STATE_NAMESPACE, assertTaskValue, assertSemanticOutcome } from '../../public/shared/native-task-contract.js';
 import { prepareTaskAuthority, validateTaskRecords } from './task-authority.js';
 import { checkpointHistory, retiredInvocation, validateHistory, prepareHistory } from './history-authority.js';
+import { HISTORY_REPLAY_NAMESPACE } from '../../public/shared/native-history-replay.js';
 import { queryHistory, historyMetrics } from '../../public/shared/native-history-runtime.js';
-import { initialLifecycle, lifecycleDefinition, validateLifecycle, prepareLifecycle, compactLifecycle, prepareDeclaredTaskResult, AppCommandPreconditionError } from './lifecycle-authority.js';
+import { initialLifecycle, lifecycleDefinition, validateLifecycle, prepareLifecycle, compactLifecycle, compactDomainHistory, prepareDeclaredTaskResult, AppCommandPreconditionError } from './lifecycle-authority.js';
 import { validateCognitionTransition, rebindCognitionBranch, publishMemoryAcquisitions } from './cognition-authority.js';
 import { consumeAppraisalDelivery } from './appraisal-authority.js';
 import { fields } from '../../public/shared/native-values.js';
@@ -89,7 +90,8 @@ function copyPublicationState(states) {
     // its affected value/basis path rather than mutating a shared value.
     const { atri_lifecycle: lifecycle, ...other } = states;
     const copy = Object.fromEntries(Object.entries(other).map(([namespace, state]) => [namespace,
-        namespace === ACTION_RECEIPTS_NAMESPACE ? copyReceiptState(state) : cloneAdmittedDocument(state)]));
+        namespace === SUBJECT_NAMESPACE && immutableRecordValue(state) ? state
+            : namespace === ACTION_RECEIPTS_NAMESPACE ? copyReceiptState(state) : cloneAdmittedDocument(state)]));
     if (!lifecycle) return copy;
     copy.atri_lifecycle = copyRecordState(lifecycle, () => true);
     return copy;
@@ -308,6 +310,7 @@ export class SessionCore {
             sessionId, packageId, packageVersionId, packageVersion: installed.packageVersion.version,
             packageContentHash: installed.packageVersion.packageContentHash, entryPointId,
             activeBranchId: branchId, headRevisionId: null, createdAt: now, updatedAt: now,
+            ...(installed.manifest.runtime?.experienceContract?.lifecycleRuntime?.history?.revisionRetention === 'anchors' ? { revisionRetention: 'anchors' } : {}),
             ...(displayTitle === undefined ? {} : { displayTitle }),
         });
         const branch = { sessionId, branchId, parentBranchId: null, forkPoint: null, createdAt: now };
@@ -539,21 +542,44 @@ export class SessionCore {
                 else if (completedTask) states.atri_lifecycle.outbox.push({ ...cloneNativeDocument(completedTask), status: 'completed' });
             }
             publishActivities({ ...base, states }, revisionId, branchId, taskRecord);
+            compactDomainHistory({ ...base, states, timeline }, states.atri_lifecycle);
             validateLifecycle({ ...base, states });
         }
         const checkpoint = checkpointHistory(base, states, timeline, taskRecord);
-        if (checkpoint) timeline = checkpoint.timeline;
+        if (checkpoint) {
+            timeline = checkpoint.timeline;
+            if (checkpoint.retiredInvocations.length) states[HISTORY_REPLAY_NAMESPACE] = await this._sessions.prepareHistoryReplay(
+                handle, base.session.sessionId, checkpoint.resetReplay ? null : states[HISTORY_REPLAY_NAMESPACE], checkpoint.retiredInvocations, checkpoint.legacyReplayKeys);
+        }
         validateHistory({ ...base, states });
         if (runAction === 'rewind' && branchId !== base.revision.branchId) states = rebindCognitionBranch(base,
             { ...base, states, timeline, revision: { ...base.revision, revisionId, branchId } });
-        const core = { schemaVersion: 1, parentRevisionId: base.session.headRevisionId,
-            branches: graph.map(node => ({ branchId: node.branchId, forkRevisionId: node.forkRevisionId,
-                headRevisionId: node.branchId === branchId ? revisionId : node.headRevisionId })) };
         const unchangedPrefix = immutableRecordValue(base.timeline) && base.timeline.every((item, index) => item === timeline[index]);
         const appendOnly = timeline.length >= base.timeline.length && (unchangedPrefix || base.timeline.every((item, index) => {
             const next = timeline[index]; return item.messageId === next.messageId && item.activeVariantId === next.activeVariantId
                 && item.branchId === next.branchId && equalNativeDocuments(item.variantIds, next.variantIds);
         }));
+        const core = { schemaVersion: 1, parentRevisionId: checkpoint ? checkpoint.parentRevisionId : base.session.headRevisionId,
+            branches: graph.map(node => ({ branchId: node.branchId, forkRevisionId: node.forkRevisionId,
+                headRevisionId: node.branchId === branchId ? revisionId : node.headRevisionId })) };
+        if (base.session.revisionRetention === 'anchors') {
+            core.branchSequence = base.revision?.branchId === branchId ? (base.core?.branchSequence ?? 0) + 1 : 0;
+            const storyChanged = !appendOnly || timeline.length !== base.timeline.length || variants.length > 0;
+            const previousStory = base.core?.storyHeadRevisionId ?? (base.timeline.length ? base.revision?.revisionId ?? null : null);
+            // Preserve actual narrative boundaries, not the world ticks between
+            // them. Illustration context still needs its exact original World.
+            core.storyHeadRevisionId = storyChanged ? revisionId : previousStory;
+            core.storyParentRevisionId = storyChanged ? previousStory : base.core?.storyParentRevisionId ?? null;
+            core.retainedRevisionIds = [...new Set([...activeRevisionDependencies(states),
+                core.storyHeadRevisionId, core.storyParentRevisionId].filter(id => id && id !== revisionId))];
+            // Dialogue identities need their exact Persona input, not every
+            // world frame published while that Persona was selected.
+            core.personaHeads = [...(base.core?.personaHeads ?? [])];
+            if (states[PERSONA_NAMESPACE] && [...entries, ...variants].some(item => item.metadata?.atri_player_identity)) {
+                const head = hashNativeDocument(states[PERSONA_NAMESPACE]);
+                if (!core.personaHeads.includes(head)) core.personaHeads.push(head);
+            }
+        }
         const timelineRoot = appendOnly && timeline.length === base.timeline.length && base.timelineRoot ? base.timelineRoot : await this._sessions.prepareTimelineIndex(handle, base.session.sessionId,
             appendOnly ? base.timelineRoot : null, (appendOnly ? timeline.slice(base.timeline.length) : timeline).map(timelineSelection));
         const documents = { ...states,
@@ -594,6 +620,11 @@ export class SessionCore {
         if (taskRecord?.kind === 'turn') {
             try { await this._saves.maybeAutomatic(handle, snapshot); } catch (error) { snapshot.autoSaveDiagnostic = { saved: false, code: error.code ?? 'native_auto_save_failed' }; }
         }
+        if (checkpoint && session.revisionRetention === 'anchors') {
+            try { await maintainSessionCheckpoint(this._sessions, handle, session.sessionId, revisionId); } catch (error) {
+                snapshot.maintenanceDiagnostic = { completed: false, code: error.code ?? 'native_maintenance_failed' };
+            }
+        }
         if (taskRecord?.kind === 'turn') requestSessionMaintenance(this._sessions, handle, session.sessionId, this._packages._assetStore);
         const continuity = continuityDefinition(base) ? await this._continuity.load(handle, base.session.packageId) : null;
         return loadRealm(this, handle, { ...snapshot, manifest: packageKnowledgeManifest(base.manifest, documents[KNOWLEDGE_NAMESPACE]), entryPoint: base.entryPoint,
@@ -630,7 +661,7 @@ export class SessionCore {
                 break;
             }
 
-            const parentRevisionId = cursor.core?.parentRevisionId;
+            const parentRevisionId = await this._sessions.getStoryParentRevision(handle, sessionId, revisionId);
             if (!parentRevisionId) break;
             cursor = await this.load(handle, sessionId, { revisionId: parentRevisionId });
         }
@@ -805,7 +836,8 @@ export class SessionCore {
             return { snapshot: base, more: false, replayed: true };
         }
         if (base.revision.revisionId !== expectedRevisionId) throw new ConflictError('native_session_head_conflict', { sessionId });
-        if (retiredInvocation(base.states.atri_lifecycle?.history, invocationId)) throw authorityFailure('native_authority_invocation_expired');
+        if (retiredInvocation(base.states.atri_lifecycle?.history, invocationId)
+            || await this._sessions.hasHistoryReplay(handle, sessionId, base.states[HISTORY_REPLAY_NAMESPACE], invocationId)) throw authorityFailure('native_authority_invocation_expired');
         const lastInput = base.timeline.at(-1);
         const repeated = catalog.find(item => item.id === transactionId).coalesceInput && lastInput?.role === 'user'
                 && lastInput.metadata?.atri_authority_input && equalNativeDocuments(lastInput.metadata.atri_authority_input, selection)
@@ -846,7 +878,8 @@ export class SessionCore {
             return base;
         }
         if (base.revision.revisionId !== expectedRevisionId) throw new ConflictError('native_session_head_conflict', { sessionId });
-        if (retiredInvocation(base.states.atri_lifecycle?.history, invocationId)) throw new TypeError('Archived turn invocation expired');
+        if (retiredInvocation(base.states.atri_lifecycle?.history, invocationId)
+            || await this._sessions.hasHistoryReplay(handle, sessionId, base.states[HISTORY_REPLAY_NAMESPACE], invocationId)) throw new TypeError('Archived turn invocation expired');
         const policy = base.manifest.runtime?.experienceContract?.taskRuntime?.turn;
         if (!policy) throw new TypeError('Package Turn contract required');
         if (policy.policy === 'authority-first' && envelope.outcomes.length) throw new TypeError('Authority-first narrative cannot write outcomes');

@@ -1,5 +1,6 @@
 import { cloneAdmittedDocument, equalNativeDocuments } from './repositories/common.js';
 import { copyRecordState, copyReceiptState } from './record-state.js';
+import { immutableRecordValue, frozenJsonTree as frozenDeclaration } from './record-values.js';
 import { packageDeclarationKey } from './package-declarations.js';
 import { readPackagePayload } from './package-payload-cache.js';
 import { compileDeclarativeLogic } from '../../public/scripts/native/experience/logic/declarative.js';
@@ -50,16 +51,10 @@ export function createTaskCandidate(base, authority) {
     const candidate = cloneCandidate(readOnly);
     candidate.states = Object.fromEntries(Object.entries(states).map(([namespace, state]) => [namespace,
         namespace === 'atri_lifecycle' && state.domains ? copyRecordState(state, frozenDeclaration)
-            : namespace === 'atri_action_receipts' ? copyReceiptState(state) : cloneAdmittedDocument(state)]));
+            : namespace === 'atri_subjects' && immutableRecordValue(state) ? state
+                : namespace === 'atri_action_receipts' ? copyReceiptState(state) : cloneAdmittedDocument(state)]));
     if (authority) candidates.set(candidate, authority);
     return candidate;
-}
-const immutableTrees = new WeakSet();
-function frozenDeclaration(value) {
-    if (value === null || typeof value !== 'object') return true;
-    if (immutableTrees.has(value)) return true;
-    if (!Object.isFrozen(value) || !Object.values(value).every(frozenDeclaration)) return false;
-    immutableTrees.add(value); return true;
 }
 function cloneCandidate(value) {
     if (frozenDeclaration(value)) return value;

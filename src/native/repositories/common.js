@@ -1,4 +1,4 @@
-import { immutableRecordValue } from '../record-values.js';
+import { immutableRecordValue, immutableRecordCollection } from '../record-values.js';
 import { createHash } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
 
@@ -8,6 +8,16 @@ import { readStoredState, deltaStateNamespace } from '../state-delta.js';
 // Property names recur throughout state records. Cache only their JSON spelling,
 // never mutable values or document hashes; canonical bytes remain unchanged.
 const encodedKeys = new Map();
+const stringByteCounts = new Map();
+function stringBytes(value) {
+    if (value.length > 256) return Buffer.byteLength(JSON.stringify(value));
+    const known = stringByteCounts.get(value);
+    if (known !== undefined) return known;
+    const bytes = Buffer.byteLength(JSON.stringify(value));
+    if (stringByteCounts.size >= 8192) stringByteCounts.delete(stringByteCounts.keys().next().value);
+    stringByteCounts.set(value, bytes);
+    return bytes;
+}
 function encodedKey(key) {
     if (key.length > 256) return JSON.stringify(key);
     const cached = encodedKeys.get(key);
@@ -18,19 +28,24 @@ function encodedKey(key) {
     return text;
 }
 
-// Only host-owned immutable JSON can reuse canonical bytes. Bound both retained
-// text and UTF-8 buffers; mutable containers are always visited again.
+// Only host-owned immutable JSON can reuse canonical bytes. Retain one UTF-8
+// copy plus bounded entry overhead, not another full UTF-16 population ledger.
 const canonicalValues = new Map();
-const canonicalLimit = 32 * 1024 * 1024;
+const immutableBytes = new WeakMap();
+const canonicalLimit = 64 * 1024 * 1024;
 let canonicalBytes = 0;
 function canonicalValue(value) {
-    let entry = canonicalValues.get(value);
-    if (entry) return entry;
-    const text = stableJson(value, false), encoded = Buffer.from(text), bytes = encoded.length;
-    const weight = text.length * 2 + bytes;
-    entry = { text, encoded, bytes, weight };
+    return canonicalValues.get(value) ?? rememberCanonical(value, Buffer.from(stableJson(value, false)));
+}
+function rememberCanonical(value, encoded) {
+    const bytes = encoded.length;
+    immutableBytes.set(value, bytes);
+    const weight = bytes + 128;
+    const entry = { encoded, bytes, weight };
     if (weight <= canonicalLimit / 4) {
-        while (canonicalBytes + weight > canonicalLimit || canonicalValues.size >= 4096) {
+        // A fixed record-count cap thrashes as soon as a world outgrows it,
+        // even if all its unchanged canonical bytes still fit comfortably.
+        while (canonicalBytes + weight > canonicalLimit) {
             const first = canonicalValues.keys().next().value;
             canonicalBytes -= canonicalValues.get(first).weight;
             canonicalValues.delete(first);
@@ -39,9 +54,29 @@ function canonicalValue(value) {
     }
     return entry;
 }
+// Repeatedly hashing a stable table one row at a time also feeds thousands
+// of one-byte separators to SHA. Assemble only tables seen again while
+// sealed, under the same byte limit as individual rows.
+const hashedCollections = new WeakSet();
+const openArray = Buffer.from('['), comma = Buffer.from(','), closeArray = Buffer.from(']');
+function canonicalCollection(records) {
+    if (records.length < 64 || !immutableRecordCollection(records)) return null;
+    const entry = canonicalValues.get(records);
+    if (entry) return entry.encoded;
+    if (!hashedCollections.has(records)) { hashedCollections.add(records); return null; }
+    if (nativeDocumentBytes(records) + 128 > canonicalLimit / 4) return null;
+    const pieces = [openArray];
+    for (const record of records) {
+        if (!immutableRecordValue(record)) return null;
+        if (pieces.length > 1) pieces.push(comma);
+        pieces.push(canonicalValue(record).encoded);
+    }
+    pieces.push(closeArray);
+    return rememberCanonical(records, Buffer.concat(pieces)).encoded;
+}
 function stableJson(value, reuse = true) {
     if (value === null || typeof value !== 'object') return JSON.stringify(value);
-    if (reuse && immutableRecordValue(value)) return canonicalValue(value).text;
+    if (reuse && immutableRecordValue(value)) return canonicalValue(value).encoded.toString('utf8');
     // Preserve the existing canonical bytes (including sparse array slots),
     // without allocating a callback and intermediate array at every level.
     if (Array.isArray(value)) {
@@ -81,10 +116,10 @@ export function cloneAdmittedDocument(value) {
     return copy;
 }
 
-// Internal state writes may borrow sealed record payloads. Copy every mutable
-// envelope before the first await, preserving the write's snapshot semantics.
-function copyStateDocument(value) {
-    if (value === null || typeof value !== 'object' || immutableRecordValue(value)) return value;
+// Internal writes and delta replay may borrow sealed subtrees. Copy mutable
+// containers before the first await, preserving snapshot isolation.
+export function copyStateDocument(value) {
+    if (value === null || typeof value !== 'object' || immutableRecordValue(value) || immutableRecordCollection(value)) return value;
     if (Array.isArray(value)) return value.map(copyStateDocument);
     const copy = {};
     for (const key of Object.keys(value)) {
@@ -115,6 +150,8 @@ export function hashNativeDocument(value) {
         if (item === null || typeof item !== 'object') { text += JSON.stringify(item); return; }
         if (immutableRecordValue(item)) { flush(); hash.update(canonicalValue(item).encoded); return; }
         if (Array.isArray(item)) {
+            const encoded = canonicalCollection(item);
+            if (encoded) { flush(); hash.update(encoded); return; }
             text += '[';
             for (let index = 0; index < item.length; index++) {
                 if (index) text += ',';
@@ -137,18 +174,25 @@ export function hashNativeDocument(value) {
 // JSON byte accounting for admitted trees. Key order does not affect size;
 // immutable record payloads share the same cached bytes used for identity.
 export function nativeDocumentBytes(value) {
+    if (typeof value === 'string') return stringBytes(value);
     if (value === null || typeof value !== 'object') return Buffer.byteLength(JSON.stringify(value) ?? 'null');
-    if (immutableRecordValue(value)) return canonicalValue(value).bytes;
+    // Byte accounting outlives the bounded canonical-text cache. Evicting a
+    // large old record's text must not serialize it again just to count bytes.
+    const immutable = immutableRecordValue(value) || immutableRecordCollection(value);
+    const known = immutable ? immutableBytes.get(value) : undefined;
+    if (known !== undefined) return known;
+    let size = 2;
     if (Array.isArray(value)) {
-        let size = 2 + Math.max(0, value.length - 1);
+        size += Math.max(0, value.length - 1);
         for (let index = 0; index < value.length; index++) size += nativeDocumentBytes(value[index]);
-        return size;
+    } else {
+        let count = 0;
+        for (const key of Object.keys(value)) {
+            if (value[key] === undefined) continue;
+            size += Number(count++ > 0) + stringBytes(key) + 1 + nativeDocumentBytes(value[key]);
+        }
     }
-    let size = 2, count = 0;
-    for (const key of Object.keys(value)) {
-        if (value[key] === undefined) continue;
-        size += Number(count++ > 0) + Buffer.byteLength(encodedKey(key)) + 1 + nativeDocumentBytes(value[key]);
-    }
+    if (immutable) immutableBytes.set(value, size);
     return size;
 }
 

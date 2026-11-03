@@ -1,5 +1,5 @@
 import { queryHistory } from './native-history-runtime.js';
-import { SUBJECT_NAMESPACE, hasPerspectiveIdentity, resolvePerspectiveView } from './native-subject-contract.js';
+import { SUBJECT_NAMESPACE, resolvePerspectiveView } from './native-subject-contract.js';
 import { publicParticipant } from './native-participant.js';
 import { INFORMATION_LIMITS, informationInteger } from './native-information-contract.js';
 import { isCognitionSource, assertCognitionValue, assertCognitionBasis, projectCognitionItems } from './native-cognition-runtime.js';
@@ -36,10 +36,13 @@ export function assertInformationAnchor(snapshot, expected) {
 
 // A projection reads the selected immutable snapshot only. It never mutates a
 // World, discovers a second authority, or interprets package expressions.
-export function projectInformation(snapshot, viewId, { purpose = 'display', includeRollups = true, onScan = null } = {}) {
+export function projectInformation(snapshot, viewId, { purpose = 'display', includeRollups = true, onScan = null, itemIds = null, selectApplicationRecords = null } = {}) {
     const def = informationDefinition(snapshot);
     const view = resolvePerspectiveView(snapshot, viewId);
     if (!view || !['display', 'context'].includes(purpose) || !view.exposure.includes(purpose)) throw new TypeError('Information exposure denied');
+    if (itemIds !== null && (!Array.isArray(itemIds) || !itemIds.length || itemIds.length > 16
+        || itemIds.some(id => typeof id !== 'string' || !id || id.length > 256) || new Set(itemIds).size !== itemIds.length)) throw new TypeError('Information selection limit');
+    const selection = itemIds === null ? null : new Set(itemIds);
     const result = { schemaVersion: 1, viewId, anchor: { ...anchor(snapshot), scopeEpochs: {} }, items: [], truncated: false, availability: [] };
     if (view.actorId) {
         const availability = actorAvailability(snapshot, view.actorId); result.availability.push(availability);
@@ -47,6 +50,11 @@ export function projectInformation(snapshot, viewId, { purpose = 'display', incl
         result.anchor.scopeEpochs[availability.scopeId] = availability.scopeEpoch;
     }
     let scanned = 0; let characters = 0;
+    const scan = count => {
+        scanned += count;
+        if (scanned > INFORMATION_LIMITS.records) throw new TypeError('Information scan budget exceeded');
+        onScan?.(count);
+    };
     const cognitionValues = new Map();
     const append = item => {
         // Reserve the bounded derived status before adding a cognitive item.
@@ -69,10 +77,11 @@ export function projectInformation(snapshot, viewId, { purpose = 'display', incl
             if ((snapshot.timeline?.length ?? 0) + scanned > INFORMATION_LIMITS.records) throw new TypeError('Information scan budget exceeded');
             records = (snapshot.timeline ?? []).map(entry => ({ id: entry.messageId, value: entry, variantId: entry.activeVariantId }));
         }
-        if (scanned + records.length > INFORMATION_LIMITS.records) throw new TypeError('Information scan budget exceeded');
-        scanned += records.length;
-        onScan?.(records.length);
+        if (source.kind === 'application' && selectApplicationRecords) records = selectApplicationRecords(records, source, view, selection, scan);
+        else scan(records.length);
         for (const record of records) {
+            const itemId = source.id + ':' + record.id;
+            if (selection && !selection.has(itemId)) continue;
             const value = record.value;
             if (view.actorId && source.actorField && value[source.actorField] !== view.actorId) continue;
             if (view.actorId && source.participantsField && !value[source.participantsField]?.includes(view.actorId)) continue;
@@ -86,7 +95,6 @@ export function projectInformation(snapshot, viewId, { purpose = 'display', incl
                     : source.kind === 'timeline' && path[0] === 'actorId' && value.participant ? undefined : read(value, path);
                 if (selected !== undefined) data[path.join('.')] = clone(selected);
             }
-            const itemId = source.id + ':' + record.id;
             if (isCognitionSource(source)) { assertCognitionValue(source, value); cognitionValues.set(itemId, value); }
             if (hasInformationBasis(source)) { assertCognitionBasis(value); cognitionValues.set(itemId, value); }
             append({ id: itemId, sourceId: source.id, recordId: record.id, semantic: source.semantic, data,
@@ -98,7 +106,7 @@ export function projectInformation(snapshot, viewId, { purpose = 'display', incl
         }
     }
     projectCognitionItems(snapshot, result, cognitionValues);
-    if (includeRollups) {
+    if (includeRollups && !selection) {
         const artifacts = (snapshot.states.atri_context_derived?.narrative ?? []).filter(artifact => isInformationRollupCurrent(snapshot, artifact, result));
         const covered = new Set(artifacts.flatMap(artifact => artifact.childNarrativeIds));
         for (const artifact of artifacts.filter(artifact => !covered.has(artifact.narrativeId))) append({ id: 'rollup:' + artifact.narrativeId, semantic: 'rollup',
@@ -214,24 +222,58 @@ export function assertInformationActorAvailable(snapshot, taskId) {
     if (view?.actorId && !actorAvailability(snapshot, view.actorId).available) throw new TypeError('Perspective Actor is unavailable');
 }
 
-export function validateInformationState(snapshot) {
+const validatedInformation = new WeakMap();
+const validatedInformationCollections = new WeakMap();
+export function validateInformationState(snapshot, immutable = () => false, collectionIdentity = () => null) {
     const def = informationDefinition(snapshot);
     if (!def) return;
+    // Validate this snapshot's identities once, rather than scanning the entire
+    // population for every personal record. No mutable cross-revision cache.
+    const actors = snapshot.manifest.actors, subjects = snapshot.states[SUBJECT_NAMESPACE];
+    const clocks = snapshot.manifest.runtime.experienceContract.lifecycleRuntime?.clocks;
+    const reusableContext = immutable(actors) && immutable(subjects) && immutable(clocks);
+    let identities;
+    const identitySet = () => {
+        if (!identities) {
+            identities = new Set(actors.map(actor => actor.actorId));
+            for (const subject of subjects?.subjects ?? []) if (subject.kind === 'person') identities.add(subject.subjectId);
+        }
+        return identities;
+    };
     let count = 0;
     for (const source of def.sources.filter(source => source.kind === 'application')) {
+        const reusableSource = immutable(source);
         const records = snapshot.states.atri_lifecycle.domains[source.domainId]?.records ?? [];
         count += records.length;
         if (count > INFORMATION_LIMITS.records) throw new TypeError('Information scan budget exceeded');
+        // Collection proofs come from the host's sealed-record authority. A
+        // changed identity set, clock declaration or source still revalidates.
+        const identity = reusableSource && reusableContext ? collectionIdentity(records) : null;
+        const knownSources = identity ? validatedInformationCollections.get(identity) : undefined;
+        const context = knownSources?.get(source);
+        if (context && context.actors === actors && context.subjects === subjects && context.clocks === clocks) continue;
         for (const { value } of records) {
-            if (source.actorField && !hasPerspectiveIdentity(snapshot, value[source.actorField])) throw new TypeError('Unknown information Actor');
-            if (source.participantsField && (!Array.isArray(value[source.participantsField]) || value[source.participantsField].some(id => !hasPerspectiveIdentity(snapshot, id)))) throw new TypeError('Unknown thread participant');
+            if (source.actorField && !identitySet().has(value[source.actorField])) throw new TypeError('Unknown information Actor');
+            if (source.participantsField && (!Array.isArray(value[source.participantsField]) || value[source.participantsField].some(id => !identitySet().has(id)))) throw new TypeError('Unknown thread participant');
+            if (isCognitionSource(source) && value.deadline && !clocks?.some(clock => clock.id === value.deadline.clockId)) throw new TypeError('Cognition deadline requires a declared Domain Clock');
+            // The host supplies its existing deep-immutability authority. Only
+            // shape checks are reusable; live identities/clocks are checked above.
+            const reusable = reusableSource && immutable(value);
+            const known = reusable ? validatedInformation.get(value) : undefined;
+            if (known?.has(source)) continue;
             if (source.semantic === 'belief' && (!['known', 'believed', 'suspected', 'disputed'].includes(value[source.statusField])
                 || !['witnessed', 'direct_message', 'told_by', 'public_broadcast', 'surveillance', 'rumor', 'inference'].includes(value[source.channelField]))) throw new TypeError('Invalid epistemic record');
             if (source.semantic === 'open_loop' && !['open', 'closed', 'superseded'].includes(value[source.statusField])) throw new TypeError('Invalid Open Loop status');
             if (isCognitionSource(source)) assertCognitionValue(source, value);
-            if (isCognitionSource(source) && value.deadline && !snapshot.manifest.runtime.experienceContract.lifecycleRuntime.clocks.some(clock => clock.id === value.deadline.clockId)) throw new TypeError('Cognition deadline requires a declared Domain Clock');
             if (hasInformationBasis(source)) assertCognitionBasis(value);
             if (isManagedMemory(source)) assertMemoryValue(source, value);
+            if (reusable) {
+                const sources = known || new WeakSet(); sources.add(source); validatedInformation.set(value, sources);
+            }
+        }
+        if (identity) {
+            const sources = knownSources || new WeakMap();
+            sources.set(source, { actors, subjects, clocks }); validatedInformationCollections.set(identity, sources);
         }
     }
 }

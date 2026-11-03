@@ -4,6 +4,8 @@ import { renewalSources } from './renewal-authority.js';
 import { lifetimeSources } from '../../public/shared/native-lifetime-runtime.js';
 import { createHash } from 'node:crypto';
 import { equalNativeDocuments } from './repositories/common.js';
+import { recordById } from './domain-record-index.js';
+import { authorityExecutionLimits } from './authority-execution-limits.js';
 import { historyPolicy, HISTORY_OPERATIONS, ARTIFACT_KINDS } from '../../public/shared/native-history-contract.js';
 import { initialHistory, historyIndex } from '../../public/shared/native-history-runtime.js';
 import { assertTaskValue } from '../../public/shared/native-task-contract.js';
@@ -11,7 +13,7 @@ import { protectedTaskResult, taskResultTombstone } from './lifecycle-authority.
 
 const copy = v => structuredClone(v);
 const same = (a, b) => a === undefined || b === undefined ? a === b : equalNativeDocuments(a, b);
-const record = (snapshot, domain, id = 'main') => snapshot.states.atri_lifecycle.domains[domain]?.records.find(r => r.id === id)?.value;
+const record = (snapshot, domain, id = 'main') => { const rows = snapshot.states.atri_lifecycle.domains[domain]?.records; return rows && recordById(rows, id)?.value; };
 const sourceValue = (snapshot, source) => Object.hasOwn(source, 'value') ? source.value : source.path.reduce((v, k) => v?.[k], record(snapshot, source.domainId, source.recordId));
 function effectiveSource(snapshot, source) {
     if (!source.temporal) return {};
@@ -102,15 +104,28 @@ export function prepareHistory(base, candidate, transaction, resolution, operati
     const policy = historyPolicy(candidate); if (!policy) return;
     const state = candidate.states.atri_lifecycle, h = state.history ??= initialHistory();
     const sources = historySources(candidate);
-    let scans = sources.length - policy.sources.length + policy.meaningfulDomains.reduce((n, d) => n + state.domains[d].records.length, 0)
-        + policy.sources.reduce((n, source) => n + state.domains[source.domainId].records.length, 0);
-    if (scans > 4096) throw new TypeError('History source scan budget');
+    if (sources.length > 4096) throw new TypeError('History lifecycle source budget');
+    const work = { sources: sources.length, recordScans: 0 }, scanLimit = authorityExecutionLimits().recordScans;
+    const scan = (count = 1) => { work.recordScans += count; if (work.recordScans > scanLimit) throw new TypeError('History source scan budget'); };
+    scan(sources.length);
+    let chainScans = 0;
+    const domainChanged = domain => {
+        const before = base.states.atri_lifecycle.domains[domain]?.records ?? [], after = state.domains[domain].records;
+        if (before.length !== after.length) return true;
+        for (let index = 0; index < after.length; index++) {
+            scan();
+            if (!same(before[index].value, after[index].value)) return true;
+        }
+        return false;
+    };
     if (countTurn) h.transactions++;
     const clock = state.clocks[policy.clockId], previousTick = base.states.atri_lifecycle.clocks[policy.clockId];
     const chronology = record(candidate, policy.chronologyDomain);
-    const changed = !same(lifetimeMeaning(base.states.atri_lifecycle.lifetimes), lifetimeMeaning(state.lifetimes)) || clock !== previousTick || policy.meaningfulDomains.some(d => !same(base.states.atri_lifecycle.domains[d]?.records.map(r => r.value), state.domains[d]?.records.map(r => r.value)));
+    // Charge only records actually compared. A retained ledger is not itself a
+    // source traversal, and a changed clock needs no population comparison.
+    const changed = !same(lifetimeMeaning(base.states.atri_lifecycle.lifetimes), lifetimeMeaning(state.lifetimes)) || clock !== previousTick || policy.meaningfulDomains.some(domainChanged);
     const meaningful = changed || (operation && operation.operation !== 'compact');
-    if (!meaningful && !operation) return;
+    if (!meaningful && !operation) return work;
     const event = { id: id(h), kind: 'event', tier: 'hot', turn: h.turns + Number(Boolean(meaningful && countTurn)), origin: countTurn ? 'player' : 'host',
         tick: clock, from: previousTick, year: chronology.calendar.year, fromYear: record(base, policy.chronologyDomain).calendar.year, sequence: chronology.sequence,
         public: true, transaction: transaction.id, outcome: resolution.outcome, summary: operation ? operation.operation + ': ' + resolution.outcome : clock !== previousTick ? 'Advance canonical time by ' + (clock - previousTick) + ' minutes; resolve due obligations.' : transaction.verb + ': ' + resolution.outcome,
@@ -126,7 +141,8 @@ export function prepareHistory(base, candidate, transaction, resolution, operati
             if (h.facts[effective.correction.targetId]?.key !== source.id) throw new TypeError('Historical correction target unavailable');
             let row = previous, walked = 0;
             while (row && row.id !== effective.correction.targetId && walked++ < 128) {
-                if (++scans > 4096) throw new TypeError('History source scan budget');
+                if (++chainScans > 4096) throw new TypeError('History effective chain scan budget');
+                scan();
                 const from = row.effectiveFrom ?? row.tick, until = Object.hasOwn(row, 'effectiveUntil') ? row.effectiveUntil : row.validUntil;
                 if ((effective.effectiveUntil === null || from < effective.effectiveUntil) && (until == null || effective.effectiveFrom < until)) throw new TypeError('Historical correction target was superseded in this interval');
                 row = row.previousId ? h.facts[row.previousId] : null;
@@ -136,7 +152,8 @@ export function prepareHistory(base, candidate, transaction, resolution, operati
         if (source.temporal && previous && !effective.correction) {
             let row = previous, walked = 0, laterRecordedFact = false;
             while (row && walked++ < 128) {
-                if (++scans > 4096) throw new TypeError('History source scan budget');
+                if (++chainScans > 4096) throw new TypeError('History effective chain scan budget');
+                scan();
                 const from = row.effectiveFrom ?? row.tick, until = Object.hasOwn(row, 'effectiveUntil') ? row.effectiveUntil : row.validUntil;
                 laterRecordedFact ||= from > effective.effectiveFrom;
                 const overlaps = (effective.effectiveUntil === null || from < effective.effectiveUntil) && (until == null || effective.effectiveFrom < until);
@@ -193,6 +210,7 @@ export function prepareHistory(base, candidate, transaction, resolution, operati
     if (meaningful) { if (countTurn) h.turns++; h.hot.push(event); }
     compactHistory(h, policy, clock);
     validateHistory(candidate);
+    return work;
 }
 export function validateHistory(snapshot) {
     const policy = historyPolicy(snapshot), h = snapshot.states.atri_lifecycle?.history;
@@ -258,22 +276,16 @@ function hasRetiredKey(chunk, signature) {
     for (let at = chunk.indexOf(signature); at >= 0; at = chunk.indexOf(signature, at + 1)) if (at % 16 === 0) return true;
     return false;
 }
-export function retireInvocation(h, key) {
-    const signature = retiredKey(key); h.retiredKeys ??= [];
-    if (!h.retiredKeys.some(chunk => hasRetiredKey(chunk, signature))) {
-        if (!h.retiredKeys.length || h.retiredKeys.at(-1).length >= 32768) h.retiredKeys.push('');
-        h.retiredKeys[h.retiredKeys.length - 1] += signature;
-    }
-    h.retiredCount++;
-}
 // Portable checkpoints sever only linear ancestry. Branch graphs/save points are
 // retained by SaveSystem; never rewrite/delete an existing revision or branch.
 export function checkpointHistory(base, states, timeline, taskRecord) {
     const policy = historyPolicy(base), h = states.atri_lifecycle?.history;
     if (!policy || !h || !taskRecord || taskRecord.kind !== 'turn' || (h.transactions - h.checkpoint < policy.checkpointTurns && !h.checkpointRequested)) return null;
     const tasks = states.atri_task_results;
+    const retiredInvocations = new Set();
+    const legacyReplayKeys = h.retiredKeys ?? [];
+    const retire = key => { retiredInvocations.add(key); h.retiredCount++; };
     const candidate = { ...base, states };
-    if (tasks?.records.some(r => r.pinned || (r.kind !== 'turn' && protectedTaskResult(candidate, states.atri_lifecycle, r)))) throw new TypeError('History checkpoint has protected Task dependencies');
     const lifecycle = states.atri_lifecycle;
     const retained = (lifecycle.taskTombstones ?? []).filter(r => r.kind !== 'turn').length
         + (tasks?.records.filter(r => r.kind !== 'turn').length ?? 0)
@@ -282,23 +294,29 @@ export function checkpointHistory(base, states, timeline, taskRecord) {
     h.checkpoint = h.transactions; h.checkpointRequested = false;
     states.atri_lifecycle.taskTombstones = (states.atri_lifecycle.taskTombstones ?? []).filter(r => {
         if (r.kind !== 'turn') return true;
-        retireInvocation(h, r.invocationId); return false;
+        retire(r.invocationId); return false;
     });
     if (tasks) tasks.records = tasks.records.filter(r => {
         if (r.kind !== 'turn') {
+            if (protectedTaskResult(candidate, states.atri_lifecycle, r)) return true;
             states.atri_lifecycle.taskTombstones.push(taskResultTombstone(r));
             return false;
         }
         if (r.status !== 'applied' || r.pinned) return true;
-        retireInvocation(h, r.invocationId); return false;
+        retire(r.invocationId); return false;
     });
     const receipts = states.atri_action_receipts;
     if (receipts) receipts.receipts = receipts.receipts.filter(r => {
         if (!r.authorityId) return true;
-        retireInvocation(h, r.idempotencyKey.replace(/^authority:/, '')); return false;
+        retire(r.idempotencyKey.replace(/^authority:/, '')); return false;
     });
     if (states.atri_game_runtime) states.atri_game_runtime.events = [];
-    // Compact derived model/task state only. Original dialogue and Revision
-    // ancestry remain authoritative, lossless, and reachable through GC.
-    return { timeline, parentRevisionId: base.session.headRevisionId };
+    // Anchored saves keep the full world and dialogue, not every intermediate
+    // frame. Old requests still fail their required revision CAS; keep the last
+    // retired batch for recent duplicate diagnostics instead of a lifetime log.
+    const resetReplay = base.session.revisionRetention === 'anchors';
+    if (retiredInvocations.size) delete h.retiredKeys;
+    if (resetReplay) delete h.retired;
+    return { timeline, parentRevisionId: resetReplay ? null : base.session.headRevisionId,
+        retiredInvocations: [...retiredInvocations], legacyReplayKeys: resetReplay ? [] : legacyReplayKeys, resetReplay };
 }

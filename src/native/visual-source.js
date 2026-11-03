@@ -12,17 +12,12 @@ export async function resolveVisualSource(core, handle, sourceValue) {
     const current = await core.load(handle, source.sessionId);
     const branch = current.graph.find(item => item.branchId === source.branchId);
     if (!branch) visualError('source_unreachable');
-    let revisionId = source.branchId === current.revision.branchId ? current.revision.revisionId : branch.headRevisionId;
-    const seen = new Set();
-    while (revisionId && !seen.has(revisionId)) {
-        seen.add(revisionId);
-        if (revisionId === source.revisionId) {
-            const view = await core.load(handle, source.sessionId, { revisionId, illustrationAnchor: source.anchor });
-            const entry = view.timeline.find(item => item.messageId === source.anchor.messageId && item.activeVariantId === source.anchor.variantId);
-            if (!entry || !illustrationAnchorMatches(source.anchor, entry.content) || illustrationContentHash(entry.content) !== source.anchor.contentHash) visualError('source_mismatch');
-            return { source, view, entry };
-        }
-        revisionId = await core._sessions.getStoryParentRevision(handle, source.sessionId, revisionId);
+    const headRevisionId = source.branchId === current.revision.branchId ? current.revision.revisionId : branch.headRevisionId;
+    if (await core._sessions.isStoryAncestor(handle, source.sessionId, headRevisionId, source.revisionId)) {
+        const view = await core.load(handle, source.sessionId, { revisionId: source.revisionId, illustrationAnchor: source.anchor });
+        const entry = view.timeline.find(item => item.messageId === source.anchor.messageId && item.activeVariantId === source.anchor.variantId);
+        if (!entry || !illustrationAnchorMatches(source.anchor, entry.content) || illustrationContentHash(entry.content) !== source.anchor.contentHash) visualError('source_mismatch');
+        return { source, view, entry };
     }
     // An ironman checkpoint keeps an immutable visual source packet while its
     // narrative history remains head-only. The explicit presentation alias may

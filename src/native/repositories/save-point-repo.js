@@ -34,12 +34,14 @@ export class SavePointRepo {
     }
 
     async list(handle, sessionId) {
-        return this._engine.withTransaction(handle, tx => listNativeDocuments(tx, {
+        const points = await this._engine.withTransaction(handle, tx => listNativeDocuments(tx, {
             kind: NATIVE_RESOURCE_KINDS.savePoint,
             handle,
             sessionId,
-            orderBy: 'createdAt',
         }));
+        // Imported storage rows are created together. Retention and the save
+        // picker need the creation time of the save itself, even after import.
+        return points.sort((a, b) => b.createdAt - a.createdAt || a.saveId.localeCompare(b.saveId));
     }
 
     async maybeAutomatic(handle, snapshot, { now = Date.now() } = {}) {
@@ -50,7 +52,7 @@ export class SavePointRepo {
         if (automatic.some(item => now - item.createdAt < policy.intervalMs)) return null;
         const save = await this.create(handle, { sessionId: snapshot.session.sessionId, saveId: createNativeId('savePoint'),
             branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId, kind: 'auto', createdAt: now });
-        // Only expire automatic anchors. Revision ancestry preserves the raw history.
+        // Only expire automatic anchors. Manual saves and branch roots survive.
         for (const item of automatic.slice(policy.retain - 1)) await this.delete(handle, snapshot.session.sessionId, item.saveId);
         return save;
     }

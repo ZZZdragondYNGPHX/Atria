@@ -4,7 +4,7 @@ const indexes = new WeakMap();
 function indexFor(records) {
     let entry = indexes.get(records);
     if (!entry || entry.length !== records.length) {
-        entry = { length: records.length, values: null, fields: new Map() };
+        entry = { length: records.length, values: null, fields: new Map(), positions: null };
         indexes.set(records, entry);
     }
     return entry;
@@ -18,11 +18,12 @@ export function invalidateRecordIndex(records) { indexes.delete(records); }
 
 const fieldValue = (value, parts) => parts.reduce((parent, key) => parent?.[key], value);
 export function selectRecords(records, { ids, where, expected, match }, scan) {
+    const matchesValue = value => expected instanceof Set ? expected.has(value) : value === expected;
     if (!where || ids && match !== 'any') {
         const candidates = ids ? [...ids].map(id => recordById(records, id)).filter(Boolean) : records;
         scan(ids ? ids.size : records.length);
         const parts = where?.field.split('.');
-        return where ? candidates.filter(record => fieldValue(record.value, parts) === expected) : candidates;
+        return where ? candidates.filter(record => matchesValue(fieldValue(record.value, parts))) : candidates;
     }
     // An OR with an unrestricted ID selector has the same meaning as before.
     if (match === 'any' && !ids) { scan(records.length); return records; }
@@ -36,7 +37,7 @@ export function selectRecords(records, { ids, where, expected, match }, scan) {
             let keys = values.get(value);
             if (!keys) { keys = new Set(); values.set(value, keys); }
             keys.add(record.id);
-            if (value === expected || ids?.has(record.id)) matches.push(record);
+            if (matchesValue(value) || ids?.has(record.id)) matches.push(record);
         }
         if (entry.fields.size >= 8) entry.fields.delete(entry.fields.keys().next().value);
         index = { parts, values }; entry.fields.set(field, index);
@@ -44,11 +45,24 @@ export function selectRecords(records, { ids, where, expected, match }, scan) {
         // or charge the matched subset a second time on a cold query.
         return matches;
     }
-    const matches = index.values.get(expected) ?? [];
+    const matches = expected instanceof Set ? new Set([...expected].flatMap(value => [...(index.values.get(value) ?? [])])) : index.values.get(expected) ?? [];
     scan(matches.size ?? 0);
     const keys = new Set(matches);
     if (ids) { scan(ids.size); for (const id of ids) keys.add(id); }
     return [...keys].map(id => recordById(records, id)).filter(Boolean);
+}
+
+// Information views preserve Domain order, even when a field index's buckets
+// were updated in a different order. Build the ordinal map once per collection.
+export function selectRecordsInOrder(records, selector, scan) {
+    const selected = selectRecords(records, selector, scan);
+    if (selected === records || selected.length < 2) return selected;
+    const entry = indexFor(records);
+    if (!entry.positions) {
+        scan(records.length);
+        entry.positions = new Map(records.map((record, index) => [record.id, index]));
+    }
+    return selected.sort((a, b) => entry.positions.get(a.id) - entry.positions.get(b.id));
 }
 
 // Candidate envelopes differ, while their admitted values and field -> ID sets
@@ -58,12 +72,13 @@ export function copyRecordIndexes(before, after) {
         const entry = indexFor(before);
         // Lazy construction can populate both identical views. The first write
         // detaches this field map before changing any bucket.
-        indexes.set(after, { length: after.length, values: null, fields: entry.fields });
+        indexes.set(after, { length: after.length, values: null, fields: entry.fields, positions: entry.positions });
     }
 }
 export function updateRecordIndex(records, record, previousValue) {
     const entry = indexes.get(records);
     if (!entry) return;
+    if (entry.length !== records.length) entry.positions = null;
     entry.length = records.length; entry.values?.set(record.id, record);
     entry.fields = new Map(entry.fields);
     for (const [field, index] of entry.fields) {

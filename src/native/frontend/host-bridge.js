@@ -58,6 +58,7 @@ export class FrontendBridgeService {
         if (state.terminalRevision) throw bridgeFailure('bridge_epoch_stale');
         const base = await services.core.observeHead(owner, state.sessionId);
         if (base.revision.branchId !== state.branchId || base.session.packageContentHash !== state.packageHash) throw bridgeFailure('bridge_epoch_stale');
+        state.expires = Date.now() + this.ttl;
         return bridgeReceipt({ epoch: state.epoch, revision: base.revision.revisionId, data: {
             sessionId: state.sessionId, branchId: base.revision.branchId,
             packageVersionId: base.session.packageVersionId, packageContentHash: base.session.packageContentHash,
@@ -70,6 +71,10 @@ export class FrontendBridgeService {
         if (state.revoked || base.revision.branchId !== state.branchId || base.session.packageContentHash !== state.packageHash) {
             this.revoke(state.owner, state.sessionId); throw bridgeFailure('bridge_epoch_stale');
         }
+        // This is an idle presentation lease, not a maximum game duration.
+        // Active requests revalidate branch/package identity before renewing;
+        // expired or explicitly revoked capabilities never reach this point.
+        state.expires = Date.now() + this.ttl;
         return base;
     }
     async request(services, owner, request) {
@@ -182,7 +187,9 @@ export class FrontendBridgeService {
                 const snapshot = await services.core.applyAuthorityAction(state.owner, state.sessionId,
                     { transactionId: binding.target.transactionId, input: mapped, invocationId: actionId },
                     { expectedRevisionId: request.revision });
-                await this.current(services, state);
+                // The committed action returns no world fields. Recheck the
+                // lease and current branch before returning its revision.
+                await this.current(services, state, { headOnly: true });
                 return receipt({ revision: snapshot.revision.revisionId, data: {} });
             }
             const host = services.generationHost ?? await services.getGenerationHost?.();

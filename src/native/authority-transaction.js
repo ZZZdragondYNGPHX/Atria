@@ -7,7 +7,7 @@ import { runPackageComputation } from './package-computation.js';
 import { AUTHORITY_EXECUTION_LIMITS, authorityExecutionLimits } from './authority-execution-limits.js';
 import { prepareLifetimes, validateLifetimes } from './lifetime-authority.js';
 import { lifetimePolicy } from '../../public/shared/native-lifetime-contract.js';
-import { prepareHistory, historySources, validateHistory } from './history-authority.js';
+import { prepareHistory, validateHistory } from './history-authority.js';
 import { assertNativeExperienceContract } from '../../public/shared/native-experience-contract.js';
 import { assertJsonDeclaration, jsonDeclarationBytes, jsonObjectDeclaration, jsonArrayDeclaration, fields } from '../../public/shared/native-values.js';
 import { WORLD_DATA_LIMITS } from '../../public/shared/native-world-data.js';
@@ -60,10 +60,6 @@ export function snapshotAnchor(base) {
         branchId: base.revision.branchId, revisionId: base.revision.revisionId };
 }
 export function validateCandidate(base, contract) {
-    for (const domain of contract.lifecycleRuntime?.domains ?? []) {
-        const records = base.states.atri_lifecycle?.domains[domain.id]?.records;
-        if (!Array.isArray(records) || records.some(record => record.scopeId !== domain.scopeId)) throw new TypeError('Authority record scope mismatch');
-    }
     validateLifecycle({ ...base, manifest: { ...base.manifest,
         runtime: { ...base.manifest.runtime, experienceContract: contract } } });
 }
@@ -156,6 +152,7 @@ function budgetFor(policy, rngSeed, signal) {
     return context;
 }
 const readSelections = new WeakMap();
+const selectedValues = new WeakMap();
 const readObject = entries => jsonObjectDeclaration(entries, 'Authority value', authorityExecutionLimits().valueBytes, WORLD_DATA_LIMITS);
 const readArray = items => jsonArrayDeclaration(items, 'Authority value', authorityExecutionLimits().valueBytes, WORLD_DATA_LIMITS);
 function readSelection(grant) {
@@ -175,6 +172,8 @@ function readSelection(grant) {
 }
 function selectReadFields(value, selection) {
     if (!selection.fields.size) return selection.whole ? value : {};
+    const reusable = immutableRecordValue(value), cached = reusable && selectedValues.get(value)?.get(selection);
+    if (cached) return cached;
     const selected = [];
     for (const [field, child] of selection.fields) {
         if (!value || !Object.hasOwn(value, field)) throw new TypeError('Private field unavailable');
@@ -183,15 +182,15 @@ function selectReadFields(value, selection) {
     // A whole-field grant also validates overlapping nested paths. Preserve
     // field order: sandbox programs can observe Object.keys on their reads.
     if (selection.whole) return value;
-    if (immutableRecordValue(value) && !Array.isArray(value)) {
-        const keys = Object.keys(value);
-        let index = 0;
-        if (keys.length === selection.fields.size) {
-            for (const field of selection.fields.keys()) if (keys[index++] !== field) return readObject(selected);
-            return value;
-        }
+    const result = readObject(selected);
+    // Reuse only a projection of this exact sealed payload and field selection.
+    // Every caller still pays its normal read/byte budget and identity filters.
+    if (reusable) {
+        let entries = selectedValues.get(value);
+        if (!entries) { entries = new WeakMap(); selectedValues.set(value, entries); }
+        entries.set(selection, result);
     }
-    return readObject(selected);
+    return result;
 }
 export function privateReads(candidate, contract, grants, args, budget) {
     const result = {};
@@ -211,7 +210,13 @@ export function privateReads(candidate, contract, grants, args, budget) {
             const selector = grant.collection.ids;
             const ids = selector ? new Set(selector.field.split('.').reduce((value, key) => value?.[key], result[selector.read])) : null;
             budget.read(0);
-            const expected = where ? template(where.equals, { args }) : undefined;
+            let expected = where && !where.oneOf ? template(where.equals, { args }) : undefined;
+            if (where?.oneOf) {
+                const selector = where.oneOf;
+                const values = selector.field.split('.').reduce((value, key) => value?.[key], result[selector.read]);
+                budget.scan(values.length);
+                expected = new Set(values.map(value => selector.valueField === undefined ? value : selector.valueField.split('.').reduce((value, key) => value?.[key], value)));
+            }
             const matching = selectRecords(records, { ids, where, expected, match: grant.collection.match }, count => budget.scan(count));
             if (matching.length > grant.collection.maxItems) throw new TypeError('Private collection read limit');
             selected = readObject([['records', readArray([...matching].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
@@ -432,14 +437,12 @@ export async function prepareAuthorityTransaction(base, installed, rawRequest, {
         if (lifetimeCommands.length > 1 || (operation && lifetimeCommands.length)) throw new TypeError('Ambiguous lifetime operation');
         const lifetime = lifetimeCommands[0];
         prepareLifetimes(base, candidate, lifetime ? { operation: lifetime.operation, input: template(lifetime.input, { args, resolution }) } : null);
-        prepareHistory(base, candidate, transaction, resolution, operation);
+        const historyWork = prepareHistory(base, candidate, transaction, resolution, operation);
         if (contract.lifecycleRuntime?.history) {
-            const policy = contract.lifecycleRuntime.history, domains = candidate.states.atri_lifecycle.domains;
-            budget.counts.historySources = historySources(candidate).length;
+            budget.counts.historySources = historyWork.sources;
             budget.counts.lifetimeEvents = candidate.states.atri_lifecycle.lifetimes?.work.events ?? 0;
             budget.counts.lifetimeActors = candidate.states.atri_lifecycle.lifetimes?.work.actors ?? 0;
-            budget.counts.historyRecordScans = budget.counts.historySources - policy.sources.length + policy.meaningfulDomains.reduce((n, id) => n + domains[id].records.length, 0)
-                + policy.sources.reduce((n, source) => n + domains[source.domainId].records.length, 0);
+            budget.counts.historyRecordScans = historyWork.recordScans;
             budget.counts.historyLogicalBytes = bytes(candidate.states.atri_lifecycle.history);
         }
         await publications(candidate, installed, contract, logic, budget);

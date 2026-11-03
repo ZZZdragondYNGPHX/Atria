@@ -11,9 +11,14 @@ import { ILLUSTRATION_NAMESPACE, assertIllustrationState, illustrationAnchorMatc
 import { readIllustrationState, validateIllustrationDependencies, illustrationContentHash } from '../session-illustrations.js';
 import { ContinuityRepo } from './continuity-repo.js';
 import { appendTimelineIndex, readTimelineIndex } from '../timeline-index.js';
+import { appendHistoryReplay, hasHistoryReplay } from '../history-replay.js';
+import { HISTORY_REPLAY_NAMESPACE, HISTORY_REPLAY_NODE_NAMESPACE } from '../../../public/shared/native-history-replay.js';
 import { materializeTimeline } from '../timeline-materialization.js';
 import { orchestrationSessionRoots } from '../orchestration/reference-roots.js';
-import { putStoredState, deltaStateNamespace } from '../state-delta.js';
+import { putStoredState, readStoredState, deltaStateNamespace } from '../state-delta.js';
+import { portableSaveState, saveStateDocument, saveStateDependencies, assertSaveStateDependency } from '../save-state-records.js';
+import { isRecordSnapshot, recordSnapshotHeads, RECORD_VALUE_NAMESPACE } from '../state-record-snapshot.js';
+import { isRecordPageSnapshot, recordPageHeads, RECORD_PAGE_NAMESPACE } from '../state-record-pages.js';
 import {
     NATIVE_RESOURCE_KINDS,
     assertBranch,
@@ -39,6 +44,13 @@ import {
 import {
     SESSION_CORE_NAMESPACE, TIMELINE_NAMESPACE, KNOWLEDGE_NAMESPACE, readCheckedDocument, readSessionSnapshot,
 } from '../session-snapshot.js';
+
+const reachabilityClosures = new WeakMap();
+function reachabilityCache(engine) {
+    let cache = reachabilityClosures.get(engine);
+    if (!cache) { cache = new Map(); reachabilityClosures.set(engine, cache); }
+    return cache;
+}
 
 // Serialize domain publication before entering the engine's durable transaction.
 // across repo/engine instances in the server process, then perform HEAD CAS. SQL
@@ -75,6 +87,16 @@ export class SessionRepo {
     async prepareTimelineIndex(handle, sessionId, root, additions) {
         assertWritable();
         return this._engine.withTransaction(handle, tx => appendTimelineIndex(tx, handle, sessionId, root, additions));
+    }
+
+    async prepareHistoryReplay(handle, sessionId, root, additions, legacyChunks = []) {
+        assertWritable();
+        return this._engine.withTransaction(handle, tx => appendHistoryReplay(tx, handle, sessionId, root, additions, legacyChunks));
+    }
+
+    async hasHistoryReplay(handle, sessionId, root, invocationId) {
+        if (!root) return false;
+        return this._engine.withTransaction(handle, tx => hasHistoryReplay(tx, handle, sessionId, root, invocationId));
     }
 
     _sessionKey(handle, sessionId) {
@@ -444,6 +466,13 @@ export class SessionRepo {
         ));
     }
 
+    async getStateForSave(handle, sessionId, namespace, head) {
+        return this._engine.withTransaction(handle, async tx => {
+            const row = await tx.getResource(this._stateKey(handle, sessionId, namespace, head));
+            return row && portableSaveState(namespace, head, row.doc);
+        });
+    }
+
     async putState(handle, sessionId, namespace, head, value) {
         return withSessionWrite(handle, sessionId, async () => {
             await new RunControl(this).assert(handle, sessionId, 'write');
@@ -463,6 +492,8 @@ export class SessionRepo {
     }
 
     async _storyParentRevision(tx, handle, sessionId, revision, core) {
+        if (core.storyHeadRevisionId !== undefined) return core.storyHeadRevisionId === revision.revisionId
+            ? core.storyParentRevisionId : core.storyHeadRevisionId;
         if (!core.parentRevisionId) return null;
         const parent = await readCheckedDocument(tx, this._revisionKey(handle, sessionId, core.parentRevisionId));
         if (parent.branchId === revision.branchId) return parent.revisionId;
@@ -479,6 +510,35 @@ export class SessionRepo {
             const revision = await readCheckedDocument(tx, this._revisionKey(handle, sessionId, revisionId));
             const core = await readCheckedDocument(tx, this._stateKey(handle, sessionId, SESSION_CORE_NAMESPACE, revision.stateHeads[SESSION_CORE_NAMESPACE]));
             return this._storyParentRevision(tx, handle, sessionId, revision, core);
+        });
+    }
+
+    async _isStoryAncestor(tx, handle, sessionId, headRevisionId, ancestorRevisionId) {
+        const ancestor = await readCheckedDocument(tx, this._revisionKey(handle, sessionId, ancestorRevisionId));
+        const ancestorCore = await readCheckedDocument(tx, this._stateKey(handle, sessionId, SESSION_CORE_NAMESPACE, ancestor.stateHeads[SESSION_CORE_NAMESPACE]));
+        const seen = new Set();
+        let revisionId = headRevisionId;
+        while (revisionId) {
+            if (seen.has(revisionId)) throw new TypeError('Story ancestry cycle');
+            seen.add(revisionId);
+            const revision = await readCheckedDocument(tx, this._revisionKey(handle, sessionId, revisionId));
+            if (revisionId === ancestorRevisionId) return true;
+            const core = await readCheckedDocument(tx, this._stateKey(handle, sessionId, SESSION_CORE_NAMESPACE, revision.stateHeads[SESSION_CORE_NAMESPACE]));
+            // A Branch only appends. Its exact fork bounds ancestry without
+            // retaining every discarded world tick between narrative anchors.
+            if (Number.isSafeInteger(core.branchSequence) && Number.isSafeInteger(ancestorCore.branchSequence)) {
+                if (revision.branchId === ancestor.branchId) return ancestorCore.branchSequence < core.branchSequence;
+                revisionId = core.branches.find(node => node.branchId === revision.branchId)?.forkRevisionId ?? null;
+            } else revisionId = await this._storyParentRevision(tx, handle, sessionId, revision, core);
+        }
+        return false;
+    }
+
+    async isStoryAncestor(handle, sessionId, headRevisionId, ancestorRevisionId) {
+        return this._engine.withTransaction(handle, async tx => {
+            try { return await this._isStoryAncestor(tx, handle, sessionId, headRevisionId, ancestorRevisionId); } catch (error) {
+                if (error instanceof NotFoundError) return false; throw error;
+            }
         });
     }
 
@@ -640,16 +700,15 @@ export class SessionRepo {
                 const history = snapshot.states.atri_lifecycle?.history;
                 const previousRevision = (await tx.getResource(this._revisionKey(handle, session.sessionId, expectedRevisionId)))?.doc;
                 const previous = previousRevision && await getNativeDocument(tx, this._stateKey(handle, session.sessionId, 'atri_lifecycle', previousRevision.stateHeads.atri_lifecycle));
-                if (!existing || snapshot.core.parentRevisionId !== expectedRevisionId || !history
+                if (!existing || snapshot.core.parentRevisionId !== (session.revisionRetention === 'anchors' ? null : expectedRevisionId) || !history
                     || history.checkpoint !== history.transactions || history.checkpoint <= (previous?.history?.checkpoint ?? 0)) throw new TypeError('Invalid History checkpoint');
             } else if (snapshot.core.parentRevisionId !== expectedRevisionId) throw new TypeError('Revision parent must match expected HEAD');
             await putImmutable(tx, this._revisionKey(handle, session.sessionId, revision.revisionId), revision);
             await putMutable(tx, key, published, { expectedIntegrity: existing?.integrity ?? null });
             await putImmutable(tx, receiptKey, { schemaVersion: 1, commitId, fingerprint, sessionId: session.sessionId,
                 revisionId: revision.revisionId, branchId: revision.branchId, expectedRevisionId, status: 'committed' });
-            // Non-narrative durable discovery marker. Consumers prove the
-            // revision reachable from a committed Branch before using it.
-            await putImmutable(tx, { kind: NATIVE_RESOURCE_KINDS.versionedJsonResource, handle, resourceType: 'atri.visual.commit', resourceId: revision.revisionId },
+            if (entries.length || variants.length) await putImmutable(tx,
+                { kind: NATIVE_RESOURCE_KINDS.versionedJsonResource, handle, resourceType: 'atri.visual.commit', resourceId: revision.revisionId },
                 { sessionId: session.sessionId, branchId: revision.branchId, revisionId: revision.revisionId, createdAt: revision.createdAt });
             const updated = await readRunControl(tx, handle, session.sessionId);
             if (updated) {
@@ -746,13 +805,46 @@ export class SessionRepo {
                 const key = namespace + '\0' + head;
                 if (seenStates.has(key)) throw new TypeError('Duplicate imported Session state record');
                 seenStates.add(key);
-                if (hashNativeDocument(record.data) !== head) {
+                if (record.encoding !== undefined) {
+                    saveStateDependencies(record);
+                } else if (hashNativeDocument(record.data) !== head) {
                     throw new ConflictError('native_session_import_state_integrity', { namespace, head });
                 }
                 const stateKey = this._stateKey(handle, sessionId, namespace, head);
-                if (deltaStateNamespace(namespace)) await putStoredState(tx, stateKey, record.data);
+                if (record.encoding !== undefined) await putImmutable(tx, stateKey, saveStateDocument(record));
+                else if (deltaStateNamespace(namespace)) await putStoredState(tx, stateKey, record.data);
                 else await putImmutable(tx, stateKey, record.data);
             }
+            const importedStates = new Map(stateRecords.map(record => [record.namespace + '\0' + record.head, record]));
+            const checkedStates = new Set(), visitingStates = new Set();
+            const checkState = async record => {
+                const id = record.namespace + '\0' + record.head;
+                if (checkedStates.has(id)) return;
+                if (visitingStates.has(id)) throw new TypeError('Encoded Save state ancestry cycle');
+                visitingStates.add(id);
+                for (const ref of saveStateDependencies(record)) {
+                    const dependency = importedStates.get(ref.namespace + '\0' + ref.head);
+                    assertSaveStateDependency(record, dependency);
+                    await checkState(dependency);
+                }
+                if (record.encoding !== undefined) {
+                    const key = this._stateKey(handle, sessionId, record.namespace, record.head);
+                    const value = await readStoredState(tx, key, await tx.getResource(key), { shareRecordValues: true });
+                    if (hashNativeDocument(value) !== record.head) throw new ConflictError('native_session_import_state_integrity', { namespace: record.namespace, head: record.head });
+                }
+                visitingStates.delete(id); checkedStates.add(id);
+            };
+            // Walk publication order first so each delta can reuse the recently
+            // verified parent. Hash-sorted Save inventories otherwise replay
+            // long, cold ancestry chains repeatedly during a large import.
+            for (const revision of revisions.slice().sort((a, b) => a.createdAt - b.createdAt)) {
+                for (const [namespace, head] of Object.entries({ ...revision.stateHeads, atri_knowledge: revision.knowledgeHead })) {
+                    const record = importedStates.get(namespace + '\0' + head);
+                    if (!record) throw new TypeError('Missing imported Revision state');
+                    await checkState(record);
+                }
+            }
+            for (const record of stateRecords) await checkState(record);
             for (const revision of revisions) {
                 if (revision.sessionId !== sessionId) throw new TypeError('Imported Revision Session mismatch');
                 await putImmutable(tx, this._revisionKey(handle, sessionId, revision.revisionId), revision);
@@ -770,7 +862,7 @@ export class SessionRepo {
             // Validate every imported Revision after all immutable dependencies
             // exist, but before publishing the mutable Session commit marker.
             for (const revision of revisions) {
-                await readSessionSnapshot(tx, handle, session, revision);
+                await readSessionSnapshot(tx, handle, session, revision, null, null, { metadataOnly: true });
             }
             for (const head of new Set([session.illustrationHead, ...Object.values(session.illustrationHeads ?? {}), ...savePoints.map(item => item.illustrationHead)].filter(Boolean))) {
                 await validateIllustrationDependencies(tx, handle, sessionId, await readIllustrationState(tx, handle, sessionId, head));
@@ -821,7 +913,8 @@ export class SessionRepo {
                 pending.push(node.headRevisionId);
                 if (node.forkRevisionId) pending.push(node.forkRevisionId);
             }
-            if (core.parentRevisionId) pending.push(core.parentRevisionId);
+            pending.push(...(core.retainedRevisionIds ?? []));
+            if (session?.revisionRetention !== 'anchors' && core.parentRevisionId) pending.push(core.parentRevisionId);
         }
         return reachable;
     }
@@ -849,40 +942,75 @@ export class SessionRepo {
 
     async reachabilitySnapshot(handle, sessionId, { retainRevisionIds = [], shouldPause = () => false } = {}) {
         let reads = 0, yieldedAt = performance.now();
-        const tx = { getResource: async key => {
+        const yieldRead = async () => {
             // A row count alone is not a time slice when old states are large.
             if (++reads % 32 === 0 || performance.now() - yieldedAt >= 8) {
                 await new Promise(resolve => setImmediate(resolve));
                 yieldedAt = performance.now();
             }
             if (shouldPause()) throw Object.assign(new Error('Native maintenance paused'), { code: 'native_maintenance_paused' });
-            return this._engine.withTransaction(handle, tx => tx.getResource(key));
-        },
-        listResources: filter => this._engine.withTransaction(handle, tx => tx.listResources(filter)) };
+        };
+        const tx = { getResource: async key => { await yieldRead(); return this._engine.withTransaction(handle, tx => tx.getResource(key)); },
+            getImmutableResource: async key => { await yieldRead(); return this._engine.withTransaction(handle, tx => tx.getImmutableResource ? tx.getImmutableResource(key) : tx.getResource(key)); },
+            listResources: filter => this._engine.withTransaction(handle, tx => tx.listResources(filter)) };
         return (async () => {
             const sessionKey = this._sessionKey(handle, sessionId), session = await tx.getResource(sessionKey);
             if (!session) throw new NotFoundError('native session');
             const saves = await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.savePoint, handle, sessionId });
             const orchestration = await orchestrationSessionRoots(tx, handle, sessionId);
             const revisions = await this._reachableRevisions(tx, handle, sessionId, [...retainRevisionIds, ...orchestration.revisionIds]);
-            const keys = new Map(), assets = new Set();
+            const keys = new Map(), assets = new Set(), cache = reachabilityCache(this._engine);
             const id = key => JSON.stringify(Object.keys(key).sort().map(field => [field, key[field]]));
-            const findAssets = value => {
+            const findAssets = (value, target) => {
                 if (!value || typeof value !== 'object') return;
-                if (typeof value.assetId === 'string') assets.add(value.assetId);
-                for (const child of Object.values(value)) findAssets(child);
+                if (typeof value.assetId === 'string') target.add(value.assetId);
+                for (const child of Object.values(value)) findAssets(child, target);
+            };
+            const visit = async (key, selected, selectedAssets) => {
+                const keyId = id(key);
+                if (selected.has(keyId)) return;
+                const record = await tx.getImmutableResource(key);
+                if (!record) throw new Error('Reachable Native dependency missing or corrupt');
+                const cached = key.kind === NATIVE_RESOURCE_KINDS.sessionState && cache.get(keyId);
+                // Like decoded immutable states, a closure is reusable while
+                // its stored root integrity is unchanged. Keep identities only.
+                if (cached?.integrity === record.integrity) {
+                    cache.delete(keyId); cache.set(keyId, cached);
+                    for (const [childId, child] of cached.keys) selected.set(childId, child);
+                    for (const assetId of cached.assets) selectedAssets.add(assetId);
+                    return;
+                }
+                if (cached) cache.delete(keyId);
+                selected.set(keyId, key); findAssets(record.doc, selectedAssets);
+                const mark = child => visit(child, selected, selectedAssets);
+                if (key.kind === NATIVE_RESOURCE_KINDS.sessionState) {
+                    if (key.namespace === SESSION_CORE_NAMESPACE) for (const head of record.doc.personaHeads ?? []) await mark({ ...key, namespace: PERSONA_NAMESPACE, head });
+                    if (key.namespace === 'atri_timeline_index' && record.doc.level) for (const child of record.doc.children) await mark({ ...key, head: child.head });
+                    if (key.namespace === TIMELINE_NAMESPACE && record.doc.tree) await mark({ ...key, namespace: 'atri_timeline_index', head: record.doc.tree.head });
+                    if (key.namespace === HISTORY_REPLAY_NAMESPACE) await mark({ ...key, namespace: HISTORY_REPLAY_NODE_NAMESPACE, head: record.doc.head });
+                    if (key.namespace === HISTORY_REPLAY_NAMESPACE && record.doc.legacy) await mark({ ...key, namespace: HISTORY_REPLAY_NODE_NAMESPACE, head: record.doc.legacy.head });
+                    if (key.namespace === HISTORY_REPLAY_NODE_NAMESPACE) for (const head of Object.values(record.doc.children ?? {})) await mark({ ...key, head });
+                    if (key.namespace === ILLUSTRATION_NAMESPACE) for (const ref of record.doc.imageRefs ?? []) await mark({ ...key, namespace: IMAGE_VERSION_NAMESPACE, head: ref.head });
+                    if (deltaStateNamespace(key.namespace) && record.doc.kind === 'delta') await mark({ ...key, head: record.doc.baseHead });
+                    if (isRecordSnapshot(record.doc)) for (const head of recordSnapshotHeads(record.doc)) await mark({ ...key, namespace: RECORD_VALUE_NAMESPACE, head });
+                    if (isRecordPageSnapshot(record.doc)) for (const head of recordPageHeads(record.doc)) await mark({ ...key, namespace: RECORD_PAGE_NAMESPACE, head });
+                }
             };
             const mark = async key => {
                 if (keys.has(id(key))) return;
-                const record = await tx.getResource(key);
-                if (!record) throw new Error('Reachable Native dependency missing or corrupt');
-                keys.set(id(key), key); findAssets(record.doc);
-                if (key.kind === NATIVE_RESOURCE_KINDS.sessionState) {
-                    if (key.namespace === 'atri_timeline_index' && record.doc.level) for (const child of record.doc.children) await mark({ ...key, head: child.head });
-                    if (key.namespace === TIMELINE_NAMESPACE && record.doc.tree) await mark({ ...key, namespace: 'atri_timeline_index', head: record.doc.tree.head });
-                    if (key.namespace === ILLUSTRATION_NAMESPACE) for (const ref of record.doc.imageRefs ?? []) await mark({ ...key, namespace: IMAGE_VERSION_NAMESPACE, head: ref.head });
-                    if (deltaStateNamespace(key.namespace) && record.doc.kind === 'delta') await mark({ ...key, head: record.doc.baseHead });
+                const selected = new Map(), selectedAssets = new Set();
+                await visit(key, selected, selectedAssets);
+                if (key.kind === NATIVE_RESOURCE_KINDS.sessionState && !cache.has(id(key))) {
+                    const bytes = [...selected.keys()].reduce((sum, key) => sum + key.length * 2 + 96, 0);
+                    if (bytes <= 1024 * 1024) {
+                        const record = await tx.getImmutableResource(key);
+                        cache.set(id(key), { integrity: record.integrity, keys: selected, assets: selectedAssets, bytes });
+                        let total = [...cache.values()].reduce((sum, value) => sum + value.bytes, 0);
+                        while (total > 8 * 1024 * 1024) { const first = cache.keys().next().value; total -= cache.get(first).bytes; cache.delete(first); }
+                    }
                 }
+                for (const [keyId, child] of selected) keys.set(keyId, child);
+                for (const assetId of selectedAssets) assets.add(assetId);
             };
             await mark(sessionKey);
             const controlKey = { kind: NATIVE_RESOURCE_KINDS.runControl, handle, sessionId };
@@ -954,17 +1082,8 @@ export class SessionRepo {
             }
             const snapshot = await readSessionSnapshot(tx, handle, session, revision);
             if (illustrationAnchor) {
-                let cursor = illustrationAnchor.revisionId;
-                const visited = new Set();
-                while (cursor && cursor !== target) {
-                    if (visited.has(cursor)) throw new TypeError('Illustration ancestry cycle');
-                    visited.add(cursor);
-                    const ancestor = await readCheckedDocument(tx, this._revisionKey(handle, sessionId, cursor));
-                    const core = await getNativeDocument(tx, this._stateKey(handle, sessionId, SESSION_CORE_NAMESPACE, ancestor.stateHeads[SESSION_CORE_NAMESPACE]));
-                    cursor = core ? await this._storyParentRevision(tx, handle, sessionId, ancestor, core) : null;
-                }
                 const entry = snapshot.timeline.find(item => item.messageId === illustrationAnchor.messageId && item.activeVariantId === illustrationAnchor.variantId);
-                if (cursor !== target) throw new TypeError('Invalid illustration source ancestry');
+                if (!await this._isStoryAncestor(tx, handle, sessionId, illustrationAnchor.revisionId, target)) throw new TypeError('Invalid illustration source ancestry');
                 if (!entry || !illustrationAnchorMatches(illustrationAnchor, entry.content) || illustrationContentHash(entry.content) !== illustrationAnchor.contentHash) throw Object.assign(new TypeError('native_illustration_source_boundary'), { code: 'native_illustration_source_boundary' });
             }
             return snapshot;

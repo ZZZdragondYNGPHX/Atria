@@ -1035,14 +1035,22 @@ export function registerNativeResourceHandlers(tx) {
             if (filter.scan) {
                 predicates.push('resource_key > ?'); values.push(filter.after ?? '');
                 values.push(filter.limit);
-                const rows = db.prepare(`SELECT resource_key, doc, integrity, updated_at, created_at
+                // Reachability sweeping needs identities, not decoded world
+                // bodies. Large snapshots must not consume an entire scan page.
+                const rows = db.prepare(`SELECT resource_key, ${filter.metadataOnly ? '' : 'doc,'} integrity, updated_at, created_at
                     FROM native_resources WHERE handle=? AND kind=? AND ${predicates.join(' AND ')}
                     ORDER BY resource_key LIMIT ?`).iterate(...values);
                 const records = []; let bytes = 0, cursor = filter.after ?? '';
                 for (const row of rows) {
                     cursor = row.resource_key;
-                    bytes += typeof row.doc === 'string' ? row.doc.length * 2 : nativeJsonBytes(row.doc) * 2;
-                    records.push(parseRow(filter.kind, filter.handle, row));
+                    if (filter.metadataOnly) {
+                        const record = { key: decodeNativeResourceKey(filter.kind, filter.handle, row.resource_key),
+                            integrity: String(row.integrity || ''), updatedAt: Number(row.updated_at || 0), createdAt: Number(row.created_at || 0) };
+                        bytes += Buffer.byteLength(JSON.stringify(record)); records.push(record);
+                    } else {
+                        bytes += typeof row.doc === 'string' ? row.doc.length * 2 : nativeJsonBytes(row.doc) * 2;
+                        records.push(parseRow(filter.kind, filter.handle, row));
+                    }
                     if (bytes >= filter.maxBytes) break;
                 }
                 return { records, cursor, done: records.length < filter.limit && bytes < filter.maxBytes, bytes, scanned: records.length };

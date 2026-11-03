@@ -352,6 +352,13 @@ function evaluateNode(node, context, functions) {
     }
 
     if (node.type === 'call') {
+        // Declarative reducers can retain an existing field without asking a
+        // computation to read it. Evaluate only the selected, authored branch.
+        if (node.callee === 'choose') {
+            if (node.arguments.length !== 3) throw new Error('choose requires three arguments');
+            const condition = requireBoolean(evaluateNode(node.arguments[0], context, functions), 'choose');
+            return evaluateNode(node.arguments[condition ? 1 : 2], context, functions);
+        }
         const fn = functions[node.callee];
         if (typeof fn !== 'function') {
             throw new Error(`Formula function '${node.callee}' is not allowed`);

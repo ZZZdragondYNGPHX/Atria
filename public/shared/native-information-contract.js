@@ -6,7 +6,9 @@ import { assertHypothesisPolicy } from './native-tom-contract.js';
 import { appraisalTargets } from './native-appraisal-contract.js';
 import { assertMemoryPolicy, assertInformationBasisSource, hasInformationBasis } from './native-memory-contract.js';
 
-export const INFORMATION_LIMITS = Object.freeze({ sources: 32, views: 16, records: 4096, items: 128, characters: 32768, depth: 4, edges: 256, rollups: 128 });
+// Source scans cover the retained ledgers of the whole population. This is not
+// the disclosure budget: each consumer still receives at most 128 items/32 KiB.
+export const INFORMATION_LIMITS = Object.freeze({ sources: 32, views: 16, records: 131072, items: 128, characters: 32768, depth: 4, edges: 256, rollups: 128 });
 export function informationList(value, limit, convert = value => value) {
     if (!Array.isArray(value) || value.length > limit) throw new TypeError('Information list limit');
     const result = value.map(convert);

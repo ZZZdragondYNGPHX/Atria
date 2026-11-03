@@ -1,8 +1,10 @@
 import { subjectDefinitions } from '../../public/shared/native-subject-contract.js';
+import { SAVE_STATE_ENCODING, SAVE_COMPRESSED_STATE_ENCODING, saveStateDependencies, assertSaveStateDependency } from './save-state-records.js';
 import { materializeIllustrations, IMAGE_VERSION_NAMESPACE } from '../../public/shared/native-illustration-storage.js';
 import { PERSONA_NAMESPACE, assertPersonaState, assertPersonaIdentity, personaIdentity, personaAvatars } from './persona-contract.js';
 import { RUN_NAMESPACE, assertRunState, assertRunContinuation } from '../../public/shared/native-run-contract.js';
 import { TIMELINE_INDEX_NAMESPACE, timelineSelections } from '../../public/shared/native-timeline-index.js';
+import { HISTORY_REPLAY_NAMESPACE, HISTORY_REPLAY_NODE_NAMESPACE, historyReplayClosure } from '../../public/shared/native-history-replay.js';
 import { assertInformationClosure } from '../../public/shared/native-information-contract.js';
 import { assertTimelineParticipant } from '../../public/shared/native-participant.js';
 import { assertMessageProjection, assertTurnEnvelope } from '../../public/shared/native-message-contract.js';
@@ -15,6 +17,7 @@ import { validateSkillDeclarations } from '../../public/scripts/native/skill-dec
 import { assertNativeId } from './identity.js';
 import { assertIllustrationHead, illustrationAnchorMatches, ILLUSTRATION_NAMESPACE } from '../../public/shared/native-illustration-contract.js';
 import { hashNativeDocument } from './repositories/common.js';
+import { freezeRecordValue } from './record-values.js';
 import { illustrationContentHash } from './session-illustrations.js';
 import { assertPackageModelPromptRuntimeMetadata } from './model-prompt-runtime/contracts.js';
 import {
@@ -370,6 +373,7 @@ export function assertProject(value) {
 }
 
 export function assertSession(value) {
+    if (value.revisionRetention !== undefined && value.revisionRetention !== 'anchors') throw new TypeError('Invalid Session revision retention');
     if (value.branchMetadata !== undefined) {
         plain(value.branchMetadata, 'Session.branchMetadata');
         if (Object.keys(value.branchMetadata).length > 2048) throw new TypeError('Too many Branch labels');
@@ -400,6 +404,7 @@ export function assertSession(value) {
             : assertNativeId(value.headRevisionId, 'revision', 'Session.headRevisionId'),
         ...(value.displayTitle == null ? {} : { displayTitle: text(value.displayTitle, 'Session.displayTitle', { maxLength: 256 }) }),
         ...(value.autoSavePolicy === undefined ? {} : { autoSavePolicy: assertAutoSavePolicy(value.autoSavePolicy) }),
+        ...(value.revisionRetention === undefined ? {} : { revisionRetention: value.revisionRetention }),
         ...(value.branchMetadata === undefined ? {} : { branchMetadata: cloneJson(value.branchMetadata, 'Session.branchMetadata') }),
         ...(value.illustrationHead == null ? {} : { illustrationHead: assertIllustrationHead(value.illustrationHead) }),
         ...(Object.keys(illustrationHeads).length ? { illustrationHeads } : {}),
@@ -828,13 +833,19 @@ function assertSaveRoot(value, scope) {
     });
 }
 
+const admittedSaveRecords = new WeakSet(), admittedSaves = new WeakSet();
 function assertStateRecord(value, index) {
+    if (admittedSaveRecords.has(value)) return value;
     plain(value, '.atriasave.closure.stateRecords[' + index + ']');
-    return Object.freeze({
+    if (value.encoding !== undefined && ![SAVE_STATE_ENCODING, SAVE_COMPRESSED_STATE_ENCODING].includes(value.encoding)) throw new TypeError('Unsupported Save state encoding');
+    const record = freezeRecordValue({
         namespace: assertNamespace(value.namespace, '.atriasave.closure.stateRecords[' + index + '].namespace'),
         head: assertStateHead(value.head, '.atriasave.closure.stateRecords[' + index + '].head'),
         data: cloneJson(value.data, '.atriasave.closure.stateRecords[' + index + '].data'),
+        ...(value.encoding === undefined ? {} : { encoding: value.encoding }),
     });
+    admittedSaveRecords.add(record);
+    return record;
 }
 
 function assertAttachment(value, index) {
@@ -847,11 +858,14 @@ function assertAttachment(value, index) {
 }
 
 export function assertAtriaSave(value) {
+    // Only the sealed result of this boundary can bypass another admission.
+    // Encoding/export and knowledge rebinding must not copy a whole save again.
+    if (admittedSaves.has(value)) return value;
     plain(value, '.atriasave');
     noLegacyIdentity(value, '.atriasave');
     assertOnlyKeys(value, SAVE_KEYS, '.atriasave');
     if (value.format !== ATRIA_SAVE_FORMAT) throw new TypeError(`.atriasave format must be '${ATRIA_SAVE_FORMAT}'`);
-    if (![1, 2, 3].includes(value.schemaVersion) || (value.schemaVersion < 3 && (value.schemaVersion === 2) !== (value.scope === 'resume'))) throw new TypeError('Unsupported .atriasave schema/scope');
+    if (![1, 2, 3, 4].includes(value.schemaVersion) || (value.schemaVersion < 3 && (value.schemaVersion === 2) !== (value.scope === 'resume'))) throw new TypeError('Unsupported .atriasave schema/scope');
     if (value.schemaVersion === 1 && value.resume !== undefined) throw new TypeError('Legacy saves cannot carry resume control');
     if (value.runContinuation !== undefined && (value.schemaVersion < 3 || value.scope === 'resume')) throw new TypeError('Run continuation requires a version 3 ordinary Save');
     if (value.nativeSchemaVersion !== NATIVE_SCHEMA_VERSION) throw new TypeError('.atriasave nativeSchemaVersion must be 1');
@@ -890,6 +904,20 @@ export function assertAtriaSave(value) {
     const assetIds = new Set(assetRefs.map(item => item.assetId));
     const stateKeys = new Set(stateRecords.map(item => item.namespace + '\0' + item.head));
     const stateMap = new Map(stateRecords.map(item => [item.namespace + '\0' + item.head, item.data]));
+    const encodedStates = new Map(stateRecords.map(item => [item.namespace + '\0' + item.head, item]));
+    for (const record of stateRecords) if (record.encoding !== undefined) {
+        if (value.schemaVersion !== 4) throw new TypeError('Encoded states require Save v4');
+        for (const ref of saveStateDependencies(record)) assertSaveStateDependency(record, encodedStates.get(ref.namespace + '\0' + ref.head));
+    }
+    const replayNodes = new Set();
+    const validatedReplay = new Map();
+    for (const record of stateRecords) if (record.namespace === HISTORY_REPLAY_NAMESPACE) {
+        for (const head of historyReplayClosure(record.data, head => {
+            const node = stateMap.get(HISTORY_REPLAY_NODE_NAMESPACE + '\0' + head);
+            if (!node || hashNativeDocument(node) !== head) throw new TypeError('Missing or corrupt History replay closure');
+            return node;
+        }, validatedReplay)) replayNodes.add(HISTORY_REPLAY_NODE_NAMESPACE + '\0' + head);
+    }
     const readSelections = revision => {
         const root = stateMap.get('atri_timeline\0' + revision.stateHeads.atri_timeline);
         return timelineSelections(root, head => {
@@ -942,6 +970,9 @@ export function assertAtriaSave(value) {
         if (!stateKeys.has('atri_knowledge\0' + revision.knowledgeHead)) {
             throw new TypeError('SessionRevision references missing state atri_knowledge@' + revision.knowledgeHead);
         }
+        const core = stateMap.get('atri_session_core\0' + revision.stateHeads.atri_session_core);
+        for (const id of core?.retainedRevisionIds ?? []) if (!revisionById.has(id)) throw new TypeError('Missing operational Revision anchor');
+        for (const head of core?.personaHeads ?? []) if (!stateKeys.has(PERSONA_NAMESPACE + '\0' + head)) throw new TypeError('Missing retained Persona state');
     }
     for (const savePoint of savePoints) {
         if (
@@ -954,7 +985,7 @@ export function assertAtriaSave(value) {
     }
     const personaRecords = stateRecords.filter(item => item.namespace === PERSONA_NAMESPACE);
     const hasIdentity = timelineEntries.some(item => item.metadata?.atri_player_identity) || variants.some(item => item.metadata?.atri_player_identity);
-    if ((personaRecords.length || hasIdentity) && value.schemaVersion !== 3) throw new TypeError('Persona evidence requires Save v3');
+    if ((personaRecords.length || hasIdentity) && value.schemaVersion < 3) throw new TypeError('Persona evidence requires Save v3 or later');
     for (const entry of [...timelineEntries, ...variants]) {
         const identity = entry.metadata?.atri_player_identity;
         if (!identity) continue;
@@ -1035,6 +1066,7 @@ export function assertAtriaSave(value) {
             || branches[0].parentBranchId || branches[0].forkPoint || core?.parentRevisionId || core?.forkRevisionId
             || core?.branches?.length !== 1 || core.branches[0].headRevisionId !== root.revisionId || core.branches[0].forkRevisionId) throw new TypeError('Invalid ironman head-only resume closure');
         const requiredStates = new Set([...Object.entries(revision.stateHeads).map(([namespace, head]) => namespace + '\0' + head), 'atri_knowledge\0' + revision.knowledgeHead]);
+        for (const head of core.personaHeads ?? []) requiredStates.add(PERSONA_NAMESPACE + '\0' + head);
         if (session.illustrationHead) {
             requiredStates.add(ILLUSTRATION_NAMESPACE + '\0' + session.illustrationHead);
             const manifest = stateMap.get(ILLUSTRATION_NAMESPACE + '\0' + session.illustrationHead);
@@ -1043,13 +1075,14 @@ export function assertAtriaSave(value) {
         const timeline = readSelections(revision);
         // Index nodes are authoritative members of the current root closure.
         for (const record of stateRecords) if (record.namespace === TIMELINE_INDEX_NAMESPACE) requiredStates.add(record.namespace + '\0' + record.head);
+        for (const key of replayNodes) requiredStates.add(key);
         const selectedMessages = new Set(timeline?.map(item => item.messageId));
         const selectedVariants = new Set(timeline?.flatMap(item => item.variantIds));
         if (!Array.isArray(timeline) || stateRecords.length !== requiredStates.size || stateRecords.some(item => !requiredStates.has(item.namespace + '\0' + item.head))
             || timelineEntries.length !== selectedMessages.size || timelineEntries.some(item => !selectedMessages.has(item.messageId))
             || variants.length !== selectedVariants.size || variants.some(item => !selectedVariants.has(item.variantId))) throw new TypeError('Resume closure contains unreachable recovery data');
     }
-    return Object.freeze({
+    const save = freezeRecordValue({
         format: ATRIA_SAVE_FORMAT,
         schemaVersion: value.schemaVersion,
         ...(resume ? { resume } : {}),
@@ -1071,6 +1104,8 @@ export function assertAtriaSave(value) {
             attachments,
         }),
     });
+    admittedSaves.add(save);
+    return save;
 }
 
 export function validateAtriaSave(value) {

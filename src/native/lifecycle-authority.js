@@ -1,6 +1,7 @@
 import { WORLD_DATA_LIMITS } from '../../public/shared/native-world-data.js';
 import { compileWorldDataSchema } from '../../public/shared/native-data-schema.js';
-import { immutableRecordValue, freezeRecordValue } from './record-values.js';
+import { immutableRecordValue, freezeRecordValue, frozenJsonTree } from './record-values.js';
+import { mutableRecord, mutableRecords, recordCollectionIdentity } from './record-state.js';
 import { initialLifetimes, validateLifetimes } from './lifetime-authority.js';
 import { recordById, invalidateRecordIndex, updateRecordIndex } from './domain-record-index.js';
 import { initialHistory } from '../../public/shared/native-history-runtime.js';
@@ -24,6 +25,8 @@ export class AppCommandPreconditionError extends TypeError {
 }
 const retentionSizes = new WeakMap();
 const validatedRecordValues = new WeakMap();
+const validatedRecords = new WeakMap();
+const validatedCollections = new WeakMap();
 function validateRecordValue(value, schema) {
     const reusable = immutableRecordValue(value);
     const schemas = reusable ? validatedRecordValues.get(value) : undefined;
@@ -76,11 +79,26 @@ export function validateLifecycle(base) {
     for (const domain of def.domains) {
         const recordSchema = compileWorldDataSchema(domain.recordSchema);
         const records = state.domains[domain.id]?.records;
-        if (!Array.isArray(records) || records.length > domain.retention.maxItems || new Set(records.map(item => item.id)).size !== records.length) throw new TypeError('Invalid domain records');
+        if (!Array.isArray(records) || records.length > domain.retention.maxItems) throw new TypeError('Invalid domain records');
+        const swept = state.domains[domain.id].retentionTick;
+        if (swept !== undefined && (!integer(swept) || !domain.retention.ageTtl || swept > state.clocks[domain.retention.ageTtl.clockId])) throw new TypeError('Invalid Domain retention clock');
+        const identity = recordCollectionIdentity(records), knownSchemas = identity ? validatedCollections.get(identity) : undefined;
+        if (knownSchemas?.get(recordSchema) === domain.scopeId) continue;
+        if (new Set(records.map(item => item.id)).size !== records.length) throw new TypeError('Invalid domain records');
         for (const record of records) {
+            const reusable = immutableRecordValue(record.value), schemas = reusable ? validatedRecords.get(record.value) : undefined, known = schemas?.get(recordSchema);
+            // Envelopes are mutable; compare their validated fields on every
+            // visit. Only the exact sealed payload and schema can skip work.
+            if (known && known.id === record.id && known.status === record.status && known.pinned === record.pinned
+                && known.scopeId === record.scopeId && record.scopeId === domain.scopeId) continue;
             taskId(record.id); validateRecordValue(record.value, recordSchema);
-            if (!['active', 'terminal'].includes(record.status) || typeof record.pinned !== 'boolean') throw new TypeError('Invalid scoped record');
+            if (!['active', 'terminal'].includes(record.status) || typeof record.pinned !== 'boolean' || record.scopeId !== domain.scopeId) throw new TypeError('Invalid scoped record');
+            if (reusable) {
+                const checked = schemas || new WeakMap();
+                checked.set(recordSchema, { id: record.id, status: record.status, pinned: record.pinned, scopeId: record.scopeId }); validatedRecords.set(record.value, checked);
+            }
         }
+        if (identity) { const schemas = knownSchemas || new WeakMap(); schemas.set(recordSchema, domain.scopeId); validatedCollections.set(identity, schemas); }
     }
     for (const flow of def.workflows) {
         const current = state.workflows[flow.id];
@@ -99,14 +117,141 @@ export function validateLifecycle(base) {
     // Canonical source cross-check occurs at the outer transaction boundary.
     validateLifetimes(base);
     validateActivities(base);
-    validateInformationState(base);
+    validateInformationState(base, frozenJsonTree, recordCollectionIdentity);
     if (typeof state.ready !== 'boolean') throw new TypeError('Invalid lifecycle barrier');
 }
 
 // A conservative reference walk protects retained records even before P6's richer
 // typed projection/index facade. It never exposes the scanned state to a model.
+const recordReferences = new WeakMap();
+const historicalReferences = new WeakMap();
+function collectReferences(value, references, tokenize = false) {
+    if (typeof value === 'string') {
+        references.add(value);
+        if (!tokenize) return;
+        // References also occur in namespaced source IDs and encoded JSON.
+        // Codecs retaining opaque ledgers expose their IDs in a plain header.
+        for (const match of value.matchAll(/[A-Za-z_][A-Za-z0-9_.:-]*/g)) {
+            const token = match[0]; references.add(token);
+            for (let at = token.indexOf(':'); at >= 0; at = token.indexOf(':', at + 1)) references.add(token.slice(at + 1));
+        }
+    } else if (value && typeof value === 'object') for (const child of Object.values(value)) collectReferences(child, references, tokenize);
+}
+function referencesOf(value) {
+    let references = immutableRecordValue(value) ? historicalReferences.get(value) : null;
+    if (!references) {
+        references = new Set(); collectReferences(value, references, true);
+        if (immutableRecordValue(value)) historicalReferences.set(value, references);
+    }
+    return references;
+}
+// Expired event ledgers are collected as a graph. An obsolete cycle does not
+// retain itself, but every live/pinned record, task and dialogue remains a root.
+export function compactDomainHistory(base, state) {
+    const domains = lifecycleDefinition(base)?.domains.filter(domain => domain.retention.ageTtl || domain.retention.owner) ?? [];
+    const timed = domains.filter(domain => domain.retention.ageTtl);
+    if (!timed.some(domain => state.clocks[domain.retention.ageTtl.clockId] - (state.domains[domain.id].retentionTick ?? 0) >= domain.retention.ageTtl.sweepEvery)) return 0;
+    const field = (value, path) => path.split('.').reduce((value, key) => value?.[key], value);
+    const candidates = new Map(), candidateRows = new Set(), pending = [], retained = new Set(), aliases = new Map(), ownedRecords = new Map();
+    const add = record => {
+        if (candidateRows.has(record)) return;
+        candidateRows.add(record);
+        if (!candidates.has(record.id)) candidates.set(record.id, []);
+        candidates.get(record.id).push(record);
+    };
+    const alias = (key, id) => {
+        if (!aliases.has(key)) aliases.set(key, new Set());
+        aliases.get(key).add(id);
+    };
+    for (const domain of timed) {
+        const policy = domain.retention.ageTtl, now = state.clocks[policy.clockId];
+        for (const record of state.domains[domain.id].records) {
+            const at = field(record.value, policy.field), where = policy.where;
+            if (!integer(at)) throw new TypeError('Invalid historical record clock');
+            if (!record.pinned && now - at >= policy.ticks
+                && (!where || (Object.hasOwn(where, 'equals') ? field(record.value, where.field) === where.equals
+                    : where.prefixes.some(prefix => field(record.value, where.field).startsWith(prefix))))) add(record);
+        }
+    }
+    // A private ledger is eligible only through an expired owner below. With
+    // no age candidates there are no graph roots to resolve; still advance
+    // the sweep cursors so the next pulse does not repeat the same scan.
+    if (!candidateRows.size) {
+        for (const domain of timed) state.domains[domain.id].retentionTick = state.clocks[domain.retention.ageTtl.clockId];
+        return 0;
+    }
+    // An expired owner's private ledgers are candidates too. Their self-links
+    // cannot keep a dead, unreferenced generated population alive forever.
+    for (const domain of domains) if (domain.retention.owner) {
+        const owner = domain.retention.owner, owners = new Map(), live = new Set();
+        for (const record of state.domains[owner.domainId].records) {
+            const id = field(record.value, owner.recordField);
+            if (candidateRows.has(record)) {
+                if (!owners.has(id)) owners.set(id, new Set());
+                owners.get(id).add(record.id); alias(id, record.id);
+            } else live.add(id);
+        }
+        for (const id of live) owners.delete(id);
+        for (const record of state.domains[domain.id].records) {
+            const ownerIds = owners.get(field(record.value, owner.field));
+            if (record.pinned || !ownerIds) continue;
+            add(record);
+            for (const id of ownerIds) {
+                if (!ownedRecords.has(id)) ownedRecords.set(id, new Set());
+                ownedRecords.get(id).add(record.id);
+            }
+        }
+    }
+    const subjects = base.states.atri_subjects, expiredSubjects = new Map();
+    for (const subject of subjects?.subjects ?? []) {
+        const ref = subject.localRef, records = ref && state.domains[ref.domainId]?.records, body = records && recordById(records, ref.recordId);
+        if (!body || !candidateRows.has(body)) continue;
+        alias(subject.subjectId, body.id);
+        if (subject.origin.kind === 'emergent' && !subject.actorId) expiredSubjects.set(subject, body.id);
+    }
+    const retain = ref => {
+        if (candidates.has(ref) && !retained.has(ref)) { retained.add(ref); pending.push(ref); }
+    };
+    const root = value => {
+        for (const key of referencesOf(value)) {
+            retain(key);
+            for (const ref of aliases.get(key) ?? []) retain(ref);
+        }
+    };
+    root(base.timeline);
+    root(base.manifest.actors);
+    for (const [key, value] of Object.entries(base.states)) if (key !== NS && key !== 'atri_subjects') root(value);
+    for (const subject of subjects?.subjects ?? []) if (!expiredSubjects.has(subject)) root(subject);
+    for (const [key, value] of Object.entries(state)) if (key !== 'domains') root(value);
+    for (const domain of Object.values(state.domains)) for (const record of domain.records) if (!candidateRows.has(record)) root(record.value);
+    while (pending.length) {
+        const id = pending.pop();
+        for (const record of candidates.get(id)) root(record.value);
+        // A referenced owner keeps its private history as a unit. Only an
+        // entirely unreachable owner/ledger group may be collected.
+        for (const owned of ownedRecords.get(id) ?? []) retain(owned);
+    }
+    let removed = 0;
+    for (const domain of domains) {
+        const target = state.domains[domain.id], records = target.records;
+        if (domain.retention.ageTtl) target.retentionTick = state.clocks[domain.retention.ageTtl.clockId];
+        const next = records.filter(record => !candidateRows.has(record) || retained.has(record.id));
+        if (next.length !== records.length) { removed += records.length - next.length; target.records = next; }
+    }
+    if ([...expiredSubjects.values()].some(id => !retained.has(id))) base.states.atri_subjects = freezeRecordValue({ ...subjects,
+        subjects: subjects.subjects.filter(subject => !expiredSubjects.has(subject) || retained.has(expiredSubjects.get(subject))) });
+    return removed;
+}
 function mentions(value, id) {
     if (typeof value === 'string') return value === id;
+    // Repeated retention checks query different invocation IDs against the same
+    // sealed population records. Index their exact strings once, not the world
+    // once per expired receipt. Mutable envelopes still take the ordinary walk.
+    if (immutableRecordValue(value)) {
+        let references = recordReferences.get(value);
+        if (!references) { references = new Set(); collectReferences(value, references); recordReferences.set(value, references); }
+        return references.has(id);
+    }
     if (Array.isArray(value)) return value.some(item => mentions(item, id));
     return value && typeof value === 'object' && Object.values(value).some(item => mentions(item, id));
 }
@@ -143,7 +288,7 @@ export function taskResultTombstone(record) {
 export function compactLifecycle(base, state, { reserveTask = false, pruneInteractions = false, byteCache = null } = {}) {
     const def = lifecycleDefinition(base);
     for (const domain of def.domains) {
-        const records = state.domains[domain.id].records;
+        let records = state.domains[domain.id].records;
         const policy = domain.retention;
         let logicalBytes = byteCache?.get(records) ?? nativeDocumentBytes(records);
         if (!policy.terminalTtl && records.length <= policy.maxItems && logicalBytes <= policy.maxLogicalBytes) {
@@ -155,6 +300,7 @@ export function compactLifecycle(base, state, { reserveTask = false, pruneIntera
             const expired = policy.terminalTtl && state.clocks[policy.terminalTtl.clockId] - record.terminalTicks?.[policy.terminalTtl.clockId] >= policy.terminalTtl.ticks;
             const oversized = records.length > policy.maxItems || logicalBytes > policy.maxLogicalBytes;
             if ((expired || oversized) && !protectedRecord(base, state, domain.id, record)) {
+                records = mutableRecords(state.domains[domain.id]);
                 records.splice(index, 1);
                 invalidateRecordIndex(records);
                 logicalBytes = nativeDocumentBytes(records);
@@ -303,7 +449,7 @@ export async function applyLifecycleCandidate(candidate, installed, action, auth
             if (!command) throw new TypeError('Unknown App Command');
             active(state, domain.scopeId); taskId(request.recordId);
             const args = authority ? authority.typed(request.args, command.argsSchema) : assertTaskValue(request.args, command.argsSchema, { limits: WORLD_DATA_LIMITS });
-            const records = state.domains[domain.id].records, logicalBytes = byteCache?.get(records);
+            const target = state.domains[domain.id], logicalBytes = byteCache?.get(target.records), records = mutableRecords(target);
             let record = recordById(records, request.recordId);
             const previousValue = record?.value;
             const beforeBytes = logicalBytes === undefined ? 0 : record ? nativeDocumentBytes(record) : -Number(records.length > 0);
@@ -317,7 +463,7 @@ export async function applyLifecycleCandidate(candidate, installed, action, auth
                 try { accepted = validator({ world: record?.value ?? domain.initial, args }) === true; } catch { /* Reject malformed or stale candidate data. */ }
                 if (!accepted) throw new AppCommandPreconditionError();
             }
-            if (!record) { record = { id: request.recordId, scopeId: domain.scopeId, value: copy(domain.initial), status: 'active', pinned: false, createdLogicalTime: state.logicalTime }; records.push(record); }
+            if (!record) { record = { id: request.recordId, scopeId: domain.scopeId, value: copy(domain.initial), status: 'active', pinned: false, createdLogicalTime: state.logicalTime }; records.push(record); } else record = mutableRecord(records, record);
             const event = { type: command.event, payload: args };
             const nextValue = runtime.reducer.reduce(record.value, event);
             record.value = freezeRecordValue(authority ? authority.typed(nextValue, domain.recordSchema) : assertTaskValue(nextValue, domain.recordSchema, { limits: WORLD_DATA_LIMITS }));
@@ -483,8 +629,9 @@ export async function applyLifecycleCandidate(candidate, installed, action, auth
         if (!item || item.status !== 'pending') throw new TypeError('Scheduled interaction is closed'); item.status = 'cancelled';
         if (item.workflowId) state.workflows[item.workflowId].status = 'cancelled';
     } else if (action.kind === 'app.pin') {
-        fields(action, ['kind', 'domainId', 'recordId', 'pinned'], 'App pin'); const record = state.domains[action.domainId]?.records.find(item => item.id === action.recordId);
-        if (!record || typeof action.pinned !== 'boolean') throw new TypeError('Invalid App pin'); active(state, record.scopeId); record.pinned = action.pinned;
+        fields(action, ['kind', 'domainId', 'recordId', 'pinned'], 'App pin'); const records = state.domains[action.domainId]?.records;
+        const record = records?.find(item => item.id === action.recordId);
+        if (!record || typeof action.pinned !== 'boolean') throw new TypeError('Invalid App pin'); active(state, record.scopeId); mutableRecord(mutableRecords(state.domains[action.domainId]), record).pinned = action.pinned;
     } else if (action.kind === 'retention.compact') {
         fields(action, ['kind'], 'Retention compact');
     } else if (action.kind === 'information.rollup') {

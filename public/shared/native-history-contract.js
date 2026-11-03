@@ -14,7 +14,8 @@ export const HISTORY_OPERATIONS = Object.freeze({
 });
 export const ARTIFACT_KINDS = ['photograph', 'letter', 'contract', 'will', 'newspaper', 'case_file', 'diary', 'property_record', 'ritual_record', 'heirloom', 'recording'];
 export function assertHistoryPolicy(raw, lifecycle) {
-    fields(raw, ['schemaVersion', 'clockId', 'chronologyDomain', 'meaningfulDomains', 'sources', 'hot', 'warm', 'cold', 'maxDurable', 'maxBytes', 'checkpointTurns'], 'History policy');
+    fields(raw, ['schemaVersion', 'clockId', 'chronologyDomain', 'meaningfulDomains', 'sources', 'hot', 'warm', 'cold', 'maxDurable', 'maxBytes', 'checkpointTurns', 'revisionRetention'], 'History policy');
+    if (raw.revisionRetention !== undefined && raw.revisionRetention !== 'anchors') throw new TypeError('History revision retention');
     if (raw.schemaVersion !== 1 || !lifecycle.clocks.some(c => c.id === raw.clockId)) throw new TypeError('History clock');
     const domain = id => { taskId(id); const d = lifecycle.domains.find(d => d.id === id); if (!d) throw new TypeError('History domain'); return d; };
     const chronology = domain(raw.chronologyDomain).recordSchema.properties;

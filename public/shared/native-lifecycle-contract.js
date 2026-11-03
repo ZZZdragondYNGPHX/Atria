@@ -88,12 +88,30 @@ function clockPoint(item, clocks, field) {
     return item;
 }
 function retention(item, clocks) {
-    fields(item, ['maxItems', 'maxLogicalBytes', 'terminalTtl', 'keepPinned', 'keepReferenced'], 'Lifecycle domain retention');
+    fields(item, ['maxItems', 'maxLogicalBytes', 'terminalTtl', 'ageTtl', 'owner', 'keepPinned', 'keepReferenced'], 'Lifecycle domain retention');
     integer(item.maxItems, 1, WORLD_CAPACITY.domainRecords);
     integer(item.maxLogicalBytes, 1, WORLD_CAPACITY.domainBytes);
     if (item.keepPinned !== true || item.keepReferenced !== true) throw new TypeError('Lifecycle retention must preserve pinned/referenced records');
     if (item.terminalTtl !== undefined) clockPoint(item.terminalTtl, clocks, 'ticks');
+    if (item.ageTtl !== undefined) {
+        fields(item.ageTtl, ['clockId', 'ticks', 'field', 'sweepEvery', 'where'], 'Historical domain retention');
+        reference(clocks, item.ageTtl.clockId, 'clock'); taskId(item.ageTtl.field);
+        integer(item.ageTtl.ticks, 1); integer(item.ageTtl.sweepEvery, 1, item.ageTtl.ticks);
+    }
+    if (item.owner !== undefined) {
+        fields(item.owner, ['domainId', 'field', 'recordField'], 'Historical record owner');
+        taskId(item.owner.domainId); taskId(item.owner.field); taskId(item.owner.recordField);
+    }
     return item;
+}
+function requiredRetentionField(schema, path) {
+    if (typeof path !== 'string' || path.split('.').length > 8) throw new TypeError('Invalid historical retention field');
+    for (const key of path.split('.')) {
+        taskId(key);
+        if (schema?.type !== 'object' || !schema.required?.includes(key)) throw new TypeError('Historical retention requires a declared field');
+        schema = schema.properties[key];
+    }
+    return schema;
 }
 function assignmentSchema(schema, path) {
     let target = schema;
@@ -120,6 +138,20 @@ function domain(item, scopes, clocks) {
     const recordSchema = objectSchema(item.recordSchema);
     const initial = assertTaskValue(item.initial, recordSchema, { limits: WORLD_DATA_LIMITS });
     retention(item.retention, clocks);
+    if (item.retention.ageTtl) {
+        const field = requiredRetentionField(recordSchema, item.retention.ageTtl.field);
+        if (field?.type !== 'integer' || !(field.minimum >= 0)) throw new TypeError('Historical retention requires a declared non-negative clock field');
+        const where = item.retention.ageTtl.where;
+        if (where !== undefined) {
+            fields(where, ['field', 'prefixes', 'equals'], 'Historical retention predicate');
+            const selected = requiredRetentionField(recordSchema, where.field);
+            if (Object.hasOwn(where, 'equals')) {
+                if (where.prefixes !== undefined || !['string', 'boolean', 'integer', 'number'].includes(selected.type)) throw new TypeError('Invalid historical retention predicate');
+                assertTaskValue(where.equals, selected);
+            } else if (selected.type !== 'string' || !Array.isArray(where.prefixes) || !where.prefixes.length || where.prefixes.length > 16
+                || where.prefixes.some(prefix => typeof prefix !== 'string' || !prefix.length || prefix.length > 128)) throw new TypeError('Invalid historical retention predicate');
+        }
+    }
     if (logicalBytes(initial) > item.retention.maxLogicalBytes) throw new TypeError('Lifecycle initial data exceeds retention bytes');
     const commands = list(item.commands, 64, command => {
         fields(command, ['id', 'argsSchema', 'event', 'assign', 'terminal', 'validators'], 'Lifecycle command');
@@ -293,6 +325,12 @@ export function assertLifecycleRuntime(value, taskRuntime) {
         return { id: taskId(item.id), unit: taskId(item.unit), initialTick: integer(item.initialTick, 0) };
     }, 'clock');
     const domains = list(value.domains, 32, item => domain(item, scopes, clocks), 'domain');
+    for (const item of domains) if (item.retention.owner) {
+        const owner = item.retention.owner, target = reference(domains, owner.domainId, 'retention owner');
+        if (target.id === item.id || target.scopeId !== item.scopeId || !target.retention.ageTtl
+            || requiredRetentionField(item.recordSchema, owner.field)?.type !== 'string'
+            || requiredRetentionField(target.recordSchema, owner.recordField)?.type !== 'string') throw new TypeError('Invalid historical record owner');
+    }
     const advances = list(value.advances, 64, item => {
         fields(item, ['id', 'clockId', 'maxTicks'], 'Lifecycle advance');
         taskId(item.id);

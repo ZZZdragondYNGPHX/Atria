@@ -81,16 +81,20 @@ function effect(raw, context, lifecycle, reducers, authority, publication = fals
     }
 }
 function effects(raw, context, lifecycle, reducers, authority, publication = false) {
-    if (!Array.isArray(raw) || raw.length > LIMITS.effects) throw new TypeError('Transaction effect list limit');
+    if (!Array.isArray(raw) || raw.length > LIMITS.effectSlots) throw new TypeError('Transaction effect list limit');
     raw.forEach(item => effect(item, context, lifecycle, reducers, authority, publication));
     return raw;
 }
 function budget(grants, effects, authority) {
     integer(grants, 0, authority.policy.maxReadGrants, 'read grants');
-    integer(effects.length, 0, authority.policy.maxEffects, 'total effects');
+    integer(effects.length, 0, LIMITS.effectSlots, 'effect slots');
+    integer(effects.filter(item => item.when === undefined).length, 0, authority.policy.maxEffects, 'total effects');
     for (const [kind, max] of [['world.event', authority.policy.maxWorldEvents], ['app.command', authority.policy.maxAppCommands],
         ['clock.advance', LIMITS.clockAdvances], ['workflow.transition', LIMITS.workflowTransitions], ['timeline.speech', 8]]) {
-        integer(effects.filter(item => item.kind === kind).length, 0, max, kind);
+        // Guarded app slots can share one runtime budget (e.g. people versus
+        // events). Declaration slots are bounded separately; execution still
+        // charges every selected effect before mutation and rejects overflow.
+        integer(effects.filter(item => item.kind === kind && (kind !== 'app.command' || item.when === undefined)).length, 0, max, kind);
     }
 }
 

@@ -146,10 +146,22 @@ export function reads(raw, lifecycle, args) {
             if (selected.type !== 'array' || selected.items.type !== 'string' || selected.maxItems > WORLD_CAPACITY.arrayItems) throw new TypeError('Collection identities require a bounded string array');
         }
         if (grant.collection?.where) {
-            fields(grant.collection.where, ['field', 'equals'], 'Transaction collection predicate');
-            const selected = schemaAt(schema, fieldPath(grant.collection.where.field));
+            const where = grant.collection.where;
+            fields(where, ['field', 'equals', 'oneOf'], 'Transaction collection predicate');
+            const selected = schemaAt(schema, fieldPath(where.field));
             if (['object', 'array'].includes(selected.type)) throw new TypeError('Collection predicate requires a scalar');
-            template(grant.collection.where.equals, selected, args ? { args } : {});
+            if (where.oneOf !== undefined) {
+                if (where.equals !== undefined) throw new TypeError('Collection predicate must select one comparison');
+                const selector = where.oneOf;
+                fields(selector, ['read', 'field', 'valueField'], 'Collection membership read');
+                taskId(selector.read);
+                const prior = previous.get(selector.read), parts = fieldPath(selector.field, true);
+                if (!prior || !prior.fields.some(field => selector.field === field || selector.field.startsWith(field + '.'))) throw new TypeError('Collection membership outside prior private grant');
+                const values = schemaAt(prior.schema, parts);
+                if (values.type !== 'array' || values.maxItems > WORLD_CAPACITY.arrayItems) throw new TypeError('Collection membership requires a bounded array');
+                const item = selector.valueField === undefined ? values.items : schemaAt(values.items, fieldPath(selector.valueField));
+                if (item.type !== selected.type) throw new TypeError('Collection membership scalar type mismatch');
+            } else template(where.equals, selected, args ? { args } : {});
         }
         const paths = list(grant.fields, LIMITS.readFields, field => {
             schemaAt(schema, fieldPath(field)); return field;

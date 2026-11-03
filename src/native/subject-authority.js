@@ -4,6 +4,7 @@ import { taskId } from '../../public/shared/native-task-contract.js';
 import { assertNativeId } from './identity.js';
 import { hashNativeDocument, equalNativeDocuments } from './repositories/common.js';
 import { actorAvailability } from '../../public/shared/native-information-runtime.js';
+import { freezeRecordValue, immutableRecordValue, frozenJsonTree } from './record-values.js';
 
 function subjectId(sessionId, origin) {
     return 'sub_' + hashNativeDocument({ sessionId, origin }).slice(0, 32);
@@ -51,9 +52,14 @@ export function subjectTaskContext(taskPlan) {
     return { audience: { kind: 'actor', id: subject.id }, viewId: subject.viewId };
 }
 
+const validatedStates = new WeakMap();
 export function validateSubjects(base) {
     const state = base.states[SUBJECT_NAMESPACE];
     if (!state) return;
+    const actors = base.manifest.actors, views = base.manifest.runtime?.experienceContract?.informationRuntime?.views;
+    const reusable = immutableRecordValue(state) && frozenJsonTree(actors) && frozenJsonTree(views);
+    const validated = reusable && validatedStates.get(state);
+    if (validated && validated.actors === actors && validated.views === views) return;
     fields(state, ['schemaVersion', 'subjects'], 'Subject state');
     if (state.schemaVersion !== 1 || !Array.isArray(state.subjects)) throw new TypeError('Invalid Subject state');
     const seen = new Set(); const local = new Set();
@@ -85,6 +91,7 @@ export function validateSubjects(base) {
             local.add(key);
         }
     }
+    if (reusable) validatedStates.set(state, { actors, views });
 }
 
 export function initialSubjects(base, worlds) {
@@ -107,10 +114,13 @@ export function initialSubjects(base, worlds) {
 // published with the original domain effects under the same Session CAS.
 export function prepareSubjects(candidate, declarations, evaluate, context, authorityId) {
     if (!declarations?.length) return {};
-    const state = structuredClone(candidate.states[SUBJECT_NAMESPACE] ?? { schemaVersion: 1, subjects: [] });
+    let state;
     const refs = {};
     for (const item of declarations ?? []) {
         if (item.when !== undefined && !evaluate.predicate(item.when, context)) continue;
+        // Most clock transactions declare admission but do not admit anyone.
+        // Keep the sealed identity state until a declaration actually executes.
+        state ??= structuredClone(candidate.states[SUBJECT_NAMESPACE] ?? { schemaVersion: 1, subjects: [] });
         const worldId = item.worldId ?? null;
         assertScope(candidate, worldId); expression(candidate, item.actorId ?? undefined);
         const localRef = item.localRef ? { domainId: item.localRef.domainId, recordId: taskId(evaluate.template(item.localRef.recordId, context)) } : null;
@@ -132,15 +142,16 @@ export function prepareSubjects(candidate, declarations, evaluate, context, auth
             ...(localRef ? { localRef } : {}), ...(item.actorId ? { actorId: item.actorId } : {}), ...(view ? { perspective: view } : {}) });
         refs[item.id] = id;
     }
-    candidate.states[SUBJECT_NAMESPACE] = state;
+    if (state) candidate.states[SUBJECT_NAMESPACE] = state;
     return refs;
 }
 
 export function publishSubjects(base, states, revisionId, branchId) {
     const state = states[SUBJECT_NAMESPACE];
     if (!state) return states;
-    const next = { ...states, [SUBJECT_NAMESPACE]: { ...state, subjects: state.subjects.map(item => item.admission !== null ? item
-        : { ...item, admission: { revisionId, branchId } }) } };
+    const next = state.subjects.some(item => item.admission === null) ? { ...states, [SUBJECT_NAMESPACE]: { ...state, subjects: state.subjects.map(item => item.admission !== null ? item
+        : { ...item, admission: { revisionId, branchId } }) } } : states;
     validateSubjects({ ...base, states: next });
+    freezeRecordValue(next[SUBJECT_NAMESPACE]);
     return next;
 }

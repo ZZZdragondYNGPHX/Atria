@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { nativeTaskScheduler } from './task-scheduler.js';
 import { NATIVE_RESOURCE_KINDS as K } from './contracts.js';
 import { assertWritable } from '../storage/read-only-mode.js';
-import { getNativeDocument, hashNativeDocument, putMutable, withNativeResourceWrite } from './repositories/common.js';
+import { getNativeDocument, hashNativeDocument, putMutable, readNativeRecord, withNativeResourceWrite } from './repositories/common.js';
 import { encodeNativeResourceKey } from '../storage/engines/native-resource-key.js';
 import { orchestrationSessionRoots } from './orchestration/reference-roots.js';
 
@@ -31,20 +31,22 @@ async function generation(tx, handle, sessionId) {
     const orchestration = await orchestrationSessionRoots(tx, handle, sessionId);
     return hashNativeDocument({ root: root.integrity, saves: saves.map(item => item.integrity).sort(), orchestration: orchestration.fingerprint });
 }
-const kinds = [K.sessionRevision, K.sessionState, K.timelineEntry, K.timelineVariant, K.branch];
+const kinds = [K.sessionRevision, K.sessionState, K.timelineEntry, K.timelineVariant, K.branch, K.commitReceipt, K.versionedJsonResource];
 
 // SQL Engines expose the original complete list rather than the FS/SQLite scan
 // adapter. Apply the same durable key cursor here; list(filter.limit) followed
 // by done:true silently skipped the rest of a SQL kind after its first page.
 async function listCandidatePage(engine, handle, filter) {
-    const all = await engine.withTransaction(handle, tx => tx.listResources({ kind: filter.kind, handle, sessionId: filter.sessionId }));
+    const all = await engine.withTransaction(handle, tx => tx.listResources({ kind: filter.kind, handle,
+        ...(filter.resourceType ? { resourceType: filter.resourceType } : { sessionId: filter.sessionId }) }));
     const pending = all.sort((left, right) => identity(left.key).localeCompare(identity(right.key)))
         .filter(row => !filter.after || identity(row.key).localeCompare(filter.after) > 0);
     const records = []; let bytes = 0;
     for (const row of pending) {
-        const size = Buffer.byteLength(JSON.stringify(row));
+        const item = filter.metadataOnly ? { key: row.key, integrity: row.integrity, updatedAt: row.updatedAt, createdAt: row.createdAt } : row;
+        const size = Buffer.byteLength(JSON.stringify(item));
         if (records.length && (records.length >= filter.limit || bytes + size > filter.maxBytes)) break;
-        records.push(row); bytes += size;
+        records.push(item); bytes += size;
     }
     return { records, cursor: records.length ? identity(records.at(-1).key) : filter.after, done: records.length === pending.length, scanned: records.length, bytes };
 }
@@ -62,7 +64,7 @@ async function retainedProof(repo, handle, sessionId, current, retention, retain
     const roots = await repo.reachabilitySnapshot(handle, sessionId, { retainRevisionIds, shouldPause });
     const retained = new Set(roots.keys.map(identity));
     const bytes = [...retained].reduce((n, id) => n + id.length * 2 + 64, 0);
-    const proof = { generation: roots.generation, retention, retained, bytes, expiresAt: now + 60000 };
+    const proof = { generation: roots.generation, retention, retained, revisions: new Set(roots.revisionIds), bytes, expiresAt: now + 60000 };
     // Only immutable reachability identities are retained, never history bodies.
     // Each use still revalidates persistent roots inside the sweep transaction.
     if (bytes <= 8 * 1024 * 1024) {
@@ -81,13 +83,17 @@ export async function maintainSession(repo, handle, sessionId, options = {}) {
     validateMaintenanceBudget(budget);
     return withNativeResourceWrite(handle, 'maintenance:session:' + sessionId, () => maintain(repo, handle, sessionId, budget));
 }
-async function maintain(repo, handle, sessionId, { now, graceMs, batchSize, scanLimit, maxScanBytes, signal, retainRevisionIds = [] }) {
+async function maintain(repo, handle, sessionId, { now, graceMs, batchSize, scanLimit, maxScanBytes, signal, retainRevisionIds = [], foregroundRevisionId }) {
     const key = { kind: K.maintenance, handle, scope: 'session:' + sessionId };
-    const pause = () => signal?.aborted || nativeTaskScheduler.hasForegroundWork(handle, { includeRecent: true })
-        || Date.now() - (maintenanceTimes.get(repo._engine)?.get(leaseKey(handle, sessionId))?.lastWriteAt ?? 0) < 1000;
+    const pause = () => signal?.aborted || !foregroundRevisionId && (nativeTaskScheduler.hasForegroundWork(handle, { includeRecent: true })
+        || Date.now() - (maintenanceTimes.get(repo._engine)?.get(leaseKey(handle, sessionId))?.lastWriteAt ?? 0) < 1000);
     const held = () => Boolean(leases.get(leaseKey(handle, sessionId))?.size);
     if (pause()) return { phase: 'paused', deleted: [] };
     const engine = repo._engine;
+    const session = await repo.get(handle, sessionId), anchored = session?.revisionRetention === 'anchors';
+    if (foregroundRevisionId) {
+        if (!anchored || session.headRevisionId !== foregroundRevisionId) throw new TypeError('Foreground maintenance requires the exact anchored HEAD');
+    }
     const progress = await engine.withTransaction(handle, tx => getNativeDocument(tx, key));
     const current = await engine.withTransaction(handle, tx => generation(tx, handle, sessionId));
     if (!current) return { phase: 'absent', deleted: [] };
@@ -100,21 +106,52 @@ async function maintain(repo, handle, sessionId, { now, graceMs, batchSize, scan
             throw error;
         }
         const retained = roots.retained, candidates = [];
-        const scan = valid && progress.phase === 'mark' ? progress.scan : { kind: 0, after: '' };
+        const protectedCandidate = record => record.key.kind === K.commitReceipt
+            ? roots.revisions.has(record.doc.revisionId)
+            : record.key.kind === K.versionedJsonResource
+                ? record.doc.sessionId !== sessionId || roots.revisions.has(record.doc.revisionId)
+                : retained.has(identity(record.key));
+        // A new HEAD changes reachability, not the enumeration cursor. Reprove
+        // quarantined candidates against it instead of restarting at row zero.
+        if (progress && !valid && ['quarantine', 'sweep'].includes(progress.phase)) {
+            for (const item of progress.candidates.slice(progress.cursor)) {
+                const record = await engine.withTransaction(handle, tx => readNativeRecord(tx, item.key));
+                if (record && record.integrity === item.integrity && !protectedCandidate({ key: item.key, get doc() { return record.doc; } })) candidates.push(item);
+            }
+            return repo.withRunLock(handle, sessionId, () => engine.withTransaction(handle, async tx => {
+                if (pause() || await generation(tx, handle, sessionId) !== roots.generation) return { phase: 'paused', deleted: [] };
+                const phase = candidates.length ? 'quarantine' : progress.scan.kind === kinds.length ? 'complete' : 'mark';
+                await putMutable(tx, key, { ...progress, generation: roots.generation, retention, phase, candidates, cursor: 0 });
+                return { phase, candidates: candidates.length, deleted: [] };
+            }));
+        }
+        const scan = progress?.phase === 'mark' ? progress.scan : { kind: 0, after: '' };
         if (pause()) return { phase: 'paused', deleted: [] };
-        const filter = { kind: kinds[scan.kind], handle, sessionId, after: scan.after, limit: scanLimit, maxBytes: maxScanBytes };
+        const filter = { kind: kinds[scan.kind], handle, ...(kinds[scan.kind] === K.versionedJsonResource ? { resourceType: 'atri.visual.commit' } : { sessionId }),
+            after: scan.after, limit: scanLimit, maxBytes: maxScanBytes,
+            metadataOnly: ![K.commitReceipt, K.versionedJsonResource].includes(kinds[scan.kind]) };
         const page = engine.scanNativeCandidates ? await engine.scanNativeCandidates(handle, filter)
             : await listCandidatePage(engine, handle, filter);
-        for (const record of page.records) if (!retained.has(identity(record.key))) {
+        for (const record of page.records) if (!protectedCandidate(record)) {
             const old = progress?.candidates.find(item => identity(item.key) === identity(record.key) && item.integrity === record.integrity);
-            candidates.push({ key: record.key, integrity: record.integrity, quarantinedAt: old?.quarantinedAt ?? now });
+            candidates.push({ key: record.key, integrity: record.integrity, quarantinedAt: old?.quarantinedAt ?? (anchored ? Math.min(now, record.updatedAt) : now) });
         }
         const nextScan = page.done ? { kind: scan.kind + 1, after: '' } : { kind: scan.kind, after: page.cursor };
         return repo.withRunLock(handle, sessionId, () => engine.withTransaction(handle, async tx => {
             if (pause() || await generation(tx, handle, sessionId) !== roots.generation) return { phase: 'paused', deleted: [] };
-            const phase = candidates.length ? 'quarantine' : nextScan.kind === kinds.length ? 'complete' : 'mark';
-            await putMutable(tx, key, { schemaVersion: 1, generation: roots.generation, retention, phase, candidates, scan: nextScan, cursor: 0 });
-            return { phase, candidates: candidates.length, scanned: page.scanned, bytes: page.bytes, deleted: [] };
+            const deleted = [], waiting = [];
+            for (const item of candidates) {
+                // A recent row must not block the durable scan cursor for a
+                // whole grace period while continuous play creates new rows.
+                // Anchored mode proves it again on the next complete sweep.
+                if (anchored && (held() || now - item.quarantinedAt < graceMs)) continue;
+                if (!anchored || deleted.length >= batchSize) { waiting.push(item); continue; }
+                const record = await readNativeRecord(tx, item.key);
+                if (record?.integrity === item.integrity && record.updatedAt <= item.quarantinedAt && await tx.deleteResource(item.key)) deleted.push(item.key);
+            }
+            const phase = waiting.length ? 'quarantine' : nextScan.kind === kinds.length ? 'complete' : 'mark';
+            await putMutable(tx, key, { schemaVersion: 1, generation: roots.generation, retention, phase, candidates: waiting, scan: nextScan, cursor: 0 });
+            return { phase, candidates: waiting.length, scanned: page.scanned, bytes: page.bytes, deleted };
         }));
     }
     if (held() || pause() || progress.candidates.some(item => now - item.quarantinedAt < graceMs)) return { phase: 'quarantine', deleted: [] };
@@ -123,7 +160,7 @@ async function maintain(repo, handle, sessionId, { now, graceMs, batchSize, scan
         const deleted = []; let cursor = progress.cursor;
         const end = Math.min(progress.candidates.length, cursor + batchSize);
         for (; cursor < end; cursor++) {
-            const item = progress.candidates[cursor], record = await tx.getResource(item.key);
+            const item = progress.candidates[cursor], record = await readNativeRecord(tx, item.key);
             if (held() || pause()) break;
             if (!record || record.integrity !== item.integrity || record.updatedAt > item.quarantinedAt) continue;
             if (await tx.deleteResource(item.key)) deleted.push(item.key);
@@ -132,6 +169,25 @@ async function maintain(repo, handle, sessionId, { now, graceMs, batchSize, scan
         await putMutable(tx, key, { ...progress, cursor, phase });
         return { phase, deleted };
     }));
+}
+
+// Continuous simulation has no idle second. Reuse the same reachability,
+// quarantine and sweep authority at a locked checkpoint, with a short slice.
+export async function maintainSessionCheckpoint(repo, handle, sessionId, revisionId) {
+    return repo.withRunLock(handle, sessionId, async () => {
+        let started, result;
+        for (let count = 0; count < 8; count++) {
+            result = await maintainSession(repo, handle, sessionId, { foregroundRevisionId: revisionId, batchSize: 256, scanLimit: 256 });
+            // The first slice establishes the shared proof. Do useful bounded
+            // sweep work with it before yielding, even for a cold loaded save.
+            started ??= performance.now();
+            // A checkpoint represents up to 64 publications, each writing
+            // several resources. One page per checkpoint cannot keep up.
+            if (count >= 3 && performance.now() - started >= 16 || ['paused', 'absent', 'complete'].includes(result.phase)
+                || result.phase === 'quarantine' && result.candidates === undefined) break;
+        }
+        return result;
+    });
 }
 export function scheduleSessionMaintenance(repo, handle, sessionId, assetStore, { expectedRevisionId } = {}) {
     return repo.withoutRunLockContext(() => nativeTaskScheduler.submit({ owner: handle, kind: 'auxiliary_task', executionClass: 'maintenance',

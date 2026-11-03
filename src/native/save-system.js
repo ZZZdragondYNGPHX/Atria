@@ -25,7 +25,10 @@ import { hashNativeDocument } from './repositories/common.js';
 import { ILLUSTRATION_NAMESPACE, selectIllustrations } from '../../public/shared/native-illustration-contract.js';
 import { TIMELINE_INDEX_NAMESPACE, timelineSelections } from '../../public/shared/native-timeline-index.js';
 import { timelineIndexClosure } from './timeline-index.js';
+import { collectHistoryReplay } from './history-replay.js';
+import { HISTORY_REPLAY_NAMESPACE, HISTORY_REPLAY_NODE_NAMESPACE } from '../../public/shared/native-history-replay.js';
 import { acquireSessionReadLease } from './session-maintenance.js';
+import { saveStateDependencies } from './save-state-records.js';
 
 const NON_PORTABLE_STATE_PATTERNS = Object.freeze([
     /^atri_embeddings(?:_|$)/,
@@ -108,18 +111,29 @@ export class NativeSaveSystem {
         return this._core.createSavePoint(handle, sessionId, { ...options, kind: 'manual' });
     }
 
-    async _collectClosure(handle, sessionId, rootRevisionIds, { headOnly = false, illustrationHeads = [] } = {}) {
+    async _collectClosure(handle, sessionId, rootRevisionIds, { headOnly = false, revisionRetention, illustrationHeads = [] } = {}) {
         const revisions = new Map();
         const branches = new Map();
         const entries = new Map();
         const variants = new Map();
         const states = new Map();
+        const collectedReplay = new Map();
         const assetRefs = new Map();
         const assetPayloads = new Map();
         const attachments = new Map();
         const pending = [...new Set(rootRevisionIds)];
         const presentations = new Map();
         const presentationHeads = new Map();
+        const addState = async (namespace, head) => {
+            const stateKey = namespace + '\0' + head;
+            if (states.has(stateKey)) return states.get(stateKey);
+            const record = headOnly ? { namespace, head, data: await this._sessions.getState(handle, sessionId, namespace, head) }
+                : await this._sessions.getStateForSave(handle, sessionId, namespace, head);
+            if (!record || record.data === null || record.data === undefined) throw new NativeDependencyError('native_save_state_missing', { sessionId, namespace, head });
+            states.set(stateKey, record);
+            for (const dependency of saveStateDependencies(record)) await addState(dependency.namespace, dependency.head);
+            return record;
+        };
         for (const head of new Set(illustrationHeads.filter(Boolean))) {
             const data = await this._sessions.getState(handle, sessionId, ILLUSTRATION_NAMESPACE, head);
             if (!data || hashNativeDocument(data) !== head) throw new NativeDependencyError('native_save_illustration_state_missing', { head });
@@ -143,13 +157,7 @@ export class NativeSaveSystem {
                 if (!portableNamespace(namespace)) continue;
                 const stateKey = namespace + '\0' + head;
                 if (!states.has(stateKey)) {
-                    const data = await this._sessions.getState(handle, sessionId, namespace, head);
-                    if (data === null || data === undefined) {
-                        throw new NativeDependencyError('native_save_state_missing', {
-                            sessionId, revisionId, namespace, head,
-                        });
-                    }
-                    states.set(stateKey, { namespace, head, data: clone(data) });
+                    const { data } = await addState(namespace, head);
                     if (namespace === PERSONA_NAMESPACE) for (const avatar of personaAvatars(data)) attachments.set(attachmentKey({ assetId: avatar.assetId }), { assetId: avatar.assetId });
                     if (namespace === 'atri_world_selection') for (const world of data.worlds || []) for (const assetId of world.revision.assetIds || []) {
                         const attachment = { assetId }; attachments.set(attachmentKey(attachment), attachment);
@@ -164,7 +172,12 @@ export class NativeSaveSystem {
             if (!core || !Array.isArray(core.branches)) {
                 throw new NativeDependencyError('native_save_core_missing', { sessionId, revisionId });
             }
-            if (!headOnly && core.parentRevisionId) pending.push(core.parentRevisionId);
+            if (!headOnly && revisionRetention !== 'anchors' && core.parentRevisionId) pending.push(core.parentRevisionId);
+            if (!headOnly) pending.push(...(core.retainedRevisionIds ?? []));
+            for (const head of core.personaHeads ?? []) {
+                const { data } = await addState(PERSONA_NAMESPACE, head);
+                for (const avatar of personaAvatars(data)) attachments.set(attachmentKey({ assetId: avatar.assetId }), { assetId: avatar.assetId });
+            }
             for (const node of core.branches) {
                 if (!headOnly) pending.push(node.headRevisionId);
                 if (!headOnly && node.forkRevisionId) pending.push(node.forkRevisionId);
@@ -187,6 +200,14 @@ export class NativeSaveSystem {
             const indexNodes = await timelineIndexClosure(timelineRoot,
                 head => this._sessions.getState(handle, sessionId, TIMELINE_INDEX_NAMESPACE, head));
             for (const [head, data] of indexNodes) states.set(TIMELINE_INDEX_NAMESPACE + '\0' + head, { namespace: TIMELINE_INDEX_NAMESPACE, head, data });
+            const replayHead = revision.stateHeads[HISTORY_REPLAY_NAMESPACE];
+            if (replayHead) {
+                const replayRoot = states.get(HISTORY_REPLAY_NAMESPACE + '\0' + replayHead).data;
+                // Revision roots share immutable replay subtrees. Read each
+                // reachable node once for this export, not once per old turn.
+                const nodes = await collectHistoryReplay(replayRoot, head => this._sessions.getState(handle, sessionId, HISTORY_REPLAY_NODE_NAMESPACE, head), collectedReplay);
+                for (const [head, data] of nodes) states.set(HISTORY_REPLAY_NODE_NAMESPACE + '\0' + head, { namespace: HISTORY_REPLAY_NODE_NAMESPACE, head, data });
+            }
             const timeline = timelineSelections(timelineRoot, head => indexNodes.get(head));
             for (const selection of timeline) {
                 if (!entries.has(selection.messageId)) {
@@ -316,12 +337,15 @@ export class NativeSaveSystem {
             ? [rootRevisionId, ...savePoints.map(save => save.revisionId)]
             : [rootRevisionId];
         const presentationHead = scope === 'snapshot' ? rootSave.illustrationHead : current.illustrationHead;
-        const closure = await this._collectClosure(handle, sessionId, roots, { headOnly: scope === 'resume',
+        const closure = await this._collectClosure(handle, sessionId, roots, { headOnly: scope === 'resume', revisionRetention: current.revisionRetention,
             illustrationHeads: [presentationHead, ...(scope === 'session' ? Object.values(current.illustrationHeads ?? {}) : []), ...savePoints.map(save => save.illustrationHead)] });
         if (scope === 'resume') {
             const revision = closure.revisions[0];
             const record = closure.stateRecords.find(item => item.namespace === SESSION_CORE_NAMESPACE && item.head === revision.stateHeads[SESSION_CORE_NAMESPACE]);
             record.data.parentRevisionId = null;
+            delete record.data.retainedRevisionIds;
+            delete record.data.storyHeadRevisionId;
+            delete record.data.storyParentRevisionId;
             record.data.branches = [{ branchId: revision.branchId, headRevisionId: revision.revisionId, forkRevisionId: null }];
             record.head = hashNativeDocument(record.data); revision.stateHeads[SESSION_CORE_NAMESPACE] = record.head;
             closure.branches = closure.branches.filter(item => item.branchId === revision.branchId).map(item => ({ ...item, parentBranchId: null, forkPoint: null }));
@@ -347,7 +371,7 @@ export class NativeSaveSystem {
 
         const save = assertAtriaSave({
             format: ATRIA_SAVE_FORMAT,
-            schemaVersion: closure.stateRecords.some(item => item.namespace === PERSONA_NAMESPACE) || (control && scope !== 'resume') ? 3 : scope === 'resume' ? 2 : ATRIA_SAVE_SCHEMA_VERSION,
+            schemaVersion: closure.stateRecords.some(item => item.encoding) ? 4 : closure.stateRecords.some(item => item.namespace === PERSONA_NAMESPACE) || (control && scope !== 'resume') ? 3 : scope === 'resume' ? 2 : ATRIA_SAVE_SCHEMA_VERSION,
             ...(control && scope !== 'resume' ? { runContinuation: { operations: control.operations, background: control.background, highWaterTurn: control.highWaterTurn,
                 ...(control.retiredCompute ? { retiredCompute: control.retiredCompute } : {}) } } : {}),
             ...(scope === 'resume' ? { resume: { mode: 'ironman', sequence: control.sequence, sourceRevisionId: control.resumeSourceRevisionId ?? current.headRevisionId,
@@ -476,24 +500,25 @@ export class NativeSaveSystem {
     }
 
     _embedImportedLibraryKnowledge(saveInput, manifest, entryPoint) {
-        const save = clone(saveInput);
         const headMap = new Map();
-        for (const record of save.closure.stateRecords) {
-            if (record.namespace !== KNOWLEDGE_NAMESPACE) continue;
-            const previousHead = record.head;
-            record.data = importedKnowledgeAsSessionBound(record.data, manifest, entryPoint);
-            record.head = hashNativeDocument(record.data);
-            headMap.set(previousHead, record.head);
-        }
-        for (const revision of save.closure.revisions) {
+        let changed = false;
+        const stateRecords = saveInput.closure.stateRecords.map(record => {
+            if (record.namespace !== KNOWLEDGE_NAMESPACE) return record;
+            const data = importedKnowledgeAsSessionBound(record.data, manifest, entryPoint), head = hashNativeDocument(data);
+            headMap.set(record.head, head);
+            if (head === record.head) return record;
+            changed = true;
+            return { ...record, data, head };
+        });
+        const revisions = saveInput.closure.revisions.map(revision => {
             const next = headMap.get(revision.knowledgeHead);
             if (!next) throw new NativeDependencyError('native_save_knowledge_state_missing', {
                 revisionId: revision.revisionId,
                 knowledgeHead: revision.knowledgeHead,
             });
-            revision.knowledgeHead = next;
-        }
-        return assertAtriaSave(save);
+            return next === revision.knowledgeHead ? revision : { ...revision, knowledgeHead: next };
+        });
+        return changed ? assertAtriaSave({ ...saveInput, closure: { ...saveInput.closure, stateRecords, revisions } }) : saveInput;
     }
 
     async importSave(handle, archive, { password = undefined, expectedSessionFingerprint, effectPolicy } = {}) {
