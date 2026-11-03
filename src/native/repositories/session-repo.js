@@ -966,6 +966,38 @@ export class SessionRepo {
                 if (typeof value.assetId === 'string') target.add(value.assetId);
                 for (const child of Object.values(value)) findAssets(child, target);
             };
+            // Different save roots can share an uncached delta or page. Reuse its
+            // direct references within this sweep; each visit still checks the stored
+            // integrity and yields for foreground work. Keep no document payloads.
+            const direct = new Map();
+            let directBytes = 0;
+            const dependencies = (key, record, keyId) => {
+                const known = direct.get(keyId);
+                if (known && known.integrity === record.integrity) return known;
+                const children = [], assets = new Set(), doc = record.doc;
+                findAssets(doc, assets);
+                if (key.kind === NATIVE_RESOURCE_KINDS.sessionState) {
+                    if (key.namespace === SESSION_CORE_NAMESPACE) for (const head of doc.personaHeads ?? []) children.push({ ...key, namespace: PERSONA_NAMESPACE, head });
+                    if (key.namespace === 'atri_timeline_index' && doc.level) for (const child of doc.children) children.push({ ...key, head: child.head });
+                    if (key.namespace === TIMELINE_NAMESPACE && doc.tree) children.push({ ...key, namespace: 'atri_timeline_index', head: doc.tree.head });
+                    if (key.namespace === HISTORY_REPLAY_NAMESPACE) children.push({ ...key, namespace: HISTORY_REPLAY_NODE_NAMESPACE, head: doc.head });
+                    if (key.namespace === HISTORY_REPLAY_NAMESPACE && doc.legacy) children.push({ ...key, namespace: HISTORY_REPLAY_NODE_NAMESPACE, head: doc.legacy.head });
+                    if (key.namespace === HISTORY_REPLAY_NODE_NAMESPACE) for (const head of Object.values(doc.children ?? {})) children.push({ ...key, head });
+                    if (key.namespace === ILLUSTRATION_NAMESPACE) for (const ref of doc.imageRefs ?? []) children.push({ ...key, namespace: IMAGE_VERSION_NAMESPACE, head: ref.head });
+                    if (deltaStateNamespace(key.namespace) && doc.kind === 'delta') children.push({ ...key, head: doc.baseHead });
+                    if (isRecordSnapshot(doc)) for (const head of recordSnapshotHeads(doc)) children.push({ ...key, namespace: RECORD_VALUE_NAMESPACE, head });
+                    if (isRecordPageSnapshot(doc)) for (const head of recordPageHeads(doc)) children.push({ ...key, namespace: RECORD_PAGE_NAMESPACE, head });
+                }
+                const links = { integrity: record.integrity, children, assets };
+                if (key.kind === NATIVE_RESOURCE_KINDS.sessionState && !known) {
+                    const bytes = keyId.length * 2 + 128 + children.length * 320
+                        + [...assets].reduce((sum, asset) => sum + asset.length * 2 + 32, 0);
+                    if (directBytes + bytes <= 1024 * 1024) {
+                        direct.set(keyId, links); directBytes += bytes;
+                    }
+                }
+                return links;
+            };
             const visit = async (key, selected, selectedAssets) => {
                 const keyId = id(key);
                 if (selected.has(keyId)) return;
@@ -981,20 +1013,10 @@ export class SessionRepo {
                     return;
                 }
                 if (cached) cache.delete(keyId);
-                selected.set(keyId, key); findAssets(record.doc, selectedAssets);
-                const mark = child => visit(child, selected, selectedAssets);
-                if (key.kind === NATIVE_RESOURCE_KINDS.sessionState) {
-                    if (key.namespace === SESSION_CORE_NAMESPACE) for (const head of record.doc.personaHeads ?? []) await mark({ ...key, namespace: PERSONA_NAMESPACE, head });
-                    if (key.namespace === 'atri_timeline_index' && record.doc.level) for (const child of record.doc.children) await mark({ ...key, head: child.head });
-                    if (key.namespace === TIMELINE_NAMESPACE && record.doc.tree) await mark({ ...key, namespace: 'atri_timeline_index', head: record.doc.tree.head });
-                    if (key.namespace === HISTORY_REPLAY_NAMESPACE) await mark({ ...key, namespace: HISTORY_REPLAY_NODE_NAMESPACE, head: record.doc.head });
-                    if (key.namespace === HISTORY_REPLAY_NAMESPACE && record.doc.legacy) await mark({ ...key, namespace: HISTORY_REPLAY_NODE_NAMESPACE, head: record.doc.legacy.head });
-                    if (key.namespace === HISTORY_REPLAY_NODE_NAMESPACE) for (const head of Object.values(record.doc.children ?? {})) await mark({ ...key, head });
-                    if (key.namespace === ILLUSTRATION_NAMESPACE) for (const ref of record.doc.imageRefs ?? []) await mark({ ...key, namespace: IMAGE_VERSION_NAMESPACE, head: ref.head });
-                    if (deltaStateNamespace(key.namespace) && record.doc.kind === 'delta') await mark({ ...key, head: record.doc.baseHead });
-                    if (isRecordSnapshot(record.doc)) for (const head of recordSnapshotHeads(record.doc)) await mark({ ...key, namespace: RECORD_VALUE_NAMESPACE, head });
-                    if (isRecordPageSnapshot(record.doc)) for (const head of recordPageHeads(record.doc)) await mark({ ...key, namespace: RECORD_PAGE_NAMESPACE, head });
-                }
+                selected.set(keyId, key);
+                const links = dependencies(key, record, keyId);
+                for (const asset of links.assets) selectedAssets.add(asset);
+                for (const child of links.children) await visit(child, selected, selectedAssets);
             };
             const mark = async key => {
                 if (keys.has(id(key))) return;
