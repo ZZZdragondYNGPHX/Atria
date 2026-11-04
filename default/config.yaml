@@ -169,7 +169,7 @@ sso:
   # https://www.authelia.com/
   # This will use auto login to an account with the same username
   # as that used for authlia. (Ensure the username in authlia
-  # is an exact match in lowercase with that in sillytavern)
+  # is an exact match in lowercase with that in Atria)
   autheliaAuth: false
   # Enable's authentik based auto login. Only enable this if you
   # have setup and installed Authentik as a middle-ware on your
@@ -177,7 +177,7 @@ sso:
   # https://goauthentik.io/
   # This will use auto login to an account with the same username
   # as that used for authentik. (Ensure the username in authentik
-  # is an exact match in lowercase with that in sillytavern).
+  # is an exact match in lowercase with that in Atria).
   authentikAuth: false
   # List of trusted proxy IPs for SSO authentication.
   # Supports wildcards or CIDR notation for subnets.

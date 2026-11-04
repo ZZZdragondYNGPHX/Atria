@@ -82,7 +82,7 @@ await session.compactNodes({ type: 'event', childIds: [...], summary: '...' });
 
 ## 角色级 override 访问器
 
-除了 `openSession`，`'memory-graph'` 这个 extension api 还发布了六个访问器，给其他插件用于读取或写入活动角色卡上的 character-bound override。CardApp 的 `ctx.getMemoryGraphSchema` / `setMemoryGraphSchema` / `setMemoryGraphAdvanced`，以及 CardApp Studio 的工具 `character_get_memory_graph` / `character_update_memory_graph_schema` / `character_update_memory_graph_advanced` 都走这同一套接口。
+除了 `openSession`，`'memory-graph'` 这个 extension api 还发布了六个访问器，给其他插件用于读取或写入活动角色卡上的 character-bound override。
 
 ```js
 const mg = ctx.getExtensionApi('memory-graph');

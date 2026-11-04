@@ -337,7 +337,7 @@ deleteChatState(
 
 ## 楼层状态
 
-楼层状态在聊天状态之上加了一层薄封装：每次写入都会附带聊天尾部的位置（楼层索引 + swipe 编号）记到日志里，聊天结构变化时自动重放幸存提交。需要让状态跟着 swipe、删消息、切换聊天而不用手动对账的插件或 CardApp，应该用这套 API 而不是直接调用 `updateChatState`。
+楼层状态在聊天状态之上加了一层薄封装：每次写入都会附带聊天尾部的位置（楼层索引 + swipe 编号）记到日志里，聊天结构变化时自动重放幸存提交。需要让状态跟着 swipe、删消息、切换聊天而不用手动对账的插件，应该用这套 API 而不是直接调用 `updateChatState`。
 
 ### 工作方式
 
@@ -356,7 +356,7 @@ deleteChatState(
 createFloorState(options: { namespace: string }): Promise<FloorStateInstance>
 ```
 
-在插件或 CardApp 里使用 `getContext().createFloorState({ namespace })`。每个实例绑定一个命名空间；如果业务状态分多块，请创建多个实例。
+在插件 里使用 `getContext().createFloorState({ namespace })`。每个实例绑定一个命名空间；如果业务状态分多块，请创建多个实例。
 
 所有执行写入的实例方法（`update`、`patch`、`reset`、`destroy({ purge: true })`）和读取方法（`get`）都返回一个 envelope —— 它们永不抛出。
 
@@ -640,7 +640,7 @@ deleteCharacterState(
 | | 角色状态 | 聊天状态 |
 |------|------|------|
 | 作用范围 | 绑定到角色卡，所有聊天共享 | 绑定到单个聊天 |
-| 典型用途 | 角色级别的插件配置、CardApp 应用状态 | 聊天内的临时数据、对话上下文 |
+| 典型用途 | 角色级别的插件配置 | 聊天内的临时数据、对话上下文 |
 | API | `getCharacterState` / `getCharacterStateBatch` / `setCharacterState` / `updateCharacterState` / `deleteCharacterState` | `getChatState` / `getChatStateBatch` / `updateChatState` / `deleteChatState` |
 | 存储位置 | 卡片旁边的状态文件 | 聊天元数据 |
 

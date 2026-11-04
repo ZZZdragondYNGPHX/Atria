@@ -4,7 +4,7 @@ Announcements let an administrator broadcast a Markdown message to every local a
 
 - Telling other accounts about an upgrade that moved or renamed a UI element.
 - Notifying users about scheduled downtime or maintenance.
-- Acknowledging an incident ("I just restored the staging CardApp from backup, your bookmarks may be stale").
+- Acknowledging an incident ("I restored a workspace from backup; your bookmarks may be stale").
 
 If you run Atria on your own without other local accounts, this feature has nothing to do for you.
 

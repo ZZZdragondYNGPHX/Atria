@@ -35,7 +35,7 @@ import { isNativeGenerationFailure, executeFirstPartyGeneration, firstPartyGener
 
 // The RPM bucket (`_rpmTimestamps`) is module-private and therefore process-
 // wide: if a user has two iteration-studio popups open at once (e.g.
-// CardApp Studio + orchestrator's iteration popup), their requests queue
+// two orchestrator iteration popups), their requests queue
 // against the same window. This matches the user-facing concept of "I have
 // one backend rate limit," not per-popup quota.
 

@@ -249,7 +249,7 @@ getActiveWorldInfoPromptFields(): {
 
 ## 角色辅助世界书
 
-角色卡可以在主 `world` 字段之外声明额外的世界书绑定——例如 CardApp 可以为角色内置工具绑定额外的参考书。
+角色卡可以在主 `world` 字段之外声明额外的世界书绑定。
 
 ### getCharaAuxWorlds
 

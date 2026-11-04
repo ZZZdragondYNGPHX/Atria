@@ -1,6 +1,6 @@
 name: Feature Request ✨
 type: Feature
-description: Suggest an idea for future development of this project. Please use English only.
+description: Suggest an idea for future Atria development.
 title: '[FEATURE_REQUEST] <title>'
 labels: ['🦄 Feature Request']
 
@@ -67,19 +67,6 @@ body:
         - High (The app does not function without it)
     validations:
       required: true
-
-  # Field 7 - Can the user user test in staging
-  - type: dropdown
-    id: canTestStaging
-    attributes:
-      label: Are you willing to test this on staging/unstable branch if this is implemented?
-      description: Otherwise you'll need to wait until the next stable release after the feature is developed.
-      options:
-        - 'No'
-        - 'Maybe'
-        - 'Yes'
-    validations:
-      required: false
 
   # Final text
   - type: markdown

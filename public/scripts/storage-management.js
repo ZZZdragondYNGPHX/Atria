@@ -561,7 +561,10 @@ export class StorageCenterPanel {
         } catch (error) { if (!this.closed && generation === this.renderGeneration && scope === this.scope) this.error(error); }
     }
     async renderAdvanced() {
-        this.heading(regions.advanced); this.note('Legacy and unidentified data still count toward usage. Raw inspection does not grant broader business deletion rights.'); if (this.scope === 'browser') this.note('This device · Current site');
+        this.heading(regions.advanced);
+        this.note('Legacy and unidentified data still count toward usage. Raw inspection does not grant broader business deletion rights.');
+        if (this.scope === 'server') this.note('Other can include installed Works and their media. Manage them through the Library or storage center.');
+        if (this.scope === 'browser') this.note('This device · Current site');
         const mount = node('div', 'storage-center-inspector'); this.content.append(mount);
         const inspector = createStorageInspector({ provider: this.scope === 'server' ? new RestProvider({ kind: 'self' }) : new BrowserProvider(), mutator: this.scope === 'server' ? new RestMutator() : new BrowserMutator(), container: mount,
             onDeletePreview: this.scope === 'browser' ? path => this.preview('purge', [{ path }]) : null });

@@ -1,7 +1,7 @@
 import { renderInlineTextDiffHtml } from '../text-diff.js';
 
 /**
- * Render one tool call as a CardApp-Studio-style one-liner with optional
+ * Render one tool call as a one-line summary with optional
  * `<details>` expansion that shows friendly per-arg breakdown (not raw JSON).
  *
  * @param {{ id?: string, name: string, args?: object }} call

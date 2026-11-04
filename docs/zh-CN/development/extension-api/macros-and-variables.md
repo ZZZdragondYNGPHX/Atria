@@ -258,6 +258,6 @@ await ctx.setVariable('hp', 42, { floor: ctx.chat.length - 1 });
 | 数据形状 | 标量（字符串 / 数字） | 结构化对象 |
 | 桶 | 跟 <span v-pre>`{{getvar::k}}`</span> 共用 `chat_metadata.variables` | 独立 namespace，不进 macro 系统 |
 | 提交日志 | variable-op-log（楼层 `extra.var_ops`） | 楼层结构化提交日志（`__floor_log`） |
-| 适合 | 跟 AI 写的 <span v-pre>`{{setvar}}`</span> 共享存储的可回滚标量 | CardApp / 插件自己管理的可回滚结构化状态 |
+| 适合 | 跟 AI 写的 <span v-pre>`{{setvar}}`</span> 共享存储的可回滚标量 | 插件自己管理的可回滚结构化状态 |
 
 两个机制走的是各自独立的提交日志，**同一个 key 不要两边都写**——重建顺序无保证，容易互相覆盖。

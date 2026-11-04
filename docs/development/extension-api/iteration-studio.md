@@ -21,7 +21,7 @@ An Iteration Studio session is a popup chat between the user and an LLM that emi
 
 The shell does not carry a working copy of the artifact. `adapter.live()` is the single authority, called fresh whenever the shell needs the current value.
 
-**When iteration-studio doesn't fit:** if your surface needs viewport ownership (fullscreen IDE, mobile takeover) or already has a mature standalone UI you want to preserve, use [edits-lib](./edits-lib.md) directly — import `applyEdits` / `inverseEdit` / `showConflictResolution` from `/scripts/lib/edits/index.js` and own the UI yourself. CardApp Studio (`extensions/character-editor-assistant/studio/`) is the in-tree reference.
+**When iteration-studio doesn't fit:** if your surface needs viewport ownership (fullscreen IDE, mobile takeover) or already has a mature standalone UI you want to preserve, use [edits-lib](./edits-lib.md) directly — import `applyEdits` / `inverseEdit` / `showConflictResolution` from `/scripts/lib/edits/index.js` and own the UI yourself.
 
 ## Quick start: minimal adapter
 
@@ -130,7 +130,7 @@ type RunnerSettings = {
 };
 ```
 
-Returning `null` / `undefined` / `{}` keeps both defaults. The shell does not read raw fields from your settings blob — this hook is the only path. That lets each adapter expose its own settings UI (CPA surfaces both; CardApp Studio currently exposes neither) without the shell having to know your storage path. Transport selection (SSE vs one-shot POST) is handled by `generateTask` based on the resolved preset's `stream_openai`; adapters do not need to expose a toggle for it.
+Returning `null` / `undefined` / `{}` keeps both defaults. The shell does not read raw fields from your settings blob — this hook is the only path. That lets each adapter expose its own settings UI without the shell having to know your storage path. Transport selection (SSE vs one-shot POST) is handled by `generateTask` based on the resolved preset's `stream_openai`; adapters do not need to expose a toggle for it.
 
 ## Session storage
 
@@ -235,7 +235,7 @@ Per the Atria API convention, every shell capability is exposed at three layers 
 // Layer 1 — direct ESM import (in-tree extensions)
 import { openIterationStudio, defineAdapter } from '/scripts/iteration-studio/index.js';
 
-// Layer 2 — atriaContext property (CardApp / extension code with a context handle)
+// Layer 2 — atriaContext property (extension code with a context handle)
 const { openIterationStudio, defineAdapter } = atriaContext.iterationStudio;
 
 // Layer 3 — getContext (third-party extensions)

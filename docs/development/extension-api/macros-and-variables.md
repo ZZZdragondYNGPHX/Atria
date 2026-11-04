@@ -258,6 +258,6 @@ await ctx.setVariable('hp', 42, { floor: ctx.chat.length - 1 });
 | Data shape | Scalar (string / number) | Structured object |
 | Bucket | Shares `chat_metadata.variables` with <span v-pre>`{{getvar::k}}`</span> | Independent namespace, never reaches macros |
 | Commit log | variable-op-log (floor `extra.var_ops`) | Floor structured commit log (`__floor_log`) |
-| Use for | Rollback-friendly scalars co-owned with AI-written <span v-pre>`{{setvar}}`</span> | Plugin- or CardApp-managed rollback-friendly structured state |
+| Use for | Rollback-friendly scalars co-owned with AI-written <span v-pre>`{{setvar}}`</span> | Plugin-managed rollback-friendly structured state |
 
 The two mechanisms have independent commit logs. **Don't write the same key from both** — replay order isn't guaranteed across them, and you'll see one clobber the other.

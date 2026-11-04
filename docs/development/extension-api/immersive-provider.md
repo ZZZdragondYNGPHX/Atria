@@ -1,6 +1,6 @@
 # Immersive Provider API
 
-Atria immersive mode is a presentation layer over the existing chat runtime. Extensions may enrich that presentation without owning messages, generation, swipe state, World Info, Memory OS, LoreState, MVU, or CardApp state.
+Atria immersive mode is a presentation layer over the existing chat runtime. Extensions may enrich that presentation without owning messages, generation, swipe state, World Info, Memory OS, LoreState, MVU.
 
 ## Register a provider
 

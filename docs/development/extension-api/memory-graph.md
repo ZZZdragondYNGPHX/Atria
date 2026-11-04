@@ -82,7 +82,7 @@ For full signatures of each method, see the **Read API** and **Write API** secti
 
 ## Per-character override accessors
 
-Alongside `openSession`, the `'memory-graph'` extension api publishes six accessors that other plugins can use to read or persist a character-bound override on the active card. The same surface backs CardApp's `ctx.getMemoryGraphSchema` / `setMemoryGraphSchema` / `setMemoryGraphAdvanced` and the CardApp Studio tools `character_get_memory_graph` / `character_update_memory_graph_schema` / `character_update_memory_graph_advanced`.
+Alongside `openSession`, the `'memory-graph'` extension api publishes six accessors that other plugins can use to read or persist a character-bound override on the active card.
 
 ```js
 const mg = ctx.getExtensionApi('memory-graph');

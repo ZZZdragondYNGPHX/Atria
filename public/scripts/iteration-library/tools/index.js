@@ -20,8 +20,8 @@
  *     per-card user review and commit at Apply time.
  *   - ctx-and-docs-discovery.js — pure async executors for ctx
  *     introspection (listCtxKeys / describeCtxPath) and Atria doc lookup
- *     (listAtriaDocs / readAtriaDoc). Used by CardApp Studio AI chat and
- *     the orchestrator iter-studio. Callers pick their own tool names +
+ *     (listAtriaDocs / readAtriaDoc). Used by the orchestrator iter-studio.
+ *     Callers pick their own tool names +
  *     JSON-Schemas around these executors.
  *   - character-presets-reads.js — `inspect_bound_preset` read tool that
  *     lets iter popups (orchestrator iter-studio, CEA editor) enumerate

@@ -72,8 +72,7 @@ const zhCNSidebar = [
   items: [
   { text: 'Atria 是什么', link: '/zh-CN/guide/what-is-atria' },
   { text: '快速开始', link: '/zh-CN/guide/getting-started' },
-  { text: '从 SillyTavern 迁移', link: '/zh-CN/guide/migration' },
-  { text: '从 Termux 迁移到 APK', link: '/zh-CN/guide/migration-from-termux' },
+  { text: '备份与迁移', link: '/zh-CN/guide/migration' },
   { text: '基础配置', link: '/zh-CN/guide/configuration' },
   { text: '鉴权与安全', link: '/zh-CN/guide/authentication' },
   { text: '公告', link: '/zh-CN/guide/announcements' },
@@ -197,8 +196,7 @@ const zhTWSidebar = [
     items: [
       { text: 'Atria 是什麼', link: '/zh-TW/guide/what-is-atria' },
       { text: '快速開始', link: '/zh-TW/guide/getting-started' },
-      { text: '從 SillyTavern 遷移', link: '/zh-TW/guide/migration' },
-      { text: '從 Termux 遷移到 APK', link: '/zh-TW/guide/migration-from-termux' },
+      { text: '備份與遷移', link: '/zh-TW/guide/migration' },
       { text: '基礎配置', link: '/zh-TW/guide/configuration' },
       { text: '驗證與安全', link: '/zh-TW/guide/authentication' },
       { text: '公告', link: '/zh-TW/guide/announcements' },
@@ -322,8 +320,7 @@ const enSidebar = [
     items: [
       { text: 'What is Atria', link: '/guide/what-is-atria' },
       { text: 'Quick Start', link: '/guide/getting-started' },
-      { text: 'Migrating from SillyTavern', link: '/guide/migration' },
-      { text: 'Migrating from Termux to the APK', link: '/guide/migration-from-termux' },
+      { text: 'Backup and transfer', link: '/guide/migration' },
       { text: 'Configuration', link: '/guide/configuration' },
       { text: 'Authentication & Security', link: '/guide/authentication' },
       { text: 'Announcements', link: '/guide/announcements' },

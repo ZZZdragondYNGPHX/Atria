@@ -2,6 +2,17 @@
 
 Atria is a **SillyTavern-based modified role-playing product** focused on richer memory, orchestration, authoring/runtime, storage tooling and Atria-specific UX.
 
+## Getting started
+
+Install Node.js 22.2 or newer, then run from the repository root:
+
+```sh
+npm ci
+npm start
+```
+
+Open `http://localhost:8000` after the server starts. See the [getting started guide](docs/guide/getting-started.md), [Android build guide](android-app/README.md) and [product documentation](docs/README.md) for more options.
+
 ## Branch model
 
 - `main` — stable Atria product/source line.
@@ -29,4 +40,4 @@ New Atria-owned modules should prefer concise `atri_*` naming where practical. I
 
 ## License
 
-AGPL-3.0
+AGPL-3.0; see [LICENSE](LICENSE) and [NOTICE](NOTICE.md) for attribution.

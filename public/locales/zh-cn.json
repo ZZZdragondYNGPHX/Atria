@@ -10038,6 +10038,7 @@
     "Operation ${0}: ${1}": "操作 ${0}：${1}",
     "There are no recorded operations.": "暂无操作记录。",
     "Legacy and unidentified data still count toward usage. Raw inspection does not grant broader business deletion rights.": "旧版与未识别数据仍计入占用。原始存储检查不会赋予更宽的业务删除权限。",
+    "Other can include installed Works and their media. Manage them through the Library or storage center.": "“其他”可能包含已安装的作品及其媒体，请通过资料库或存储中心管理。",
     "Unavailable": "暂不可用",
     "Resume reviewed recovery": "继续已核对的恢复流程",
     "Manage this resource through its Prompt preset.": "请通过所属提示词预设管理此资源。",

@@ -1,5 +1,5 @@
 /**
- * Floor State — instance-based API for plugins / CardApps.
+ * Floor State — instance-based API for plugins.
  *
  * Each instance owns one chat-state namespace (the "data" namespace) and
  * a private commit log stored in a sibling namespace (`<ns>__floor_log`).
@@ -159,8 +159,8 @@ export async function createFloorState(options) {
 }
 
 /**
- * Synchronous variant accepting injected deps. Exported for tests; CardApp
- * and plugin code should prefer createFloorState() above.
+ * Synchronous variant accepting injected deps. Plugin code should prefer
+ * createFloorState() above.
  *
  * @param {{ namespace: string }} options
  * @param {object} deps

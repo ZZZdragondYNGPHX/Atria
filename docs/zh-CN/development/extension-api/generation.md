@@ -86,7 +86,6 @@ context.generateTask({
 - 角色卡编辑器 —— AI 在改包含 <span v-pre>`{{user}}`</span> / <span v-pre>`{{char}}`</span> 占位符的卡字段。
 - 世界书 diff 分析 —— diff payload 里的世界书条目里那些 <span v-pre>`{{...}}`</span> 本身就是分析对象。
 - 预设编辑器 —— AI 在改给最终用户使用的提示词预设正文，正文里携带 <span v-pre>`{{...}}`</span> 宏。
-- CardApp Studio AI —— 对话里可能引用源文本片段供助手修改。
 
 判断原则：
 

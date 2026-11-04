@@ -89,7 +89,6 @@ Concrete examples already in this codebase:
 - Character card editor — AI is editing card fields that include <span v-pre>`{{user}}`</span> / <span v-pre>`{{char}}`</span> placeholders.
 - Lorebook diff analysis — the diff payload contains lorebook entries whose <span v-pre>`{{...}}`</span> placeholders are part of the comparison.
 - Preset editor — AI is editing prompt-preset bodies that ship <span v-pre>`{{...}}`</span> macros for end-user rendering.
-- CardApp Studio AI — conversations may quote source-text fragments that the assistant is asked to modify.
 
 Rule of thumb:
 

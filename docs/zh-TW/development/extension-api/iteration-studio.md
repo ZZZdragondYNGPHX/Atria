@@ -21,7 +21,7 @@
 
 外殼不持有工件的工作副本。`adapter.live()` 是唯一權威源，外殼每次需要當前值時都重新呼叫它。
 
-**迭代工作台不合適的時候：** 如果你的介面需要 viewport 所有權（全屏 IDE、行動端接管），或者已經有一套成熟的獨立 UI 想保留，直接用 [edits-lib](./edits-lib.md) —— 從 `/scripts/lib/edits/index.js` import `applyEdits` / `inverseEdit` / `showConflictResolution`，自己控制 UI。CardApp Studio（`extensions/character-editor-assistant/studio/`）是倉庫內的參考實作。
+**迭代工作台不合適的時候：** 如果你的介面需要 viewport 所有權（全屏 IDE、行動端接管），或者已經有一套成熟的獨立 UI 想保留，直接用 [edits-lib](./edits-lib.md) —— 從 `/scripts/lib/edits/index.js` import `applyEdits` / `inverseEdit` / `showConflictResolution`，自己控制 UI。
 
 ## 快速上手：最小適配器
 
@@ -130,7 +130,7 @@ type RunnerSettings = {
 };
 ```
 
-回傳 `null` / `undefined` / `{}` 即採用全部預設值。外殼不會直接讀取你的 settings 欄位——只走這一個 hook。這樣每個適配器可以自由暴露自己的設定 UI（CPA 兩項都暴露；CardApp Studio 都不暴露），外殼不需要知道你的儲存路徑。底層傳輸（SSE / 一次性 POST）由 `generateTask` 依解析後預設的 `stream_openai` 決定，適配器不需要再暴露相應開關。
+回傳 `null` / `undefined` / `{}` 即採用全部預設值。外殼不會直接讀取你的 settings 欄位——只走這一個 hook。這樣每個適配器可以自由暴露自己的設定 UI，外殼不需要知道你的儲存路徑。底層傳輸（SSE / 一次性 POST）由 `generateTask` 依解析後預設的 `stream_openai` 決定，適配器不需要再暴露相應開關。
 
 ## 會話存儲
 
@@ -235,7 +235,7 @@ clearObsoleteSessions: async () => {
 // Layer 1 —— 直接 ESM import（倉庫內擴展）
 import { openIterationStudio, defineAdapter } from '/scripts/iteration-studio/index.js';
 
-// Layer 2 —— atriaContext 屬性（持有 context 的 CardApp / 擴展程式碼）
+// Layer 2 —— atriaContext 屬性（持有 context 的擴展程式碼）
 const { openIterationStudio, defineAdapter } = atriaContext.iterationStudio;
 
 // Layer 3 —— getContext（第三方擴展）

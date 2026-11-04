@@ -394,17 +394,17 @@ export const AVATAR_HEIGHT = 768;
 export const DEFAULT_AVATAR_PATH = path.join(serverDirectory, 'public', 'img', 'avatar-default.png');
 
 export const OPENROUTER_HEADERS = {
-    'HTTP-Referer': 'https://sillytavern.app',
+    'HTTP-Referer': 'https://github.com/ZZZdragondYNGPHX/Atria',
     'X-Title': 'Atria',
 };
 
 export const AIMLAPI_HEADERS = {
-    'HTTP-Referer': 'https://sillytavern.app',
+    'HTTP-Referer': 'https://github.com/ZZZdragondYNGPHX/Atria',
     'X-Title': 'Atria',
 };
 
 export const FEATHERLESS_HEADERS = {
-    'HTTP-Referer': 'https://sillytavern.app',
+    'HTTP-Referer': 'https://github.com/ZZZdragondYNGPHX/Atria',
     'X-Title': 'Atria',
 };
 

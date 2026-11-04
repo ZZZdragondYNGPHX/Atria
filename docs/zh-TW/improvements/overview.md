@@ -20,7 +20,7 @@ Atria 對 SillyTavern 的改進不是簡單的功能堆疊，而是從資料傳�
 | 基礎設施 | [認證與配額](/zh-TW/improvements/auth-and-quota) | OAuth 登入、多使用者認證與儲存配額管理 |
 | 基礎設施 | [其他改進](/zh-TW/improvements/other) | 連線管理器增強、提示詞/預設分組、動態模型列表等 |
 
-獨有功能模組（記憶圖、編排器、角色編輯助手、搜尋工具、CardApp 等）請參閱 [獨有功能](/zh-TW/features/memory-graph) 分類。
+記憶圖、編排器、角色編輯助手、搜尋工具等模組請參閱[功能](/zh-TW/features/memory-graph)分類。
 
 ## 架構改進
 

@@ -1,54 +1,7 @@
-# Android App
+# Android app
 
-Atria provides an Android APK version that lets you run Atria directly on your phone without relying on a cloud server or terminal tools like Termux.
+The Atria Android app can run the bundled server locally or connect to a configured remote endpoint. In local mode it starts the server and opens the interface in a WebView.
 
-## Overview
+An APK may be built locally from this repository. See the [Android build guide](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/android-app/README.md) for requirements, signing and output paths. Availability of a published APK depends on whether a release has been provided.
 
-After installing the APK, opening the app displays the full Atria interface — no need to visit a URL in a separate browser. The app bundles the complete Atria server and frontend as a standalone application.
-
-## Download
-
-Download the latest APK from the GitHub Releases page:
-
-👉 [https://github.com/ZZZdragondYNGPHX/Atria/releases/latest](https://github.com/ZZZdragondYNGPHX/Atria/releases/latest)
-
-Download the `.apk` file, then open it on your phone and follow the system prompts to complete installation.
-
-::: tip
-On first install, Android may warn about "unknown sources." You'll need to allow installation from this source in your system settings.
-:::
-
-## Usage
-
-After installation, open the Atria app:
-
-1. The app automatically starts the built-in Atria server
-2. Once the interface loads, you'll see the same Atria interface as the desktop version
-3. Configure API connections, import character cards, start chatting — all operations are identical to the desktop version
-
-You don't need to manually enter any address or port; the app handles everything automatically.
-
-## Feature Differences from Desktop
-
-The Android version is functionally equivalent to the desktop version. You can use all core features, including multiple API connections, character card management, world info, presets, and more.
-
-Due to differences in screen size and interaction methods on mobile devices, some interface layouts are automatically adapted for mobile display.
-
-## Mobile Optimizations
-
-Atria includes several optimizations for mobile devices:
-
-- **Virtual keyboard handling** — Prevents interface jumping when the keyboard appears
-- **IME compatibility** — Properly handles CJK and other IME composition input
-- **Dialog adaptation** — Dialogs and popups display correctly on small screens
-- **Touch interaction improvements** — Reduces accidental swipe triggers and improves touch experience
-- **Performance optimization** — Reduces resource loading pressure at startup, adapting to mobile device memory constraints
-
-::: warning
-Due to Android device performance and memory limitations, handling very large amounts of chat logs or character cards may be slightly slower than on desktop. It's recommended to periodically clean up unnecessary data.
-:::
-
-## Related Pages
-
-- [Getting Started](/guide/getting-started) — Complete installation guide
-- [Configuration](/guide/configuration) — Configuration reference
+The preferred data root is `Android/data/com.atria.app/files/atria-data`; the app uses internal storage if external app storage is unavailable. Keep a separate [backup](/guide/migration) before changing builds or uninstalling the app.

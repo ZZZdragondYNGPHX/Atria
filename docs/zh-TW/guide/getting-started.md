@@ -104,13 +104,7 @@ docker compose up -d
 
 ## 安裝方式三：Android APK
 
-Atria 提供 Android APP，你可以直接在手機上執行 Atria，無需依賴雲端伺服器或 Termux。
-
-前往 GitHub Release 頁面下載最新版 APK：
-
-👉 [https://github.com/ZZZdragondYNGPHX/Atria/releases/latest](https://github.com/ZZZdragondYNGPHX/Atria/releases/latest)
-
-下載並安裝 APK 後，開啟應用即可直接使用。
+Android 應用程式支援本機服務或已設定的遠端服務。建置和資料目錄說明見 [Android 指南](/zh-TW/guide/android)。
 
 ## 首次設定
 
@@ -123,7 +117,7 @@ http://localhost:8000
 ```
 
 ::: tip Android 使用者
-APK 版本是一個獨立的 App，開啟後直接顯示完整介面，不需要另外使用瀏覽器存取地址。
+Android 應用程式使用本機模式時會直接開啟介面，無需另用瀏覽器存取地址。
 :::
 
 ### 設定 API 連線
@@ -146,18 +140,12 @@ APK 版本是一個獨立的 App，開啟後直接顯示完整介面，不需要
 
 了解更多請參閱 [角色卡基礎](/zh-TW/basics/character-cards)。
 
-## 從 SillyTavern 遷移
+## 備份與遷移
 
-Atria 完全相容 SillyTavern 的資料。如果你是 SillyTavern 使用者，可以直接將 `data` 目錄複製到 Atria 中使用。如果之後不想用 Atria 了，也可以隨時降級回 SillyTavern，資料不會被破壞。
-
-::: warning 備份提醒
-雖然 Atria 相容 SillyTavern 資料，但在遷移前仍建議做好備份。
-:::
-
-詳細遷移指南請參閱 [從 SillyTavern 遷移](/zh-TW/guide/migration)。
+Atria 封存及舊資料匯入的範圍見[備份與遷移](/zh-TW/guide/migration)。
 
 ## 下一步
 
 - [設定 API 連線](/zh-TW/basics/connections) — 連接你的 LLM 服務
 - [了解角色卡](/zh-TW/basics/character-cards) — 開始你的第一次角色扮演
-- [從 SillyTavern 遷移](/zh-TW/guide/migration) — 如果你是 SillyTavern 使用者
+- [備份與遷移](/zh-TW/guide/migration) — 在 Atria 安裝之間遷移資料

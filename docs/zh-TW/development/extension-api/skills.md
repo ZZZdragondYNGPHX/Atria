@@ -1,6 +1,6 @@
 # Skills
 
-`context.skills.*` 是用於安裝、讀取、編輯、打包 Skills 的 JavaScript 介面。擴充透過 `Atria.getContext()` 拿到它；CardApp 在自己的 `ctx.skills` 上拿到同樣的形狀。
+`context.skills.*` 是用於安裝、讀取、編輯、打包 Skills 的 JavaScript 介面。擴充透過 `Atria.getContext()` 取得它。
 
 Skill 是供獲授權消費者使用的[知識包](/zh-TW/features/skills/)；這套 API 是支撐 Skill 管理子面板、內嵌編輯器、迭代工作台 17 個 Skill 工具的讀寫傳輸層。
 
@@ -13,14 +13,7 @@ Skill 是供獲授權消費者使用的[知識包](/zh-TW/features/skills/)；�
 ```js
 const context = Atria.getContext();
 const skills = context.skills;
-
-// 或者透過 CardApp ctx（同樣形狀）:
-async function init(ctx) {
-  await ctx.skills.list({ scope: 'all' });
-}
 ```
-
-CardApp ctx 介面是底層同一組函式的薄包裝 —— 呼叫簽名與返回形狀相同（遵循 Atria 的 [API 對等約定](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/docs/development/extension-api/index.md)）。
 
 ## scope 形狀
 
@@ -356,27 +349,6 @@ try {
   }
 }
 ```
-
-## CardApp 對等
-
-CardApp 的 `ctx.skills` 介面與 `context.skills.*` 1:1 鏡像 —— 簽名相同、返回形狀相同。CardApp 可以套用同樣的範式：
-
-```js
-async function init(ctx) {
-  // 列出此 CardApp API 暴露的 Skill 庫存。
-  const skills = await ctx.skills.list({ scope: 'all' });
-
-  // 讀一個 Skill 的正文
-  const { content } = await ctx.skills.readFile({
-    scope: { kind: 'character', characterFile: ctx.characterFile },
-    name: 'card-voice-rules',
-  });
-
-  ctx.setVariable('voice_rules', content);
-}
-```
-
-`ctx.skills` 包裝層有意保持很薄 —— 永遠不會比 `getContext().skills` 富。新的 API 添加會同時落在兩處。
 
 ## 相關
 

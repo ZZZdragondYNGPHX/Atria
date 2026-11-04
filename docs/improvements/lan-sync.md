@@ -6,7 +6,7 @@ LAN Sync keeps two Atria instances on the same network in sync — desktop and p
 
 Atria has two ways to move data between devices:
 
-- **[Migrate](/guide/migration)** — one-time, full-data transfer. Best for first install on a new device.
+- **[Backup and transfer](/guide/migration)** — create a Native archive for Works, Sessions, Library, Runtime and projects.
 - **LAN Sync** (this page) — repeated, two-way, incremental. Best when both devices are in regular use.
 
 ## Quick start
@@ -54,7 +54,7 @@ The `settings.json` file holds everything from "current chat" to "active preset"
 By default, LAN Sync moves:
 
 - Character cards, chats, group chats, world books
-- CardApps and skills
+- Skills
 - Presets (OpenAI / NovelAI / KoboldAI / TextGen), instruct / context / system prompt / reasoning templates
 - Themes, moving UI layouts, quick replies
 - Backgrounds, user avatars, uploaded files, user images

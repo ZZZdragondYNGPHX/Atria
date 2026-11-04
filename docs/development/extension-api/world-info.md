@@ -249,7 +249,7 @@ Returns the most recent World Info `before`/`after` fragments captured during th
 
 ## Character Auxiliary World Books
 
-Character cards can declare auxiliary World Info bindings beyond the primary `world` field — for example, a CardApp may bind extra reference books for in-character tools.
+Character cards can declare auxiliary World Info bindings beyond the primary `world` field.
 
 ### getCharaAuxWorlds
 

@@ -164,7 +164,7 @@ history instead of re-reading every old Variant. Rewrites, branch changes and
 checkpoints reconstruct history. A fresh full snapshot still loads full history;
 this API does not silently truncate a game or its save data.
 
-FS Native publication uses the [storage durable commit contract](../../src/storage/README.md#native-durable-commit-contract).
+FS Native publication uses the [storage durable commit contract](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/src/storage/README.md#native-durable-commit-contract).
 The previous per-file journal writer/overlay is removed; its decoder remains
 only for migration recovery. SQL rows own their decoded JSON; internal integrity
 comparisons read metadata without decoding the document. An internal row captures

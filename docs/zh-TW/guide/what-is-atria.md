@@ -1,105 +1,12 @@
 # Atria 是什麼
 
-Atria 是基於 [SillyTavern](https://github.com/SillyTavern/SillyTavern) 深度重構的角色扮演聊天平台。它保留了 SillyTavern 成熟的角色卡生態和資料格式相容性，同時在資料傳輸架構、擴充能力和內建工具鏈上進行了大量創新，為角色扮演場景提供更高效、更強大的體驗。
+Atria 是源自 SillyTavern 的角色扮演與互動作品平台。它將對話、Native 作品和工作階段與創作、記憶、Agent 編排及資源管理工具結合在一起。
 
-Atria 完全相容 SillyTavern 的資料——角色卡、世界書、預設均可直接使用，遷移成本為零。如果你不想繼續使用 Atria，也可以隨時降級回 SillyTavern，資料不會被破壞。
+- **Play 和 Library** 用於存取已安裝的作品及其工作階段。
+- **Build → Atria Studio** 提供專案編輯、預覽和打包工具。
+- **Runtime** 管理連線和生成設定。
+- 儲存中心提供用量、清理建議和還原操作。
 
-## 為什麼選擇 Atria
+詳細說明見[快速開始](/zh-TW/guide/getting-started)、[Native 編排](/zh-TW/features/native-orchestration)和[儲存管理](/zh-TW/features/storage-inspector)。
 
-SillyTavern 是一款優秀的角色扮演前端，擁有活躍的社群和豐富的角色卡生態。Atria 在此基礎上，針對以下方向做了系統性改進：
-
-### 更高效的資料傳輸
-
-SillyTavern 的大部分儲存操作採用全量傳輸——每次編輯訊息、切換設定、修改世界書，都會將完整資料傳送到後端。對於雲端部署的使用者，這意味著顯著的流量消耗。
-
-Atria 引入了增量同步機制，統一使用遵循 [RFC 6902](https://datatracker.ietf.org/doc/html/rfc6902) 標準的 patch 端點。以前開關一個外掛設定可能傳輸 3MB 資料，現在不到 200 位元組。儲存操作還支援延遲觸發和衝突偵測，從根本上避免了並行寫入導致的資料損壞。
-
-### 更強的擴充能力
-
-Atria 為外掛開發者提供了更豐富的基礎設施：角色/預設狀態 API、託管正則提供者、統一的擴充注入設定、函式呼叫執行環境等。外掛可以方便地複用使用者已有的 API 預設和聊天補全預設，無需重複設定。
-
-### 內建專業工具鏈
-
-Atria 內建了多個面向角色扮演場景的專業工具——記憶圖、多 Agent 編排、角色卡編輯助手、搜尋外掛等，開箱即用，無需額外安裝第三方擴充。
-
-## 核心特性概覽
-
-### 記憶圖（Memory Graph）
-
-基於知識圖譜結構的角色記憶系統。將角色扮演中的事件、人物、地點、主線等資訊組織為圖結構，透過認知層處理、向量索引檢索和擴散式記憶傳播實現智慧記憶召回。召回模型可以在圖中多輪深挖，找出與當前劇情最相關的記憶節點注入創作上下文。
-
-→ [記憶圖詳細文件](/zh-TW/features/memory-graph)
-
-### 多 Agent 編排（Orchestrator）
-
-在創作 LLM 生成回覆之前，自動執行多個 Agent 進行劇情分析和編排。提供三種執行模式：Spec 工作流（預定義階段和節點）、單 Agent 模式和 Agenda 規劃器（動態排程）。編排設定可綁定到角色卡並隨角色卡匯入匯出。
-
-→ [多 Agent 編排詳細文件](/zh-TW/features/native-orchestration)
-
-### 角色卡編輯助手（CEA）
-
-面向 SillyTavern 相容角色卡和世界書的 AI 輔助編輯工具，提供自然語言修改、diff 審批和迭代歷史。Native 遊戲 / 專案製作已統一遷移到 Build → Atria Studio。
-
-### Native Build / Atria Studio / Project Agent
-
-Build 是 Atria 的正式製作入口。Atria Studio 提供專案資源樹、結構化編輯、UI Builder、Source、Preview、Simulation、Build、Problems、Changes 和 Git History；
-
-### 搜尋外掛（Search Tools）
-
-為 AI 提供聯網搜尋能力，支援 DuckDuckGo、SearXNG、Brave Search 等搜尋引擎後端。提供兩種工作模式：作為創作 LLM 的可呼叫工具，或作為預請求 Agent 在生成前自動搜尋並將結果寫入世界書。
-
-→ [搜尋外掛詳細文件](/zh-TW/features/search-tools)
-
-### 預設解耦
-
-SillyTavern 中 API 預設和聊天補全預設是連動切換的。Atria 將兩者解耦，切換 API 連線不會連帶切換聊天補全預設，你可以自由搭配不同的 LLM 後端和提示詞預設。
-
-### 增量同步
-
-世界書、聊天記錄、使用者設定等內容的儲存統一使用遵循 RFC 6902 標準的 patch 端點，大幅減少資料傳輸量。搭配延遲觸發和衝突偵測（409 回應），確保多端場景下的資料一致性。
-
-### 函式呼叫執行環境（Function Call Runtime）
-
-統一的函式呼叫 / 工具呼叫執行環境，支援兩種模式：
-
-- **原生工具呼叫**：相容 OpenAI、Claude、Gemini 等 API 的原生 tool call 格式
-- **純文字函式呼叫**：透過文字協定實現工具呼叫，適用於不支援原生工具呼叫的模型
-
-### 提示詞分組 & 預設分組
-
-預設管理器和提示詞管理器支援可摺疊的分組系統，方便組織和管理大量預設與提示詞條目。
-
-### 角色卡綁定預設與人設
-
-角色卡可以綁定專屬的聊天補全預設和使用者人設（Persona）。綁定的預設和人設獨立於全域列表，不會污染使用者的全域設定，關閉角色卡聊天後自動消失，並可隨角色卡匯入匯出。角色卡開發者不必再要求使用者手動匯入專屬預設。
-
-### 認證與配額
-
-支援 GitHub / Discord OAuth 登入，管理員可為每位使用者設定空間大小配額。Discord 登入可額外要求使用者必須在指定伺服器中或擁有特定身分組。
-
-::: tip 更多特性
-Atria 還包含許多其他改進：Undo Toast 復原系統、聊天人設鎖定（Chat Persona Lock）、動態模型列表、世界書啟用鏈路追蹤、預設關聯世界書、大量行動裝置 / Android 適配最佳化、啟動效能最佳化等。這些特性將在各自的專題頁面中詳細介紹。
-:::
-
-## 相容性
-
-Atria 與 SillyTavern 保持資料格式層面的完全相容：
-
-| 資料類型 | 相容性 |
-|---------|--------|
-| 角色卡（PNG/JSON） | ✅ 完全相容，可雙向匯入匯出 |
-| 世界書 / Lorebook | ✅ 完全相容 |
-| 聊天記錄 | ✅ 完全相容 |
-| 聊天補全預設 | ✅ 完全相容 |
-| 第三方擴充 | ✅ 相容，支援 isomorphic-git 回退 |
-| 使用者設定 | ✅ 完全相容 |
-
-::: info 雙向遷移
-你可以隨時從 SillyTavern 遷移到 Atria，也可以從 Atria 降級回 SillyTavern。Atria 新增的功能資料（如記憶圖、編排設定等）儲存在獨立的狀態檔案中，不會影響 SillyTavern 的核心資料結構。但仍建議在遷移前做好備份。
-:::
-
-## 下一步
-
-準備好開始使用了嗎？
-
-→ [快速開始](/zh-TW/guide/getting-started) — 安裝和部署 Atria
+Atria 可以匯入支援的角色卡檔案。其資料、設定和擴充已經獨立演進，不保證與 SillyTavern 完全相容或無損雙向遷移；遷移前請參閱[備份與遷移](/zh-TW/guide/migration)。

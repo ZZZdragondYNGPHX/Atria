@@ -16793,7 +16793,7 @@ export function select_rm_info(type, charId, previousCharId = null) {
  */
 export function select_selected_character(chid, { switchMenu = true } = {}) {
     if (nativeSessionRuntime.active) {
-        nativeSessionRuntime.denyCommittedAction('Character/CardApp editor');
+        nativeSessionRuntime.denyCommittedAction('Character editor');
         return;
     }
     const character = characters[chid];
@@ -16842,11 +16842,6 @@ export function select_selected_character(chid, { switchMenu = true } = {}) {
     $('#depth_prompt_role').val(getCharacterDepthPromptRole(character) ?? depth_prompt_role_default);
     $('#talkativeness_slider').val(getCharacterTalkativeness(character) ?? talkativeness_default);
     $('#mes_example_textarea').val(getCharacterMesExample(character));
-
-    // Populate CardApp settings
-    const cardAppConfig = character.data?.extensions?.card_app;
-    $('#card_app_enabled').prop('checked', !!cardAppConfig?.enabled);
-    $('#card_app_entry').val(cardAppConfig?.entry || 'index.js');
 
     $('#selected_chat_pole').val(character.chat);
     $('#create_date_pole').val(timestampToMoment(character.create_date).toISOString());
@@ -17872,7 +17867,7 @@ function getDotPath(target, dottedPath) {
  * and silently roll back data-driven writes.
  *
  * Only fields actually exposed in `#form_create` belong here. Deeply
- * nested data (e.g. `extensions.card_app.enabled`) doesn't have a
+ * nested extension data doesn't have a
  * dedicated form field — those are round-tripped via the
  * `extensions` JSON blob and don't need DOM sync.
  */
@@ -17946,7 +17941,7 @@ function syncCharacterFormFromData(charId, keys) {
  * that may run while the editor is closed.
  *
  * Emits `event_types.CHARACTER_FIELDS_UPDATED` with `{ charId, keys }`
- * after the in-memory write so views (open popup, CardApp UI) can sync
+ * after the in-memory write so views such as an open popup can sync
  * themselves from the canonical data.
  *
  * @param {number|string} charId Index into `characters[]`.
@@ -20031,33 +20026,6 @@ jQuery(async function () {
     $('#favorite_button').on('click', function () {
         updateFavButtonState(!fav_ch_checked);
         if (menu_type != 'create') {
-            saveCharacterDebounced();
-        }
-    });
-
-    // CardApp settings save handlers
-    $('#card_app_enabled').on('change', function () {
-        if (menu_type === 'create') {
-            if (!create_save.extensions) create_save.extensions = {};
-            if (!create_save.extensions.card_app) create_save.extensions.card_app = {};
-            create_save.extensions.card_app.enabled = !!$(this).prop('checked');
-        } else if (this_chid !== undefined && characters[this_chid]) {
-            if (!characters[this_chid].data.extensions) characters[this_chid].data.extensions = {};
-            if (!characters[this_chid].data.extensions.card_app) characters[this_chid].data.extensions.card_app = {};
-            characters[this_chid].data.extensions.card_app.enabled = !!$(this).prop('checked');
-            saveCharacterDebounced();
-        }
-    });
-    $('#card_app_entry').on('input', function () {
-        const entry = String($(this).val() || 'index.js').trim();
-        if (menu_type === 'create') {
-            if (!create_save.extensions) create_save.extensions = {};
-            if (!create_save.extensions.card_app) create_save.extensions.card_app = {};
-            create_save.extensions.card_app.entry = entry;
-        } else if (this_chid !== undefined && characters[this_chid]) {
-            if (!characters[this_chid].data.extensions) characters[this_chid].data.extensions = {};
-            if (!characters[this_chid].data.extensions.card_app) characters[this_chid].data.extensions.card_app = {};
-            characters[this_chid].data.extensions.card_app.entry = entry;
             saveCharacterDebounced();
         }
     });

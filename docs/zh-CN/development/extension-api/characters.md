@@ -209,7 +209,7 @@ await ctx.updateCharacterData(ctx.characterId, { 'extensions.world': 'my_book' }
 
 跟现有的 `saveCharacterDebounced` / 表单路径互补 — 弹窗打开时仍走表单（那时表单是 source of truth）。`updateCharacterData` 是面向 AI 工具、slash command、以及其他可能在编辑器关闭时运行的程序化调用方的数据驱动替代路径。
 
-写入 in-memory 后会触发 [`event_types.CHARACTER_FIELDS_UPDATED`](#character_fields_updated-event)，携带 `{ charId, keys }`，让 view （打开的弹窗、CardApp UI） 从权威 data sync。
+写入 in-memory 后会触发 [`event_types.CHARACTER_FIELDS_UPDATED`](#character_fields_updated-event)，携带 `{ charId, keys }`，让 view （打开的弹窗） 从权威 data sync。
 
 | 选项 | 默认 | 含义 |
 |---|---|---|
@@ -238,7 +238,7 @@ persistCharacterDataDebounced(charId: number | string): void
 
 ### `character_fields_updated` event
 
-`updateCharacterData` mutate `characters[charId].data` 之后、持久化完成之前触发。监听器接收 `{ charId, keys }`，`keys` 是 patch 里的 dot-path 数组。用它来 sync view（弹窗表单、CardApp 面板）而无需轮询。
+`updateCharacterData` mutate `characters[charId].data` 之后、持久化完成之前触发。监听器接收 `{ charId, keys }`，`keys` 是 patch 里的 dot-path 数组。用它来 sync view（弹窗表单）而无需轮询。
 
 ```js
 const ctx = Atria.getContext();

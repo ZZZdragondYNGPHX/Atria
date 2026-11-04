@@ -104,13 +104,7 @@ docker compose up -d
 
 ## Method 3: Android APK
 
-Atria provides an Android app that lets you run Atria directly on your phone without relying on a cloud server or Termux.
-
-Download the latest APK from the GitHub Releases page:
-
-👉 [https://github.com/ZZZdragondYNGPHX/Atria/releases/latest](https://github.com/ZZZdragondYNGPHX/Atria/releases/latest)
-
-Download and install the APK, then open the app to start using it right away.
+The Android app supports a local server or a configured remote endpoint. See the [Android guide](/guide/android) for build and data details.
 
 ## Initial Setup
 
@@ -123,7 +117,7 @@ http://localhost:8000
 ```
 
 ::: tip Android Users
-The APK version is a standalone app — it displays the full interface when opened, no need to visit a URL in a separate browser.
+In local mode, the Android app opens the interface without a separate browser.
 :::
 
 ### Configure API Connection
@@ -146,18 +140,12 @@ Once the API is configured, you can:
 
 Learn more at [Character Cards](/basics/character-cards).
 
-## Migrating from SillyTavern
+## Backup and transfer
 
-Atria is fully compatible with SillyTavern data. If you're a SillyTavern user, you can simply copy the `data` directory into Atria. If you later decide to stop using Atria, you can downgrade back to SillyTavern at any time without data loss.
-
-::: warning Backup Reminder
-Although Atria is compatible with SillyTavern data, it's still recommended to back up before migrating.
-:::
-
-For a detailed migration guide, see [Migrating from SillyTavern](/guide/migration).
+See [Backup and transfer](/guide/migration) for Atria archives and the limits of importing older data.
 
 ## Next Steps
 
 - [Configure API Connections](/basics/connections) — Connect your LLM service
 - [Learn about Character Cards](/basics/character-cards) — Start your first roleplay
-- [Migrate from SillyTavern](/guide/migration) — If you're a SillyTavern user
+- [Backup and transfer](/guide/migration) — Move data between Atria installations

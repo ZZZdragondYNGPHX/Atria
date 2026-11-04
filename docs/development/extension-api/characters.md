@@ -209,7 +209,7 @@ await ctx.updateCharacterData(ctx.characterId, { 'extensions.world': 'my_book' }
 
 Companion to the existing `saveCharacterDebounced` / form path — that route is still used when the popup *is* open (the form is the source of truth in that mode). `updateCharacterData` is the data-driven alternative for AI tools, slash commands, and any other caller that may run while the editor is closed.
 
-Emits [`event_types.CHARACTER_FIELDS_UPDATED`](#character_fields_updated-event) with `{ charId, keys }` after the in-memory write, so views (open popup, CardApp UI) can sync from canonical data.
+Emits [`event_types.CHARACTER_FIELDS_UPDATED`](#character_fields_updated-event) with `{ charId, keys }` after the in-memory write, so views (open popup) can sync from canonical data.
 
 | Option | Default | Meaning |
 |---|---|---|
@@ -238,7 +238,7 @@ Schedule a debounced `persistCharacterData(charId)` call (per-character — conc
 
 ### `character_fields_updated` event
 
-Fires after `updateCharacterData` mutates `characters[charId].data` and before persistence completes. Listeners receive `{ charId, keys }` where `keys` is the dotted-path array from the patch. Use this to sync views (popup form, CardApp panels) without polling.
+Fires after `updateCharacterData` mutates `characters[charId].data` and before persistence completes. Listeners receive `{ charId, keys }` where `keys` is the dotted-path array from the patch. Use this to sync views (popup form) without polling.
 
 ```js
 const ctx = Atria.getContext();

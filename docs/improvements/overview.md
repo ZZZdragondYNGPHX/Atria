@@ -20,7 +20,7 @@ Atria's improvements over SillyTavern are not simply feature additions, but a sy
 | Infrastructure | [Auth & Quota](/improvements/auth-and-quota) | OAuth login, multi-user authentication, and storage quota management |
 | Infrastructure | [Other Improvements](/improvements/other) | Connection manager enhancements, prompt/preset grouping, dynamic model lists, etc. |
 
-For exclusive feature modules (Memory Graph, Orchestrator, Character Editing Assistant, Search Tools, CardApp, etc.), see the [Exclusive Features](/features/memory-graph) category.
+For feature modules such as Memory Graph, Orchestrator, Character Editing Assistant and Search Tools, see the [Features](/features/memory-graph) category.
 
 ## Architecture Improvements
 

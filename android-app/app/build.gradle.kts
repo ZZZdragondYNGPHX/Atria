@@ -89,7 +89,6 @@ val prepareNodeProject by tasks.registering(Sync::class) {
         exclude("**/.github/**")
         exclude("android-app/**")
         exclude("backups/**")
-        exclude("colab/**")
         exclude("docker/**")
         exclude("docs/**")
         exclude("tests/**")

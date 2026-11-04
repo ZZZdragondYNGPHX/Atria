@@ -2,8 +2,8 @@
 // Copyright (C) 2026 FunnyCups
 
 /**
- * Shared `ctx` introspection + Atria-docs lookup executors used by every
- * iter-studio (CardApp Studio AI chat, orchestrator iter-studio, etc.).
+ * Shared `ctx` introspection + Atria-docs lookup executors used by
+ * iteration studios.
  *
  * Each export is a pure async executor; callers pick their own tool name
  * + JSON-Schema definition and dispatch through their own runner. Lifting

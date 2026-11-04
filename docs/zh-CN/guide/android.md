@@ -1,54 +1,7 @@
-# Android App
+# Android 应用
 
-Atria 提供了 Android APK 版本，让你可以直接在手机上运行 Atria，无需依赖云服务器或 Termux 等终端工具。
+Atria Android 应用可以在本机运行内置服务，也可以连接已配置的远程服务。使用本机模式时，应用启动服务并在 WebView 中打开界面。
 
-## 概述
+可以从此仓库在本地构建 APK。构建依赖、签名与输出路径见 [Android 构建指南](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/android-app/README.md)；是否提供现成 APK 取决于实际发布情况。
 
-安装 APK 后，打开 App 即可直接显示完整的 Atria 界面，不需要另外使用浏览器访问地址。App 内置了完整的 Atria 服务端和前端，是一个独立运行的应用。
-
-## 下载方式
-
-前往 GitHub Releases 页面下载最新版 APK：
-
-👉 [https://github.com/ZZZdragondYNGPHX/Atria/releases/latest](https://github.com/ZZZdragondYNGPHX/Atria/releases/latest)
-
-下载 `.apk` 文件后，在手机上打开并按照系统提示完成安装。
-
-::: tip
-首次安装时，Android 系统可能会提示「未知来源应用」，你需要在系统设置中允许安装来自此来源的应用。
-:::
-
-## 使用方式
-
-安装完成后，打开 Atria App：
-
-1. App 会自动启动内置的 Atria 服务
-2. 界面加载完成后，你会看到与桌面版完全相同的 Atria 界面
-3. 配置 API 连接、导入角色卡、开始对话——所有操作与桌面版一致
-
-你不需要手动输入任何地址或端口，App 会自动处理一切。
-
-## 与桌面版的功能差异
-
-Android 版本与桌面版在功能上基本一致，你可以使用所有核心功能，包括多 API 连接、角色卡管理、世界书、预设等。
-
-由于移动设备的屏幕尺寸和交互方式不同，部分界面布局会自动适配移动端显示。
-
-## 移动端适配优化
-
-Atria 针对移动端进行了多项适配优化：
-
-- **虚拟键盘处理** — 防止键盘弹出时界面异常跳动
-- **输入法兼容** — 正确处理中文等 IME 组合输入
-- **弹窗适配** — 对话框和弹窗在小屏幕上正确显示
-- **触摸操作优化** — 减少意外的滑动触发，改善触摸交互体验
-- **性能优化** — 减少启动时的资源加载压力，适配移动设备的内存限制
-
-::: warning
-由于 Android 设备的性能和内存限制，在处理非常大量的聊天记录或角色卡时，可能会比桌面版稍慢。建议定期清理不需要的数据。
-:::
-
-## 相关页面
-
-- [快速开始](/zh-CN/guide/getting-started) — 完整的安装指南
-- [基础配置](/zh-CN/guide/configuration) — 配置项说明
+首选数据目录为 `Android/data/com.atria.app/files/atria-data`；外部应用存储不可用时使用内部存储。更换构建或卸载应用前，请单独保存[备份](/zh-CN/guide/migration)。

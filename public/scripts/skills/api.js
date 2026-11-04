@@ -1,9 +1,8 @@
 /**
  * Browser-side JS API for the skills REST endpoints.
  *
- * Exposed on `getContext().skills` (st-context.js) and mirrored on CardApp's
- * `ctx.skills`. All path/name validation is handled server-side; this module
- * is a thin transport wrapper.
+ * Exposed on `getContext().skills` (st-context.js). All path/name validation
+ * is handled server-side; this module is a thin transport wrapper.
  *
  * Scope shapes:
  *   { kind: 'global' }

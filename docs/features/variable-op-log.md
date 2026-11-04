@@ -145,7 +145,7 @@ If a variable is meant to be a **per-turn render-time override** (e.g. weather b
 
 ## When to use variable-driven UI
 
-When some fields need to change as the conversation advances and some UI consumes them — a CardApp panel, a world book entry, a custom renderer — model them as chat variables. Three production paths:
+When some fields need to change as the conversation advances and some UI consumes them — a world book entry or a custom renderer — model them as chat variables. Three production paths:
 
 1. setvar bootstrap in `first_mes` / alt greetings for initial values
 2. world book entries instructing the AI to emit setvar in its replies

@@ -1,6 +1,6 @@
 # Skills
 
-`context.skills.*` is the JavaScript surface for installing, reading, editing, and packaging skills. Extensions reach for it through `Atria.getContext()`; CardApps reach for the same shape on their `ctx.skills`.
+`context.skills.*` is the JavaScript surface for installing, reading, editing, and packaging skills. Extensions access it through `Atria.getContext()`.
 
 Skills are the [knowledge packs](/features/skills/) available to authorized consumers; this API is the read/write transport that backs the skill manager subpanel, the inline editor, and the iter-studio's 17 skill tools.
 
@@ -13,14 +13,7 @@ For the conceptual model — scopes, visibility policy, embed lifecycle — star
 ```js
 const context = Atria.getContext();
 const skills = context.skills;
-
-// Or from a CardApp ctx (same shape):
-async function init(ctx) {
-  await ctx.skills.list({ scope: 'all' });
-}
 ```
-
-The CardApp ctx surface is a thin wrapper around the same underlying functions — call signatures and return shapes are identical (per Atria's [API parity convention](https://github.com/ZZZdragondYNGPHX/Atria/blob/main/docs/development/extension-api/index.md)).
 
 ## Scope shapes
 
@@ -356,27 +349,6 @@ try {
   }
 }
 ```
-
-## CardApp parity
-
-The CardApp `ctx.skills` surface mirrors `context.skills.*` 1:1 — identical signatures, identical return shapes. CardApps can therefore use the same patterns:
-
-```js
-async function init(ctx) {
-  // List the Skill inventory exposed through this CardApp API.
-  const skills = await ctx.skills.list({ scope: 'all' });
-
-  // Read a skill body
-  const { content } = await ctx.skills.readFile({
-    scope: { kind: 'character', characterFile: ctx.characterFile },
-    name: 'card-voice-rules',
-  });
-
-  ctx.setVariable('voice_rules', content);
-}
-```
-
-The `ctx.skills` wrapper is intentionally thin — never richer than `getContext().skills`. New API additions land in both places at the same time.
 
 ## Related
 

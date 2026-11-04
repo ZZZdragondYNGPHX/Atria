@@ -60,7 +60,7 @@ if (api) {
 
 ### 典型用途
 
-擴充功能間通訊最常見的場景是解耦：一個擴充功能提供能力，另一個擴充功能消費能力，而不需要硬編碼依賴。例如，CardApp Studio透過`registerExtensionApi`將自身的編輯器API暴露出來，其他擴充功能可以在Studio就緒後直接呼叫。
+擴充功能間通訊最常見的場景是解耦：一個擴充功能提供能力，另一個擴充功能消費能力，而不需要硬編碼依賴。
 
 舊 Browser `orchestrator` 工具註冊表已停用。原生編排透過 Host 准入的 Plan 與 Port 執行；擴充 API 註冊不授予 Agent 執行權或領域寫入權限。見[原生編排](../../features/native-orchestration.md)。
 

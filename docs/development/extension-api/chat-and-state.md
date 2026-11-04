@@ -337,7 +337,7 @@ Example:
 
 ## Floor State
 
-Floor State is a thin layer on top of Chat State that tracks every write at the chat tail (floor index + swipe id) and replays the surviving commits whenever the chat structure changes. Plugins and CardApps that need state to follow swipes, deletes, and chat switches without reconciling manually should use this API instead of `updateChatState` directly.
+Floor State is a thin layer on top of Chat State that tracks every write at the chat tail (floor index + swipe id) and replays the surviving commits whenever the chat structure changes. Plugins that need state to follow swipes, deletes, and chat switches without reconciling manually should use this API instead of `updateChatState` directly.
 
 ### How it works
 
@@ -356,7 +356,7 @@ Each commit stores an incremental diff from the materialized state at commit tim
 createFloorState(options: { namespace: string }): Promise<FloorStateInstance>
 ```
 
-Use `getContext().createFloorState({ namespace })` from a plugin or CardApp. Each instance is bound to one namespace; create a separate instance per logical state slice.
+Use `getContext().createFloorState({ namespace })` from a plugin. Each instance is bound to one namespace; create a separate instance per logical state slice.
 
 All instance methods that perform writes (`update`, `patch`, `reset`, `destroy({ purge: true })`) and reads (`get`) return an envelope — they never throw. Inspect `result.ok` and switch on `result.reason` for the failure modes listed in [Error reasons](#error-reasons-1).
 
@@ -641,7 +641,7 @@ Example:
 | | Character State | Chat State |
 |------|------|------|
 | Scope | Bound to Character Card, shared across all chats | Bound to a single chat |
-| Typical Use | Character-level plugin config, CardApp application state | Temporary in-chat data, conversation context |
+| Typical Use | Character-level plugin config | Temporary in-chat data, conversation context |
 | API | `getCharacterState` / `getCharacterStateBatch` / `setCharacterState` / `updateCharacterState` / `deleteCharacterState` | `getChatState` / `getChatStateBatch` / `updateChatState` / `deleteChatState` |
 | Storage Location | Character state file (next to the card) | Chat metadata |
 
