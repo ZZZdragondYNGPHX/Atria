@@ -28,7 +28,6 @@ New Atria-owned modules should prefer concise `atri_*` naming where practical. I
 ## Upstream
 
 - SillyTavern: https://github.com/SillyTavern/SillyTavern
-- Legacy migration source: https://github.com/ZZZdragondYNGPHX/Luker
 
 ## License
 
