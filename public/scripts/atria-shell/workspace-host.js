@@ -217,7 +217,7 @@ async function mountAgentsWorkspace({ document: documentRef, slot, descriptor, h
         enabled: () => !inspector.hidden && layout.clientWidth > 760,
         onCollapse: () => { inspector.hidden = true; root.querySelector('[data-memory-view="knowledge"]')?.focus(); } });
     const el = (tag, text, parent, className = '') => {
-        const node = documentRef.createElement(tag); node.className = className;
+        const node = documentRef.createElement(tag); if (className) node.className = className;
         if (text !== undefined) node.textContent = translateShellText(text);
         parent?.append(node); return node;
     };
@@ -774,7 +774,7 @@ export function createAtriaWorkspaceHost({
         else if (target.closest?.('#user-settings-button')) openUtility('settings');
         else if (target.matches?.('[data-atria-action="manage-skills"]')) openLibrarySection('skills');
         else if (target.id === 'leftNavDrawerIcon') openLibrarySection('prompt-programs');
-        else openRuntimeSection('connections');
+        else openRuntimeSection('routes');
     }
 
     const api = Object.freeze({

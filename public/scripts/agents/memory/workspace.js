@@ -119,8 +119,17 @@ export function createMemoryWorkspace({ getContext }) {
         content.className = 'workspace-memory-content';
 
         if (!service) {
-            status.textContent = i18n('Memory OS is not available in this host.');
-            return () => controller.abort();
+            // Memory registers during startup; a cold start can mount this page first.
+            status.textContent = i18n('Memory is starting…');
+            let inner = null; let tries = 0;
+            const timer = setInterval(() => {
+                if (!page.isConnected) { clearInterval(timer); return; }
+                if (++tries > 240) { clearInterval(timer); status.textContent = i18n('Memory OS is not available in this host.'); return; }
+                const next = getContext();
+                if (!next.getCapabilityApi?.('memory-graph')?.getWorkspacePorts?.(next)) return;
+                clearInterval(timer); inner = renderMemory(parent, ui);
+            }, 500);
+            return { updateRun() { inner?.updateRun?.(); }, dispose() { clearInterval(timer); controller.abort(); inner?.dispose?.(); } };
         }
 
         const settings = () => service.getStatus?.() || {
@@ -148,7 +157,7 @@ export function createMemoryWorkspace({ getContext }) {
             if (!current.enabled) {
                 snapshot = null;
                 computed = null;
-                status.textContent = i18n('Memory OS is disabled.');
+                status.textContent = '';
                 renderAll();
                 return;
             }
@@ -266,8 +275,8 @@ export function createMemoryWorkspace({ getContext }) {
             el('pre', JSON.stringify(record, null, 2), raw);
         };
 
-        const railSection = label => {
-            const section = el('section', undefined, railBody);
+        const railSection = (label, into = railBody) => {
+            const section = el('section', undefined, into);
             section.className = 'workspace-memory-rail__section';
             el('h3', label, section);
             return section;
@@ -277,32 +286,38 @@ export function createMemoryWorkspace({ getContext }) {
             settingsDisposer = () => {};
             railBody.replaceChildren();
             const current = settings();
-            const state = el('span', current.enabled ? 'Memory is available' : 'Memory is disabled', railBody);
+            const state = el('span', current.enabled ? 'Memory is on' : 'Memory is off', railBody);
             state.className = 'workspace-status-chip is-' + (current.enabled ? 'active' : 'disabled');
             railBody.append(status);
 
-            const controls = railSection('Switches');
+            // Everyday: one main switch; the rest only matter while it is on.
+            const controls = railSection('Memory behaviour');
             controls.classList.add('workspace-memory-control-grid');
-            toggleCard({ host: controls, el, label: 'Memory', description: 'Keep memory active for this conversation.', checked: current.enabled,
-                onChange: value => void setControl('enabled', value) });
-            toggleCard({ host: controls, el, label: 'Recall', description: 'Inject relevant memories into replies.', checked: current.recallEnabled,
-                onChange: value => void setControl('recallEnabled', value) });
-            toggleCard({ host: controls, el, label: 'Source writes', description: 'Allow extraction to add source-backed facts and relations.', checked: current.sourceWritesEnabled,
-                onChange: value => void setControl('sourceWritesEnabled', value) });
-            toggleCard({ host: controls, el, label: 'Auto extraction', description: 'Extract new memories as chat progresses.', checked: current.autoExtractionEnabled,
-                onChange: value => void setControl('autoExtractionEnabled', value) });
-            toggleCard({ host: controls, el, label: 'Auto compression', description: 'Compact older memory using the schema.', checked: current.autoCompressionEnabled,
-                onChange: value => void setControl('autoCompressionEnabled', value) });
+            toggleCard({ host: controls, el, label: 'Remember this conversation', description: 'Keep track of people, places and events as the story goes.', checked: current.enabled,
+                onChange: value => void setControl('enabled', value) }).closest('label').classList.add('is-primary');
+            for (const [key, label, description] of [
+                ['recallEnabled', 'Use memories in replies', 'Add relevant memories to each reply.'],
+                ['autoExtractionEnabled', 'Learn from new messages', 'Pick out new memories as the chat continues.'],
+                ['sourceWritesEnabled', 'Keep sources for facts', 'Record which message each fact came from.'],
+                ['autoCompressionEnabled', 'Tidy older memories', 'Merge and shorten old memories automatically.'],
+            ]) {
+                const input = toggleCard({ host: controls, el, label, description, checked: current[key], onChange: value => void setControl(key, value) });
+                input.disabled = !current.enabled;
+            }
 
-            const metrics = railSection('Statistics');
-            const grid = el('div', undefined, metrics);
-            grid.className = 'workspace-memory-metrics';
-            metric({ host: grid, el, label: 'Entities', value: computed?.graph.entities.length || 0 });
-            metric({ host: grid, el, label: 'Relations', value: computed?.graph.relations.length || 0 });
-            metric({ host: grid, el, label: 'Facts', value: computed?.facts.length || 0 });
-            metric({ host: grid, el, label: 'Pending', value: computed?.graph.pending?.filter(item => item.status === 'pending').length || 0 });
-            metric({ host: grid, el, label: 'Episodes', value: snapshot ? Object.keys(snapshot.state.episodes || {}).length : 0 });
-            metric({ host: grid, el, label: 'This run recalls', value: getView?.().recalls?.length || 0 });
+            if (current.enabled) {
+                const metrics = railSection('At a glance');
+                const grid = el('div', undefined, metrics);
+                grid.className = 'workspace-memory-metrics';
+                metric({ host: grid, el, label: 'Entities', value: computed?.graph.entities.length || 0 });
+                metric({ host: grid, el, label: 'Relationships', value: computed?.graph.relations.length || 0 });
+                metric({ host: grid, el, label: 'Facts', value: computed?.facts.length || 0 });
+                metric({ host: grid, el, label: 'Awaiting review', value: computed?.graph.pending?.filter(item => item.status === 'pending').length || 0 });
+                metric({ host: grid, el, label: 'Source messages', value: snapshot ? Object.keys(snapshot.state.episodes || {}).length : 0 });
+                metric({ host: grid, el, label: 'Recalled this run', value: getView?.().recalls?.length || 0 });
+            } else {
+                el('p', 'Turn memory on to start remembering. Nothing is collected while it is off.', railBody).className = 'workspace-hint workspace-memory-off-hint';
+            }
 
             const recent = getView?.().recalls || [];
             if (recent.length) {
@@ -315,7 +330,8 @@ export function createMemoryWorkspace({ getContext }) {
                     el('small', recallEvent.stepId || '', row);
                 }
             }
-            renderMaintenance(railSection('Maintenance'));
+            renderData(railSection('Memory data'));
+            renderMaintenance();
         };
 
         const renderKnowledge = () => {
@@ -353,6 +369,7 @@ export function createMemoryWorkspace({ getContext }) {
             const footer = el('p', '', content);
             footer.className = 'workspace-memory-limit';
 
+            const emptyText = () => !settings().enabled ? 'Memory is off for this conversation.' : (computed?.graph.entities || []).length ? 'No memories match this filter.' : 'No memories yet. They appear as the story goes on.';
             let paintVersion = 0;
             const paint = () => {
                 const version = ++paintVersion;
@@ -381,11 +398,11 @@ export function createMemoryWorkspace({ getContext }) {
                     el('span', String(relations.filter(edge => edge.sourceEntityId === entity.id || edge.targetEntityId === entity.id).length), item).className = 'workspace-memory-degree';
                 }
 
-                if (!entities.length) el('p', 'No matching memory entities.', list).className = 'workspace-empty-copy';
+                if (!entities.length) el('p', emptyText(), list).className = 'workspace-empty-copy';
                 graph.replaceChildren();
                 if (graph.hidden) return;
                 if (!entities.length) {
-                    el('p', 'No matching memory entities.', graph).className = 'workspace-empty-copy';
+                    el('p', emptyText(), graph).className = 'workspace-empty-copy';
                     return;
                 }
                 const fallback = el('div', undefined, graph);
@@ -432,7 +449,7 @@ export function createMemoryWorkspace({ getContext }) {
 
         const renderSources = () => {
             if (!snapshot) {
-                el('p', loadError || 'Enable Memory OS to inspect sources.', content).className = 'workspace-empty-copy';
+                el('p', loadError || 'Turn memory on to see where memories came from.', content).className = 'workspace-empty-copy';
                 return;
             }
             const state = snapshot.state;
@@ -474,25 +491,18 @@ export function createMemoryWorkspace({ getContext }) {
             }
         };
 
-        const renderMaintenance = host => {
-            if (nativePromptUiActive() && service.getNativeRoutes) {
-                try { mountMemoryRouting(host, service); } catch (error) { status.textContent = error.message; }
-            }
+        const runAction = (host, name, action, { refresh = true } = {}) => {
+            const control = button(host, name, () => void operation(name, control, () => action?.(), refresh));
+            control.disabled = pending.has(name);
+            return control;
+        };
+        // Everyday data actions stay visible.
+        const renderData = host => {
             const actions = el('div', undefined, host);
             actions.className = 'workspace-memory-maintenance-actions';
-
-            const runAction = (name, action, { refresh = true } = {}) => {
-                const control = button(actions, name, () => void operation(name, control, () => action?.(), refresh));
-                control.disabled = pending.has(name);
-            };
-
-            runAction('History build / rollback', service.openHistory);
-            runAction('Manual compression', service.manualCompress);
-            runAction('Rebuild vectors', service.rebuildVectors);
-            runAction('Export memory', service.exportGraph, { refresh: false });
-            button(actions, 'Refresh memory', () => void loadData());
-
-            const importLabel = el('label', 'Import memory', actions);
+            button(actions, 'Refresh', () => void loadData());
+            runAction(actions, 'Export', service.exportGraph, { refresh: false });
+            const importLabel = el('label', 'Import', actions);
             importLabel.className = 'workspace-file-action';
             const importInput = el('input', undefined, importLabel);
             importInput.type = 'file';
@@ -502,18 +512,30 @@ export function createMemoryWorkspace({ getContext }) {
                 const file = importInput.files?.[0]; importInput.value = '';
                 if (file) void operation('import', importInput, () => service.importGraph?.(file));
             });
+        };
 
-            const danger = el('section', undefined, host);
-            danger.className = 'workspace-memory-danger-zone';
-            el('h4', 'Danger zone', danger);
-            el('p', 'Reset removes the current chat memory graph and its vector index. This cannot be undone.', danger).className = 'workspace-hint';
-            const reset = button(danger, 'Reset current chat memory', () => void operation('reset', reset, () => service.resetGraph?.()));
-            reset.disabled = pending.has('reset');
-            reset.className = 'workspace-danger';
+        // Maintenance, model choices and resets are occasional: folded by default.
+        const renderMaintenance = () => {
+            const box = el('details', undefined, railBody);
+            box.className = 'workspace-memory-maintenance';
+            el('summary', 'Maintenance and settings', box);
+            const body = el('div', undefined, box);
+            body.className = 'workspace-memory-maintenance__body';
 
-            const advanced = el('details', undefined, host);
+            const tools = railSection('Repair', body);
+            const actions = el('div', undefined, tools);
+            actions.className = 'workspace-memory-maintenance-actions';
+            runAction(actions, 'Rebuild from history', service.openHistory);
+            runAction(actions, 'Compress now', service.manualCompress);
+            runAction(actions, 'Rebuild search index', service.rebuildVectors);
+
+            if (nativePromptUiActive() && service.getNativeRoutes) {
+                try { mountMemoryRouting(body, service); } catch (error) { status.textContent = error.message; }
+            }
+
+            const advanced = el('details', undefined, body);
             advanced.className = 'workspace-memory-advanced';
-            el('summary', 'Advanced memory settings and maintenance', advanced);
+            el('summary', 'Advanced memory settings', advanced);
             const settingsHost = el('div', undefined, advanced);
             settingsHost.className = 'workspace-memory-advanced-host';
             let mounted = false;
@@ -522,6 +544,14 @@ export function createMemoryWorkspace({ getContext }) {
                 mounted = true;
                 settingsDisposer = service.mountSettings?.(settingsHost) || (() => {});
             });
+
+            const danger = el('section', undefined, body);
+            danger.className = 'workspace-memory-danger-zone';
+            el('h4', 'Reset', danger);
+            el('p', 'Deletes this chat’s memories and search index. This cannot be undone.', danger).className = 'workspace-hint';
+            const reset = button(danger, 'Reset this chat’s memory', () => void operation('reset', reset, () => service.resetGraph?.()));
+            reset.disabled = pending.has('reset');
+            reset.dataset.variant = 'destructive';
         };
 
         const renderView = () => {

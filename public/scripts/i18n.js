@@ -22,25 +22,23 @@ export const getCurrentLocale = () => localeFile;
  * @param {Record<string, string>} data Localization data to add
  */
 export function addLocaleData(localeId, data) {
-    if (!localeData) {
-        console.warn('Localization data not loaded yet. Additional data will not be added.');
-        return;
-    }
+    // Modules register their strings once at load. Keep every locale so a
+    // later language switch (without reload) still finds them.
+    registeredLocaleData.set(localeId, Object.assign(registeredLocaleData.get(localeId) || {}, data));
+    if (localeData && getLocaleLoadOrder(localeFile).includes(localeId)) mergeRegisteredLocaleData(localeData, localeFile, localeId);
+}
 
-    const localeLoadOrder = getLocaleLoadOrder(localeFile);
+/** @type {Map<string, Record<string, string>>} */
+const registeredLocaleData = new Map();
 
-    if (!localeLoadOrder.includes(localeId)) {
-        console.debug('Ignoring addLocaleData call for different locale', localeId);
-        return;
-    }
-
-    const isPrimaryLocale = localeId === localeFile;
-
-    for (const [key, value] of Object.entries(data)) {
-        if (isPrimaryLocale || !Object.hasOwn(localeData, key)) {
-            localeData[key] = value;
+function mergeRegisteredLocaleData(target, locale, only = null) {
+    for (const localeId of getLocaleLoadOrder(locale)) {
+        if (only && localeId !== only) continue;
+        for (const [key, value] of Object.entries(registeredLocaleData.get(localeId) || {})) {
+            if (localeId === locale || !Object.hasOwn(target, key)) target[key] = value;
         }
     }
+    return target;
 }
 
 /**
@@ -351,7 +349,7 @@ function addLanguagesToDropdown() {
 /** Apply and persist an explicit interface language choice. */
 export async function setUiLanguage(language, { reload = true } = {}) {
     const nextLocale = String(language).toLowerCase().startsWith('zh') ? 'zh-cn' : 'en';
-    const nextData = await getLocaleData(nextLocale);
+    const nextData = mergeRegisteredLocaleData(await getLocaleData(nextLocale), nextLocale);
     localStorage.setItem(storageKey, nextLocale);
     localeFile = nextLocale;
     localeData = nextData;
@@ -364,7 +362,7 @@ export async function setUiLanguage(language, { reload = true } = {}) {
 
 export async function initLocales() {
     langs = await fetch('/locales/lang.json').then(response => response.json());
-    localeData = await getLocaleData(localeFile);
+    localeData = mergeRegisteredLocaleData(await getLocaleData(localeFile), localeFile);
     document.documentElement.lang = localeFile;
     applyLocale();
     addLanguagesToDropdown();

@@ -32,10 +32,10 @@ export const LIBRARY_SECTIONS = Object.freeze([
 ]);
 
 export const RUNTIME_SECTIONS = Object.freeze([
-    Object.freeze({ id: 'routes', label: 'API presets' }),
-    Object.freeze({ id: 'connections', label: 'Connections' }),
-    Object.freeze({ id: 'retrieval', label: 'Retrieval' }),
-    Object.freeze({ id: 'diagnostics', label: 'Diagnostics' }),
+    Object.freeze({ id: 'routes', label: 'Models' }),
+    Object.freeze({ id: 'connections', label: 'Services' }),
+    Object.freeze({ id: 'retrieval', label: 'Memory search', secondary: true }),
+    Object.freeze({ id: 'diagnostics', label: 'Diagnostics', secondary: true }),
 ]);
 
 function sectionById(list, id, fallbackId) {
@@ -97,6 +97,7 @@ function buildDomainFrame(documentRef, {
         button.type = 'button';
         button.className = 'atria-domain-workspace__tab';
         button.dataset.atriaDomainSection = item.id;
+        if (item.secondary) button.dataset.atriaDomainSecondary = 'true';
         button.textContent = translateShellText(item.label);
         button.classList.toggle('is-selected', item.id === activeSection);
         button.setAttribute('aria-current', item.id === activeSection ? 'page' : 'false');

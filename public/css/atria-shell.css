@@ -431,17 +431,44 @@ body.no-blur :is(.atria-toolbar__tools, .atria-toolbar__global) { -webkit-backdr
     transition: padding var(--dur-3) var(--ease-settle);
 }
 
-.atri-learning-center { flex: 0 0 auto; max-height: 40dvh; overflow: auto; padding: 12px 20px; border-bottom: 1px solid var(--atri-separator); background: var(--atri-surface-1); color: var(--atri-text-primary); }
+/* Learning Center: a quiet band above the page it teaches. */
+.atri-learning-center { flex: 0 0 auto; max-height: 44dvh; overflow: auto; padding: 14px 24px 16px; border-bottom: 1px solid var(--line-1); background: var(--surface-panel); color: var(--text-1); font-family: var(--font-ui); }
 .atri-learning-center[hidden] { display: none; }
-.atri-learning-header { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-.atri-learning-header h2 { flex: 1; min-width: 160px; margin: 0; font-size: var(--atri-text-title-3); }
-.atri-learning-content > p { margin: 8px 0; }
-.atri-learning-center button { min-height: 44px; }
-.atri-learning-index { display: grid; gap: 6px; }
-.atri-learning-index > div { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
-.atri-learning-index h3 { margin: 12px 0 0; }
-.atri-learning-center :focus-visible { outline: 2px solid var(--atri-accent); outline-offset: 2px; }
-@media (max-width: 719px) { .atri-learning-center { padding: 8px 12px; } .atri-learning-content { font-size: var(--atri-text-callout); } }
+.atri-learning-header { display: flex; align-items: flex-start; gap: 12px; }
+.atri-learning-heading { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.atri-learning-eyebrow { margin: 0; color: var(--text-3); font: 500 var(--fs-xs)/1.4 var(--font-ui); }
+.atri-learning-header h2 { margin: 0; font: 600 var(--fs-lg)/1.3 var(--font-ui); letter-spacing: -.005em; }
+.atri-learning-tools { display: flex; gap: 2px; flex: none; }
+.atria-app-shell .atri-learning-center .atri-learning-icon { --btn-h: 32px; width: 32px; padding: 0; border-color: transparent; background: transparent; box-shadow: none; color: var(--text-2); }
+.atria-app-shell .atri-learning-center .atri-learning-icon:hover:not(:disabled) { background: var(--surface-hover); color: var(--text-1); }
+.atri-learning-content { display: grid; gap: 12px; margin-top: 8px; max-width: 760px; }
+.atri-learning-content p { margin: 0; }
+.atri-learning-lead { color: var(--text-2); font-size: var(--fs-sm); line-height: 1.6; }
+.atri-learning-instruction { font-size: var(--fs-md); line-height: 1.65; max-width: 64ch; }
+.atri-learning-start { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.atri-learning-progress { color: var(--text-3); font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }
+.atri-learning-index { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px 24px; }
+.atri-learning-group h3 { margin: 0 0 4px; color: var(--text-3); font: 600 var(--fs-xs)/1.4 var(--font-ui); }
+.atri-learning-group ol { display: grid; gap: 1px; margin: 0; padding: 0; list-style: none; }
+.atri-learning-lesson { appearance: none; display: flex; align-items: center; gap: 10px; width: 100%; min-height: 36px; margin: 0; padding: 6px 8px; border: 0; border-radius: var(--r-md); background: transparent; color: var(--text-1); font: 500 var(--fs-sm)/1.35 var(--font-ui); text-align: start; cursor: pointer; }
+.atri-learning-lesson:hover { background: var(--surface-hover); }
+.atri-learning-lesson[data-state="done"] { color: var(--text-2); }
+.atri-learning-mark { display: grid; place-items: center; flex: none; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--line-strong); }
+.atri-learning-lesson[data-state="done"] .atri-learning-mark { border-color: transparent; background: var(--tone-jade); color: #fff; }
+.atri-learning-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.atri-learning-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding-top: 4px; }
+.atri-learning-actions__aside, .atri-learning-actions__main { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.atri-learning-actions__main { margin-left: auto; }
+.atria-app-shell .atri-learning-center .atri-learning-actions__aside > button { padding-inline: 6px; border-color: transparent; background: transparent; box-shadow: none; color: var(--tone-lapis); }
+.atria-app-shell .atri-learning-center .atri-learning-actions__aside > button:hover:not(:disabled) { background: var(--soft-lapis); }
+.atri-learning-center :focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.atri-learning-center[data-view="minimized"] { padding-block: 8px; }
+@media (max-width: 719px) {
+    .atri-learning-center { padding: 10px 14px 12px; max-height: 50dvh; }
+    .atri-learning-actions__main { margin-left: 0; width: 100%; }
+    .atri-learning-actions__main > button:last-child { flex: 1; }
+    @media (pointer: coarse) { .atri-learning-lesson { min-height: 44px; } }
+}
 
 .atria-focus-area__body {
     min-width: 0;
@@ -1230,6 +1257,9 @@ body[data-atria-shell-mounted="true"].atria-immersive-mode .atria-native-play-ho
 .atria-app-shell:is([data-atria-domain="build"], [data-atria-domain="agents"], [data-atria-domain="runtime"], [data-atria-route-kind="utility"]) .atria-domain-workspace__tab:is(.is-selected, [aria-current="page"])::after { background: var(--text-1); }
 .atria-app-shell[data-atria-viewport="compact"] .atria-domain-workspace__nav { padding-inline: 10px; }
 .atria-app-shell[data-atria-viewport="compact"] .atria-domain-workspace__tab { height: 42px; }
+/* Occasional sections sit after a hairline, after the everyday ones. */
+.atria-domain-workspace__tab:not([data-atria-domain-secondary]) + [data-atria-domain-secondary] { margin-left: 13px; }
+.atria-domain-workspace__tab:not([data-atria-domain-secondary]) + [data-atria-domain-secondary]::before { content: ""; position: absolute; left: -7px; top: 14px; bottom: 14px; width: 1px; background: var(--line-2); }
 
 .atria-domain-workspace__body {
     grid-row: -2 / -1;

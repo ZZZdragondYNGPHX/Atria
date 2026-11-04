@@ -647,13 +647,13 @@ html[data-atria-appearance] .atri-blocking-loader .popup-controls {
 .atri-onboarding {
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: 20px;
     text-align: start;
 }
 .atri-onboarding header h1 {
     font-size: 28px;
     letter-spacing: -.02em;
-    margin: 24px 0 8px;
+    margin: 16px 0 6px;
 }
 .atri-onboarding p {
     font-size: 14px;
@@ -676,14 +676,14 @@ html[data-atria-appearance] .atri-blocking-loader .popup-controls {
     margin: 8px 0 0;
     min-height: 44px;
 }
-.atri-onboarding details {
-    border-top: 1px solid var(--atri-separator);
+.atri-onboarding .atri-onboarding-next {
+    margin: 0;
     padding-top: 16px;
+    border-top: 1px solid var(--atri-separator);
 }
-.atri-onboarding summary {
-    cursor: pointer;
-    font-size: 14px;
-    padding-block: 8px;
+.atri-onboarding .atri-persona-help {
+    margin: 0 0 4px;
+    font-size: 13px;
 }
 html[data-atria-appearance] .atri-onboarding-dialog .popup-controls {
     border-top: 0;

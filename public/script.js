@@ -15406,7 +15406,7 @@ async function doOnboarding(avatarId) {
     let languageChange = Promise.resolve();
     const popup = new Popup(template, POPUP_TYPE.INPUT, currentUser?.name || name1, {
         cancelButton: false,
-        okButton: t`Next lesson`,
+        okButton: t`Continue`,
         onClosing: async (instance) => {
             if (instance.result !== POPUP_RESULT.AFFIRMATIVE) return true;
             if (instance.mainInput.value.trim()) {
@@ -15427,7 +15427,7 @@ async function doOnboarding(avatarId) {
         },
     });
     popup.dlg.classList.add('atri-onboarding-dialog');
-    popup.okButton.dataset.i18n = 'Next lesson';
+    popup.okButton.dataset.i18n = 'Continue';
     popup.mainInput.id = `atri-persona-${popup.id}`;
     popup.mainInput.setAttribute('aria-describedby', `atri-persona-help-${popup.id}`);
     template.find('.atri-persona-help').attr('id', `atri-persona-help-${popup.id}`);

@@ -13,19 +13,19 @@ export function mountApiPresetFields({ doc, form, data, resources, route, field,
     let generation = structuredClone(resources.find(item => item.ref.resourceType === 'core.generation-profile'
         && ['scope', 'resourceId', 'revision', 'projectId', 'packageVersionId'].every(key => item.ref[key] === route.generationProfileRef?.[key]))?.resource
         ?? { ...newPromptResource('core.generation-profile'), output: {}, streaming: {} });
-    const modelFields = group(form, 'Connection and model');
+    const modelFields = group(form, 'Service and model');
     const connections = data.connections.filter(item => ['provider.openai-compatible', 'provider.openai-responses', 'provider.anthropic', 'provider.gemini', 'provider.raw-text'].includes(item.providerAdapter));
-    const connection = field(modelFields, 'Connection', model.connectionProfileRef?.connectionProfileId || '',
+    const connection = field(modelFields, 'Service', model.connectionProfileRef?.connectionProfileId || '',
         [['', 'Choose…'], ...connections.map(item => [item.connectionProfileId, item.displayName, true])]); connection.required = true;
-    const remote = field(modelFields, 'Remote model ID', model.remoteModelId); remote.required = true;
-    const choices = field(modelFields, 'Available provider models', '', [['', 'Fetch models to choose…']]); choices.disabled = true;
+    const remote = field(modelFields, 'Model ID', model.remoteModelId); remote.required = true;
+    const choices = field(modelFields, 'Available models', '', [['', 'Load models to choose…']]); choices.disabled = true;
     choices.parentElement.hidden = true;
     const actions = doc.createElement('div'); actions.className = 'atri-api-model-actions'; modelFields.append(actions);
     const feedback = doc.createElement('p'); feedback.className = 'atri-runtime-help'; feedback.setAttribute('role', 'status'); modelFields.append(feedback);
     let probeSequence = 0;
     let probeController;
     let discoveredModels = [];
-    const fetch = button('Fetch models', async () => {
+    const fetch = button('Load models', async () => {
         if (!connection.value || fetch.disabled) { connection.reportValidity(); return; }
         const version = ++probeSequence, selected = data.connections.find(item => item.connectionProfileId === connection.value);
         probeController?.abort(); probeController = new AbortController();
@@ -40,7 +40,7 @@ export function mountApiPresetFields({ doc, form, data, resources, route, field,
             choices.parentElement.hidden = false; choices.disabled = !result.models.length; feedback.textContent = t('Choose a model. Fetching does not change saved configuration.');
         } catch (error) { if (isCurrent() && version === probeSequence) { feedback.textContent = runtimeRemediation(error.code || error.message)[0]; feedback.setAttribute('role', 'alert'); } } finally { if (version === probeSequence) { fetch.disabled = false; fetch.removeAttribute('aria-busy'); } }
     }, actions);
-    button('Manage connections', () => host.openRuntimeSection('connections'), actions);
+    button('Manage services', () => host.openRuntimeSection('connections'), actions).dataset.variant = 'plain';
     choices.addEventListener('change', () => {
         const item = discoveredModels.find(item => item.remoteModelId === choices.value); if (!item) return;
         remote.value = item.remoteModelId;
@@ -62,16 +62,17 @@ export function mountApiPresetFields({ doc, form, data, resources, route, field,
     const capabilities = group(metadata, 'Capabilities');
     const overrides = ['generation.streaming', 'generation.tools', 'generation.structured-output', 'generation.reasoning', 'generation.cache'].map(capability => {
         const value = model.capabilities.find(item => item.capability === capability);
-        return { capability, value, input: field(capabilities, capability, value?.state || '', [['', 'Use adapter metadata'], ['unknown', 'Unknown'], ['unsupported', 'Unsupported'], ['supported', 'Supported — explicit user override']]) };
+        const label = { 'generation.streaming': 'Streaming replies', 'generation.tools': 'Tool calls', 'generation.structured-output': 'Structured output', 'generation.reasoning': 'Thinking / reasoning', 'generation.cache': 'Prompt caching' }[capability];
+        return { capability, value, input: field(capabilities, label, value?.state || '', [['', 'Use adapter metadata'], ['unknown', 'Unknown'], ['unsupported', 'Unsupported'], ['supported', 'Supported — explicit user override']]) };
     });
     const generationBox = group(form, 'Generation parameters');
-    notice('Saved once in this API preset. Games use these parameters with their own prompts.', generationBox);
+    notice('Stories that use this API preset send these parameters with their own prompts.', generationBox);
     const controls = doc.createElement('div'); controls.className = 'atri-runtime-group'; generationBox.append(controls);
     let readGeneration;
     function drawGeneration() {
         controls.replaceChildren();
         const adapter = connections.find(item => item.connectionProfileId === connection.value)?.providerAdapter;
-        if (!adapter) { notice('Select a connection to configure generation parameters.', controls); readGeneration = () => generation; return; }
+        if (!adapter) { notice('Choose a service to set generation parameters.', controls); readGeneration = () => generation; return; }
         readGeneration = generationFields(doc, controls, generation, () => false, { providerAdapter: adapter, outputLimit: () => Number(output.value) });
     }
     let previousConnection = connection.value;

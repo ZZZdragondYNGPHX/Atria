@@ -1,6 +1,6 @@
 import { normalizeRuntimeRouteRef } from '../../native/runtime-route-ref.js';
 
-export const MEMORY_ROUTE_TASKS = Object.freeze({ extraction: 'Extraction route', schema: 'Schema assistance route' });
+export const MEMORY_ROUTE_TASKS = Object.freeze({ extraction: 'Extracting memories', schema: 'Schema assistant' });
 
 export function normalizeMemoryRoutes(input = {}) {
     if (!input || typeof input !== 'object' || Array.isArray(input)

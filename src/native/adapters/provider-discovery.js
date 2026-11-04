@@ -28,7 +28,8 @@ export async function discoverProviderModels(connection, { secret, signal, fetch
         let response;
         try { response = await fetchImpl(url, { headers, redirect: 'error', signal }); } catch { fail(signal?.aborted ? 'probe_cancelled' : 'unreachable'); }
         if (!response.ok) {
-            await response.body?.cancel();
+            // node-fetch (credentialFetch) bodies are Node streams; web bodies cancel.
+            if (typeof response.body?.cancel === 'function') await response.body.cancel(); else response.body?.destroy?.();
             fail(response.status === 401 || response.status === 403 ? 'authentication_failed'
                 : response.status === 404 || response.status === 405 ? 'probe_unsupported' : 'unavailable');
         }

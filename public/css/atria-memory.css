@@ -65,7 +65,7 @@
 .atria-memory-workspace .workspace-memory-danger-zone { margin-top: 12px; padding: 10px 12px; border-radius: var(--r-lg); border: 1px solid color-mix(in srgb, var(--tone-vermilion) 28%, transparent); background: color-mix(in srgb, var(--tone-vermilion) 5%, transparent); }
 .atria-memory-workspace .workspace-memory-danger-zone h4 { margin: 0 0 4px; color: var(--tone-vermilion); font: 600 var(--fs-sm)/1.3 var(--font-ui); }
 .atria-memory-workspace .workspace-memory-danger-zone p { margin: 0 0 8px; font-size: var(--fs-xs); }
-.atria-app-shell .atria-memory-workspace .workspace-memory-danger-zone .workspace-danger { width: 100%; border-color: color-mix(in srgb, var(--tone-vermilion) 45%, transparent); color: var(--tone-vermilion); }
+.atria-app-shell .atria-memory-workspace .workspace-memory-danger-zone button { width: 100%; }
 .atria-memory-workspace .workspace-memory-advanced { margin-top: 10px; font-size: var(--fs-sm); }
 
 /* Main: toolbar · canvas · limit note. */
@@ -139,3 +139,28 @@
 .atria-domain-workspace__body > .atriaLogsWorkspace[data-atria-workspace-embedded=true] { padding: 0; height: auto; overflow: visible; }
 .atria-app-shell[data-atria-viewport="compact"] .atria-domain-workspace__body > .atriaLogsWorkspace[data-atria-workspace-embedded=true] { padding: 0; height: auto; }
 .atria-domain-workspace__body:has(> .atriaLogsWorkspace) { padding-top: 14px; }
+
+/* Rail hierarchy: the main switch leads; dependent switches dim while it is off;
+ * everyday data actions sit in one row; maintenance stays folded. */
+.atria-memory-workspace .workspace-memory-toggle-card.is-primary { padding-bottom: 8px; margin-bottom: 4px; border-bottom: 1px solid var(--line-1); }
+.atria-memory-workspace .workspace-memory-toggle-card.is-primary strong { font-weight: 600; }
+.atria-memory-workspace .workspace-memory-toggle-card.is-primary small { position: static; width: auto; height: auto; overflow: visible; clip-path: none; white-space: normal; color: var(--text-3); font-size: var(--fs-xs); line-height: 1.45; }
+.atria-memory-workspace .workspace-memory-toggle-card:has(input:disabled) { opacity: .5; cursor: not-allowed; }
+.atria-memory-workspace .workspace-memory-off-hint { margin: 12px 0 0; font-size: var(--fs-xs); line-height: 1.5; }
+.atria-memory-workspace .workspace-memory-maintenance-actions:has(> .workspace-file-action) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.atria-memory-workspace .workspace-file-action { min-height: var(--btn-h, 32px); }
+.atria-memory-workspace .workspace-memory-maintenance { margin-top: 16px; padding-top: 4px; border-top: 1px solid var(--line-1); }
+.atria-memory-workspace .workspace-memory-maintenance > summary { padding: 8px 0; color: var(--text-2); font: 550 var(--fs-sm)/1.3 var(--font-ui); cursor: pointer; }
+.atria-memory-workspace .workspace-memory-maintenance__body > .workspace-memory-rail__section:first-child { margin-top: 4px; border-top: 0; padding-top: 4px; }
+.atria-memory-workspace .workspace-memory-overview-section { display: grid; gap: 8px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line-1); }
+.atria-memory-workspace .workspace-memory-overview-section > h3 { margin: 0; color: var(--text-1); font: 600 var(--fs-sm)/1.3 var(--font-ui); }
+.atria-memory-workspace .workspace-memory-overview-section > p { margin: 0; font-size: var(--fs-xs); line-height: 1.5; }
+.atria-memory-workspace .workspace-memory-overview-section > p:empty { display: none; }
+.atria-memory-workspace .workspace-memory-fields { display: grid; gap: 10px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.atria-memory-workspace .workspace-memory-fields > .workspace-hint:empty { display: none; }
+.atria-memory-workspace .workspace-inspector-field { display: grid; gap: 4px; color: var(--text-2); font: 500 var(--fs-xs)/1.3 var(--font-ui); }
+.atria-memory-workspace .workspace-inspector-field select { width: 100%; }
+.atria-memory-workspace .workspace-memory-form-actions { display: flex; justify-content: flex-end; gap: 6px; }
+.atria-app-shell .atria-memory-workspace .workspace-memory-overview-section > button[data-variant="plain"] { justify-self: start; padding-inline: 0; border-color: transparent; background: transparent; box-shadow: none; color: var(--tone-lapis); }
+/* While memory is off, the switch is the only useful control: show it first. */
+.atria-app-shell[data-atria-viewport="compact"] .atria-memory-workspace .workspace-memory-page:has(.workspace-status-chip.is-disabled) .workspace-memory-main { order: 0; }
