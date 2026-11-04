@@ -2,28 +2,28 @@
 
 默认在本地开发、提交、合并与清理；远端仅保存已提交结果。GitHub Actions 全部停用，包括手动运行、APK/Docker 构建和自动分支清理。
 
-仓库治理统一位于 `docs:README.md`（本地用 `git show docs:README.md` 读取）。本指南说明贡献步骤；当前用户指令与治理定义实际任务边界。企划、实施记录和实时交接统一维护在独立 `docs` 分支，`main:docs/` 只维护产品使用与开发说明。
+仓库治理统一位于本地 `Atria-worktrees/docs/README.md`。本指南说明贡献步骤；当前用户指令与治理定义实际任务边界。企划、实施记录和可选交接维护在独立的本地 `docs/` 目录，`atria/docs/` 维护产品使用与开发说明。
 
 感谢你对 Atria 项目的关注！本文档介绍如何为 Atria 贡献代码、文档和其他改进。
 
 ## 开发环境准备
 
-1. 克隆仓库到本地，或使用现有工作区：
+1. 从本地 `Atria-worktrees/` 目录，根据稳定产品库创建独立任务库：
 
 ```bash
-git clone https://github.com/ZZZdragondYNGPHX/Atria.git
-cd Atria
+git clone --no-local --depth 1 ./atria ./tasks/my-task/source
+cd tasks/my-task/source
 ```
 
 2. 使用 `npm install` 安装依赖。
 3. 使用 `node server.js` 启动开发服务器。
 
-默认地址为 `http://localhost:8000`；端口可通过命令行参数或 `config.yaml` 配置。外部贡献者可按需要使用 fork。
+默认地址为 `http://localhost:8000`；端口可通过命令行参数或 `config.yaml` 配置。
 
 ## 分支策略
 
 - **`main`** — 稳定分支，始终保持可发布状态。完成的产品任务在本地集成到 `main`；可选 PR 以 `main` 为目标
-- 功能开发请从 `main` 创建特性分支
+- 功能开发先在 `Atria-worktrees/tasks/` 创建独立本地任务库，再基于稳定的 `atria/main` 创建特性分支
 
 ```bash
 git checkout -b feat/my-new-feature main
@@ -79,9 +79,9 @@ docs(extension-api): add examples for registerExtensionApi
 
 ## 本地开发流程
 
-任务推进按 `docs:README.md` §8；实现精简、最小相关验证与运行时轻量检查统一按 §12.1–§12.2。该文件属于独立 docs 分支，可用 `git show docs:README.md` 读取。
+任务推进按本地 Governance §8；实现精简、最小相关验证与运行时轻量检查统一按 §12.1–§12.2。
 
-本地实现，记录实际结果，完成后集成 main 并推送授权内容。游戏源码只留本地，package 只存发行包；保护无关开发工作。CI、PR 和历史验证清单均不是默认交付门槛。
+本地实现并记录实际结果，完成后集成 `atria/main`；只有该稳定产品库推送 Atria 远端。游戏项目、各项目最新发行包和独立工具分别保存在本地目录；保护无关开发工作。CI、PR 和历史验证清单均不是默认交付门槛。
 
 ## 代码风格
 
@@ -148,7 +148,7 @@ Atria/
 - 简体中文文档：`docs/zh-CN/`
 - 繁体中文文档：`docs/zh-TW/`
 
-文档贡献遵循上述本地流程；Plan、Record 和 HANDOFF 归独立 `docs` 分支。编写文档时请注意：
+文档贡献遵循上述本地流程；Plan、Record 和 HANDOFF 归独立的本地 `docs/` 目录。编写文档时请注意：
 
 - 使用准确的技术术语
 - 代码和 API 名称保留英文

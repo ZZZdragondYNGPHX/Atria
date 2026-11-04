@@ -2,28 +2,28 @@
 
 預設在本機開發、提交、合併與清理；遠端僅保存已提交結果。GitHub Actions 全部停用，包括手動執行、APK/Docker 建置及自動分支清理。
 
-倉庫治理統一位於 `docs:README.md`（本機以 `git show docs:README.md` 讀取）。本指南說明貢獻步驟；目前使用者指令與治理定義實際任務邊界。企劃、實作記錄和即時交接統一維護在獨立 `docs` 分支，`main:docs/` 只維護產品使用與開發說明。
+倉庫治理統一位於本機 `Atria-worktrees/docs/README.md`。本指南說明貢獻步驟；目前使用者指令與治理定義實際任務邊界。企劃、實作記錄和可選交接維護在獨立的本機 `docs/` 目錄，`atria/docs/` 維護產品使用與開發說明。
 
 感謝你對 Atria 專案的關注！本文件介紹如何為 Atria 貢獻程式碼、文件和其他改進。
 
 ## 開發環境準備
 
-1. 複製倉庫到本機，或使用現有工作區：
+1. 從本機 `Atria-worktrees/` 目錄，根據穩定產品庫建立獨立任務庫：
 
 ```bash
-git clone https://github.com/ZZZdragondYNGPHX/Atria.git
-cd Atria
+git clone --no-local --depth 1 ./atria ./tasks/my-task/source
+cd tasks/my-task/source
 ```
 
 2. 使用 `npm install` 安裝相依套件。
 3. 使用 `node server.js` 啟動開發伺服器。
 
-預設網址為 `http://localhost:8000`；連接埠可透過命令列參數或 `config.yaml` 設定。外部貢獻者可依需要使用 fork。
+預設網址為 `http://localhost:8000`；連接埠可透過命令列參數或 `config.yaml` 設定。
 
 ## 分支策略
 
 - **`main`** — 穩定分支，始終保持可發布狀態。完成的產品任務在本機整合到 `main`；可選 PR 以 `main` 為目標
-- 功能開發請從 `main` 建立特性分支
+- 功能開發先在 `Atria-worktrees/tasks/` 建立獨立本機任務庫，再基於穩定的 `atria/main` 建立特性分支
 
 ```bash
 git checkout -b feat/my-new-feature main
@@ -79,9 +79,9 @@ docs(extension-api): add examples for registerExtensionApi
 
 ## 本機開發流程
 
-任務推進依 `docs:README.md` §8；實作精簡、最小相關驗證與執行期輕量檢查統一依 §12.1–§12.2。該檔案屬於獨立 docs 分支，可用 `git show docs:README.md` 讀取。
+任務推進依本機 Governance §8；實作精簡、最小相關驗證與執行期輕量檢查統一依 §12.1–§12.2。
 
-本機實作，記錄實際結果，完成後整合 main 並推送授權內容。遊戲原始碼只留本機，package 只存發行包；保護無關開發工作。CI、PR 與歷史驗證清單都不是預設交付門檻。
+本機實作並記錄實際結果，完成後整合 `atria/main`；只有該穩定產品庫推送 Atria 遠端。遊戲專案、各專案最新發行包和獨立工具分別保存在本機目錄；保護無關開發工作。CI、PR 與歷史驗證清單都不是預設交付門檻。
 
 ## 程式碼風格
 
@@ -148,7 +148,7 @@ Atria/
 - 簡體中文文件：`docs/zh-CN/`
 - 繁體中文文件：`docs/zh-TW/`
 
-文件貢獻遵循上述本機流程；Plan、Record 和 HANDOFF 歸獨立 `docs` 分支。撰寫文件時請注意：
+文件貢獻遵循上述本機流程；Plan、Record 和 HANDOFF 歸獨立的本機 `docs/` 目錄。撰寫文件時請注意：
 
 - 使用準確的技術術語
 - 程式碼和 API 名稱保留英文

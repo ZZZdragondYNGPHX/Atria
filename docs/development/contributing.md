@@ -2,28 +2,28 @@
 
 Local development, commits and integration are the default. The remote stores committed results; GitHub Actions are disabled, including manual runs, APK/Docker builds and branch cleanup.
 
-Repository governance is maintained in `docs:README.md` (read locally with `git show docs:README.md`). This guide describes contribution steps; current user instructions and governance define the active task boundaries. Plans, implementation records and the live handoff are maintained only in the independent `docs` branch; `main:docs/` contains product and development documentation.
+Repository governance is maintained in the local `Atria-worktrees/docs/README.md`. This guide describes contribution steps; current user instructions and governance define the active task boundaries. Plans, implementation records and the optional live handoff are maintained in that independent local `docs/` workspace; `atria/docs/` contains product and development documentation.
 
 Thank you for your interest in the Atria project! This document explains how to contribute code, documentation, and other improvements to Atria.
 
 ## Setting Up the Development Environment
 
-1. Clone the repository locally (or use your existing checkout):
+1. From the local `Atria-worktrees/` directory, create an independent task repository from the stable product repository:
 
 ```bash
-git clone https://github.com/ZZZdragondYNGPHX/Atria.git
-cd Atria
+git clone --no-local --depth 1 ./atria ./tasks/my-task/source
+cd tasks/my-task/source
 ```
 
 2. Install dependencies with `npm install`.
 3. Start the development server with `node server.js`.
 
-By default it listens on `http://localhost:8000`; configure the port through command-line arguments or `config.yaml`. A fork is optional for external contributions.
+By default it listens on `http://localhost:8000`; configure the port through command-line arguments or `config.yaml`.
 
 ## Branching Strategy
 
 - **`main`** — The stable branch, always kept in a releasable state. Completed product tasks integrate into local `main`; optional PRs target `main`.
-- Create feature branches from `main` for new development.
+- Create an independent local task repository under `Atria-worktrees/tasks/`, then create the feature branch there from the stable `atria/main`.
 
 ```bash
 git checkout -b feat/my-new-feature main
@@ -79,9 +79,9 @@ docs(extension-api): add examples for registerExtensionApi
 
 ## Local Development Workflow
 
-Follow `docs:README.md` §8 for task execution and §12.1–§12.2 for implementation, minimal related validation and lightweight runtime checks. Read that independent branch with `git show docs:README.md`.
+Follow the local Governance §8 for task execution and §12.1–§12.2 for implementation, minimal related validation and lightweight runtime checks.
 
-Implement locally, record actual results and integrate completed product changes into `main`. Push only authorized results; game sources stay local and `package` stores releases only. Preserve unrelated development. Neither CI nor a PR is a routine prerequisite; historical checklists do not create new obligations.
+Implement locally, record actual results and integrate completed product changes into `atria/main`. Only that stable repository pushes to Atria's remote. Game projects, their latest release artifacts and standalone tools stay in their respective local directories. Preserve unrelated development. Neither CI nor a PR is a routine prerequisite; historical checklists do not create new obligations.
 
 ## Code Style
 
@@ -148,7 +148,7 @@ Documentation is located in the `docs/` directory and uses Markdown format:
 - Simplified Chinese documentation: `docs/zh-CN/`
 - Traditional Chinese documentation: `docs/zh-TW/`
 
-Documentation contributions follow the local workflow above. Plans, Records and HANDOFF belong to the independent `docs` branch. When writing documentation, please note:
+Documentation contributions follow the local workflow above. Plans, Records and HANDOFF belong to the independent local `docs/` workspace. When writing documentation, please note:
 
 - Use accurate technical terminology
 - Keep code and API names in English

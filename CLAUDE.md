@@ -1,3 +1,3 @@
 # Claude Code Entry
 
-Follow `AGENTS.md`; repository governance and execution rules come only from `docs:README.md`.
+Follow `AGENTS.md`; repository governance is in the local `Atria-worktrees/docs/README.md`.
