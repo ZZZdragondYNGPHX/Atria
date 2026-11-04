@@ -137,7 +137,7 @@ function sourceFiles(directory) {
 
 export function auditProductLocalization() {
     const findings = [];
-    for (const filename of ['public/scripts/login.js', 'public/scripts/entry-localization.js', 'public/scripts/user.js', 'public/scripts/popup.js', 'public/scripts/backup-sync-center.js', 'public/scripts/storage-management.js', 'public/scripts/storage-inspector.js', 'public/scripts/browser-storage-inspector.js', 'public/scripts/lan-sync.js', 'public/scripts/logging/workspace.js']) {
+    for (const filename of ['public/scripts/login.js', 'public/scripts/entry-localization.js', 'public/scripts/user.js', 'public/scripts/popup.js', 'public/scripts/backup-sync-center.js', 'public/scripts/storage-management.js', 'public/scripts/browser-storage-adapter.js', 'public/scripts/lan-sync.js', 'public/scripts/logging/workspace.js']) {
         for (const issue of auditProductSource(fs.readFileSync(path.join(root, filename), 'utf8'), filename)) findings.push({ filename, ...issue });
     }
     for (const filename of ['public/scripts/native/frontend/runtime.js', 'public/scripts/native/experience/ui/full-host.js', 'public/scripts/native/experience/ui/host-surfaces.js']) {
@@ -173,7 +173,7 @@ export function auditProductLocalization() {
             for (let index = 0; index < catalogs.length; index++) if (!catalogs[index][key]) findings.push({ filename, key, locale: index, reason: 'missing template translation' });
         }
     }
-    for (const name of ['backupSyncCenter.html', 'storageManagement.html', 'storageInspector.html', 'userProfile.html', 'snapshotsView.html', 'changePassword.html', 'changeName.html', 'userLanSync.html']) {
+    for (const name of ['backupSyncCenter.html', 'userProfile.html', 'snapshotsView.html', 'changePassword.html', 'changeName.html', 'userLanSync.html']) {
         const filename = 'public/scripts/templates/' + name;
         const source = fs.readFileSync(path.join(root, filename), 'utf8');
         for (const match of source.matchAll(/data-i18n="([^"]+)"/g)) for (const raw of match[1].replaceAll('&amp;', '&').replaceAll('&quot;', '"').split(';')) {

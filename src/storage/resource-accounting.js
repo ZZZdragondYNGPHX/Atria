@@ -16,9 +16,10 @@ import {
 const engineFile = name => nativeDatabaseFile(name) || /^atria-storage\.sqlite(?:-(?:wal|shm))?$/.test(name) || /^native-commit\.journal(?:\.prepared)?$/.test(name);
 const fileCategory = relative => relative.startsWith('projects/') ? 'projects'
     : relative.startsWith('assets/atria-native/blobs/') ? 'media'
-        : relative.startsWith('backups/') || relative.startsWith('atria-native/pre-wal-resources/') ? 'recovery'
-            : relative.startsWith('thumbnails/') ? 'cache'
-                : relative === 'secrets.json' || relative === 'settings.json' || relative.startsWith('themes/') ? 'settings' : 'advanced';
+        : relative.startsWith('skills/') ? 'knowledge'
+            : relative.startsWith('backups/') || relative.startsWith('atria-native/pre-wal-resources/') ? 'recovery'
+                : relative.startsWith('thumbnails/') ? 'cache'
+                    : relative === 'secrets.json' || relative === 'settings.json' || relative.startsWith('themes/') ? 'settings' : 'other';
 const structuredLegacyFile = relative => /^(settings\.json|stats\.json)$/.test(relative)
     || /^(chats|group chats|worlds|groups|OpenAI Settings|NovelAI Settings|KoboldAI Settings|TextGen Settings|themes|movingUI|QuickReplies|instruct|context|sysprompt|reasoning)\/.*\.(json|jsonl)$/.test(relative)
     || relative.startsWith('atria-native/resources/');
@@ -133,9 +134,21 @@ export async function measureAccount({ engine, handle, directories, tx = null })
         } catch (error) { errors.push({ source: record.key.kind, reason: error.message }); }
     }
     for (const record of content.legacy) add({ id: 'legacy:' + resourceFingerprint(record.identity),
-        source: 'legacy', category: record.identity.table === 'settings' || record.identity.table === 'named_docs' && record.identity.bucket === 'themes' ? 'settings' : 'advanced', bytes: resourceContentBytes(record.doc), version: resourceFingerprint(record.doc),
+        source: 'legacy', category: record.identity.table === 'settings' || record.identity.table === 'named_docs' && record.identity.bucket === 'themes' ? 'settings' : 'other', bytes: resourceContentBytes(record.doc), version: resourceFingerprint(record.doc),
         capabilities: resourceCapabilities({ view: true }),
     });
+    const packageOwners = new Map(), mediaHashes = new Set(), retainedHashes = new Set();
+    for (const row of content.native) {
+        if (row.key.kind === NATIVE_RESOURCE_KINDS.packageVersion && row.doc?.packageContentHash && row.key.packageId) {
+            const owners = packageOwners.get(row.doc.packageContentHash) ?? new Set();
+            owners.add(row.key.packageId);
+            packageOwners.set(row.doc.packageContentHash, owners);
+        }
+        if (row.key.kind === NATIVE_RESOURCE_KINDS.assetRef && row.doc?.contentHash) mediaHashes.add(row.doc.contentHash);
+        if (row.doc?.protocol === 'atria.storage-center.v1' && row.doc.type === 'recovery') {
+            for (const hash of row.doc.hashes ?? []) retainedHashes.add(hash);
+        }
+    }
     let physicalBytes = 0;
     for (const file of files) {
         physicalBytes += file.bytes;
@@ -143,14 +156,16 @@ export async function measureAccount({ engine, handle, directories, tx = null })
         // metadata/reserved net growth is counted once; copies are physical only.
         if (file.relative.startsWith('atria-native/file-publications/')) continue;
         if (claimed.has(file.relative) || engineFile(file.relative)) continue;
-        let category = fileCategory(file.relative);
+        let category = fileCategory(file.relative), owner;
         if (file.relative.startsWith('atria-native/recovery/') || file.relative.startsWith('legacy-recovery/') || file.relative.startsWith('account-snapshots/')) category = 'recovery';
         if (file.relative.startsWith('assets/atria-native/blobs/')) {
             const hash = path.basename(file.relative);
-            const retained = content.native.some(row => row.doc?.protocol === 'atria.storage-center.v1' && row.doc.type === 'recovery' && row.doc.hashes?.includes(hash));
-            const active = content.native.some(row => row.key.kind === NATIVE_RESOURCE_KINDS.assetRef && row.doc.contentHash === hash
-                || row.key.kind === NATIVE_RESOURCE_KINDS.packageVersion && row.doc.packageContentHash === hash);
-            if (retained && !active) category = 'recovery';
+            const owners = packageOwners.get(hash), isMedia = mediaHashes.has(hash);
+            if (retainedHashes.has(hash) && !owners && !isMedia) category = 'recovery';
+            else if (owners && !isMedia) {
+                category = 'projects';
+                if (owners.size === 1) owner = { type: 'package', id: [...owners][0] };
+            }
         }
         let bytes = file.bytes, method = 'file-bytes';
         // Legacy structured file content follows the same canonical JSON rule
@@ -163,7 +178,7 @@ export async function measureAccount({ engine, handle, directories, tx = null })
         }
         add({ id: 'file:' + Buffer.from(file.relative).toString('base64url'), source: 'file', category,
             bytes, method, version: resourceFingerprint({ bytes: file.bytes, modifiedAt: file.modifiedAt }),
-            relative: file.relative, updatedAt: file.modifiedAt, capabilities: resourceCapabilities({ view: true }),
+            relative: file.relative, owner, updatedAt: file.modifiedAt, capabilities: resourceCapabilities({ view: true }),
         });
     }
     for (const row of content.native) if (row.doc?.protocol === 'atria.storage-center.v1' && row.doc.type === 'file-publication') {

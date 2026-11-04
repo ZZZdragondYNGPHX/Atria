@@ -2,17 +2,15 @@ import { getRequestHeaders } from '../script.js';
 import { createAtriaButton, createAtriaIconButton, formatAtriaDate, setAtriaButtonLabel } from './atria-shell/components.js';
 import { createAtriaIcon } from './atria-shell/icons.js';
 import { translateShellText as tl, formatShellText as ft } from './atria-shell/localization.js';
-import { BrowserProvider, BrowserMutator } from './browser-storage-inspector.js';
 import { BrowserResourceCenter } from './browser-resource-center.js';
 import { notifyStorageChange } from './native/storage-change-events.js';
-import { createStorageInspector, RestMutator, RestProvider } from './storage-inspector.js';
 import { StorageCenterDrawer, containStorageDialogFocus, prefersStorageReducedMotion } from './storage-center-drawer.js';
 import { callGenericPopup, POPUP_RESULT, POPUP_TYPE } from './popup.js';
 
 const labels = { sessions: 'Sessions & saves', projects: 'Works & projects', knowledge: 'Worlds & knowledge', media: 'Media & attachments',
     personas: 'Personal identities', agents: 'Agent material', settings: 'Settings & integrations', recovery: 'Backups & recycle bin',
-    cache: 'Caches & temporary data', advanced: 'Advanced tools', offline: 'Offline content & local models', preferences: 'Device preferences' };
-const regions = { overview: 'Overview', cleanup: 'Cleanup suggestions', recovery: 'Backups & recycle bin', tasks: 'Operation history', advanced: 'Advanced tools' };
+    cache: 'Caches & temporary data', other: 'Other data', offline: 'Offline content & local models', preferences: 'Device preferences' };
+const regions = { overview: 'Overview', cleanup: 'Cleanup suggestions', recovery: 'Backups & recycle bin', tasks: 'Operation history' };
 const actions = { trash: 'Move to recycle bin', restore: 'Restore original identity', purge: 'Permanently delete', clean: 'Clean verified data', repair: 'Resume reviewed recovery', history: 'Review local Git publication' };
 const states = { preview: 'Preview', pending: 'Not started', processing: 'Processing', queued: 'Waiting', running: 'Processing', succeeded: 'Succeeded', failed: 'Failed',
     stopped: 'Stopped', partial: 'Partially completed', completed: 'Completed', blocked: 'Blocked', repreview: 'Review again', interrupted: 'Interrupted — review before retrying', 'paused-review': 'Paused — review before retrying' };
@@ -35,14 +33,14 @@ const reasons = {
     'selected-persona': 'Default identity selection and migration receipts are managed in Personal identities.',
     'runtime-state': 'Runtime continuation is managed by Runtime; only verified expired entries are suggested for cleanup.',
     'owned-version-or-maintenance-data': 'This data belongs to its business owner and cannot be removed on its own.',
-    'advanced-inspection': 'Inspect legacy or unidentified content in Advanced tools.',
+    'unclassified-data': 'This data is read-only in the storage center.',
     'account-backup-center': 'Manage this snapshot in Account backup & export.',
 };
 const explain = reason => tl(reasons[reason] || reason || '');
 const node = (tag, className = '', text = null) => { const element = document.createElement(tag); element.className = className; if (text != null) element.textContent = String(text); return element; };
 const button = (label, click, variant = 'secondary') => createAtriaButton(document, { label: tl(label), onClick: click, variant });
-const icons = { overview: 'grid', cleanup: 'wand', recovery: 'stack', tasks: 'timeline', advanced: 'settings', sessions: 'chat', projects: 'folder', knowledge: 'book', media: 'image', personas: 'person', agents: 'runtime', settings: 'settings', cache: 'bolt', offline: 'import', preferences: 'settings' };
-const categoryColors = { sessions: 'var(--tone-lumen)', projects: 'var(--tone-lapis)', media: 'var(--tone-umber)', knowledge: 'var(--tone-jade)', agents: 'var(--tone-dai)', personas: 'var(--tone-amber)', settings: 'var(--text-2)', recovery: 'var(--text-3)', cache: 'var(--line-strong)', offline: 'var(--tone-lapis)', preferences: 'var(--text-3)' };
+const icons = { overview: 'grid', cleanup: 'wand', recovery: 'stack', tasks: 'timeline', other: 'folder', sessions: 'chat', projects: 'folder', knowledge: 'book', media: 'image', personas: 'person', agents: 'runtime', settings: 'settings', cache: 'bolt', offline: 'import', preferences: 'settings' };
+const categoryColors = { sessions: 'var(--tone-lumen)', projects: 'var(--tone-lapis)', media: 'var(--tone-umber)', knowledge: 'var(--tone-jade)', agents: 'var(--tone-dai)', personas: 'var(--tone-amber)', settings: 'var(--text-2)', recovery: 'var(--text-3)', cache: 'var(--line-strong)', other: 'var(--text-3)', offline: 'var(--tone-lapis)', preferences: 'var(--text-3)' };
 const numeric = value => new Intl.NumberFormat().format(value);
 const size = bytes => {
     if (bytes == null) return tl('Unavailable');
@@ -125,6 +123,7 @@ export class StorageCenterPanel {
     }
     navigate(region, category = null) {
         this.detailGeneration++; this.previewGeneration++; this.drawer.close(true);
+        this.selection.clear();
         this.region = region; this.category = category; this.query = ''; this.offset = 0;
         this.render(); this.content.focus({ preventScroll: true }); this.body.scrollTop = 0;
     }
@@ -192,7 +191,6 @@ export class StorageCenterPanel {
         this.content.replaceChildren();
         if (!this.data) { this.heading(this.region === 'overview' ? 'Resources & cleanup' : regions[this.region]); this.note('Measuring resources…'); this.content.setAttribute('aria-busy', 'true'); return; }
         if (this.region === 'tasks') { this.renderTasks(); return; }
-        if (this.region === 'advanced') { this.renderAdvanced(); return; }
         if (this.region === 'recovery') { this.renderRecovery(); return; }
         if (this.region === 'cleanup') { this.renderCleanup(); return; }
         if (this.category) {
@@ -217,18 +215,19 @@ export class StorageCenterPanel {
             ring.append(item);
         };
         circle('var(--surface-press)');
-        const total = Object.entries(this.data.categories).filter(([key]) => key !== 'advanced').reduce((sum, [, item]) => sum + (item.bytes || 0), 0);
-        if (!partial && total > 0) {
+        const total = Object.values(this.data.categories).reduce((sum, item) => sum + (item.bytes || 0), 0);
+        const hasUnknownCategorySize = Object.values(this.data.categories).some(item => item.bytes == null && (item.objectCount || item.count));
+        if (!partial && !hasUnknownCategorySize && total > 0) {
             let offset = 0;
             for (const [category, item] of Object.entries(this.data.categories)) {
-                if (category === 'advanced' || !item.bytes) continue;
+                if (!item.bytes) continue;
                 const length = item.bytes / total * 502.65;
                 circle(categoryColors[category] || 'var(--text-3)', Math.max(0, length - 2), offset); offset += length;
             }
         }
         const centre = document.createElementNS(ns, 'text'); centre.setAttribute('class', 'storage-center-donut__value'); centre.setAttribute('x', '100'); centre.setAttribute('y', '104'); centre.textContent = size(amount);
         const caption = document.createElementNS(ns, 'text'); caption.setAttribute('class', 'storage-center-donut__caption'); caption.setAttribute('x', '100'); caption.setAttribute('y', '126');
-        caption.textContent = tl(partial ? 'Known subtotal' : browser ? 'This device · Current site' : 'Server account');
+        caption.textContent = tl(partial || browser ? 'Known subtotal' : 'Server account');
         svg.append(centre, caption);
         const side = node('div', 'storage-center-usage__side');
         const sideHead = node('div', 'storage-center-usage__head');
@@ -236,7 +235,7 @@ export class StorageCenterPanel {
         const quick = node('div', 'storage-center-usage__quick');
         const chip = (text, click, tone = '') => { const control = button(text, click, 'plain'); control.classList.add('storage-center-chip'); if (tone) control.dataset.tone = tone; quick.append(control); };
         if (browser) {
-            chip(ft('Site estimate ${0}', [size(this.data.totalBytes)]), () => this.navigate('advanced'));
+            quick.append(node('span', 'storage-center-chip', ft('Site estimate ${0}', [size(this.data.totalBytes)])));
             chip(tl('Inspect local data'), () => this.navigate('cleanup'));
         } else {
             chip(this.data.safeCleanupBytes > 0 ? ft('${0} safe to clean', [size(this.data.safeCleanupBytes)]) : tl('No safe suggestions'), () => this.navigate('cleanup'), this.data.safeCleanupBytes > 0 ? 'safe' : '');
@@ -246,13 +245,13 @@ export class StorageCenterPanel {
         sideHead.append(quick); side.append(sideHead);
         const list = node('section', 'storage-center-categories'); list.setAttribute('aria-label', tl('Resource categories'));
         for (const [category, item] of Object.entries(this.data.categories)) {
-            if (category === 'advanced') continue;
             const control = button(labels[category] || category, () => this.navigate(category === 'recovery' ? 'recovery' : 'overview', category === 'recovery' ? null : category), 'plain');
             control.classList.add('storage-center-category'); control.setAttribute('aria-label', tl(labels[category] || category));
             const swatch = node('i', 'storage-center-category__swatch'); swatch.style.background = categoryColors[category] || 'var(--text-3)';
             const name = node('strong', 'storage-center-category__name', tl(labels[category] || category));
             const meta = node('span', 'storage-center-category__meta', browser ? ft('${0} objects', [numeric(item.objectCount ?? item.count)]) : ft('${0} objects · ${1} stored units', [numeric(item.objectCount), numeric(item.count)]));
-            control.replaceChildren(swatch, name, node('span', 'storage-center-category__size storage-center-numeric', size(item.bytes)), meta);
+            const amount = item.bytes == null && item.knownBytes > 0 ? ft('At least ${0}', [size(item.knownBytes)]) : size(item.bytes);
+            control.replaceChildren(swatch, name, node('span', 'storage-center-category__size storage-center-numeric', amount), meta);
             list.append(control);
         }
         side.append(list);
@@ -260,9 +259,7 @@ export class StorageCenterPanel {
         measured.textContent = [tl(partial ? 'Known subtotal — some storage could not be measured' : browser ? 'This device · Current site' : 'Recycle bin data is included in the total.'), ft('Quota: ${0}', [this.data.quotaBytes === -1 ? tl('Unlimited') : size(this.data.quotaBytes)]), formatAtriaDate(this.data.completedAt)].join(' · ');
         side.append(measured);
         summary.append(svg, side); this.content.append(summary);
-        const advanced = this.data.categories.advanced;
         const footer = node('div', 'storage-center-overview-footer');
-        if (advanced) footer.append(button(ft('Advanced data: ${0}', [size(advanced.bytes)]), () => this.navigate('advanced'), 'plain'));
         if (this.data.physical) {
             const detail = node('details', 'storage-center-physical'); detail.append(node('summary', '', tl('Physical usage and measurement coverage')));
             this.note(ft('Measured account files: ${0}. Database allocation, indexes and delayed reclamation differ from resource data.', [size(this.data.physical.bytes)]), detail);
@@ -298,7 +295,11 @@ export class StorageCenterPanel {
         const draw = () => {
             rows.replaceChildren(); const filtered = this.filtered(); this.offset = Math.min(this.offset, Math.max(0, Math.ceil(filtered.length / 50) - 1) * 50); const page = filtered.slice(this.offset, this.offset + 50);
             const controls = node('div', 'storage-center-actions');
-            for (const [label, items] of [['Select current page', page], ['Select all filtered results', filtered]]) controls.append(button(label, () => { for (const item of items) if (item.managed && item.target) this.selection.set(item.id, item.target); draw(); select(); }));
+            for (const [label, items] of [['Select current page', page], ['Select all filtered results', filtered]]) {
+                const control = button(label, () => { for (const item of items) if (item.managed && item.target) this.selection.set(item.id, item.target); draw(); select(); });
+                control.disabled = !items.some(item => item.managed && item.target);
+                controls.append(control);
+            }
             rows.append(controls);
             const table = node('div', 'storage-center-resource-table');
             if (!page.length) { const empty = node('div', 'storage-center-empty'); empty.append(createAtriaIcon(document, 'search'), node('h2', '', tl('No resources match this view.'))); rows.append(empty); }
@@ -309,7 +310,7 @@ export class StorageCenterPanel {
                 const name = node('div', 'storage-center-resource-name');
                 if (item.managed) name.append(button(item.name, () => this.detail(item), 'plain'));
                 else name.append(node('strong', '', item.name));
-                name.append(node('small', '', tl(item.managed ? 'Inspect references before processing.' : 'Managed by its owner or available in Advanced tools')));
+                if (item.managed) name.append(node('small', '', tl('Inspect references before processing.')));
                 row.append(checkLabel, name, node('span', 'storage-center-numeric', size(item.bytes)));
                 if (item.managed) row.append(createAtriaIconButton(document, { label: ft('Details: ${0}', [item.name]), icon: 'chevron-right', onClick: () => this.detail(item) }));
                 else { row.append(node('span', 'storage-center-note', explain(item.reason || 'owned-version-or-maintenance-data'))); if (item.reason === 'account-backup-center') row.append(button('Account backup & export', () => this.openBackups())); }
@@ -559,16 +560,6 @@ export class StorageCenterPanel {
                 card.append(button('View operation', () => { this.activeTask = task; this.renderTask(task, task.status === 'preview'); if (['queued', 'running'].includes(task.status) && task.scope === 'server') void this.watchTask(task.id); }, 'plain')); this.content.append(card);
             }
         } catch (error) { if (!this.closed && generation === this.renderGeneration && scope === this.scope) this.error(error); }
-    }
-    async renderAdvanced() {
-        this.heading(regions.advanced);
-        this.note('Legacy and unidentified data still count toward usage. Raw inspection does not grant broader business deletion rights.');
-        if (this.scope === 'server') this.note('Other can include installed Works and their media. Manage them through the Library or storage center.');
-        if (this.scope === 'browser') this.note('This device · Current site');
-        const mount = node('div', 'storage-center-inspector'); this.content.append(mount);
-        const inspector = createStorageInspector({ provider: this.scope === 'server' ? new RestProvider({ kind: 'self' }) : new BrowserProvider(), mutator: this.scope === 'server' ? new RestMutator() : new BrowserMutator(), container: mount,
-            onDeletePreview: this.scope === 'browser' ? path => this.preview('purge', [{ path }]) : null });
-        await inspector.init();
     }
 }
 export function mountStorageCenterPage(container, options = {}) { return new StorageCenterPanel(options).mount(container, options); }

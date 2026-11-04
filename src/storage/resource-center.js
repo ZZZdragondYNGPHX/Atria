@@ -46,7 +46,7 @@ export class ResourceCenterService {
         const snapshot = await measureAccount({ engine: this.engine, handle, directories: this.directoriesByHandle(handle) });
         const { native, errors: contentErrors } = await this.engine.withTransaction(handle, tx => readAccountContent(tx, handle));
         snapshot.errors.push(...contentErrors);
-        const unitOwners = new Map(snapshot.units.filter(unit => unit.owner).map(unit => [resourceFingerprint(unit.key), unit.owner]));
+        const unitOwners = new Map(snapshot.units.filter(unit => unit.owner && unit.key).map(unit => [resourceFingerprint(unit.key), unit.owner]));
         const objects = new Map();
         for (const row of native) {
             if (row.doc == null) continue;
@@ -77,10 +77,10 @@ export class ResourceCenterService {
                     : [K.realm, K.realmRevision, K.playerContinuity, K.playerContinuityRevision].includes(unit.key?.kind) ? 'persistent-progress'
                         : [K.personaDefault, K.personaMigration].includes(unit.key?.kind) ? 'selected-persona'
                             : unit.key?.kind === K.runtimeCheckpoint ? 'runtime-state'
-                                : unit.source === 'legacy' || unit.category === 'advanced' ? 'advanced-inspection' : 'owned-version-or-maintenance-data' });
+                                : unit.source === 'legacy' || unit.category === 'other' ? 'unclassified-data' : 'owned-version-or-maintenance-data' });
         }
         const resources = [...objects.values()].sort((a, b) => b.bytes - a.bytes || a.id.localeCompare(b.id));
-        for (const [category, total] of Object.entries(snapshot.categories)) total.objectCount = resources.filter(resource => resource.category === category && (resource.managed || resource.businessObject)).length;
+        for (const [category, total] of Object.entries(snapshot.categories)) total.objectCount = resources.filter(resource => resource.category === category).length;
         const { units: _units, ...summary } = snapshot;
         const suggestions = [];
         const checkpoints = new RuntimeCheckpointStore({ engine: this.engine, handle });

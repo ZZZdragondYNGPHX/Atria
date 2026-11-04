@@ -46,16 +46,10 @@ import {
     startHeartbeat,
     stopHeartbeat,
 } from '../storage/migration/lock.js';
-import { resolvePath, StorageInspectorError } from '../storage/inspector.js';
 import {
-    deleteStorageResource,
     listStorageRecoveryPoints,
-    readStorageResource,
-    resolveStorageResource,
     restoreStorageRecoveryPoint,
-    writeStorageResource,
-} from '../storage/management.js';
-import { getAdminSettings } from '../admin-settings.js';
+} from '../storage/legacy-recovery.js';
 import { withChatWrite } from '../storage/repositories/chat-write-boundary.js';
 import { stageRestoreArchiveForRandomAccess } from '../backup-sync/restore-staging.js';
 import { resetGlobalExtensionsRestoreDirectory } from '../backup-sync/restore-targets.js';
@@ -2174,16 +2168,7 @@ router.post('/announcements/me/mark-read', async (request, response) => {
     }
 });
 
-/**
- * POST /storage/inspect — Storage Inspector 自看 endpoint。
- * 永远看当前登录用户 · 无 admin 权限判断。
- *
- * Body: { path?: string[] } — 默认 [] · path 前端从上一层 response 里的 entry.key 拿。
- * Response 200: InspectorResponse(见 src/storage/inspector.js)· target 强制 { type:'self', handle:<current> }
- * Response 400: { error: { code, message } } · code ∈ E_INVALID_PATH / E_NOT_INSPECTABLE
- * Response 401: 未登录
- * Response 500: { error: { code: 'E_INTERNAL', message } }
- */
+/** Resource-center operations are scoped to the signed-in account. */
 router.post('/storage/center/:operation', async (request, response) => {
     const handle = request.user?.profile?.handle;
     if (!handle) return response.status(401).json({ error: 'unauthorized' });
@@ -2209,58 +2194,6 @@ router.post('/storage/center/:operation', async (request, response) => {
     }
 });
 
-router.post('/storage/inspect', async (request, response) => {
-    try {
-        const user = request.user?.profile;
-        if (!user) {
-            return response.status(401).json({ error: { code: 'E_UNAUTHORIZED', message: 'not logged in' } });
-        }
-        const pathArr = Array.isArray(request.body?.path) ? request.body.path : [];
-        const dirs = request.user?.directories ?? getUserDirectories(user.handle);
-        const adminSettings = await getAdminSettings();
-
-        const result = await resolvePath(dirs.root, pathArr, {
-            target: { type: 'self', handle: user.handle },
-            user,
-            adminSettings,
-        });
-        // Add mutation capabilities only for concrete resources that the
-        // safe storage-management resolver can map back to this user's root.
-        for (const entry of result.entries ?? []) {
-            try {
-                const resource = resolveStorageResource(
-                    dirs.root,
-                    [...pathArr, entry.key],
-                    String(entry.kind || ''),
-                );
-                entry.capabilities = resource.capabilities;
-                entry.canDelete = Boolean(resource.capabilities.delete);
-            } catch {
-                entry.capabilities = {
-                    view: false,
-                    viewContent: false,
-                    edit: false,
-                    delete: false,
-                    download: false,
-                    restore: false,
-                };
-                entry.canDelete = false;
-            }
-        }
-
-        // pure lib 默认 target.handle:null · 这里补齐当前用户 handle
-        result.target = { type: 'self', handle: user.handle };
-        return response.json(result);
-    } catch (err) {
-        if (err instanceof StorageInspectorError) {
-            return response.status(400).json({ error: { code: err.code, message: err.message } });
-        }
-        console.error('storage-inspector /inspect error:', err);
-        return response.status(500).json({ error: { code: 'E_INTERNAL', message: String(err?.message ?? err) } });
-    }
-});
-
-
 function storageRecoveryRoot() {
     return path.join(globalThis.DATA_ROOT, '_storage-recovery');
 }
@@ -2279,77 +2212,6 @@ function storageResourceErrorResponse(response, err) {
         },
     });
 }
-
-function publicStorageResource(resource) {
-    const safe = { ...resource };
-    delete safe.absolutePath;
-    return safe;
-}
-
-router.post('/storage/resource/read', async (request, response) => {
-    try {
-        const user = request.user?.profile;
-        if (!user) return response.status(401).json({ error: { code: 'E_UNAUTHORIZED', message: 'not logged in' } });
-        const dirs = request.user?.directories ?? getUserDirectories(user.handle);
-        const resource = resolveStorageResource(
-            dirs.root,
-            Array.isArray(request.body?.path) ? request.body.path : [],
-            String(request.body?.kind || ''),
-        );
-        const result = await readStorageResource(resource);
-        return response.json(publicStorageResource(result));
-    } catch (err) {
-        return storageResourceErrorResponse(response, err);
-    }
-});
-
-router.post('/storage/resource/write', async (request, response) => {
-    try {
-        const user = request.user?.profile;
-        if (!user) return response.status(401).json({ error: { code: 'E_UNAUTHORIZED', message: 'not logged in' } });
-        const dirs = request.user?.directories ?? getUserDirectories(user.handle);
-        const pathArr = Array.isArray(request.body?.path) ? request.body.path : [];
-        const resource = resolveStorageResource(dirs.root, pathArr, String(request.body?.kind || ''));
-        const result = await writeStorageResource({
-            resource,
-            content: request.body?.content,
-            recoveryRoot: storageRecoveryRoot(),
-            handle: user.handle,
-            expectedModifiedMs: request.body?.expectedModifiedMs ?? null,
-        });
-        await invalidateRecentChatIndex(request);
-        const refreshed = await readStorageResource(resolveStorageResource(dirs.root, pathArr, String(request.body?.kind || '')));
-        return response.json({
-            ok: true,
-            recovery: result.recovery,
-            resource: publicStorageResource(refreshed),
-        });
-    } catch (err) {
-        return storageResourceErrorResponse(response, err);
-    }
-});
-
-router.post('/storage/resource/delete', async (request, response) => {
-    try {
-        const user = request.user?.profile;
-        if (!user) return response.status(401).json({ error: { code: 'E_UNAUTHORIZED', message: 'not logged in' } });
-        const dirs = request.user?.directories ?? getUserDirectories(user.handle);
-        const resource = resolveStorageResource(
-            dirs.root,
-            Array.isArray(request.body?.path) ? request.body.path : [],
-            String(request.body?.kind || ''),
-        );
-        const result = await deleteStorageResource({
-            resource,
-            recoveryRoot: storageRecoveryRoot(),
-            handle: user.handle,
-        });
-        await invalidateRecentChatIndex(request);
-        return response.json({ ok: true, recovery: result.recovery });
-    } catch (err) {
-        return storageResourceErrorResponse(response, err);
-    }
-});
 
 router.post('/storage/recovery/list', async (request, response) => {
     try {

@@ -465,19 +465,19 @@ details.snapshot[open] .atria-snapshot-chevron { transform: rotate(90deg); }
     font: var(--atri-text-footnote)/1.6 var(--atri-font-mono);
 }
 /* Existing backup/storage controllers retain every field and permission check. */
-html[data-atria-appearance] :is(.backupSyncCenter,.storageManagementCenter) {
+html[data-atria-appearance] .backupSyncCenter {
     text-align: start;
     min-width: 0;
     max-width: 100%;
     width: 100%;
 }
-html[data-atria-appearance] :is(.backupSyncCenter,.storageManagementCenter) h3 {
+html[data-atria-appearance] .backupSyncCenter h3 {
     margin: 0 0 10px;
     font: 600 var(--fs-xl)/1.25 var(--font-ui);
     letter-spacing: -.01em;
 }
 /* Section tabs: the shared segmented control. */
-html[data-atria-appearance] :is(.backupSyncTabs,.storageManagementTabs) {
+html[data-atria-appearance] .backupSyncTabs {
     display: inline-flex;
     flex-wrap: wrap;
     gap: 2px;
@@ -486,35 +486,18 @@ html[data-atria-appearance] :is(.backupSyncTabs,.storageManagementTabs) {
     border-radius: var(--r-md);
     background: var(--surface-input);
 }
-html[data-atria-appearance] :is(.backupSyncTab,.storageManagementTab) {
+html[data-atria-appearance] .backupSyncTab {
     min-height: 26px; padding: 4px 11px; border: 0; border-radius: 6px; background: transparent; box-shadow: none;
     color: var(--text-2); font: 500 var(--fs-sm)/1.2 var(--font-ui); opacity: 1;
 }
-html[data-atria-appearance] :is(.backupSyncTab,.storageManagementTab):hover { background: transparent; color: var(--text-1); }
-html[data-atria-appearance] :is(.backupSyncTab,.storageManagementTab).active {
+html[data-atria-appearance] .backupSyncTab:hover { background: transparent; color: var(--text-1); }
+html[data-atria-appearance] .backupSyncTab.active {
     outline: 0;
     background: var(--surface-raised);
     color: var(--text-1);
     box-shadow: var(--shadow-1), 0 0 0 1px var(--line-2);
 }
-html[data-atria-appearance] .storageInspectorEntryLabel:is(button) {
-    appearance: none;
-    border: 0;
-    border-radius: var(--atri-radius-sm);
-    background: transparent;
-    color: inherit;
-    font: inherit;
-    text-align: start;
-    min-width: 0;
-    min-height: 44px;
-    padding: 0;
-    cursor: pointer;
-}
-html[data-atria-appearance] :is(.storageInspectorEntryLabel, .storageInspectorEntryActionButton):focus-visible {
-    outline: none;
-    box-shadow: var(--focus-ring);
-}
-html[data-atria-appearance] :is(.backupRetentionCard,.backupManagedGroup,.backupProviderCard,.storageManagementSection) {
+html[data-atria-appearance] :is(.backupRetentionCard,.backupManagedGroup,.backupProviderCard) {
     border: 0;
     border-radius: 0;
     background: transparent;
@@ -531,18 +514,18 @@ html[data-atria-appearance] .backupRetentionCard label {
 html[data-atria-appearance] .backupRetentionCard input {
     max-width: 100%;
 }
-html[data-atria-appearance] :is(.backupSyncCenter,.storageManagementCenter) .menu_button_note {
+html[data-atria-appearance] .backupSyncCenter .menu_button_note {
     text-wrap: pretty;
 }
 @media (max-width:719px) {
     html[data-atria-appearance] .backupRetentionGrid {
         grid-template-columns: minmax(0,1fr);
     }
-    html[data-atria-appearance] :is(.backupSyncTabs,.storageManagementTabs) {
+    html[data-atria-appearance] .backupSyncTabs {
         display: grid;
         grid-template-columns: repeat(2,minmax(0,1fr));
     }
-    html[data-atria-appearance] :is(.backupSyncCenter,.storageManagementCenter) :is(input,select) {
+    html[data-atria-appearance] .backupSyncCenter :is(input,select) {
         font-size: 16px;
     }
 }

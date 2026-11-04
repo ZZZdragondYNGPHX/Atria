@@ -86,7 +86,7 @@ dialog.storage-center-dialog .storage-center-body { padding: 8px 24px 40px; }
 .storage-center-usage__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; }
 .storage-center-usage__head h2 { font-size: var(--fs-lg); }
 .storage-center-usage__quick { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
-.storage-center-dialog .storage-center-chip { min-height: 24px; padding: 0 10px; border: 1px solid var(--line-2); border-radius: var(--r-pill); background: transparent; box-shadow: none; color: var(--text-2); font: 550 var(--fs-xs)/1 var(--font-ui); }
+.storage-center-dialog .storage-center-chip { display: inline-flex; align-items: center; min-height: 24px; padding: 0 10px; border: 1px solid var(--line-2); border-radius: var(--r-pill); background: transparent; box-shadow: none; color: var(--text-2); font: 550 var(--fs-xs)/1 var(--font-ui); }
 .storage-center-dialog .storage-center-chip[data-tone="safe"] { border-color: color-mix(in srgb, var(--tone-jade) 40%, transparent); background: var(--soft-jade); color: var(--tone-jade); }
 .storage-center-categories { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .storage-center-dialog .storage-center-category {
@@ -192,6 +192,8 @@ dialog.storage-center-dialog .storage-center-body { padding: 8px 24px 40px; }
 .atria-app-shell[data-atria-viewport="compact"] .storage-center-usage { grid-template-columns: minmax(0, 1fr); justify-items: center; padding: 16px; }
 .atria-app-shell[data-atria-viewport="compact"] .storage-center-usage__side { justify-self: stretch; }
 .atria-app-shell[data-atria-viewport="compact"] .storage-center-categories { grid-template-columns: minmax(0, 1fr); }
+.atria-app-shell[data-atria-viewport="compact"] .storage-center-filters { display: grid; grid-template-columns: minmax(0, 1fr); }
+.atria-app-shell[data-atria-viewport="compact"] .storage-center-filters :is(input, select) { width: 100%; max-width: none; margin: 0; }
 .atria-app-shell[data-atria-viewport="compact"] .atria-toolbar__leading > .storage-center-scope .atria-button { padding: 0 7px; font-size: var(--fs-xs); }
 .atria-app-shell[data-atria-viewport="compact"] .storage-center-resource { grid-template-columns: 22px minmax(0, 1fr) auto; }
 .atria-app-shell[data-atria-viewport="compact"] .storage-center-resource > .atria-icon-button { display: none; }

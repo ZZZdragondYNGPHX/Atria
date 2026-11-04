@@ -7,6 +7,6 @@ Atria is a roleplay and interactive-work platform derived from SillyTavern. It c
 - **Runtime** manages connections and generation settings.
 - The storage center exposes usage, cleanup suggestions and recovery controls.
 
-See [Getting Started](/guide/getting-started), [Native orchestration](/features/native-orchestration) and [Storage management](/features/storage-inspector) for details.
+See [Getting Started](/guide/getting-started), [Native orchestration](/features/native-orchestration) and [Storage management](/features/storage-management) for details.
 
 Atria can import supported character-card files. Its data, settings and extensions have evolved independently, so full compatibility or lossless round trips with SillyTavern are not guaranteed. See [Backup and transfer](/guide/migration) before moving data.

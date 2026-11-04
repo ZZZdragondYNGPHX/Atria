@@ -27,8 +27,7 @@
 
 .backupRetentionCard,
 .backupManagedGroup,
-.backupProviderCard,
-.storageManagementSection {
+.backupProviderCard {
     border: 1px solid color-mix(in srgb, var(--SmartThemeBorderColor) 70%, transparent);
     border-radius: 10px;
     padding: 12px;
@@ -136,14 +135,6 @@
     margin-top: 8px;
     opacity: .8;
     font-size: .9em;
-}
-
-.storageManagementTabs {
-    margin-bottom: 10px;
-}
-
-.storageManagementMount {
-    min-height: 360px;
 }
 
 @media (max-width: 700px) {

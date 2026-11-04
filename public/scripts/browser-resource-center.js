@@ -1,11 +1,20 @@
-import { BrowserProvider, BrowserMutator, estimateEntryBytes, fingerprintBrowserResource } from './browser-storage-inspector.js';
+import { BrowserProvider, BrowserMutator, estimateEntryBytes, fingerprintBrowserResource } from './browser-storage-adapter.js';
+import { translateShellText as tl } from './atria-shell/localization.js';
 
 const TASK_KEY = 'atria_storage_center_tasks_v1';
 const preferenceKeys = new Set(['language', 'atri_ui_device_id', 'atri_learning_v1']);
 const modelCaches = new Set(['webllm/model', 'webllm/config', 'webllm/wasm']);
+// These databases are still used by Atria. Keep their existing names so that
+// prompt diagnostics and device preferences remain available after upgrades.
+const applicationDatabases = {
+    SillyTavern_ChatCompletions: { category: 'cache', label: 'Token count cache' },
+    SillyTavern_Thumbnails: { category: 'cache', label: 'Background thumbnail cache' },
+    SillyTavern_TextCompletions: { category: 'preferences', label: 'Sampler preferences' },
+    SillyTavern_Prompts: { category: 'sessions', label: 'Prompt diagnostics' },
+};
 const identity = path => JSON.stringify(path);
 
-/** Identified device data shares the inspector's actual browser adapters.
+/** Device data uses the browser storage adapters shared by the resource center.
  * Task history contains identities and outcomes, never stored values.
  */
 export class BrowserResourceCenter {
@@ -38,26 +47,30 @@ export class BrowserResourceCenter {
                     const semantic = category === 'localStorage' && preferenceKeys.has(entry.key);
                     knownBytes += entry.sizeBytes;
                     resources.push({ id: identity(path), target: { path }, name: entry.key, bytes: entry.sizeBytes,
-                        category: semantic ? 'preferences' : 'advanced', managed: semantic, units: 1, method: 'utf16-estimate' });
+                        category: semantic ? 'preferences' : 'other', managed: semantic, reason: semantic ? undefined : 'unclassified-data', units: 1, method: 'utf16-estimate' });
                 }
             } catch (error) { errors.push({ source: category, reason: error.message }); }
         }
         for (const category of ['indexeddb', 'cachestorage']) {
             try {
                 for (const entry of (await this.provider.fetch([category])).entries) {
-                    if (!modelCaches.has(entry.key)) continue;
                     const path = [category, entry.key];
-                    resources.push({ id: identity(path), target: { path }, name: entry.label, bytes: null, category: 'offline', managed: true, units: entry.childCount, method: 'unavailable' });
+                    const known = modelCaches.has(entry.key);
+                    const application = category === 'indexeddb' && Object.hasOwn(applicationDatabases, entry.key) ? applicationDatabases[entry.key] : undefined;
+                    resources.push({ id: identity(path), target: { path }, name: application ? tl(application.label) : entry.label, bytes: null,
+                        category: application?.category || (known ? 'offline' : 'other'), managed: known,
+                        reason: known ? undefined : application ? 'native_resource_requires_domain_editor' : 'unclassified-data', units: entry.childCount, method: 'unavailable' });
                 }
             } catch (error) { errors.push({ source: category, reason: error.message }); }
         }
         return { scope: { type: 'browser' }, startedAt, completedAt: Date.now(), totalBytes: estimate.usage ?? null,
             knownBytes, quotaBytes: estimate.quota ?? null, completeness: errors.length ? 'partial' : 'estimate',
             method: 'origin-estimate', errors, resources, suggestions: [], recovery: [], safeCleanupBytes: 0,
-            categories: Object.fromEntries(['cache', 'offline', 'preferences', 'advanced'].map(category => [category, {
-                bytes: category === 'offline' ? null : resources.filter(item => item.category === category).reduce((sum, item) => sum + item.bytes, 0),
-                objectCount: resources.filter(item => item.category === category).length,
-            }])) };
+            categories: Object.fromEntries(['sessions', 'cache', 'offline', 'preferences', 'other'].map(category => {
+                const items = resources.filter(item => item.category === category);
+                const knownBytes = items.reduce((sum, item) => sum + (item.bytes ?? 0), 0);
+                return [category, { bytes: items.some(item => item.bytes == null) ? null : knownBytes, knownBytes, objectCount: items.length }];
+            })) };
     }
     async expand(path) {
         if (path[0] === 'sessionStorage' && path[1] === TASK_KEY) throw new Error('Operation history is managed by the resource center.');

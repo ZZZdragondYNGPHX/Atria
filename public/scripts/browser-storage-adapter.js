@@ -1,28 +1,14 @@
-/**
- * Browser-side storage provider/mutator used by the unified Storage Management
- * center. The provider exposes capability metadata; the shared inspector
- * decides which view/edit/delete/create controls are rendered.
- */
+/** Browser storage enumeration and deletion for the resource center. */
 import { t, translate } from './i18n.js';
 
-const MAX_CACHE_BODY_CHARS = 256 * 1024;
 const MANAGEMENT_KEY = 'atria_storage_center_tasks_v1';
 const assertUserKey = (category, key) => { if (category === 'sessionStorage' && key === MANAGEMENT_KEY) throw makeErr('E_READ_ONLY', t`Operation history is managed by the resource center.`); };
-
-const BROWSER_CATEGORIES = Object.freeze([
-    { key: 'localStorage', label: 'localStorage' },
-    { key: 'sessionStorage', label: 'sessionStorage' },
-    { key: 'indexeddb', label: 'IndexedDB' },
-    { key: 'cachestorage', label: 'Cache Storage' },
-    { key: 'quota', label: 'Storage Quota' },
-]);
 
 function makeErr(code, message) {
     const err = new Error(message);
     err.code = code;
     return err;
 }
-
 export function encodeCacheRequest(request) {
     return encodeURIComponent(JSON.stringify({ url: request.url, method: request.method, headers: [...request.headers.entries()].sort() }));
 }
@@ -89,16 +75,6 @@ export function estimateEntryBytes(key, value) {
     return ((key ?? '').length + (value ?? '').length) * 2;
 }
 
-async function estimateQuota() {
-    try {
-        if (!navigator.storage?.estimate) return { usedBytes: null, quotaBytes: null, over: false, method: 'unavailable' };
-        const { usage = null, quota = null } = await navigator.storage.estimate();
-        return { usedBytes: usage, quotaBytes: quota, over: usage != null && quota != null && usage > quota, method: 'origin-estimate' };
-    } catch (error) {
-        return { usedBytes: null, quotaBytes: null, over: false, method: 'unavailable', reason: error.message };
-    }
-}
-
 async function safeListDatabases() {
     try {
         if (!indexedDB.databases) throw makeErr('E_UNAVAILABLE', 'IndexedDB enumeration is unavailable.');
@@ -114,17 +90,6 @@ async function safeCacheKeys() {
         return await caches.keys();
     } catch (error) {
         throw makeErr('E_UNAVAILABLE', error.message);
-    }
-}
-
-function iconForBrowserCategory(key) {
-    switch (key) {
-        case 'localStorage': return 'hard-drive';
-        case 'sessionStorage': return 'clock';
-        case 'indexeddb': return 'database';
-        case 'cachestorage': return 'layer-group';
-        case 'quota': return 'chart-pie';
-        default: return 'file';
     }
 }
 
@@ -312,21 +277,8 @@ async function readIdbRecord(dbName, storeName, token) {
 }
 
 export class BrowserProvider {
-    constructor() {
-        this.id = 'browser';
-        this.canMutate = true;
-        this.dataSource = null;
-    }
-
-    canCreateAtPath(pathArr) {
-        return Array.isArray(pathArr)
-            && pathArr.length === 1
-            && (pathArr[0] === 'localStorage' || pathArr[0] === 'sessionStorage');
-    }
-
     async fetch(pathArr) {
-        const quota = await estimateQuota();
-        if (pathArr.length === 0) return this._fetchRoot(quota);
+        const quota = null;
         const [category, ...rest] = pathArr;
         switch (category) {
             case 'localStorage':
@@ -336,139 +288,9 @@ export class BrowserProvider {
                 return this._fetchIndexedDb(quota, rest);
             case 'cachestorage':
                 return this._fetchCacheStorage(quota, rest);
-            case 'quota':
-                return this._fetchQuotaLeaf(quota);
             default:
                 throw makeErr('E_INVALID_PATH', `Unknown category: ${category}`);
         }
-    }
-
-    async readAtPath(pathArr, entry) {
-        const [category, ...rest] = pathArr;
-        if ((category === 'localStorage' || category === 'sessionStorage') && rest.length === 1) {
-            const value = window[category].getItem(rest[0]);
-            if (value === null) throw makeErr('E_NOT_FOUND', `${category} key not found.`);
-            return {
-                kind: 'storage-key',
-                content: value,
-                modifiedMs: null,
-                capabilities: capabilities({ view: true, viewContent: true, edit: true, delete: true }),
-            };
-        }
-
-        if (category === 'indexeddb' && rest.length === 3) {
-            const [dbName, storeName, token] = rest;
-            const record = await readIdbRecord(dbName, storeName, token);
-            const editable = isPlainJsonValue(record.value);
-            return {
-                kind: 'idb-record',
-                content: editable ? JSON.stringify(record.value, null, 2) : summarizeValue(record.value),
-                modifiedMs: null,
-                structuredEditable: editable,
-                key: formatIdbKey(record.key),
-                keyPath: record.keyPath,
-                capabilities: capabilities({ view: true, viewContent: true, edit: editable, delete: true }),
-            };
-        }
-
-        if (category === 'cachestorage' && rest.length === 2) {
-            const [cacheName, requestToken] = rest;
-            const url = decodeCacheRequest(requestToken);
-            const cache = await caches.open(cacheName);
-            const response = await cache.match(url);
-            if (!response) throw makeErr('E_NOT_FOUND', 'Cached response not found.');
-            const clone = response.clone();
-            let body = '';
-            try {
-                body = await clone.text();
-                if (body.length > MAX_CACHE_BODY_CHARS) body = `${body.slice(0, MAX_CACHE_BODY_CHARS)}\n… preview truncated …`;
-            } catch {
-                body = '[binary or unreadable response body]';
-            }
-            const details = {
-                requestUrl: url.url,
-                response: {
-                    status: response.status,
-                    statusText: response.statusText,
-                    type: response.type,
-                    headers: Object.fromEntries(response.headers.entries()),
-                    body,
-                },
-            };
-            return {
-                kind: 'cache-request',
-                content: JSON.stringify(details, null, 2),
-                modifiedMs: null,
-                capabilities: capabilities({ view: true, viewContent: true, delete: true }),
-            };
-        }
-
-        return {
-            kind: entry?.kind || 'browser-resource',
-            content: null,
-            modifiedMs: null,
-            capabilities: entry?.capabilities || capabilities({ view: true }),
-        };
-    }
-
-    async _fetchRoot(quota) {
-        const entries = [];
-        for (const category of BROWSER_CATEGORIES) {
-            let sizeBytes = null;
-            let childCount = 0;
-            let labelSuffix = '';
-            let canDrill = true;
-
-            if (category.key === 'localStorage' || category.key === 'sessionStorage') {
-                const storage = window[category.key];
-                childCount = storage.length;
-                let bytes = 0;
-                for (let index = 0; index < storage.length; index++) {
-                    const key = storage.key(index);
-                    bytes += estimateEntryBytes(key, storage.getItem(key) ?? '');
-                }
-                sizeBytes = bytes;
-                labelSuffix = ` (${childCount})`;
-                canDrill = true;
-            } else if (category.key === 'indexeddb') {
-                const dbs = await safeListDatabases();
-                childCount = dbs.length;
-                labelSuffix = ` (${childCount})`;
-                canDrill = childCount > 0;
-            } else if (category.key === 'cachestorage') {
-                const names = await safeCacheKeys();
-                childCount = names.length;
-                labelSuffix = ` (${childCount})`;
-                canDrill = childCount > 0;
-            } else if (category.key === 'quota') {
-                sizeBytes = quota.usedBytes;
-                canDrill = false;
-            }
-
-            entries.push({
-                key: category.key,
-                label: category.label,
-                labelSuffix,
-                icon: iconForBrowserCategory(category.key),
-                kind: 'category',
-                sizeBytes,
-                mtimeMs: null,
-                childCount,
-                canDrill,
-                canDelete: false,
-                note: null,
-                capabilities: capabilities(),
-            });
-        }
-        return {
-            target: { type: 'browser' },
-            quota,
-            path: [],
-            breadcrumbs: [{ label: t`Browser Storage`, path: [] }],
-            isLeaf: false,
-            canMutate: true,
-            entries,
-        };
     }
 
     async _fetchStorageKeys(quota, kind, rest) {
@@ -677,99 +499,9 @@ export class BrowserProvider {
             entries,
         };
     }
-
-    async _fetchQuotaLeaf(quota) {
-        const note = quota.quotaBytes == null
-            ? t`Browser did not report a quota.`
-            : `${((quota.usedBytes / quota.quotaBytes) * 100).toFixed(1)}% used`;
-        return {
-            target: { type: 'browser' },
-            quota,
-            path: ['quota'],
-            breadcrumbs: [
-                { label: t`Browser Storage`, path: [] },
-                { label: 'Storage Quota', path: ['quota'] },
-            ],
-            isLeaf: true,
-            canMutate: true,
-            entries: [{
-                key: 'quota',
-                label: 'Storage Quota',
-                icon: 'chart-pie',
-                kind: 'quota-leaf',
-                sizeBytes: quota.usedBytes,
-                mtimeMs: null,
-                canDrill: false,
-                canDelete: false,
-                note,
-                capabilities: capabilities({ view: true }),
-            }],
-        };
-    }
 }
 
 export class BrowserMutator {
-    async createAtPath(pathArr, key, value) {
-        if (!Array.isArray(pathArr) || pathArr.length !== 1) {
-            throw makeErr('E_INVALID_PATH', 'Create is supported only inside localStorage/sessionStorage.');
-        }
-        const [category] = pathArr;
-        assertUserKey(category, String(key));
-        if (category !== 'localStorage' && category !== 'sessionStorage') {
-            throw makeErr('E_INVALID_PATH', 'This browser storage category does not support create.');
-        }
-        if (window[category].getItem(String(key)) !== null) throw makeErr('E_CONFLICT', 'A storage entry with this name already exists.');
-        window[category].setItem(String(key), String(value));
-        return { ok: true };
-    }
-
-    async writeAtPath(pathArr, _entry, content) {
-        if (!Array.isArray(pathArr) || pathArr.length < 2) {
-            throw makeErr('E_INVALID_PATH', 'Storage write path is incomplete.');
-        }
-        const [category, ...rest] = pathArr;
-        assertUserKey(category, rest[0]);
-        if (category === 'localStorage' || category === 'sessionStorage') {
-            if (rest.length !== 1) throw makeErr('E_INVALID_PATH', `${category} path must be [category, key].`);
-            window[category].setItem(rest[0], String(content));
-            return { ok: true };
-        }
-        if (category === 'indexeddb' && rest.length === 3) {
-            const [dbName, storeName, token] = rest;
-            let value;
-            try {
-                value = JSON.parse(String(content));
-            } catch (cause) {
-                throw makeErr('E_INVALID_CONTENT', `IndexedDB record editor accepts JSON values: ${cause.message}`);
-            }
-            if (!isPlainJsonValue(value)) {
-                throw makeErr('E_INVALID_CONTENT', 'This IndexedDB value cannot be safely represented as plain JSON.');
-            }
-            const key = decodeIdbKey(token);
-            const db = await openDatabase(dbName);
-            try {
-                const tx = db.transaction(storeName, 'readwrite');
-                const committed = transactionResult(tx, 'E_WRITE_FAILED');
-                committed.catch(() => {});
-                const store = tx.objectStore(storeName);
-                if (store.keyPath != null) {
-                    const extract = item => item.split('.').reduce((current, field) => current?.[field], value);
-                    const nextKey = Array.isArray(store.keyPath) ? store.keyPath.map(extract) : extract(store.keyPath);
-                    let same = false;
-                    try { same = indexedDB.cmp(nextKey, key) === 0; } catch { /* missing or invalid inline key */ }
-                    if (!same) { tx.abort(); throw makeErr('E_CONFLICT', 'Editing an IndexedDB primary key requires a separate create operation.'); }
-                }
-                const request = store.keyPath == null ? store.put(value, key) : store.put(value);
-                await requestResult(request, 'E_WRITE_FAILED');
-                await committed;
-            } finally {
-                db.close();
-            }
-            return { ok: true };
-        }
-        throw makeErr('E_READ_ONLY', 'This browser resource is not editable.');
-    }
-
     async deleteAtPath(pathArr) {
         if (!Array.isArray(pathArr) || pathArr.length < 2) {
             throw makeErr('E_INVALID_PATH', `Path must have at least [category, key]: got ${JSON.stringify(pathArr)}`);
@@ -859,8 +591,4 @@ export class BrowserMutator {
             db.close();
         }
     }
-}
-
-export async function openBrowserStorageInspector() {
-    return (await import('./storage-management.js')).openStorageManagement({ initialScope: 'browser' });
 }

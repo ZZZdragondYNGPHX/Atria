@@ -3,10 +3,10 @@ import { NATIVE_RESOURCE_KINDS } from '../native/contracts.js';
 import { serializeNativeDocument } from '../native/repositories/common.js';
 import { visualSessionOwner } from '../native/visual-store.js';
 
-// Business categories are independent of the engine and of the legacy inspector.
+// Business categories are independent of the storage engine.
 export const RESOURCE_CATEGORIES = Object.freeze([
     'sessions', 'projects', 'knowledge', 'media', 'personas', 'agents',
-    'settings', 'recovery', 'cache',
+    'settings', 'recovery', 'cache', 'other',
 ]);
 export const STORAGE_CENTER_PROTOCOL = 'atria.storage-center.v1';
 export const RECOVERY_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -23,7 +23,7 @@ const families = {
     agents: ['agentExperience', 'agentEvidence', 'agentGoal', 'agentEvolution', 'agentEvolutionOwner', 'orchestrationPlan', 'orchestrationBinding', 'orchestrationRevision', 'orchestrationRun', 'orchestrationRecord', 'orchestrationCommand'],
     settings: ['connectionProfile', 'credentialTargetPermit', 'modelProfile', 'runtimeRoute', 'retrievalProfile'],
     cache: ['runtimeCheckpoint'],
-    advanced: ['hostFence', 'maintenance', 'versionedJsonResource', 'versionedJsonResourceRevision'],
+    other: ['hostFence', 'maintenance', 'versionedJsonResource', 'versionedJsonResourceRevision'],
 };
 
 export const NATIVE_CATEGORY_BY_KIND = Object.freeze(Object.fromEntries(
@@ -53,20 +53,20 @@ export function resourceFingerprint(value) {
 /** Ownership must come from a stored business key; scope labels are not ownership. */
 export function classifyNativeRecord(record) {
     const { key, doc } = record;
-    const base = NATIVE_CATEGORY_BY_KIND[key.kind] ?? 'advanced';
+    const base = NATIVE_CATEGORY_BY_KIND[key.kind] ?? 'other';
     if (key.kind === NATIVE_RESOURCE_KINDS.maintenance) {
         if (doc?.protocol === STORAGE_CENTER_PROTOCOL) return doc.type === 'recovery' ? 'recovery' : 'cache';
         if (key.scope?.startsWith('session:')) return 'sessions';
         if (key.scope === 'blob-gc') return 'media';
-        return 'advanced';
+        return 'other';
     }
     if ([NATIVE_RESOURCE_KINDS.versionedJsonResource, NATIVE_RESOURCE_KINDS.versionedJsonResourceRevision].includes(key.kind)) {
         const type = key.resourceType ?? doc?.resourceType;
         if (settingsTypes.has(type)) return 'settings';
         if (type === 'atri.visual.gc') return 'media';
         if (visualTypes.has(type) && record.doc?.source?.kind === 'authoring') return 'media';
-        if (visualTypes.has(type)) return visualSessionOwner(record) ? 'sessions' : type === 'atri.visual.planner' ? 'cache' : 'advanced';
-        return 'advanced';
+        if (visualTypes.has(type)) return visualSessionOwner(record) ? 'sessions' : type === 'atri.visual.planner' ? 'cache' : 'other';
+        return 'other';
     }
     return base;
 }
@@ -76,7 +76,7 @@ export function nativeResourceIdentity(key) {
 }
 
 export function emptyResourceTotals() {
-    return Object.fromEntries([...RESOURCE_CATEGORIES, 'advanced'].map(category => [category, { bytes: 0, count: 0 }]));
+    return Object.fromEntries(RESOURCE_CATEGORIES.map(category => [category, { bytes: 0, count: 0 }]));
 }
 
 // These values are returned only after a domain adapter has checked the object.
