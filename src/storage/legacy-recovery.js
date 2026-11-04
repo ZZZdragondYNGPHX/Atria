@@ -30,16 +30,21 @@ function isProtectedRelativePath(relPath) {
 }
 
 // Keep existing recovery points accessible after retiring the raw inspector.
-export async function listStorageRecoveryPoints(recoveryRoot, handle, limit = 25) {
+export async function listStorageRecoveryPoints(recoveryRoot, handle, limit = 25, before = null) {
     const root = path.join(recoveryRoot, handle);
     let ids = [];
-    try { ids = await fs.promises.readdir(root); } catch { return []; }
+    try { ids = await fs.promises.readdir(root); } catch (cause) { if (cause.code === 'ENOENT') return []; throw cause; }
+    if (before != null) before = assertSegment(before);
     const manifests = [];
-    for (const id of ids.sort().reverse().slice(0, Math.max(1, Math.min(100, Number(limit) || 25)))) {
+    const pageSize = Math.max(1, Math.min(100, Number(limit) || 25));
+    for (const id of ids.sort().reverse()) {
+        if (before != null && id >= before) continue;
         try {
             const raw = await fs.promises.readFile(path.join(root, id, 'manifest.json'), 'utf8');
-            manifests.push(JSON.parse(raw));
+            const manifest = JSON.parse(raw);
+            if (manifest.id === id && manifest.handle === handle) manifests.push(manifest);
         } catch { /* ignore incomplete recovery entries */ }
+        if (manifests.length >= pageSize) break;
     }
     return manifests;
 }
@@ -62,8 +67,17 @@ export async function restoreStorageRecoveryPoint(args) {
         const listing = manifest.isDirectory ? await listAccountFiles(payload) : { files: [{ bytes: (await fs.promises.stat(payload)).size }], errors: [] };
         if (listing.errors.length) throw error('E_INVALID_PATH', 'Recovery payload contains unreadable or linked paths.');
         await withAccountFileGrowth(handle, listing.files.reduce((sum, file) => sum + file.bytes, 0), async () => {
-            if (manifest.isDirectory) await fs.promises.cp(payload, target, { recursive: true });
-            else await fs.promises.copyFile(payload, target);
+            try {
+                if (manifest.isDirectory) {
+                    await fs.promises.mkdir(target);
+                    for (const name of await fs.promises.readdir(payload)) {
+                        await fs.promises.cp(path.join(payload, name), path.join(target, name), { recursive: true, force: false, errorOnExist: true });
+                    }
+                } else await fs.promises.copyFile(payload, target, fs.constants.COPYFILE_EXCL);
+            } catch (cause) {
+                if (cause.code === 'EEXIST' || cause.code === 'ERR_FS_CP_EEXIST') throw error('E_CONFLICT', 'Recovery never overwrites an existing resource.');
+                throw cause;
+            }
         }, accountEngineForDirectory(handle, userRoot));
         return manifest;
     });

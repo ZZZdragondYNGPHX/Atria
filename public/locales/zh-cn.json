@@ -11273,5 +11273,18 @@
     "Sampler preferences": "采样器偏好",
     "Prompt diagnostics": "提示词诊断记录",
     "${0} used": "已使用 ${0}",
-    "Previous": "上一页"
+    "Previous": "上一页",
+    "Earlier recovery points": "早期恢复点",
+    "These points are retained separately. Restore is available only when the original path is free.": "这些恢复点单独保留，仅当原路径空闲时才能恢复。",
+    "Created: ${0}": "创建于：${0}",
+    "Restore original item": "恢复原项目",
+    "Loading earlier recovery points…": "正在读取早期恢复点…",
+    "Earlier recovery points are unavailable. Refresh and try again.": "无法读取早期恢复点，请刷新后重试。",
+    "Load older recovery points": "加载更早的恢复点",
+    "The original path must be free. Existing data will never be overwritten.": "原路径必须空闲；恢复不会覆盖现有数据。",
+    "The original path is occupied. Recovery never overwrites existing data.": "原路径已被占用，恢复不会覆盖现有数据。",
+    "Could not restore this recovery point. Check available storage and the original path; an incomplete item may remain.": "无法恢复该恢复点，请检查可用存储空间和原路径；原路径可能留下不完整的项目。",
+    "Restored ${0}. The recovery point is retained.": "已恢复 ${0}，恢复点仍会保留。",
+    "Restored during this session.": "本次会话中已恢复。",
+    "Restore ${0}": "恢复 ${0}"
 }

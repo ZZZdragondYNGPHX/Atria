@@ -2221,6 +2221,7 @@ router.post('/storage/recovery/list', async (request, response) => {
             storageRecoveryRoot(),
             user.handle,
             request.body?.limit,
+            request.body?.before,
         );
         return response.json({ recoveryPoints: points });
     } catch (err) {

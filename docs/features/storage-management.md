@@ -4,7 +4,7 @@ Open the storage center from Atria's workspace. Switch between **Server account*
 
 - **Overview** groups resources by their current owner and shows usage, including installed Works and their package data. Unclassified data appears in **Other data** as read-only.
 - **Cleanup suggestions** lists data that the relevant owner has verified can be cleaned.
-- **Backups & recycle bin** shows recoverable items and supported recovery actions.
+- **Backups & recycle bin** shows recoverable items and supported recovery actions. Earlier recovery points are listed separately and can be restored when their original path is free.
 - **Operation history** shows cleanup and recovery tasks.
 
 Available actions depend on the resource and its references. Review a preview before applying a cleanup; resources in use or needed for recovery may be protected.

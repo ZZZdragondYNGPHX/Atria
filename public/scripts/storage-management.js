@@ -54,10 +54,23 @@ export async function storageCenterRequest(operation, body = {}) {
     return payload;
 }
 
+async function legacyRecoveryRequest(operation, body = {}) {
+    const response = await fetch('/api/users/storage/recovery/' + operation, { method: 'POST', headers: getRequestHeaders(), body: JSON.stringify(body) });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) {
+        const message = payload?.error?.code === 'E_CONFLICT' ? 'The original path is occupied. Recovery never overwrites existing data.'
+            : operation === 'restore' ? 'Could not restore this recovery point. Check available storage and the original path; an incomplete item may remain.'
+                : 'Earlier recovery points are unavailable. Refresh and try again.';
+        throw new Error(tl(message));
+    }
+    return payload;
+}
+
 export class StorageCenterPanel {
     constructor({ api = storageCenterRequest, browser = new BrowserResourceCenter(), initialScope = 'server' } = {}) {
         Object.assign(this, { api, browser, scope: initialScope === 'browser' ? 'browser' : 'server', region: 'overview', data: null, category: null, query: '', offset: 0,
-            selection: new Map(), safeSelection: new Set(), generation: 0, closed: false, activeTask: null, keyboard: false, detailGeneration: 0, previewGeneration: 0 });
+            selection: new Map(), safeSelection: new Set(), generation: 0, closed: false, activeTask: null, keyboard: false, detailGeneration: 0, previewGeneration: 0,
+            legacyRecovery: null, legacyRecoveryLoading: false, legacyRecoveryError: null, legacyRecoveryHasMore: false, legacyRestoreBusy: false, legacyRestored: new Set() });
     }
     // Shared chrome for both presentations: section nav, scope switch, status and content.
     assemble(frame, { page = false } = {}) {
@@ -136,6 +149,7 @@ export class StorageCenterPanel {
     async refresh({ background = false } = {}) {
         if (this.loadingScope === this.scope) return;
         const scope = this.scope, generation = ++this.generation; this.loadingScope = scope;
+        if (!background && scope === 'server' && this.region === 'recovery') void this.loadLegacyRecovery();
         if (!this.data) this.render();
         if (!background) { this.status.textContent = tl('Measuring resources…'); this.status.dataset.error = 'false'; this.content.setAttribute('aria-busy', 'true'); }
         if (this.refreshButton) { this.refreshButton.disabled = true; this.refreshButton.classList.add('storage-center-loading'); setAtriaButtonLabel(this.refreshButton, tl('Refreshing…')); }
@@ -171,7 +185,7 @@ export class StorageCenterPanel {
         const mainFocused = focus === this.content || focus === this.content.querySelector('h1');
         this.render();
         if (mainFocused) this.content.focus({ preventScroll: true });
-        else if (label) [...this.content.querySelectorAll('button')].find(item => (item.getAttribute('aria-label') || item.textContent) === label)?.focus({ preventScroll: true });
+        else if (label) ([...this.content.querySelectorAll('button')].find(item => (item.getAttribute('aria-label') || item.textContent) === label) || this.content).focus({ preventScroll: true });
     }
     heading(text, subtitle = '') {
         const header = node('div', 'storage-center-page-heading'), copy = node('div');
@@ -415,6 +429,60 @@ export class StorageCenterPanel {
         if (this.data.recoveryUnavailable) this.note('Recovery records could not be read. Refresh after storage becomes available.');
         else if (!this.data.recovery.length) this.note('The recycle bin is empty.');
         this.content.append(button('Inspect saved backups', () => { this.region = 'overview'; this.category = 'recovery'; this.render(); }));
+        if (this.legacyRecovery === null && !this.legacyRecoveryLoading && !this.legacyRecoveryError) void this.loadLegacyRecovery();
+        if (this.legacyRecoveryLoading || this.legacyRecoveryError || this.legacyRecovery?.length) {
+            const earlier = node('section', 'storage-center-card'); earlier.append(node('h2', '', tl('Earlier recovery points')));
+            this.note('These points are retained separately. Restore is available only when the original path is free.', earlier);
+            for (const item of this.legacyRecovery || []) {
+                const row = node('div', 'storage-center-recovery'), copy = node('div');
+                copy.append(node('strong', '', item.relativePath || item.id));
+                this.note(ft('Created: ${0}', [formatAtriaDate(item.createdAt) || tl('Unavailable')]), copy);
+                if (this.legacyRestored.has(item.id)) this.note('Restored during this session.', copy);
+                const restore = button('Restore original item', () => this.restoreLegacyRecovery(item, restore));
+                restore.setAttribute('aria-label', ft('Restore ${0}', [item.relativePath || item.id]));
+                restore.disabled = this.legacyRestoreBusy; row.append(copy, restore); earlier.append(row);
+            }
+            if (this.legacyRecoveryLoading) this.note('Loading earlier recovery points…', earlier);
+            if (this.legacyRecoveryError) {
+                this.note(this.legacyRecoveryError, earlier);
+                earlier.append(button('Retry', () => { void this.loadLegacyRecovery(); this.refreshView(); }));
+            } else if (this.legacyRecoveryHasMore && !this.legacyRecoveryLoading) {
+                earlier.append(button('Load older recovery points', () => { void this.loadLegacyRecovery(true); this.refreshView(); }));
+            }
+            this.content.append(earlier);
+        }
+    }
+    async loadLegacyRecovery(append = false) {
+        if (this.legacyRecoveryLoading || this.closed) return;
+        const before = append ? this.legacyRecovery?.at(-1)?.id : null;
+        this.legacyRecoveryLoading = true; this.legacyRecoveryError = null;
+        try {
+            const payload = await legacyRecoveryRequest('list', { limit: 100, before });
+            if (this.closed) return;
+            const points = Array.isArray(payload?.recoveryPoints) ? payload.recoveryPoints : [];
+            this.legacyRecovery = append ? [...(this.legacyRecovery || []), ...points] : points;
+            this.legacyRecoveryHasMore = points.length === 100;
+        } catch (error) { if (!this.closed) this.legacyRecoveryError = error.message; } finally {
+            this.legacyRecoveryLoading = false;
+            if (!this.closed && this.scope === 'server' && this.region === 'recovery') this.refreshView();
+        }
+    }
+    async restoreLegacyRecovery(item, control) {
+        if (this.legacyRestoreBusy || this.closed) return;
+        this.legacyRestoreBusy = true; control.disabled = true;
+        try {
+            const content = node('div'); content.append(node('p', '', tl('The original path must be free. Existing data will never be overwritten.')), node('strong', '', item.relativePath || item.id));
+            const confirmed = await callGenericPopup(content, POPUP_TYPE.CONFIRM, '', { okButton: tl('Restore original item'), cancelButton: tl('Cancel'), defaultResult: POPUP_RESULT.NEGATIVE });
+            if (confirmed !== POPUP_RESULT.AFFIRMATIVE || this.closed || this.scope !== 'server' || this.region !== 'recovery') return;
+            await legacyRecoveryRequest('restore', { id: item.id });
+            this.legacyRestored.add(item.id);
+            if (this.closed || this.scope !== 'server') return;
+            await this.refresh({ background: true });
+            if (!this.closed && this.scope === 'server') { this.status.textContent = ft('Restored ${0}. The recovery point is retained.', [item.relativePath || item.id]); this.status.dataset.error = 'false'; }
+        } catch (error) { if (!this.closed && this.scope === 'server') this.error(error); } finally {
+            this.legacyRestoreBusy = false; if (control.isConnected) control.disabled = false;
+            if (!this.closed && this.scope === 'server' && this.region === 'recovery') this.refreshView();
+        }
     }
     recoveryDetail(item) {
         const content = node('div'), meta = node('dl', 'storage-center-detail-meta');
