@@ -1,4 +1,5 @@
-import { DiffMatchPatch, DOMPurify, localforage } from '../lib.js';
+import { DiffMatchPatch, DOMPurify } from '../lib.js';
+import { applicationBrowserStores } from './application-browser-storage.js';
 import { chat, event_types, eventSource, getCurrentChatId, reloadCurrentChat } from '../script.js';
 import { t } from './i18n.js';
 import { oai_settings } from './openai.js';
@@ -10,7 +11,7 @@ import { deleteItemizedPromptIndexMessage, ItemizedPromptStore, swapItemizedProm
 import { getFriendlyTokenizerName, getTokenCountsAsync } from './tokenizers.js';
 import { copyText } from './utils.js';
 
-const promptStorage = localforage.createInstance({ name: 'SillyTavern_Prompts' });
+const promptStorage = applicationBrowserStores.prompts;
 const promptStore = new ItemizedPromptStore(promptStorage);
 export let itemizedPrompts = [];
 

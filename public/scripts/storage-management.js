@@ -34,6 +34,7 @@ const reasons = {
     'runtime-state': 'Runtime continuation is managed by Runtime; only verified expired entries are suggested for cleanup.',
     'owned-version-or-maintenance-data': 'This data belongs to its business owner and cannot be removed on its own.',
     'unclassified-data': 'This data is read-only in the storage center.',
+    'browser-migration-pending': 'This earlier browser data is kept until migration can finish.',
     'account-backup-center': 'Manage this snapshot in Account backup & export.',
 };
 const explain = reason => tl(reasons[reason] || reason || '');
@@ -213,6 +214,12 @@ export class StorageCenterPanel {
         }
         this.heading('Resources & cleanup', 'See your usage. Make room for what comes next.');
         const browser = this.scope === 'browser', partial = this.data.completeness === 'partial';
+        if (browser && this.data.migrationIssues?.length) {
+            const text = this.data.migrationIssues.includes('data-conflict') ? 'Old and new browser data differ. Both are kept; resolve the conflict before reloading.'
+                : this.data.migrationIssues.includes('websql-unavailable') ? 'This browser uses an older database that cannot be moved safely here. Your data is still there; do not clear browser storage.'
+                    : 'Some browser data could not be moved. Your data is still there; close other tabs and reload to retry.';
+            this.notice(text, 'warning');
+        }
         if (partial) this.notice('Some storage could not be measured. The known subtotal is not a complete account total.', 'warning');
         if (!browser && this.data.quotaBytes >= 0 && this.data.totalBytes != null && this.data.totalBytes > this.data.quotaBytes) this.notice('Account quota exceeded. You can still inspect resources and clean verified data. Unexpired recovery records are retained.', 'warning');
         // Usage: a donut of measured categories beside the category cards (prototype C01).

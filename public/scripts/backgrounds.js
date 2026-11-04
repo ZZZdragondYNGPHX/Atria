@@ -1,4 +1,5 @@
-import { Fuse, localforage } from '../lib.js';
+import { Fuse } from '../lib.js';
+import { applicationBrowserStores } from './application-browser-storage.js';
 import { characters, chat_metadata, eventSource, event_types, generateQuietPrompt, getCurrentChatId, getRequestHeaders, getThumbnailUrl, saveMetadata, saveSettingsDebounced, this_chid } from '../script.js';
 import { saveMetadataDebounced } from './capability-host.js';
 import { SlashCommand } from './slash-commands/SlashCommand.js';
@@ -64,7 +65,7 @@ function getBackgroundViewportInfo() {
  * Storage for frontend-generated background thumbnails.
  * This is used to store thumbnails for backgrounds that cannot be generated on the server.
  */
-const THUMBNAIL_STORAGE = localforage.createInstance({ name: 'SillyTavern_Thumbnails' });
+const THUMBNAIL_STORAGE = applicationBrowserStores.thumbnails;
 
 /**
  * Cache for thumbnail blob URLs.

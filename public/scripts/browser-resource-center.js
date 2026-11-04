@@ -1,17 +1,11 @@
 import { BrowserProvider, BrowserMutator, estimateEntryBytes, fingerprintBrowserResource } from './browser-storage-adapter.js';
 import { translateShellText as tl } from './atria-shell/localization.js';
+import { APPLICATION_BROWSER_STORES, browserStorageMigrationIssues } from './application-browser-storage.js';
 
 const TASK_KEY = 'atria_storage_center_tasks_v1';
 const preferenceKeys = new Set(['language', 'atri_ui_device_id', 'atri_learning_v1']);
 const modelCaches = new Set(['webllm/model', 'webllm/config', 'webllm/wasm']);
-// These databases are still used by Atria. Keep their existing names so that
-// prompt diagnostics and device preferences remain available after upgrades.
-const applicationDatabases = {
-    SillyTavern_ChatCompletions: { category: 'cache', label: 'Token count cache' },
-    SillyTavern_Thumbnails: { category: 'cache', label: 'Background thumbnail cache' },
-    SillyTavern_TextCompletions: { category: 'preferences', label: 'Sampler preferences' },
-    SillyTavern_Prompts: { category: 'sessions', label: 'Prompt diagnostics' },
-};
+const applicationDatabases = new Map(Object.values(APPLICATION_BROWSER_STORES).flatMap(config => [[config.name, config], [config.legacyName, config]]));
 const identity = path => JSON.stringify(path);
 
 /** Device data uses the browser storage adapters shared by the resource center.
@@ -45,9 +39,13 @@ export class BrowserResourceCenter {
                     if (entry.key === TASK_KEY) continue;
                     const path = [category, entry.key];
                     const semantic = category === 'localStorage' && preferenceKeys.has(entry.key);
+                    const application = category === 'localStorage' ? Object.values(APPLICATION_BROWSER_STORES).find(config => entry.key.startsWith(config.name + '/') || entry.key.startsWith(config.legacyName + '/')) : undefined;
+                    const legacy = application && entry.key.startsWith(application.legacyName + '/');
+                    const prefix = legacy ? application.legacyName : application?.name;
                     knownBytes += entry.sizeBytes;
-                    resources.push({ id: identity(path), target: { path }, name: entry.key, bytes: entry.sizeBytes,
-                        category: semantic ? 'preferences' : 'other', managed: semantic, reason: semantic ? undefined : 'unclassified-data', units: 1, method: 'utf16-estimate' });
+                    resources.push({ id: identity(path), target: { path }, name: application ? tl(application.label) + ' / ' + entry.key.slice(prefix.length + 1) : entry.key, bytes: entry.sizeBytes,
+                        category: application?.category || (semantic ? 'preferences' : 'other'), managed: semantic,
+                        reason: semantic ? undefined : legacy ? 'browser-migration-pending' : application ? 'native_resource_requires_domain_editor' : 'unclassified-data', units: 1, method: 'utf16-estimate' });
                 }
             } catch (error) { errors.push({ source: category, reason: error.message }); }
         }
@@ -56,16 +54,18 @@ export class BrowserResourceCenter {
                 for (const entry of (await this.provider.fetch([category])).entries) {
                     const path = [category, entry.key];
                     const known = modelCaches.has(entry.key);
-                    const application = category === 'indexeddb' && Object.hasOwn(applicationDatabases, entry.key) ? applicationDatabases[entry.key] : undefined;
+                    const application = category === 'indexeddb' ? applicationDatabases.get(entry.key) : undefined;
+                    const migrationPending = application && entry.key === application.legacyName;
                     resources.push({ id: identity(path), target: { path }, name: application ? tl(application.label) : entry.label, bytes: null,
                         category: application?.category || (known ? 'offline' : 'other'), managed: known,
-                        reason: known ? undefined : application ? 'native_resource_requires_domain_editor' : 'unclassified-data', units: entry.childCount, method: 'unavailable' });
+                        reason: known ? undefined : migrationPending ? 'browser-migration-pending' : application ? 'native_resource_requires_domain_editor' : 'unclassified-data', units: entry.childCount, method: 'unavailable' });
                 }
             } catch (error) { errors.push({ source: category, reason: error.message }); }
         }
         return { scope: { type: 'browser' }, startedAt, completedAt: Date.now(), totalBytes: estimate.usage ?? null,
             knownBytes, quotaBytes: estimate.quota ?? null, completeness: errors.length ? 'partial' : 'estimate',
             method: 'origin-estimate', errors, resources, suggestions: [], recovery: [], safeCleanupBytes: 0,
+            migrationIssues: browserStorageMigrationIssues(),
             categories: Object.fromEntries(['sessions', 'cache', 'offline', 'preferences', 'other'].map(category => {
                 const items = resources.filter(item => item.category === category);
                 const knownBytes = items.reduce((sum, item) => sum + (item.bytes ?? 0), 0);

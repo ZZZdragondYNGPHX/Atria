@@ -9,7 +9,7 @@ import {
 import { setting_names as TGsamplerNames, showTGSamplerControls, textgenerationwebui_settings } from './textgen-settings.js';
 import { renderTemplateAsync } from './templates.js';
 import { Popup, POPUP_TYPE } from './popup.js';
-import { localforage } from '../lib.js';
+import { applicationBrowserStores } from './application-browser-storage.js';
 
 const forcedOnColoring = 'color: #89db35;';
 const forcedOffColoring = 'color: #e84f62;';
@@ -19,7 +19,7 @@ const SELECT_SAMPLER = {
     HIDDEN: 'hidden',
 };
 
-const textGenObjectStore = localforage.createInstance({ name: 'SillyTavern_TextCompletions' });
+const textGenObjectStore = applicationBrowserStores.samplers;
 let selectedSamplers = {};
 
 // Goal 1: show popup with all samplers for active API

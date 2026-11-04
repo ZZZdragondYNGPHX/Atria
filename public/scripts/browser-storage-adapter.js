@@ -335,24 +335,18 @@ export class BrowserProvider {
             const entries = [];
             for (const info of dbs) {
                 if (!info.name) continue;
-                let storeCount = null, failure = null;
-                try {
-                    const db = await openDatabase(info.name);
-                    storeCount = db.objectStoreNames.length;
-                    db.close();
-                } catch (error) { failure = error.message; }
                 entries.push({
                     key: info.name,
                     label: info.name,
-                    labelSuffix: storeCount == null ? '' : ` (${storeCount} ${translate('stores')})`,
+                    labelSuffix: '',
                     icon: 'database',
                     kind: 'idb-db',
                     sizeBytes: null,
                     mtimeMs: null,
-                    childCount: storeCount,
-                    canDrill: storeCount > 0,
+                    childCount: null,
+                    canDrill: true,
                     canDelete: true,
-                    note: failure,
+                    note: null,
                     capabilities: capabilities({ delete: true }),
                 });
             }

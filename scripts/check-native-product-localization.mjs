@@ -31,6 +31,9 @@ export function auditProductSource(source, filename, catalogs = locales) {
                 if (filename.endsWith('/native/studio-agent.js') && ['statusLabels', 'impactLabels'].includes(node.id?.name)) {
                     for (const property of node.init?.properties || []) { const text = literal(property.value); if (text) missing(property, text); }
                 }
+                if (filename.endsWith('/application-browser-storage.js') && node.id?.name === 'MIGRATION_FAILURE_MESSAGES') {
+                    for (const property of node.init?.arguments?.[0]?.properties || []) { const text = literal(property.value); if (text) missing(property, text); }
+                }
             },
             NewExpression(node) {
                 if (/\/(?:login|entry-localization)\.js$/.test(filename) && node.callee.name === 'Error') {
@@ -55,7 +58,7 @@ export function auditProductSource(source, filename, catalogs = locales) {
                         || ['BinaryExpression', 'TemplateLiteral'].includes(leaf?.type) && /[A-Za-z]{2,}/.test(source.slice(leaf.start, leaf.end)))
                         findings.push({ line: leaf.loc.start.line, reason: 'raw browser dialog copy', text: source.slice(leaf.start, leaf.end) });
                 }
-                let index = ['tl', 't', 'translate', 'translateShellText', 'fmt', 'formatShellText', 'formatProductText', 'i18n', 'i18nFormat'].includes(name) ? 0 : null;
+                let index = ['tl', 't', 'translate', 'translateShellText', 'startupText', 'fmt', 'formatShellText', 'formatProductText', 'i18n', 'i18nFormat'].includes(name) ? 0 : null;
                 if (filename.endsWith('/login.js') && name === 'displayError') index = 0;
                 if (filename.endsWith('/login.js') && name === 'setEntryText') index = 1;
                 if (name === 'node' && filename.endsWith('runtime-workspace.js') || name === 'node' && filename.endsWith('retrieval-workspace.js')) index = 1;
@@ -137,7 +140,7 @@ function sourceFiles(directory) {
 
 export function auditProductLocalization() {
     const findings = [];
-    for (const filename of ['public/scripts/login.js', 'public/scripts/entry-localization.js', 'public/scripts/user.js', 'public/scripts/popup.js', 'public/scripts/backup-sync-center.js', 'public/scripts/storage-management.js', 'public/scripts/browser-storage-adapter.js', 'public/scripts/lan-sync.js', 'public/scripts/logging/workspace.js']) {
+    for (const filename of ['public/scripts/login.js', 'public/scripts/entry-localization.js', 'public/scripts/user.js', 'public/scripts/popup.js', 'public/scripts/backup-sync-center.js', 'public/scripts/storage-management.js', 'public/scripts/browser-storage-adapter.js', 'public/scripts/application-browser-storage.js', 'public/scripts/lan-sync.js', 'public/scripts/logging/workspace.js']) {
         for (const issue of auditProductSource(fs.readFileSync(path.join(root, filename), 'utf8'), filename)) findings.push({ filename, ...issue });
     }
     for (const filename of ['public/scripts/native/frontend/runtime.js', 'public/scripts/native/experience/ui/full-host.js', 'public/scripts/native/experience/ui/host-surfaces.js']) {
