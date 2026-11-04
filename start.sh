@@ -10,7 +10,8 @@ fi
 
 echo "Installing Node Modules..."
 export NODE_ENV=production
-npm install --no-save --no-audit --no-fund --loglevel=error --no-progress --omit=dev --ignore-scripts
+npm install --no-save --no-audit --no-fund --loglevel=error --no-progress --omit=dev --ignore-scripts || exit $?
+node scripts/ensure-native-dependencies.js || exit $?
 
 echo "Starting Atria..."
 node "server.js" "$@"
