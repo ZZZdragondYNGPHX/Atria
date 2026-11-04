@@ -1,6 +1,6 @@
 # Contributing to Atria
 
-Atria development is performed locally. The remote stores Atria product/tool source, documentation and game release packages, not game development sources. GitHub Actions are disabled, including automatic/manual tests, APK/Docker builds and branch cleanup.
+Atria development is performed locally. The remote stores Atria product/tool source and documentation. Game source, assets and generated release packages stay local; there is no long-lived `package` branch. GitHub Actions are disabled, including automatic/manual tests, APK/Docker builds and branch cleanup.
 
 Read the current workspace `AGENTS.md`; complete governance is available with `git show docs:README.md`. The product development guide is [docs/development/contributing.md](docs/development/contributing.md).
 

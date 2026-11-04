@@ -6,4 +6,4 @@ Develop, commit, integrate and clean up locally. The remote stores committed res
 
 Protect unrelated changes and continue authorized stages under Governance §8. Implementation and minimal validation follow §12.1–§12.2; historical Plans, Records and Skill examples do not add review gates or runtime checks.
 
-Read or update `reference/<project>` only with the corresponding explicit user authorization. Keep Atria product code and the independent `docs`, release-only `package` and `plugin` workspaces separate. Game sources remain local; repository-agent Skills are local tools, not a remote branch.
+Read or update `reference/<project>` only with the corresponding explicit user authorization. Keep Atria product code and the independent `docs` and `plugin` workspaces separate. Game sources, assets and generated release packages remain local; there is no remote `package` branch. Repository-agent Skills are local tools.

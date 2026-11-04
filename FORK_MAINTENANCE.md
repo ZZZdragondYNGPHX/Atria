@@ -8,7 +8,7 @@ Atria is maintained as a SillyTavern-based modified product. The stable product 
 
 - `main`: stable Atria product/integration line.
 - `docs`: independent Governance, Plans, Records and optional live `HANDOFF.md`.
-- `package`: game release archives and release notes only; game sources remain local.
+- Game / Package projects: source, assets and generated release archives remain local; there is no long-lived `package` branch.
 - `plugin`: independent standalone development tools.
 - Repository-agent Skills: installed local tools; no remote `skills` branch.
 - `reference/<project>`: only when an explicitly authorized reference checkout exists; do not assume old reference names are live branches.
