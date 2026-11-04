@@ -20,8 +20,8 @@ export function authorityPublicRefusal(error) {
 // C1 declares/compiles only. Host execution support is deliberately not advertised.
 export const AUTHORITY_LIMITS = Object.freeze({
     transactions: 64, publications: 16, readGrants: 16, readFields: 16,
-    validators: 16, resolutionCases: 16, worldEvents: 16, appCommands: 24,
-    clockAdvances: 1, workflowTransitions: 1, effects: 32, effectSlots: 64,
+    validators: 16, resolutionCases: 16, worldEvents: 16, appCommands: 48,
+    clockAdvances: 1, workflowTransitions: 1, effects: 56, effectSlots: 96,
     receiptBytes: 32768, observationItems: 64, observationBytes: 16384,
     declarationBytes: 1048576, formulaCharacters: 2048, formulaNodes: 256,
 });
