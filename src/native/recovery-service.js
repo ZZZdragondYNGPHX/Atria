@@ -18,7 +18,7 @@ import { assertWritable } from '../storage/read-only-mode.js';
 import { ConflictError, NotFoundError } from '../storage/errors.js';
 import { resourceFingerprint, resourceContentBytes, RECOVERY_RETENTION_MS } from '../storage/resource-catalog.js';
 import { readAccountContent, listAccountFiles } from '../storage/resource-accounting.js';
-import { RECOVERY_PROTOCOL, recoveryKey, recoveryRecords, recoveryReferences, documentReferencesKey, withRecoveryPublication, isRecoveryRecord } from './recovery-roots.js';
+import { RECOVERY_PROTOCOL, recoveryKey, recoveryRecords, recoveryReferences, documentReferencesKey, documentReferenceIndex, withRecoveryPublication, isRecoveryRecord } from './recovery-roots.js';
 import { orchestrationProjectReferences } from './orchestration/reference-roots.js';
 
 export const RECOVERABLE_DESCRIPTORS = {
@@ -144,8 +144,9 @@ export class NativeRecoveryService {
             });
         }
         const owned = new Set(records.map(recordId));
-        const dependencies = native.filter(row => !owned.has(recordId(row)) && row.key.kind !== K.maintenance
-            && records.some(record => documentReferencesKey(record.doc, row.key))).map(row => row.key);
+        const external = native.filter(row => !owned.has(recordId(row)) && row.key.kind !== K.maintenance);
+        const referencesKey = documentReferenceIndex(records.map(record => record.doc), external.map(row => row.key));
+        const dependencies = external.filter(row => referencesKey(row.key)).map(row => row.key);
         const hashes = new Set();
         const visit = value => {
             if (!value || typeof value !== 'object') return;

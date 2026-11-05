@@ -44,6 +44,36 @@ export function documentReferencesKey(value, key) {
     return Object.values(value).some(item => documentReferencesKey(item, key));
 }
 
+/** Index candidate identity values once for a closure's dependency queries. */
+export function documentReferenceIndex(documents, keys) {
+    const values = new Map();
+    const identity = key => Object.entries(key).filter(([field]) => !['kind', 'handle', 'namespace', 'head'].includes(field)).map(([, value]) => value);
+    for (const key of keys) for (const value of identity(key)) {
+        if (value !== undefined && (value === null || typeof value !== 'object')) values.set(value, new Set());
+    }
+    const visit = node => {
+        if (!node || typeof node !== 'object') return;
+        for (const value of Object.values(node)) {
+            values.get(value)?.add(node);
+            if (value && typeof value === 'object') visit(value);
+        }
+        // These list references belong to their enclosing document, not the array.
+        for (const field of ['assetIds', 'knowledgeBindingIds']) {
+            if (Array.isArray(node[field])) for (const value of node[field]) values.get(value)?.add(node);
+        }
+    };
+    documents.forEach(visit);
+    return key => {
+        const ids = identity(key);
+        // Preserve the general matcher for non-scalar or absent identities.
+        if (ids.some(value => value === undefined || value !== null && typeof value === 'object')) {
+            return documents.some(document => documentReferencesKey(document, key));
+        }
+        const candidates = new Set(ids.flatMap(value => [...values.get(value) ?? []]));
+        return [...candidates].some(node => documentReferencesKey(node, key));
+    };
+}
+
 export async function recoveryReferences(tx, handle, key, retained = null) {
     return (retained ?? await recoveryRecords(tx, handle)).filter(row =>
         (row.doc.dependencies ?? []).some(dependency => sameKey(dependency, key))
