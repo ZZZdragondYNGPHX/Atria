@@ -2,11 +2,12 @@ import { isIP } from 'node:net';
 import ipaddr from 'ipaddr.js';
 import { hashNativeDocument as hash } from '../repositories/common.js';
 import { assertConnectionProfile } from './contracts.js';
+import { INSECURE_HTTP_ADAPTERS } from '../../../public/shared/image-service-catalog.js';
 
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
 // Plain-http remote targets are refused unless the reader opted in for that one connection
-// (only NovelAI-compatible relays offer the option; the key is then sent unencrypted).
-export const allowsInsecureHttp = connection => connection?.providerAdapter === 'provider.novelai-image-compatible' && connection.options?.allowInsecureHttp === true;
+// (image relays offer the option; the key is then sent unencrypted).
+export const allowsInsecureHttp = connection => INSECURE_HTTP_ADAPTERS.includes(connection?.providerAdapter) && connection.options?.allowInsecureHttp === true;
 export function credentialNetworkTarget(endpoint, { allowInsecure = false } = {}) {
     const url = new URL(endpoint), hostname = url.hostname.replace(/^\[|\]$/g, '').toLowerCase();
     if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) fail('native_credential_target_invalid');

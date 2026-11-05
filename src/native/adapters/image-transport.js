@@ -24,12 +24,16 @@ export async function boundedImageBytes(response, signal, max = 32 * 1024 * 1024
     }
     return Buffer.concat(chunks);
 }
-export async function imageFetch(fetchImpl, endpoint, { secret, signal, body, method = body === undefined ? 'GET' : 'POST', headers = {} } = {}) {
+export async function imageFetch(fetchImpl, endpoint, { secret, signal, body, method = body === undefined ? 'GET' : 'POST', headers = {}, allowInsecureHttp = false } = {}) {
     imageEndpoint(endpoint.split('?')[0]);
     try {
-        return await fetchImpl(endpoint, { method, redirect: 'error', signal, headers: { ...(secret ? { Authorization: 'Bearer ' + secret } : {}),
+        return await fetchImpl(endpoint, { method, redirect: 'error', signal, ...(allowInsecureHttp ? { allowInsecureHttp } : {}), headers: { ...(secret ? { Authorization: 'Bearer ' + secret } : {}),
             ...(body === undefined || body instanceof FormData ? {} : { 'Content-Type': 'application/json' }), ...headers }, body: body === undefined ? undefined : body instanceof FormData ? body : JSON.stringify(body) });
-    } catch { visualError(signal?.aborted ? 'cancelled' : 'unreachable'); }
+    } catch (error) {
+        // The credential guard refuses before sending; say why instead of "unreachable".
+        if (['native_credential_insecure_target', 'native_credential_network_denied'].includes(error?.code ?? error?.message)) visualError((error.code ?? error.message).replace('native_credential_', ''));
+        visualError(signal?.aborted ? 'cancelled' : 'unreachable');
+    }
 }
 export async function imageJson(fetchImpl, endpoint, options) {
     const response = await imageFetch(fetchImpl, endpoint, options);

@@ -44,7 +44,8 @@ export function validateComfyWorkflow(workflow, nodeTypes) {
 }
 export function createComfyImageAdapter({ fetchImpl = fetch, pollMs = 1000 } = {}) {
     const schemas = new Map();
-    const observe = async (compiled, remote, options) => {
+    const observe = async (compiled, remote, input) => {
+        const options = { ...input, allowInsecureHttp: compiled.allowInsecureHttp === true };
         const record = (await imageJson(fetchImpl, imageRoute(compiled.endpoint, 'history/' + encodeURIComponent(remote.promptId)), options))[remote.promptId];
         if (!record) return null;
         if (record.status?.status_str === 'error') visualError('remote_failed');
@@ -59,7 +60,8 @@ export function createComfyImageAdapter({ fetchImpl = fetch, pollMs = 1000 } = {
     };
     return {
         async describe({ target, connection, fingerprint, secret }) {
-            const info = await imageJson(fetchImpl, imageRoute(connection.endpoint, 'object_info'), { secret, signal: AbortSignal.timeout(15000) });
+            visualObject(connection.options ?? {}, ['allowInsecureHttp']);
+            const info = await imageJson(fetchImpl, imageRoute(connection.endpoint, 'object_info'), { secret, signal: AbortSignal.timeout(15000), allowInsecureHttp: connection.options?.allowInsecureHttp === true });
             const graph = validateComfyWorkflow(target.workflow, info);
             schemas.set(target.imageTargetId + '@' + target.revision, info);
             const semantic = new Set(target.workflow.bindings.map(b => b.semantic));
@@ -83,10 +85,10 @@ export function createComfyImageAdapter({ fetchImpl = fetch, pollMs = 1000 } = {
                 } else graph[binding.nodeId].inputs[binding.input] = values[binding.semantic];
             }
             validateComfyWorkflow({ ...target.workflow, graph }, schemas.get(target.imageTargetId + '@' + target.revision) ?? target.workflow.nodeTypes);
-            return { endpoint: connection.endpoint, body: { prompt: graph }, outputNodes: target.workflow.outputNodes, inputs };
+            return { endpoint: connection.endpoint, body: { prompt: graph }, outputNodes: target.workflow.outputNodes, inputs, ...(connection.options?.allowInsecureHttp === true ? { allowInsecureHttp: true } : {}) };
         },
-        async generate(compiled, options) {
-            const body = structuredClone(compiled.body);
+        async generate(compiled, input) {
+            const options = { ...input, allowInsecureHttp: compiled.allowInsecureHttp === true }, body = structuredClone(compiled.body);
             for (const input of compiled.inputs) {
                 const asset = await readImageInput(options, input.reference);
                 const bytes = input.reference.purpose === 'mask' ? await canonicalMaskPng(asset.bytes, compiled.maskGeometry.width, compiled.maskGeometry.height, true) : asset.bytes;

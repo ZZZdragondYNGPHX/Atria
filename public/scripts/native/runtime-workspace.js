@@ -17,6 +17,7 @@ import { mountPromptRuntimeControls } from './prompt-runtime-controls.js';
 import { NOVELAI_IMAGE_ENDPOINT, NOVELAI_IMAGE_ADAPTERS, officialNovelaiCapabilities, novelaiConnectionCapabilities } from '../../shared/novelai-illustration.js';
 import { assertComputeBudget } from '../../shared/native-compute-budget.js';
 import { connectionRequiresSecret } from '../../shared/native-connection-auth.js';
+import { INSECURE_HTTP_ADAPTERS } from '../../shared/image-service-catalog.js';
 import { mountApiPresetFields } from './api-preset-fields.js';
 // Sent only when the reader opts in for a relay that rejects non-browser clients.
 const BROWSER_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
@@ -322,11 +323,16 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             button('Use official protocol forwarding', () => { imageCapabilities.value = JSON.stringify(officialNovelaiCapabilities(), null, 2); }, relay);
             const userAgent = field(relay, 'User-Agent (only if your relay asks for a browser client)', value.options?.userAgent ?? '');
             button('Use a browser User-Agent', () => { userAgent.value = BROWSER_USER_AGENT; }, relay);
-            const insecureLabel = node('label', undefined, relay); const insecure = node('input', undefined, insecureLabel); insecure.type = 'checkbox'; insecure.checked = value.options?.allowInsecureHttp === true;
-            node('span', 'Allow a plain http:// address. Your API key is sent unencrypted; use only for a relay you trust.', insecureLabel);
             const imageExample = node('details', undefined, relay); node('summary', 'Format example', imageExample);
             notice('responseFormat: zip / json (images[].image base64) / png. Declare model IDs, maxPixels, maxSteps, samplers and noiseSchedules in models.', imageExample);
             node('pre', JSON.stringify({ responseFormat: 'zip', models: [officialNovelaiCapabilities().models[0]] }, null, 2), imageExample);
+            const access = node('details', undefined, fields); access.className = 'atri-runtime-more';
+            node('summary', 'Relay options', access);
+            const imageApi = field(access, 'Request format', value.options?.imageApi || 'images',
+                [['images', 'OpenAI Images API'], ['chat-completions', 'Chat completions (image relays that return the picture in the reply)']]);
+            const insecureLabel = node('label', undefined, access); const insecure = node('input', undefined, insecureLabel); insecure.type = 'checkbox'; insecure.checked = value.options?.allowInsecureHttp === true;
+            node('span', 'Allow a plain http:// address. Your API key is sent unencrypted; use only for a relay you trust.', insecureLabel);
+            access.open = insecure.checked || imageApi.value !== 'images';
             const compatibility = node('details', undefined, fields); compatibility.className = 'atri-runtime-more';
             node('summary', 'Compatibility options', compatibility);
             const schemaMode = field(compatibility, 'Tool schema format', value.options?.toolSchemaMode || 'json-schema',
@@ -338,6 +344,8 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             const syncCompatibility = () => {
                 compatibility.hidden = adapter.value !== 'provider.openai-compatible';
                 relay.hidden = adapter.value !== 'provider.novelai-image-compatible';
+                access.hidden = !INSECURE_HTTP_ADAPTERS.includes(adapter.value);
+                imageApi.parentElement.hidden = adapter.value !== 'provider.openai-images';
                 if (adapter.value === 'provider.novelai-image') endpoint.value = NOVELAI_IMAGE_ENDPOINT;
                 syncAddress();
             };
@@ -419,7 +427,9 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             serialize = () => {
                 if (creating || !secret.value && connectionRequiresSecret(adapter.value)) throw Object.assign(new Error('Select a stored Secret'), { code: 'native_secret_selection_required' });
                 const options = { ...value.options }; for (const key of ['toolSchemaMode', 'responseMode']) delete options[key];
-                delete options.imageCapabilities; delete options.userAgent; delete options.allowInsecureHttp;
+                delete options.imageCapabilities; delete options.userAgent; delete options.allowInsecureHttp; delete options.imageApi;
+                if (adapter.value === 'provider.openai-images' && imageApi.value === 'chat-completions') options.imageApi = 'chat-completions';
+                if (['provider.openai-images', 'provider.comfyui-image'].includes(adapter.value) && insecure.checked) options.allowInsecureHttp = true;
                 if (NOVELAI_IMAGE_ADAPTERS.includes(adapter.value)) {
                     const imageOptions = adapter.value === 'provider.novelai-image-compatible' ? { imageCapabilities: JSON.parse(imageCapabilities.value), ...(userAgent.value.trim() ? { userAgent: userAgent.value.trim() } : {}), ...(insecure.checked ? { allowInsecureHttp: true } : {}) } : {};
                     const candidate = { ...value, options: imageOptions, providerAdapter: adapter.value, transport: 'transport.http', endpoint: endpoint.value, secretRef: { scope: 'player', secretId: secret.value } };

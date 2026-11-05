@@ -11953,5 +11953,12 @@
     "atria.workApiPurposes.1": "用途说明",
     "atria.workApiPurposes.2": "作品 API 用途",
     "atria.workApiPurposes.4": "作品定义用途名称与所需能力。玩家启动作品时，将这些用途绑定到自己的 API 预设。",
-    "atria.workApiPurposes.add": "新增 API 用途"
+    "atria.workApiPurposes.add": "新增 API 用途",
+    "Relay options": "中转选项",
+    "Request format": "请求格式",
+    "OpenAI Images API": "OpenAI 图像接口（Images API）",
+    "Chat completions (image relays that return the picture in the reply)": "对话补全（在回复中返回图片的画图中转）",
+    "This service uses a plain http:// address. Allow it for this service in Runtime, or use https.": "此服务使用明文 http:// 地址。请在 Runtime 中为该服务允许明文地址，或改用 https。",
+    "The image service failed on its side. Try again later.": "画图服务端出错。请稍后再试。",
+    "This service cannot do that kind of edit. Choose another service.": "此服务不支持这种编辑。请换一个服务。"
 }

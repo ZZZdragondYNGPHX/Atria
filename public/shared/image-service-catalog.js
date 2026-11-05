@@ -8,10 +8,14 @@ export const GEMINI_IMAGE_MODELS = Object.freeze(['gemini-2.5-flash-image', 'gem
     'gemini-3.1-flash-image-preview', 'gemini-3.1-flash-lite-image', 'gemini-nano-banana-2.1']);
 export const IMAGE_ADAPTERS = Object.freeze(['provider.novelai-image', 'provider.novelai-image-compatible', 'provider.openai-images', 'provider.gemini-image',
     'provider.comfyui-image', 'provider.sd-webui-image', 'provider.forge-image', 'provider.runninghub-image']);
+/** Image adapters whose connection may opt in to a plain-http relay (the key is then sent unencrypted). */
+export const INSECURE_HTTP_ADAPTERS = Object.freeze(['provider.novelai-image-compatible', 'provider.openai-images', 'provider.comfyui-image']);
 const WORKFLOW_ADAPTERS = new Set(['provider.comfyui-image', 'provider.runninghub-image']);
 const NO_NEGATIVE = new Set(['provider.openai-images', 'provider.gemini-image']);
 
 export const isImageAdapter = adapter => IMAGE_ADAPTERS.includes(adapter);
+/** OpenAI-compatible relays that draw through /chat/completions instead of the Images API. */
+export const openaiChatImageApi = connection => connection?.providerAdapter === 'provider.openai-images' && connection.options?.imageApi === 'chat-completions';
 export const needsWorkflow = adapter => WORKFLOW_ADAPTERS.has(adapter);
 export const supportsNegativePrompt = adapter => !NO_NEGATIVE.has(adapter);
 
@@ -21,7 +25,7 @@ export function imageModelChoices(connection) {
     if (NOVELAI_IMAGE_ADAPTERS.includes(adapter)) {
         try { return novelaiConnectionCapabilities(connection).models.map(model => model.id); } catch { return []; }
     }
-    if (adapter === 'provider.openai-images') return [...OPENAI_IMAGE_MODELS];
+    if (adapter === 'provider.openai-images') return openaiChatImageApi(connection) ? [] : [...OPENAI_IMAGE_MODELS];
     if (adapter === 'provider.gemini-image') return [...GEMINI_IMAGE_MODELS];
     return [];
 }
