@@ -68,7 +68,7 @@ export async function mountNativeFrontend(options) {
         return options.hostServices.invoke(target, input, revision);
     } };
     const bridge = await createFrontendBridge({ descriptor: bridgeDescriptor, transport: options.bridgeTransport, hostServices,
-        onEpoch: () => { audio.reset(); stopA2uiStreams(); void recover().catch(diagnostic); }, onCommit: revision => audio.commit(revision), onRevision: revision => { stopA2uiStreams(); options.onBridgeRevision?.(revision); },
+        onEpoch: () => { audio.reset(); stopA2uiStreams(); void recover().catch(diagnostic); }, onCommit: revision => audio.commit(revision), onRevision: revision => { stopA2uiStreams(); return options.onBridgeRevision?.(revision); },
         fixed: { prefs: () => shared.prefs ?? {}, environment: () => views.at(-1)?.environment.get() ?? {} } }).catch(error => { audio.dispose(); scripts.dispose(); scheduler.dispose(); media.dispose(); resources.dispose(); throw error; });
     const bridgeTimer = options.bridgeTransport ? window.setInterval(() => { void bridge.refresh().catch(diagnostic); }, 1000) : null;
     const active = () => !disposed;

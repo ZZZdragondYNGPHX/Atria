@@ -717,10 +717,10 @@ eventSource.on(eventTypes.CHAT_CHANGED, () => {
     if (!nativeSessionRuntime.active) void reloadGamePackage();
 });
 
-onNativeSessionLifecycle(NATIVE_SESSION_LIFECYCLE.SESSION_LOADED, () => {
-    // acceptOperationSnapshot installs the canonical projection and emits this
-    // event too. Its own lifecycle write must not remount or recursively ready.
-    if (lifecycleClient.acceptingSnapshot) { presentationClient.refresh(); refreshCurrentUi(); return; }
+onNativeSessionLifecycle(NATIVE_SESSION_LIFECYCLE.SESSION_LOADED, event => {
+    // Same-session operation snapshots refresh the mounted presentation. Remounting
+    // here would dispose the Bridge/controller that is still completing its action.
+    if (event.reason === 'operation') { presentationClient.refresh(); refreshCurrentUi(); return; }
     return reloadGamePackage();
 });
 onNativeSessionLifecycle(NATIVE_SESSION_LIFECYCLE.SESSION_CLOSED, async () => {

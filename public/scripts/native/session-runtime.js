@@ -416,7 +416,7 @@ export class NativeSessionRuntime {
         return true;
     }
 
-    async _loadProjection(sessionId, { revisionId, acceptGuard } = {}) {
+    async _loadProjection(sessionId, { revisionId, acceptGuard, reason = 'open' } = {}) {
         const snapshot = await this.request('load', { sessionId, revisionId });
         if (acceptGuard && !acceptGuard()) throw new Error('Native operation scope changed before projection install');
         this.queue = Promise.resolve();
@@ -431,6 +431,7 @@ export class NativeSessionRuntime {
         await this.host.install(projectNativeSession(snapshot));
         await this._emit(NATIVE_SESSION_LIFECYCLE.SESSION_LOADED, snapshot, null, {
             historical: revisionId !== undefined,
+            reason,
         });
         return snapshot;
     }
@@ -441,7 +442,7 @@ export class NativeSessionRuntime {
         if (this.generation && !turn) return snapshot;
         const previous = this.snapshot;
         // Reload the current committed authority, never install a late stale reply.
-        const next = await this._loadProjection(snapshot.session.sessionId, { acceptGuard });
+        const next = await this._loadProjection(snapshot.session.sessionId, { acceptGuard, reason: 'operation' });
         if (turn) {
             const previousIds = new Set((previous?.timeline ?? []).map(item => item.messageId));
             const appended = (next.timeline ?? []).filter(item => !previousIds.has(item.messageId)).map(item => item.messageId);
