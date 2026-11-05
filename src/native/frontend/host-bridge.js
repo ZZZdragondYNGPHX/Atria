@@ -103,7 +103,7 @@ export class FrontendBridgeService {
                 throw bridgeFailure('bridge_method_denied');
             }
             const deterministic = request.method === 'action.invoke' && state.graph.bridge.bindings.some(item =>
-                item.id === request.bindingId && item.kind === 'action' && item.target.transactionId && item.target.execution === 'deterministic');
+                item.id === request.bindingId && item.kind === 'action' && item.target.transactionId);
             // The Authority action validates its own locked snapshot. Its
             // frontend preflight only needs identity, not a second world load.
             base = await this.current(services, state, { headOnly: request.method === 'status' || deterministic });
@@ -179,29 +179,14 @@ export class FrontendBridgeService {
         }
         const invocationId = 'fb:' + hash(canonicalJson({ epoch: state.epoch, binding: binding.id, key: request.idempotencyKey }));
         if (binding.kind === 'action' && binding.target.transactionId && request.method === 'action.invoke') {
-            // A typed action may publish its declared rules without scheduling
-            // a resolver or narrator. The binding is part of the installed,
-            // compiled contract; callers cannot choose an execution mode.
-            if (binding.target.execution === 'deterministic') {
-                const actionId = 'fb-at:' + hash(canonicalJson({ sessionId: state.sessionId, binding: binding.id, key: request.idempotencyKey }));
-                const snapshot = await services.core.applyAuthorityAction(state.owner, state.sessionId,
-                    { transactionId: binding.target.transactionId, input: mapped, invocationId: actionId },
-                    { expectedRevisionId: request.revision });
-                // The committed action returns no world fields. Recheck the
-                // lease and current branch before returning its revision.
-                await this.current(services, state, { headOnly: true });
-                return receipt({ revision: snapshot.revision.revisionId, data: {} });
-            }
-            const host = services.generationHost ?? await services.getGenerationHost?.();
-            if (!host) throw bridgeFailure('bridge_operation_unavailable');
-            const tasks = base.manifest.runtime.experienceContract.taskRuntime.tasks;
-            const slotBindings = Object.assign({}, ...await Promise.all(tasks.map(task => services.taskBindings?.(state.owner, base.session.packageId, task) ?? {})));
-            // Epoch is a transport capability, not the durable action identity.
-            const turnId = 'fb-at:' + hash(canonicalJson({ sessionId: state.sessionId, binding: binding.id, key: request.idempotencyKey }));
-            const snapshot = await host.executeTurn(state.owner, { sessionId: state.sessionId, revisionId: request.revision,
-                invocationId: turnId, slotBindings }, undefined, undefined,
-            { transaction: { transactionId: binding.target.transactionId, input: mapped } });
-            if (snapshot.states.atri_run?.status !== 'dead' || snapshot.states.atri_run.mode !== 'ironman') await this.current(services, state);
+            // A button already selects a typed transaction and its input.
+            // Publish its rules directly; model tasks and free-form conversation
+            // have their own explicit operation/composer entry points.
+            const actionId = 'fb-at:' + hash(canonicalJson({ sessionId: state.sessionId, binding: binding.id, key: request.idempotencyKey }));
+            const snapshot = await services.core.applyAuthorityAction(state.owner, state.sessionId,
+                { transactionId: binding.target.transactionId, input: mapped, invocationId: actionId },
+                { expectedRevisionId: request.revision });
+            await this.current(services, state, { headOnly: true });
             return receipt({ revision: snapshot.revision.revisionId, data: {} });
         }
         if (binding.kind === 'action' && request.method === 'action.invoke') {
