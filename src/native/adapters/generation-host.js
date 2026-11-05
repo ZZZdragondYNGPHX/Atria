@@ -125,6 +125,17 @@ export function selectNativeRuntimeRoute(routeList, role, routeRef) {
 }
 
 
+function packageTurnBinding(input, role) {
+    return input.slotBindings?.['role.' + role];
+}
+function selectPackageTurnRoute(routes, ref) {
+    if (!ref) fail('native_task_binding_missing');
+    const route = ref.scope === 'player' && routes.find(item => item.runtimeRouteId === ref.runtimeRouteId);
+    if (!route) fail('native_task_binding_missing');
+    return route;
+}
+
+
 function requiredTurnRoles(manifest, entryPoint, sourceFiles) {
     const turn = manifest.runtime?.experienceContract?.taskRuntime?.turn;
     if (!turn) return [];
@@ -292,9 +303,9 @@ export class NativeGenerationHost {
         const runtime = base.manifest.runtime?.experienceContract?.taskRuntime;
         if (!runtime?.turn) fail('native_turn_contract_required');
         const routes = await this.persistence.listRuntimeRoutes(handle), lanes = [], authority = hasAuthorityTransactions(base);
-        if (!runtime.turn.narratorTaskId) lanes.push(selectNativeRuntimeRoute(routes, 'role.narrator', input.routeRef));
+        if (!runtime.turn.narratorTaskId) lanes.push(selectPackageTurnRoute(routes, packageTurnBinding(input, 'narrator') ?? input.routeRef));
         if (!transaction && !(authority && base.timeline.at(-1)?.metadata?.atri_authority_retry) && runtime.turn.policy === 'authority-first'
-            && (authority || input.userInput?.trim()) && (base.entryPoint.runtime?.game?.logic ?? base.manifest.runtime?.game?.logic)) lanes.push(selectNativeRuntimeRoute(routes, 'role.intent_resolver'));
+            && (authority || input.userInput?.trim()) && (base.entryPoint.runtime?.game?.logic ?? base.manifest.runtime?.game?.logic)) lanes.push(selectPackageTurnRoute(routes, packageTurnBinding(input, 'intent_resolver')));
         for (const id of [...runtime.turn.stages, runtime.turn.narratorTaskId, runtime.turn.interpreterTaskId].filter(Boolean)) {
             const task = runtime.tasks.find(item => item.id === id), ref = input.slotBindings?.[task.bindingSlotId];
             const lane = ref?.scope === 'player' && routes.find(item => item.runtimeRouteId === ref.runtimeRouteId);
@@ -536,7 +547,7 @@ export class NativeGenerationHost {
                 await originalCatalog();
                 const request = resolverRequest(catalog, buildAuthorityObservation(base), base.timeline.at(-1).content);
                 const result = await this.execute(handle, { sessionId: base.session.sessionId, revisionId: base.revision.revisionId,
-                    role: 'intent_resolver', requestId: input.invocationId + ':intent', tools: request.tools }, signal, undefined,
+                    role: 'intent_resolver', routeRef: packageTurnBinding(input, 'intent_resolver'), requestId: input.invocationId + ':intent', tools: request.tools }, signal, undefined,
                 { scheduled: true, lanePlan: { ...lanePlan, authorityContext: { mode: 'resolver', snapshot: base, payload: request.payload } } });
                 try { return request.select(result.response); } catch { throw authorityFailure('native_authority_selection_invalid'); }
             };
@@ -604,7 +615,7 @@ export class NativeGenerationHost {
             try { onChunk?.({ text: draft.narrative, delta: draft.narrative, provisional: true }); } catch { /* Observer only. */ }
         } else {
             const request = { sessionId: input.sessionId, revisionId: input.revisionId,
-                requestId: input.invocationId, role: 'narrator', ...(input.routeRef === undefined ? {} : { routeRef: input.routeRef }),
+                requestId: input.invocationId, role: 'narrator', routeRef: packageTurnBinding(input, 'narrator') ?? input.routeRef,
                 messages: stages.length ? [{ role: 'user', content: JSON.stringify({ provisionalTurnContext: authorityTurn ? authorityValue(stages) : stages }) }] : [] };
             const producer = turnProducerLanes.get(lanePlan);
             let narration;
@@ -649,18 +660,20 @@ export class NativeGenerationHost {
         return prepared;
     }
 
-    async preflightTurnRoutes(handle, opened, snapshot) {
+    async preflightTurnRoutes(handle, opened, snapshot, slotBindings = {}, roles, onResolved) {
         const checks = [];
         const exact = opened.sourceFiles ? opened : snapshot ? await this.packageInstaller.open(handle, snapshot.session.packageId, snapshot.session.packageVersionId) : opened;
-        for (const role of requiredTurnRoles(opened.manifest, snapshot?.entryPoint, exact?.sourceFiles)) {
+        for (const role of roles ?? requiredTurnRoles(opened.manifest, snapshot?.entryPoint, exact?.sourceFiles)) {
             let error = null;
             try {
-                await this.execute(handle, { role, requestId: 'preflight:turn:' + role,
+                if (!slotBindings['role.' + role]) fail('native_task_binding_missing');
+                const resolved = await this.execute(handle, { role, routeRef: slotBindings['role.' + role], requestId: 'preflight:turn:' + role,
                     ...(snapshot ? { sessionId: snapshot.session.sessionId, revisionId: snapshot.revision.revisionId } : {}),
                     ...(role === 'intent_resolver' ? { tools: [{ type: 'function', function: {
                         name: 'atri_route_preflight', parameters: { type: 'object', properties: {} },
                     } }] } : {}) }, undefined, undefined,
                 { scheduled: true, preflight: true, preflightPackage: opened, preflightSnapshot: snapshot });
+                onResolved?.(resolved);
             } catch (cause) { error = cause.code || 'native_task_binding_route_invalid'; }
             checks.push({ role, requiredCapabilities: role === 'intent_resolver' ? ['generation.tools'] : [], error });
         }
@@ -677,9 +690,9 @@ export class NativeGenerationHost {
         if (!opened) fail('native_task_binding_package_missing');
         const contract = opened.manifest.runtime?.experienceContract;
         const tasks = contract?.taskRuntime?.tasks ?? [];
-        const turnRoutes = await this.preflightTurnRoutes(handle, opened);
+        const turnRoutes = requiredTurnRoles(opened.manifest, undefined, opened.sourceFiles).map(role => ({ role, requiredCapabilities: role === 'intent_resolver' ? ['generation.tools'] : [] }));
         const selected = startupTaskVariants(contract);
-        const routes = tasks.length ? (await this.persistence.listRuntimeRoutes(handle)).filter(route => route.scope === 'player') : [];
+        const routes = (await this.persistence.listRuntimeRoutes(handle)).filter(route => route.scope === 'player');
         const slots = [];
         for (const id of new Set(tasks.map(task => task.bindingSlotId))) {
             const slot = contract.taskRuntime.slots.find(item => item.id === id);
@@ -705,7 +718,36 @@ export class NativeGenerationHost {
             const validRef = binding?.scope === 'player' && isNativeId(binding.runtimeRouteId, 'runtimeRoute')
                 && Object.keys(binding).every(key => ['scope', 'runtimeRouteId'].includes(key));
             const choice = validRef && choices.find(route => route.runtimeRouteId === binding.runtimeRouteId);
-            slots.push({ id, tasks: uses.map(task => task.id), requiredCapabilities: slot.requiredCapabilities,
+            slots.push({ id, displayName: slot.displayName, description: slot.description, tasks: uses.map(task => task.id), requiredCapabilities: slot.requiredCapabilities,
+                routes: choices, binding: choice?.compatible ? binding : null,
+                error: choice?.compatible ? null : choice?.error || 'native_task_binding_missing' });
+        }
+        for (const turn of turnRoutes) {
+            const id = 'role.' + turn.role;
+            const declaration = opened.manifest.runtime?.modelPrompt?.roles.find(item => item.role === id);
+            const choices = [];
+            for (const route of routes) {
+                const binding = { scope: 'player', runtimeRouteId: route.runtimeRouteId };
+                const result = (await this.preflightTurnRoutes(handle, opened, undefined, { ...input.slotBindings, [id]: binding }, [turn.role])).find(item => item.role === turn.role);
+                choices.push({ runtimeRouteId: route.runtimeRouteId, displayName: route.displayName, compatible: !result.error, error: result.error });
+            }
+            const binding = input.slotBindings?.[id];
+            const choice = binding?.scope === 'player' && choices.find(item => item.runtimeRouteId === binding.runtimeRouteId);
+            turn.error = choice?.compatible ? null : choice?.error || 'native_task_binding_missing';
+            const shared = slots.find(slot => slot.id === id);
+            if (shared) {
+                shared.tasks.push(id);
+                shared.requiredCapabilities = [...new Set([...shared.requiredCapabilities, ...turn.requiredCapabilities, ...(declaration?.requiredCapabilities ?? [])])];
+                shared.routes = shared.routes.map(route => {
+                    const candidate = choices.find(item => item.runtimeRouteId === route.runtimeRouteId);
+                    return { ...route, compatible: route.compatible && candidate.compatible, error: route.error || candidate.error };
+                });
+                shared.error ||= choice?.compatible ? null : choice?.error || 'native_task_binding_missing';
+                if (shared.error) shared.binding = null;
+                continue;
+            }
+            slots.push({ id, displayName: declaration?.displayName, description: declaration?.description,
+                tasks: [id], requiredCapabilities: [...new Set([...turn.requiredCapabilities, ...(declaration?.requiredCapabilities ?? [])])],
                 routes: choices, binding: choice?.compatible ? binding : null,
                 error: choice?.compatible ? null : choice?.error || 'native_task_binding_missing' });
         }
@@ -718,21 +760,11 @@ export class NativeGenerationHost {
         const base = await this.sessionCore.load(handle, input.sessionId);
         await this.sessionCore.runs.assert(handle, input.sessionId, 'generate');
         if (base.revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
-        await this.prepareLifecycle(handle, input);
-        const turn = base.manifest.runtime?.experienceContract?.taskRuntime?.turn;
         const prepared = [];
-        const installed = turn ? await this.packageInstaller.open(handle, base.session.packageId, base.session.packageVersionId) : null;
-        for (const role of turn ? requiredTurnRoles(base.manifest, base.entryPoint, installed?.sourceFiles) : ['narrator']) prepared.push(await this.execute(handle, { sessionId: input.sessionId, revisionId: input.revisionId,
-            requestId: 'preflight:play:' + role, role }, undefined, undefined,
-        { scheduled: true, preflight: true, preflightPackage: { manifest: base.manifest }, preflightSnapshot: base }));
-        const routes = await this.persistence.listRuntimeRoutes(handle);
-        const taskIds = turn ? [...turn.stages, turn.narratorTaskId, turn.interpreterTaskId].filter(Boolean) : [];
-        for (const taskId of taskIds) {
-            const task = base.manifest.runtime.experienceContract.taskRuntime.tasks.find(item => item.id === taskId);
-            const route = routes.find(item => item.runtimeRouteId === input.slotBindings?.[task.bindingSlotId]?.runtimeRouteId);
-            if (!route) fail('native_task_binding_missing');
-            prepared.push({ connection: await this.persistence.getConnectionProfile(handle, route.connectionProfileRef.connectionProfileId) });
-        }
+        await this.prepareLifecycle(handle, input, resolved => prepared.push(resolved));
+        if (!base.manifest.runtime?.experienceContract?.taskRuntime?.turn) prepared.push(await this.execute(handle,
+            { sessionId: input.sessionId, revisionId: input.revisionId, requestId: 'preflight:play:narrator', role: 'narrator' },
+            undefined, undefined, { scheduled: true, preflight: true, preflightPackage: { manifest: base.manifest }, preflightSnapshot: base }));
         // Read local configuration/Secrets only; no provider network request.
         for (const resolved of prepared) {
             if (resolved.model) this.providers[resolved.connection.providerAdapter]?.contextTokenizer?.(resolved);
@@ -742,11 +774,11 @@ export class NativeGenerationHost {
         return { sessionId: input.sessionId, revisionId: input.revisionId, branchId: base.revision.branchId, prepared: true };
     }
 
-    async prepareLifecycle(handle, input) {
+    async prepareLifecycle(handle, input, onResolved) {
         if (Object.keys(input).some(key => !['sessionId', 'revisionId', 'slotBindings'].includes(key))) fail('native_lifecycle_request_invalid');
         const base = await this.sessionCore.load(handle, input.sessionId);
         if (base.revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
-        const turnRoutes = await this.preflightTurnRoutes(handle, { manifest: base.manifest }, base);
+        const turnRoutes = await this.preflightTurnRoutes(handle, { manifest: base.manifest }, base, input.slotBindings, undefined, onResolved);
         const blocked = turnRoutes.find(route => route.error);
         if (blocked) fail(blocked.error);
         const contract = base.manifest.runtime?.experienceContract;
@@ -761,11 +793,12 @@ export class NativeGenerationHost {
             const slot = contract.taskRuntime.slots.find(item => item.id === task.bindingSlotId);
             for (const id of selected.get(task.id)) {
                 const variant = task.variants.find(item => item.id === id);
-                await this.execute(handle, { sessionId: input.sessionId, revisionId: input.revisionId,
+                const resolved = await this.execute(handle, { sessionId: input.sessionId, revisionId: input.revisionId,
                     requestId: 'preflight:' + task.id, role: route.role.replace(/^role\./, ''), routeRef,
                     outputContract: { name: 'atria_task', schema: variant.outputSchema } }, undefined, undefined,
                 { taskPlan: { task, variant, slot, payload: null }, scheduled: true, preflight: true,
                     preflightPackage: { manifest: base.manifest }, preflightSnapshot: base });
+                onResolved?.(resolved);
                 bindings.push({ taskId: task.id, variantId: variant.id, bindingSlotId: slot.id });
             }
         }
@@ -1123,7 +1156,9 @@ export class NativeGenerationHost {
         const packageIdentity = snapshot?.session ?? preflightPackage?.manifest;
         const routeList = previewContext?.routes ?? (lanePlan ? Object.values(lanePlan.routes) : await this.persistence.listRuntimeRoutes(handle));
         if (previewContext) previewContext.routes ??= immutable(routeList);
-        let route = selectNativeRuntimeRoute(routeList, role, input.routeRef);
+        const packageRole = !taskPlan && packageIdentity && input.routeRef
+            ? runtime?.modelPrompt?.roles.find(item => item.role === role) ?? (['role.narrator', 'role.intent_resolver'].includes(role) ? { role } : null) : null;
+        let route = packageRole ? selectPackageTurnRoute(routeList, input.routeRef) : selectNativeRuntimeRoute(routeList, role, input.routeRef);
         if (programSelection) {
             const validate = programSelection.assertCurrent;
             programSelection = Object.freeze({ promptProgramRef: programSelection.promptProgramRef,
@@ -1207,6 +1242,12 @@ export class NativeGenerationHost {
         if (project && !taskPlan) {
             route = projectRuntimeRoute(route, input.projectId);
             persistence.getRuntimeRoute = async (owner, id) => projectRuntimeRoute(await readCapturedRoute(owner, id), input.projectId);
+        }
+        if (packageRole) {
+            const compose = lane => lane && { ...lane, role,
+                ...(packageRole.promptProgramRef ? { promptParameters: {}, promptProgramRef: packageRole.promptProgramRef } : {}) };
+            route = compose(route);
+            persistence.getRuntimeRoute = async (owner, id) => compose(await readCapturedRoute(owner, id));
         }
         if (taskPlan) {
             const compose = lane => taskRuntimeRoute(lane, role, taskPlan, packageIdentity);

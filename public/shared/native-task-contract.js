@@ -54,8 +54,9 @@ export function assertTaskRuntime(value) {
     fields(value, ['schemaVersion', 'slots', 'tasks', 'turn'], 'Task runtime');
     if (value.schemaVersion !== 1) throw new TypeError('Task runtime version');
     const slots = list(value.slots, 16, item => {
-        fields(item, ['id', 'requiredCapabilities'], 'Task slot');
-        return { id: taskId(item.id), requiredCapabilities: list(item.requiredCapabilities, 16, taskId) };
+        fields(item, ['id', 'displayName', 'description', 'requiredCapabilities'], 'Task slot');
+        return { id: taskId(item.id), ...(item.displayName === undefined ? {} : { displayName: text(item.displayName, 160) }),
+            ...(item.description === undefined ? {} : { description: text(item.description, 1000) }), requiredCapabilities: list(item.requiredCapabilities, 16, taskId) };
     });
     const tasks = list(value.tasks, 64, item => {
         fields(item, ['id', 'bindingSlotId', 'executionClass', 'inputSchema', 'context', 'resultPolicy', 'variants', 'interpretation', 'queuePolicy'], 'Model Task');

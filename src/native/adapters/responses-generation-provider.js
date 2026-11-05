@@ -58,7 +58,7 @@ export function createResponsesGenerationProvider({ fetchImpl = fetch, checkpoin
         if (g.sampling.temperature !== undefined) { if (!Number.isFinite(g.sampling.temperature) || g.sampling.temperature < 0) fail(); body.temperature = g.sampling.temperature; }
         if (g.sampling.topP !== undefined) { if (!Number.isFinite(g.sampling.topP) || g.sampling.topP < 0 || g.sampling.topP > 1) fail(); body.top_p = g.sampling.topP; }
         if (Object.keys(g.reasoning).length) {
-            if (!['none', 'minimal', 'low', 'medium', 'high', 'xhigh'].includes(g.reasoning.effort)) fail();
+            if (!['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'].includes(g.reasoning.effort)) fail();
             body.reasoning = { effort: g.reasoning.effort };
         }
         if (g.cache.key !== undefined) { if (typeof g.cache.key !== 'string' || !g.cache.key || g.cache.key.length > 512) fail(); body.prompt_cache_key = g.cache.key; }

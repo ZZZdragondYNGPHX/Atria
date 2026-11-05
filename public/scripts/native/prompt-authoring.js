@@ -99,7 +99,7 @@ export function generationFields(doc, fields, draft, isTracking = () => false, {
     }[providerAdapter];
     const controls = definitions.filter(([section, key]) => !supported || supported.includes(section + '.' + key) || draft[section]?.[key] !== undefined).map(([section, key, label, choices]) => {
         if (providerAdapter && section === 'reasoning') label = { mode: 'Thinking mode', effort: 'Reasoning effort', level: 'Thinking level' }[key];
-        if (section === 'reasoning' && key === 'effort' && providerAdapter) choices = choices.filter(([value]) => providerAdapter === 'provider.anthropic' ? ['low', 'medium', 'high', 'max'].includes(value) : value !== 'max');
+        if (section === 'reasoning' && key === 'effort' && providerAdapter === 'provider.anthropic') choices = choices.filter(([value]) => ['low', 'medium', 'high', 'max'].includes(value));
         return { section, key, field: choices ? select(doc, fields, label, [['', 'Default'], ...choices], draft[section]?.[key] || '') : input(doc, fields, label, draft[section]?.[key] || '') };
     });
     const budget = numeric(providerAdapter ? 'Thinking budget tokens' : 'Thinking budget tokens (Anthropic / Gemini)', draft.reasoning?.budgetTokens ?? '', -1, undefined, true);
@@ -607,6 +607,8 @@ export async function mountStudioPromptTools({ document: doc, body, state, stage
             const json = input(doc, body, 'Runtime requirements JSON', JSON.stringify(intent, null, 2), true);
             element(doc, 'p', 'Only author requirements and recommended exact Prompt / Generation references are packaged. Connections, Models and Secrets belong to the player.', body);
             const role = input(doc, body, 'Runtime role', 'role.narrator');
+            const purposeName = input(doc, body, 'Purpose name', '');
+            const purposeDescription = input(doc, body, 'Purpose description', '', true);
             const required = input(doc, body, 'Required capabilities (comma separated)', '');
             const choices = type => [['', 'No recommendation'], ...entries.filter(item => item.ref.resourceType === type && item.ref.scope !== 'package').map(item => [exactKey(item.ref), item.resource.displayName + ' · ' + item.ref.revision + ' · ' + item.ref.scope, true])];
             const prompt = select(doc, body, 'Recommended Prompt', choices('core.prompt-program'));
@@ -614,6 +616,7 @@ export async function mountStudioPromptTools({ document: doc, body, state, stage
             const loadRole = () => {
                 try {
                     const current = JSON.parse(json.value).roles.find(item => item.role === role.value);
+                    purposeName.value = current?.displayName || ''; purposeDescription.value = current?.description || '';
                     required.value = (current?.requiredCapabilities || []).join(', ');
                     prompt.value = current?.promptProgramRef ? exactKey(current.promptProgramRef) : '';
                     generation.value = current?.generationProfileRef ? exactKey(current.generationProfileRef) : '';
@@ -623,7 +626,7 @@ export async function mountStudioPromptTools({ document: doc, body, state, stage
             action(doc, body, 'Set role recommendation', () => {
                 try {
                     const value = JSON.parse(json.value); const previous = value.roles.find(item => item.role === role.value); value.roles = value.roles.filter(item => item.role !== role.value);
-                    value.roles.push({ role: role.value, requiredCapabilities: required.value.split(',').map(v => v.trim()).filter(Boolean), optionalCapabilities: previous?.optionalCapabilities || [],
+                    value.roles.push({ ...previous, role: role.value, displayName: purposeName.value.trim() || role.value, description: purposeDescription.value, requiredCapabilities: required.value.split(',').map(v => v.trim()).filter(Boolean), optionalCapabilities: previous?.optionalCapabilities || [],
                         ...(prompt.value ? { promptProgramRef: JSON.parse(prompt.value) } : {}), ...(generation.value ? { generationProfileRef: JSON.parse(generation.value) } : {}) });
                     json.value = JSON.stringify(value, null, 2);
                 } catch (e) { error(doc, status, e); }
@@ -634,6 +637,33 @@ export async function mountStudioPromptTools({ document: doc, body, state, stage
                     if (!await stageProject(source, 'Update runtime requirements and recommendations')) throw new Error('ChangeSet could not be prepared. Check Problems / Changes.');
                 } catch (e) { error(doc, status, e); }
             });
+            const taskRuntime = state.source.package.runtime?.experienceContract?.taskRuntime;
+            if (taskRuntime?.slots?.length) {
+                element(doc, 'h3', 'Work API purposes', body);
+                element(doc, 'p', 'The work defines purpose names and capabilities. Players bind these purposes to their own API presets when starting the work.', body);
+                const slots = clone(taskRuntime.slots);
+                const slot = select(doc, body, 'Purpose ID', slots.map(item => [item.id, item.displayName || item.id, true]), slots[0].id);
+                const name = input(doc, body, 'Purpose name', '');
+                const description = input(doc, body, 'Purpose description', '', true);
+                const capabilities = input(doc, body, 'Required capabilities (comma separated)', '');
+                let currentSlot = slots[0];
+                const storeSlot = () => {
+                    currentSlot.displayName = name.value.trim() || currentSlot.id; currentSlot.description = description.value;
+                    currentSlot.requiredCapabilities = capabilities.value.split(',').map(value => value.trim()).filter(Boolean);
+                };
+                const showSlot = () => {
+                    name.value = currentSlot.displayName || currentSlot.id; description.value = currentSlot.description || '';
+                    capabilities.value = currentSlot.requiredCapabilities.join(', ');
+                };
+                slot.addEventListener('change', () => { storeSlot(); currentSlot = slots.find(item => item.id === slot.value); showSlot(); }); showSlot();
+                action(doc, body, 'Review work API purposes', async () => {
+                    try {
+                        storeSlot(); const source = clone(state.source);
+                        source.package.runtime.experienceContract.taskRuntime.slots = slots;
+                        if (!await stageProject(source, 'Update work API purposes')) throw new Error('ChangeSet could not be prepared. Check Problems / Changes.');
+                    } catch (e) { error(doc, status, e); }
+                });
+            }
             action(doc, body, 'Inspect exact build closure', async () => {
                 try {
                     const result = await nativeStudioClient.resolveResourceClosure(state.projectId);

@@ -2,11 +2,12 @@ import { runtimeRequest } from './runtime-client.js';
 import { normalizeRuntimeRouteRef } from './runtime-route-ref.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
 
-export function mountRuntimeRoutePicker({ parent, role, value, change, label = 'API preset', routes: suppliedRoutes, explicit = false }) {
+export function mountRuntimeRoutePicker({ parent, role, value, change, label = 'API preset', routes: suppliedRoutes, explicit = false, literalLabel = false }) {
     const doc = parent.ownerDocument;
-    const wrap = doc.createElement('label'); wrap.className = 'workspace-inspector-field'; wrap.textContent = tl(label);
+    const labelText = literalLabel ? label : tl(label);
+    const wrap = doc.createElement('label'); wrap.className = 'workspace-inspector-field'; wrap.textContent = labelText;
     if (explicit) wrap.classList.add('atri-library-field');
-    const select = doc.createElement('select'); select.setAttribute('aria-label', tl(label)); wrap.append(select); parent.append(wrap);
+    const select = doc.createElement('select'); select.setAttribute('aria-label', labelText); wrap.append(select); parent.append(wrap);
     const status = doc.createElement('p'); status.className = 'workspace-hint'; status.setAttribute('role', 'status'); parent.append(status);
     const retry = doc.createElement('button'); retry.type = 'button'; retry.textContent = tl('Refresh API presets'); parent.append(retry);
     let selected = normalizeRuntimeRouteRef(value);

@@ -1083,7 +1083,7 @@ export function assertPackageModelPromptRuntimeMetadata(value, {
         const field = 'Package.runtime.modelPrompt.roles[' + index + ']';
         object(role, field);
         only(role, [
-            'role',
+            'role', 'displayName', 'description',
             'requiredCapabilities',
             'optionalCapabilities',
             'promptProgramRef',
@@ -1091,6 +1091,8 @@ export function assertPackageModelPromptRuntimeMetadata(value, {
         ], field);
         return Object.freeze({
             role: namespaced(role.role, field + '.role'),
+            ...(role.displayName === undefined ? {} : { displayName: text(role.displayName, field + '.displayName', 160) }),
+            ...(role.description === undefined ? {} : { description: text(role.description, field + '.description', 1000) }),
             requiredCapabilities: uniqueStrings(
                 role.requiredCapabilities || [],
                 field + '.requiredCapabilities',

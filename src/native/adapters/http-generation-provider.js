@@ -77,7 +77,7 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
         }
         if (generation.streaming.enabled !== undefined && typeof generation.streaming.enabled !== 'boolean') throw new GenerationError('generation_adapter_stream_invalid');
         if (messages && Object.keys(generation.reasoning).length) {
-            if (!['none', 'minimal', 'low', 'medium', 'high', 'xhigh'].includes(generation.reasoning.effort)) throw new GenerationError('generation_adapter_control_unsupported');
+            if (!['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'].includes(generation.reasoning.effort)) throw new GenerationError('generation_adapter_control_unsupported');
             body.reasoning_effort = generation.reasoning.effort;
             body.max_completion_tokens = maxTokens;
             delete body.max_tokens;

@@ -5,6 +5,7 @@ import { el } from './library-ui.js';
 import { translateShellText as t, formatShellText as fmt } from '../atria-shell/localization.js';
 
 const setups = new WeakMap();
+const slotLabel = slot => slot.displayName || (slot.id === 'role.intent_resolver' ? t('Intent resolver') : slot.id === 'role.narrator' ? t('Narrator') : t(label(slot.id)));
 const label = id => id.replace(/[._-]+/g, ' ').replace(/\b[a-z]/g, value => value.toUpperCase());
 export const isTaskBindingFailure = errors => (errors ?? []).some(error => /native_task_binding_missing|generation_capability_(unsupported|unknown)|native_generation_route_(missing|ambiguous)/.test(error));
 export function taskBindingMessage(code) {
@@ -45,35 +46,27 @@ export async function ensureTaskBindings({ document: doc, root, manifest, packag
     const selected = slot => slot.routes.some(route => route.compatible && draft[slot.id]?.scope === 'player' && route.runtimeRouteId === draft[slot.id]?.runtimeRouteId);
     function updateSave() {
         const missing = report.slots.filter(slot => !selected(slot));
-        const missingTurns = (report.turnRoutes ?? []).some(route => route.error);
-        if (save) save.disabled = busy || Boolean(missing.length) || missingTurns;
-        if (!busy) status.textContent = missing.length ? fmt('This work needs ${0} model purposes configured before it can start: ${1}.', [missing.length, missing.map(slot => t(label(slot.id))).join(', ')])
-            : missingTurns ? t('Configure the required turn routes before continuing.') : t('Model purposes are ready. You can review your API presets before continuing.');
+        if (save) save.disabled = busy || Boolean(missing.length);
+        if (!busy) status.textContent = missing.length ? fmt('This work needs ${0} model purposes configured before it can start: ${1}.', [missing.length, missing.map(slot => slotLabel(slot)).join(', ')])
+            : t('Model purposes are ready. You can review your API presets before continuing.');
     }
     function draw(next) {
         report = next; content.replaceChildren();
         status.setAttribute('role', 'status');
         const missing = report.slots.filter(slot => slot.error);
-        const missingRoles = (report.turnRoutes ?? []).filter(route => route.error);
         status.textContent = missing.length
-            ? fmt('This work needs ${0} model purposes configured before it can start: ${1}.', [missing.length, missing.map(slot => t(label(slot.id))).join(', ')])
-            : missingRoles.length ? t('Configure the required turn routes before continuing.')
-                : t('Model purposes are ready. You can review your API presets before continuing.');
-        for (const route of missingRoles) {
-            const group = el(doc, 'div', 'atri-library-section', undefined, content); group.dataset.atriaTurnRoute = route.role;
-            const roleName = route.role === 'intent_resolver' ? t('Intent resolver') : t('Narrator');
-            el(doc, 'p', 'workspace-hint', roleName + ': ' + taskBindingMessage(route.error), group);
-            if (route.requiredCapabilities.length) el(doc, 'p', 'workspace-hint', fmt('Required capabilities: ${0}', [route.requiredCapabilities.join(', ')]), group);
-        }
+            ? fmt('This work needs ${0} model purposes configured before it can start: ${1}.', [missing.length, missing.map(slot => slotLabel(slot)).join(', ')])
+            : t('Model purposes are ready. You can review your API presets before continuing.');
         const pickers = new Map();
         el(doc, 'p', 'workspace-hint', t('Choose an API preset for each purpose. Model and generation parameters come from that preset; prompt text comes from this work.'), content);
         for (const slot of report.slots) {
             const group = el(doc, 'div', 'atri-library-section', undefined, content); group.dataset.atriaBindingSlot = slot.id;
+            if (slot.description) el(doc, 'p', 'workspace-hint', slot.description, group);
             el(doc, 'p', 'workspace-hint', fmt('Used by: ${0}', [slot.tasks.join(', ')]), group);
             if (slot.requiredCapabilities.length) el(doc, 'p', 'workspace-hint', fmt('Required capabilities: ${0}', [slot.requiredCapabilities.join(', ')]), group);
             // Invalid/stale/foreign refs are never handed to the picker as a selection.
             if (!selected(slot)) delete draft[slot.id];
-            const picker = mountRuntimeRoutePicker({ parent: group, label: label(slot.id), explicit: true,
+            const picker = mountRuntimeRoutePicker({ parent: group, label: slotLabel(slot), literalLabel: true, explicit: true,
                 routes: slot.routes.filter(route => route.compatible), value: draft[slot.id],
                 change: value => { if (value) draft[slot.id] = value; else delete draft[slot.id]; describe(); updateSave(); } });
             const summary = el(doc, 'p', 'workspace-hint', '', group);

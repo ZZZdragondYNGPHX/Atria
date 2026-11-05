@@ -11948,5 +11948,12 @@
     "Allow a plain http:// address. Your API key is sent unencrypted; use only for a relay you trust.": "允许不加密的 http:// 地址。API 密钥将以明文发送，仅用于你信任的中转。",
     "Hide images in the story": "在故事中隐藏插图",
     "Images are hidden in the story. Nothing was deleted.": "故事中的插图已隐藏，没有删除任何内容。",
-    "Images are shown in the story.": "故事中的插图已显示。"
+    "Images are shown in the story.": "故事中的插图已显示。",
+    "atria.workApiPurposes.0": "用途名称",
+    "atria.workApiPurposes.1": "用途说明",
+    "atria.workApiPurposes.2": "作品 API 用途",
+    "atria.workApiPurposes.3": "用途标识",
+    "atria.workApiPurposes.4": "作品定义用途名称与所需能力。玩家启动作品时，将这些用途绑定到自己的 API 预设。",
+    "atria.workApiPurposes.5": "检查作品 API 用途变更",
+    "atria.workApiPurposes.6": "更新作品 API 用途"
 }
