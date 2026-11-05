@@ -11952,8 +11952,6 @@
     "atria.workApiPurposes.0": "用途名称",
     "atria.workApiPurposes.1": "用途说明",
     "atria.workApiPurposes.2": "作品 API 用途",
-    "atria.workApiPurposes.3": "用途标识",
     "atria.workApiPurposes.4": "作品定义用途名称与所需能力。玩家启动作品时，将这些用途绑定到自己的 API 预设。",
-    "atria.workApiPurposes.5": "检查作品 API 用途变更",
-    "atria.workApiPurposes.6": "更新作品 API 用途"
+    "atria.workApiPurposes.add": "新增 API 用途"
 }

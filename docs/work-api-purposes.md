@@ -8,4 +8,4 @@ Native turn purposes declared in `runtime.modelPrompt.roles` also support `displ
 
 At launch Atria displays required task and native turn purposes together. The player can assign one preset to all compatible purposes or separate presets. Bindings use the existing package-scoped `atri_task_bindings`; no global route is created or renamed. Required capabilities are checked against the selected preset. The preset supplies model and generation settings; an authored exact prompt supplies the work's semantics.
 
-Studio **Runtime Design** edits role names/descriptions and the existing Task slots' names, descriptions and capabilities. Changes use the normal project ChangeSet and build flow. Connections and Secrets remain player-owned and are never included in a work.
+Studio **Runtime Design** edits role names/descriptions and Task slot names, descriptions and capabilities in the same Runtime draft. Changes use the normal project ChangeSet and build flow. Connections and Secrets remain player-owned and are never included in a work.

@@ -637,33 +637,6 @@ export async function mountStudioPromptTools({ document: doc, body, state, stage
                     if (!await stageProject(source, 'Update runtime requirements and recommendations')) throw new Error('ChangeSet could not be prepared. Check Problems / Changes.');
                 } catch (e) { error(doc, status, e); }
             });
-            const taskRuntime = state.source.package.runtime?.experienceContract?.taskRuntime;
-            if (taskRuntime?.slots?.length) {
-                element(doc, 'h3', 'Work API purposes', body);
-                element(doc, 'p', 'The work defines purpose names and capabilities. Players bind these purposes to their own API presets when starting the work.', body);
-                const slots = clone(taskRuntime.slots);
-                const slot = select(doc, body, 'Purpose ID', slots.map(item => [item.id, item.displayName || item.id, true]), slots[0].id);
-                const name = input(doc, body, 'Purpose name', '');
-                const description = input(doc, body, 'Purpose description', '', true);
-                const capabilities = input(doc, body, 'Required capabilities (comma separated)', '');
-                let currentSlot = slots[0];
-                const storeSlot = () => {
-                    currentSlot.displayName = name.value.trim() || currentSlot.id; currentSlot.description = description.value;
-                    currentSlot.requiredCapabilities = capabilities.value.split(',').map(value => value.trim()).filter(Boolean);
-                };
-                const showSlot = () => {
-                    name.value = currentSlot.displayName || currentSlot.id; description.value = currentSlot.description || '';
-                    capabilities.value = currentSlot.requiredCapabilities.join(', ');
-                };
-                slot.addEventListener('change', () => { storeSlot(); currentSlot = slots.find(item => item.id === slot.value); showSlot(); }); showSlot();
-                action(doc, body, 'Review work API purposes', async () => {
-                    try {
-                        storeSlot(); const source = clone(state.source);
-                        source.package.runtime.experienceContract.taskRuntime.slots = slots;
-                        if (!await stageProject(source, 'Update work API purposes')) throw new Error('ChangeSet could not be prepared. Check Problems / Changes.');
-                    } catch (e) { error(doc, status, e); }
-                });
-            }
             action(doc, body, 'Inspect exact build closure', async () => {
                 try {
                     const result = await nativeStudioClient.resolveResourceClosure(state.projectId);

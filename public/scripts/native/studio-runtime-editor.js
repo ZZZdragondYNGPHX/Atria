@@ -37,6 +37,26 @@ export function mountStudioRuntimeEditor({ document: doc, root, value, onReview,
                 node('p', 'Use Source to repair the Runtime contract before adding Processors.', parent); return;
             }
             renderWorkflowStructure({ document: doc, parent, draft, rerender });
+            if (Array.isArray(draft.taskRuntime?.slots) && draft.taskRuntime.slots.every(slot => slot && typeof slot === 'object')) {
+                const purposes = node('section', '', parent);
+                node('h4', 'Work API purposes', purposes);
+                node('p', 'The work defines purpose names and capabilities. Players bind these purposes to their own API presets when starting the work.', purposes);
+                const addPurpose = node('button', 'Add API purpose', purposes); addPurpose.type = 'button';
+                addPurpose.addEventListener('click', () => {
+                    const slots = draft.taskRuntime.slots;
+                    let index = 1; while (slots.some(slot => slot.id === 'purpose-' + index)) index++;
+                    slots.push({ id: 'purpose-' + index, displayName: '', description: '', requiredCapabilities: [] }); rerender();
+                });
+                for (const slot of draft.taskRuntime.slots ?? []) {
+                    const group = node('fieldset', '', purposes); node('legend', slot.id, group);
+                    for (const [key, label] of [['displayName', 'Purpose name'], ['description', 'Purpose description']]) {
+                        const wrapper = node('label', label, group), control = node('input', '', wrapper);
+                        control.value = slot[key] || ''; control.setAttribute('aria-label', t(label) + ' · ' + slot.id);
+                        control.addEventListener('input', () => { slot[key] = control.value; });
+                    }
+                }
+            }
+
             const add = node('button', 'Add Processor', parent); add.type = 'button';
             add.addEventListener('click', () => {
                 draft.capabilities ||= [];
