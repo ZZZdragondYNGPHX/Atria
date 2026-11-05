@@ -103,7 +103,7 @@ export async function createFrontendBridge({ descriptor, transport, onEpoch = ()
                     ...(['action.invoke', 'operation.start'].includes(method) ? { idempotencyKey: options.idempotencyKey ?? globalThis.crypto.randomUUID() } : {}) });
                 if (!current()) return failure('bridge_epoch_stale', id);
                 if (result.epoch && result.epoch !== epoch) { invalidate(); return failure('bridge_epoch_stale', id); }
-                if (kind === 'read' && (revision !== capturedRevision || queryVersion !== queries.get(id))) return failure('bridge_query_stale', id);
+                if (kind === 'read' && ((hostTargetRequiresRevision(binding.target) && revision !== capturedRevision) || queryVersion !== queries.get(id))) return failure('bridge_query_stale', id);
                 if (!result.ok) { if (result.error?.code === 'bridge_epoch_stale') invalidate(); return result; }
                 if (result.bindingId !== id || result.schemaDigest !== binding.schemaDigest) return failure('bridge_schema_invalid', id);
                 if (kind === 'read') {

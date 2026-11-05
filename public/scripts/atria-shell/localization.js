@@ -490,6 +490,7 @@ export const SHELL_TEXT_KEYS = Object.freeze({
     'OpenAI-compatible messages use the full /v1/chat/completions endpoint, not /v1/completions.': 'atria.runtime.toolSchema.4',
     'The generation endpoint returned HTTP 404. For OpenAI-compatible messages, use the full /chat/completions URL.': 'atria.runtime.providerHttp.0',
     'The provider rejected the request (HTTP 400/422). Check model and tool/output schema compatibility.': 'atria.runtime.providerHttp.1',
+    'The model rejected the reasoning setting. Select Default or none in the API preset, or use an endpoint that supports reasoning with tools.': 'atria.runtime.providerHttp.reasoning',
     'The provider rejected the stored Secret (HTTP 401/403). Check the Secret selected by this connection.': 'atria.runtime.providerHttp.2',
     'The provider did not respond within this route’s timeout. Check service availability or increase the route timeout.': 'atria.runtime.providerHttp.3',
     'Configure the required turn routes before continuing.': 'atria.taskBindings.20',

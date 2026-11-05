@@ -189,6 +189,7 @@
     "atria.runtime.toolSchema.4": "OpenAI 兼容消息协议需要完整的 /v1/chat/completions 地址，请勿使用 /v1/completions。",
     "atria.runtime.providerHttp.0": "生成接口返回 HTTP 404。OpenAI 兼容消息协议需要填写完整的 /chat/completions 地址。",
     "atria.runtime.providerHttp.1": "模型服务拒绝了请求（HTTP 400/422）。请检查模型及工具调用、输出 Schema 的兼容性。",
+    "atria.runtime.providerHttp.reasoning": "模型不接受当前推理设置。请在 API 预设中选择默认或 none，或使用支持推理与工具调用组合的接口。",
     "atria.runtime.providerHttp.2": "模型服务拒绝了密钥（HTTP 401/403）。请检查此连接选择的密钥。",
     "atria.runtime.providerHttp.3": "模型服务未在此运行方案的时限内返回。请检查服务可用性，或增大运行方案超时时间。",
     "atria.taskBindings.20": "请先配置此游戏所需的回合运行方案，再继续。",

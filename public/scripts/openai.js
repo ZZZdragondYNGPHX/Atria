@@ -1170,7 +1170,7 @@ function setupChatCompletionPromptManager(openAiSettings) {
     };
 
     promptManager.tryGenerate = () => {
-        if (characters[this_chid]) {
+        if (!nativeSessionRuntime.active && characters[this_chid]) {
             return Generate('normal', {}, true);
         } else {
             return Promise.resolve();

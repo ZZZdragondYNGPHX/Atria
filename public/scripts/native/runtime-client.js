@@ -33,6 +33,7 @@ export function runtimeRemediation(code) {
         native_processing_failed: ['A declared Processor failed. Open Diagnostics to inspect its stage and fixed source. No candidate was adopted.', 'diagnostics'],
         generation_provider_endpoint_not_found: ['The generation endpoint returned HTTP 404. For OpenAI-compatible messages, use the full /chat/completions URL.', 'connections'],
         generation_provider_request_rejected: ['The provider rejected the request (HTTP 400/422). Check model and tool/output schema compatibility.', 'connections'],
+        generation_provider_reasoning_unsupported: ['The model rejected the reasoning setting. Select Default or none in the API preset, or use an endpoint that supports reasoning with tools.', 'routes'],
         generation_provider_authentication_failed: ['The provider rejected the stored Secret (HTTP 401/403). Check the Secret selected by this connection.', 'connections'],
         generation_provider_timeout: ['The provider did not respond within this route’s timeout. Check service availability or increase the route timeout.', 'routes'],
         prompt_parameter_option: ['Saved Prompt choices are invalid. Open Prompt choices and restore defaults or choose valid values.', 'diagnostics'],

@@ -292,6 +292,9 @@ export function mountAtriaPlayProduct({
     runtimeError.className = 'atri-runtime-notice'; runtimeError.hidden = true;
     runtimeError.setAttribute('role', 'alert');
     const showRuntimeError = event => {
+        if (documentRef.body.dataset.atriaGameFullActive === 'true') {
+            globalThis.toastr?.error(event.detail.message, '', { timeOut: 0, extendedTimeOut: 0, closeButton: true, preventDuplicates: true });
+        }
         runtimeError.replaceChildren(); runtimeError.hidden = false;
         const message = documentRef.createElement('p'); message.textContent = event.detail.message;
         const action = documentRef.createElement('button'); action.type = 'button';

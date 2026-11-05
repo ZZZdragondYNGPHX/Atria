@@ -151,10 +151,11 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
                 throw new ProviderFailure('transport');
             }
             if (!response.ok) {
-                const failure = providerHttpFailure(response.status);
+                let failure = providerHttpFailure(response.status);
                 // The failed body and provider message never leave this frame.
                 try {
                     const raw = await response.json();
+                    if (raw?.error?.param === 'reasoning_effort') failure = providerHttpFailure(response.status, 'reasoning_effort');
                     observeProviderHttpUsage(failure, observedGenerationUsage(raw?.usage, { inputTokens: 'prompt_tokens', outputTokens: 'completion_tokens', totalTokens: 'total_tokens' }));
                 } catch { /* An unreadable failure retains unknown spending. */ }
                 throw failure;

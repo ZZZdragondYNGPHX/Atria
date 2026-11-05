@@ -30,7 +30,7 @@ const ERROR_CODES = new Set([...COMPUTE_ADMISSION_CODES, 'native_generation_budg
     'generation_continuation_reset_required',
     'generation_target_policy_denied', 'generation_path_evidence_unavailable', 'generation_continuation_unavailable', 'generation_semantic_authority_changed',
     'native_generation_budget_exhausted', 'native_generation_background_not_due', 'native_generation_budget_lane_denied', 'native_generation_task_stopped', 'native_generation_revision_conflict',
-    'generation_provider_endpoint_not_found', 'generation_provider_request_rejected', 'generation_provider_authentication_failed', 'generation_provider_timeout',
+    'generation_provider_endpoint_not_found', 'generation_provider_request_rejected', 'generation_provider_reasoning_unsupported', 'generation_provider_authentication_failed', 'generation_provider_timeout',
     'generation_cancelled', 'generation_execution_failed', 'generation_provider_unavailable',
     'generation_route_mismatch', 'generation_profile_mismatch', 'generation_resource_cycle',
     'generation_resource_limit', 'generation_resource_origin_mismatch', 'generation_exact_resource_mismatch',
@@ -69,12 +69,13 @@ export class ProviderFailure extends Error {
     }
 }
 
-// Classify only the HTTP status. Never retain provider response bodies or credentials.
+// Classify HTTP status and the one recognized parameter name. Never retain
+// provider response bodies, messages or credentials.
 const httpFailures = new WeakMap();
-export function providerHttpFailure(status) {
+export function providerHttpFailure(status, parameter = null) {
     const failure = status === 401 || status === 403 ? new GenerationError('generation_provider_authentication_failed')
         : status === 404 ? new GenerationError('generation_provider_endpoint_not_found')
-            : status === 400 || status === 422 ? new GenerationError('generation_provider_request_rejected')
+            : status === 400 || status === 422 ? new GenerationError(parameter === 'reasoning_effort' ? 'generation_provider_reasoning_unsupported' : 'generation_provider_request_rejected')
                 : new ProviderFailure(status === 429 || status >= 500 ? 'provider' : 'application');
     if (Number.isInteger(status) && status >= 400 && status <= 599) httpFailures.set(failure, Object.freeze({ status }));
     return failure;
