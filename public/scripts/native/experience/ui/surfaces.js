@@ -53,6 +53,12 @@ export function createSurfaceHost(options = {}) {
         container.dataset ??= {};
         container.dataset.atriaGameSurface = surface;
         container.dataset.atriaGameMount = id;
+        // Root views fill the stage; preserve the height chain through this wrapper.
+        if (surface === 'app.root') {
+            container.style.height = '100%';
+            container.style.minWidth = '0';
+            container.style.minHeight = '0';
+        }
         if (typeof options.className === 'string' && options.className.trim()) {
             container.className = options.className.trim();
         }
