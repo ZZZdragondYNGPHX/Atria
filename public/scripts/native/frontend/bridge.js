@@ -81,11 +81,11 @@ export async function createFrontendBridge({ descriptor, transport, onEpoch = ()
                     if (status.epoch !== epoch || status.error?.code === 'bridge_epoch_stale') { invalidate(); return failure('bridge_epoch_stale', id); }
                     if (!status.ok) return status;
                     if (status.schemaDigest !== binding.schemaDigest || status.bindingId !== id) return failure('bridge_schema_invalid', id);
-                    if (status.revision !== capturedRevision || (options.revision && options.revision !== capturedRevision)) return failure('bridge_revision_stale', id);
+                    if (localTarget.revisionBound !== false && (status.revision !== capturedRevision || (options.revision && options.revision !== capturedRevision))) return failure('bridge_revision_stale', id);
                     const idempotencyKey = options.idempotencyKey ?? globalThis.crypto.randomUUID();
                     if (kind === 'action' && (typeof idempotencyKey !== 'string' || !/^[a-zA-Z0-9._:-]{1,96}$/.test(idempotencyKey))) return failure('bridge_idempotency_required', id);
                     const key = epoch + ':' + id + ':' + idempotencyKey;
-                    const fingerprint = JSON.stringify({ input, revision: capturedRevision });
+                    const fingerprint = JSON.stringify({ input, ...(localTarget.revisionBound !== false ? { revision: capturedRevision } : {}) });
                     const previous = kind === 'action' ? localReceipts.get(key) : null;
                     if (previous && previous.fingerprint !== fingerprint) return failure('bridge_idempotency_conflict', id);
                     if (!previous && kind === 'action' && !makeBridgeReceiptRoom(localReceipts, capturedRevision)) return failure('bridge_backpressure', id);
@@ -113,7 +113,7 @@ export async function createFrontendBridge({ descriptor, transport, onEpoch = ()
                     result.data = bridgeValue(result.data, binding.outputSchema);
                     if (binding.target?.transactionId) onCommit(result.revision);
                     if (binding.target?.service && ['restore', 'switch', 'fork', 'retry', 'reload', 'recover'].includes(binding.target.method)) { invalidate(); return structuredClone(result); }
-                    await refresh();
+                    if (localTarget?.revisionBound !== false) await refresh();
                 } else if (method === 'operation.get' && result.status === 'completed') { result.data = bridgeValue(result.data, binding.outputSchema); await refresh(); }
                 return current() ? structuredClone(result) : failure('bridge_epoch_stale', id);
             } catch (error) { return failure(current() ? publicBridgeError(error) : 'bridge_epoch_stale', id); }

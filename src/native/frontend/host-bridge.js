@@ -106,14 +106,15 @@ export class FrontendBridgeService {
                 item.id === request.bindingId && item.kind === 'action' && item.target.transactionId);
             // The Authority action validates its own locked snapshot. Its
             // frontend preflight only needs identity, not a second world load.
-            base = await this.current(services, state, { headOnly: request.method === 'status' || deterministic });
+            base = await this.current(services, state, { headOnly: ['status', 'host.authorize'].includes(request.method) || deterministic });
             if (request.method === 'status') return bridgeReceipt({ epoch: state.epoch, revision: base.revision.revisionId });
             binding = state.graph.bridge.bindings.find(item => item.id === request.bindingId);
             if (!binding || !state.scopes.get(request.componentId)?.has(binding.id)) throw bridgeFailure('bridge_binding_denied');
             const receipt = values => bridgeReceipt({ bindingId: binding.id, epoch: state.epoch, revision: base.revision.revisionId, schemaDigest: binding.schemaDigest, ...values });
             if (request.method === 'host.authorize') {
-                if (!binding.target.service || !fixedHostTarget(binding.target, binding.outputSchema?.properties?.data).local) throw bridgeFailure('bridge_method_denied');
-                if (request.revision !== base.revision.revisionId) throw bridgeFailure('bridge_revision_stale');
+                const target = binding.target.service && fixedHostTarget(binding.target, binding.outputSchema?.properties?.data);
+                if (!target?.local) throw bridgeFailure('bridge_method_denied');
+                if (target.revisionBound !== false && request.revision !== base.revision.revisionId) throw bridgeFailure('bridge_revision_stale');
                 bridgeValue(request.input ?? {}, binding.inputSchema);
                 return receipt({});
             }

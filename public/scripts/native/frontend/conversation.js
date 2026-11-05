@@ -1,4 +1,4 @@
-import { projectConversation, projectPresentation, projectSession, projectMessageBlocks } from '../../../shared/native-frontend-host.js';
+import { fixedHostTarget, projectConversation, projectPresentation, projectSession, projectMessageBlocks } from '../../../shared/native-frontend-host.js';
 import { bridgeFailure } from '../../../shared/native-frontend-bridge.js';
 
 // Host adapter over the one existing Session runtime and generation entrypoint.
@@ -6,9 +6,9 @@ import { bridgeFailure } from '../../../shared/native-frontend-bridge.js';
 export function createHeadlessConversation({ runtime, composer, stop, actions = {} }) {
     const current = () => typeof runtime === 'function' ? runtime() : runtime;
     const view = (entries, variants) => entries ? { ...current().snapshot, timeline: entries, variants: variants ?? current().snapshot.variants } : current().snapshot;
-    const guard = revision => {
+    const guard = (revision, revisionBound = true) => {
         const value = current();
-        if (!value?.active || value.snapshot.revision.revisionId !== revision) throw bridgeFailure('bridge_revision_stale');
+        if (!value?.active || revisionBound && value.snapshot.revision.revisionId !== revision) throw bridgeFailure('bridge_revision_stale');
         return value;
     };
     return Object.freeze({
@@ -23,7 +23,7 @@ export function createHeadlessConversation({ runtime, composer, stop, actions = 
         blocks: (type, entries, variants) => current()?.snapshot ? projectMessageBlocks(view(entries, variants), type) : [],
         generation: () => ({ ...(current()?.generationProjection ?? { state: 'idle', text: '', error: '' }) }),
         async invoke(target, input, revision) {
-            const value = guard(revision), key = target.service + '.' + target.method;
+            const value = guard(revision, fixedHostTarget(target).revisionBound !== false), key = target.service + '.' + target.method;
             const draft = () => { if (!composer) throw bridgeFailure('bridge_host_unavailable'); return composer; };
             if (key === 'host.persona.openSelector') {
                 if (value.failed || value.history) throw bridgeFailure('bridge_session_readonly');
