@@ -102,6 +102,44 @@ export function canonicalProseSelection(root, range) {
     return start === null ? null : { start, end, quote: mapping.content.slice(start, end) };
 }
 
+// Sentence ends in Chinese/Japanese and Latin prose, with any closing quotes or brackets.
+const SENTENCE_END = /[。！？!?…]+[”’」』）)\]"']*|\.(?=\s|$)[”’」』）)\]"']*/g;
+/**
+ * Where a decoration anchored at canonical `offset` goes inside `block` so that it moves with
+ * the text: after the sentence that contains the offset, never inside a word or sentence.
+ * Returns null when that point is the block's end (place after the block). A text leaf may be
+ * split at the point; both halves stay mapped, so selection and highlights are unchanged.
+ */
+export function proseAnchorPoint(root, block, offset) {
+    const mapping = sourceMappings.get(root);
+    const blockEnd = Number(block.dataset.atriaProseEnd);
+    if (!mapping || !(offset < blockEnd)) return null;
+    // Snap forward to the end of the sentence the offset is in (an offset right after a sentence end stays).
+    let point = blockEnd;
+    SENTENCE_END.lastIndex = Math.max(Number(block.dataset.atriaProseStart), offset - 8);
+    for (let match; (match = SENTENCE_END.exec(mapping.content)) && match.index < blockEnd;) {
+        const end = Math.min(match.index + match[0].length, blockEnd);
+        if (end >= offset) { point = end; break; }
+    }
+    if (point >= blockEnd || !mapping.content.slice(point, blockEnd).trim()) return null;
+    const walker = root.ownerDocument.createTreeWalker(block, 4);
+    for (let leaf; (leaf = walker.nextNode());) {
+        const source = mapping.leaves.get(leaf);
+        // The leaf that contains the point or ends exactly at it.
+        if (!source || !(source.start < point && point <= source.end)) continue;
+        let anchor = leaf;
+        if (point < source.end) {
+            const rest = leaf.splitText(point - source.start);
+            mapping.leaves.set(leaf, { start: source.start, end: point });
+            mapping.leaves.set(rest, { start: point, end: source.end });
+        }
+        // Insert at the block's own level so inline formatting (links, emphasis) is never split.
+        while (anchor.parentNode !== block) anchor = anchor.parentNode;
+        return anchor;
+    }
+    return null;
+}
+
 // Stable highlight ranges over existing text leaves; no wrapping/replacing prose.
 export function canonicalProseRanges(root, start, end) {
     const mapping = sourceMappings.get(root), ranges = [];

@@ -6,6 +6,8 @@ import { visualError } from '../../public/shared/native-visual-contract.js';
 
 const active = new Map();
 const terminal = new Set(['published', 'failed', 'cancelled', 'stale', 'uncertain_submission']);
+const definiteRejections = new Set(['native_visual_authentication_failed', 'native_visual_rate_limited', 'native_visual_request_rejected',
+    'native_illustration_image_authentication_failed', 'native_illustration_image_rate_limited', 'native_illustration_image_request_rejected']);
 const activeKey = (handle, id) => JSON.stringify([handle, id]);
 // Scheduler remains the execution/concurrency port; the Native store owns all
 // authoritative lifecycle, receipts, fences and reservations across restarts.
@@ -53,8 +55,12 @@ export class ImageJobWorker {
         } catch (error) {
             await this.store.updateJob(handle, jobId, j => {
                 if (j.fence !== (fence ?? j.fence) || j.status === 'published' || j.status === 'cancelled' || j.status === 'result_received') return j;
-                const sent = j.attempts.length > 0;
-                j.status = error.code === 'native_visual_remote_failed' ? 'failed' : j.remote ? 'submitted' : sent ? 'uncertain_submission' : 'failed';
+                // An HTTP rejection (4xx) is a definite answer from the provider:
+                // nothing ran, so the job fails and its reservation is released.
+                // Only a send without any answer stays uncertain.
+                const rejected = definiteRejections.has(error.code);
+                const sent = j.attempts.length > 0 && !rejected;
+                j.status = error.code === 'native_visual_remote_failed' || rejected ? 'failed' : j.remote ? 'submitted' : sent ? 'uncertain_submission' : 'failed';
                 j.errorCode = /^native_[a-z_]+$/.test(error.code ?? '') ? error.code : 'native_visual_request_failed';
                 if (!sent) j.reservation.released = true;
                 return j;

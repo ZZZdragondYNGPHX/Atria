@@ -1,7 +1,7 @@
 import { translateShellText } from '../atria-shell/localization.js';
 import { replayMask, maskPixelFromScreen } from '../../shared/native-mask.js';
-import { translateShellText as tl } from '../atria-shell/localization.js';
-import { illustrationNode as node, illustrationButton as button, illustrationField as field, illustrationSelect as select } from './illustration-ui.js';
+import { el, iconButton, segmented, field, input, action } from './illustration-kit.js';
+const node = (doc, parent, tag, text, className = '') => { const item = el(doc, tag, { className, text }); parent?.append(item); return item; };
 
 export class MaskCommandModel {
     constructor({ width, height, checkpoint, commands = [], cursor = commands.length }) { Object.assign(this, { width, height, checkpoint: new Uint8Array(checkpoint), commands: structuredClone(commands), cursor }); }
@@ -16,19 +16,30 @@ export class MaskCommandModel {
     }
 }
 export function mountMaskCanvas({ document: doc, parent, baseUrl, model, changed }) {
-    const root = node(doc, parent, 'section'), controls = node(doc, root, 'div', undefined, 'atri-illustration-actions');
+    const root = node(doc, parent, 'section', undefined, 'atri-ill-mask'), controls = node(doc, root, 'div', undefined, 'atri-ill-row atri-ill-mask-tools');
     let tool = 'brush', radius = 16, scale = 1, offsetX = 0, offsetY = 0, gesture = null, frame = null;
     const pointers = new Map();
-    select(doc, controls, translateShellText('Mask tool'), tool, [['brush', translateShellText('Brush')], ['erase', translateShellText('Erase')], ['rect', translateShellText('Rectangle')], ['pan', translateShellText('Pan')]], value => tool = value);
-    const radiusInput = field(doc, controls, translateShellText('Brush radius in original pixels'), radius, value => radius = Math.max(1, Math.min(256, Number(value))), { type: 'number' }); radiusInput.min = '1'; radiusInput.max = '256';
-    const viewport = node(doc, root, 'div', undefined, 'atri-mask-viewport'); viewport.tabIndex = 0; viewport.setAttribute('aria-label', tl('Mask editor. Use the rectangle controls below or keyboard undo.'));
+    controls.append(segmented(doc, translateShellText('Mask tool'), tool, [['brush', translateShellText('Brush')], ['erase', translateShellText('Erase')], ['rect', translateShellText('Rectangle')], ['pan', translateShellText('Pan')]], value => { tool = value; }));
+    const radiusInput = el(doc, 'input', { attrs: { type: 'range', min: '2', max: '160', 'aria-label': translateShellText('Brush size') } }); radiusInput.value = String(radius);
+    radiusInput.addEventListener('input', () => { radius = Number(radiusInput.value); });
+    controls.append(el(doc, 'label', { className: 'atri-ill-row atri-ill-muted' }, [el(doc, 'span', { text: translateShellText('Size') }), radiusInput]));
+    const viewport = node(doc, root, 'div', undefined, 'atri-mask-viewport'); viewport.tabIndex = 0; viewport.setAttribute('aria-label', translateShellText('Paint over the area to change. Ctrl+Z undoes, Ctrl+Shift+Z redoes.'));
     Object.assign(viewport.style, { position: 'relative', overflow: 'hidden', height: 'min(55dvh, 420px)', touchAction: 'none', background: 'var(--atri-surface-2)' });
     const plane = node(doc, viewport, 'div'); Object.assign(plane.style, { position: 'absolute', transformOrigin: '0 0', width: model.width + 'px', height: model.height + 'px' });
     const image = node(doc, plane, 'img'); image.src = baseUrl; image.alt = translateShellText('Original image for local editing'); image.width = model.width; image.height = model.height; image.draggable = false;
     Object.assign(image.style, { width: model.width + 'px', height: model.height + 'px', maxWidth: 'none' });
     const canvas = node(doc, plane, 'canvas'); canvas.width = model.width; canvas.height = model.height; Object.assign(canvas.style, { position: 'absolute', inset: '0', pointerEvents: 'none' });
     const context = canvas.getContext('2d'), applyView = () => plane.style.transform = 'translate(' + offsetX + 'px,' + offsetY + 'px) scale(' + scale + ')';
-    const resetView = () => { scale = Math.min(viewport.clientWidth / model.width || 1, viewport.clientHeight / model.height || 1); offsetX = offsetY = 0; applyView(); };
+    // Fit and centre the image. While the reader has not panned or zoomed, a resize
+    // (e.g. the panel widening for retouching) fits it again.
+    let fitted = null;
+    const resetView = () => {
+        scale = Math.min(viewport.clientWidth / model.width || 1, viewport.clientHeight / model.height || 1);
+        offsetX = (viewport.clientWidth - model.width * scale) / 2; offsetY = (viewport.clientHeight - model.height * scale) / 2;
+        fitted = { scale, offsetX, offsetY }; applyView();
+    };
+    const resizing = new doc.defaultView.ResizeObserver(() => { if (fitted && fitted.scale === scale && fitted.offsetX === offsetX && fitted.offsetY === offsetY) resetView(); });
+    resizing.observe(viewport);
     const paint = () => {
         if (!context) return;
         const pixels = model.pixels(), overlay = context.createImageData(model.width, model.height);
@@ -36,8 +47,8 @@ export function mountMaskCanvas({ document: doc, parent, baseUrl, model, changed
         context.putImageData(overlay, 0, 0);
     };
     const update = () => { paint(); changed(); };
-    button(doc, controls, translateShellText('Undo'), () => { model.undo(); update(); }); button(doc, controls, translateShellText('Redo'), () => { model.redo(); update(); });
-    button(doc, controls, translateShellText('Clear mask'), () => { model.add({ kind: 'fill', value: 0 }); update(); }); button(doc, controls, translateShellText('Fit to window'), resetView);
+    controls.append(el(doc, 'span', { className: 'atri-ill-spacer' }), iconButton(doc, translateShellText('Undo'), 'undo', () => { model.undo(); update(); }), iconButton(doc, translateShellText('Redo'), 'restore', () => { model.redo(); update(); }),
+        iconButton(doc, translateShellText('Clear mask'), 'trash', () => { model.add({ kind: 'fill', value: 0 }); update(); }), iconButton(doc, translateShellText('Fit to window'), 'expand', () => resetView()));
     const point = event => maskPixelFromScreen(event.clientX, event.clientY, viewport.getBoundingClientRect(), { scale, offsetX, offsetY }, model.width, model.height);
     const midpoint = () => { const [a, b] = [...pointers.values()]; return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, distance: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)) }; };
     const down = event => {
@@ -76,11 +87,12 @@ export function mountMaskCanvas({ document: doc, parent, baseUrl, model, changed
     viewport.addEventListener('pointercancel', event => { pointers.delete(event.pointerId); gesture = null; });
     viewport.addEventListener('keydown', event => { if (!event.defaultPrevented && !event.isComposing && event.keyCode !== 229 && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); event.shiftKey ? model.redo() : model.undo(); update(); } });
     viewport.addEventListener('wheel', event => { if (!event.ctrlKey) return; event.preventDefault(); scale = Math.max(.1, Math.min(8, scale * Math.exp(-event.deltaY / 500))); applyView(); }, { passive: false });
-    const keyboard = node(doc, root, 'details'); node(doc, keyboard, 'summary', translateShellText('Rectangle coordinates in pixels'));
+    const keyboard = node(doc, root, 'details', undefined, 'atri-ill-details'); node(doc, keyboard, 'summary', translateShellText('Rectangle coordinates in pixels'));
+    const keyboardFields = node(doc, keyboard, 'div', undefined, 'atri-ill-row');
     const rectangle = { x: 0, y: 0, width: Math.min(64, model.width), height: Math.min(64, model.height) };
     const coordinateLabels = { x: 'X coordinate', y: 'Y coordinate', width: 'Rectangle width', height: 'Rectangle height' };
-    for (const key of Object.keys(rectangle)) field(doc, keyboard, translateShellText(coordinateLabels[key]), rectangle[key], text => rectangle[key] = Number(text), { type: 'number' });
-    button(doc, keyboard, translateShellText('Add rectangle'), () => { model.add({ kind: 'rect', ...rectangle, value: 255 }); update(); });
+    for (const key of Object.keys(rectangle)) keyboardFields.append(field(doc, translateShellText(coordinateLabels[key]), input(doc, String(rectangle[key]), text => { rectangle[key] = Number(text); }, { type: 'number' })));
+    keyboardFields.append(action(doc, translateShellText('Add rectangle'), () => { model.add({ kind: 'rect', ...rectangle, value: 255 }); update(); }, { size: 'sm' }));
     frame = doc.defaultView.requestAnimationFrame(() => { resetView(); paint(); });
-    return { paint, dispose: () => { doc.defaultView.cancelAnimationFrame(frame); root.remove(); } };
+    return { paint, dispose: () => { doc.defaultView.cancelAnimationFrame(frame); resizing.disconnect(); root.remove(); } };
 }

@@ -1,325 +1,425 @@
 import { formatAtriaDate } from '../atria-shell/components.js';
-import { translateShellText, formatShellText } from '../atria-shell/localization.js';
-import { mountVisualGallery } from './visual-gallery-ui.js';
-import { mountVisualDirector } from './visual-director-ui.js';
+import { translateShellText as t, formatShellText as f } from '../atria-shell/localization.js';
 import { confirmAtriaDraftLeave } from '../atria-shell/workspace-leave-guard.js';
-import { createIllustrationDraft, assertIllustrationDraft, matchDrawingCharacters, composeIllustrationPrompt, speakerDrawingCharacter } from '../../shared/illustration-plugin-contract.js';
-import { illustrationNode as node, illustrationField as field, illustrationSelect as select, illustrationButton as button, ILLUSTRATION_CSS } from './illustration-ui.js';
-import { renderIllustrationPreset, mountIllustrationSettings } from './illustration-settings-ui.js';
+import { createIllustrationDraft, composeIllustrationPrompt, speakerDrawingCharacter } from '../../shared/illustration-plugin-contract.js';
+import { supportsNegativePrompt } from '../../shared/image-service-catalog.js';
 import { nativeAssetUrl } from './session-projection.js';
-import { runtimeRequest } from './runtime-client.js';
+import { ILLUSTRATION_EXPERIENCE_CSS } from './illustration-style.js';
+import { createIllustrationFlow, illustrationErrorText, isSettingsError } from './illustration-flow.js';
+import { loadIllustrationConfig, illustrationReadiness, mountIllustrationSetup, updateIllustrationSettings } from './illustration-setup.js';
+import { mountIllustrationCharacters } from './illustration-characters.js';
+import { mountTagEditor } from './illustration-tags.js';
+import { mountIllustrationRetouch } from './illustration-retouch.js';
+import { el, icon, action, iconButton, field, input, details, facts, thumbUrl, phaseText } from './illustration-kit.js';
+
+// While open, the panel/sheet sits above the shell's edge dock (z-index 44) but below shell dialogs.
+const OPEN_LAYER = '45';
+const TABS = [['story', 'This story'], ['gallery', 'Gallery'], ['characters', 'Cast'], ['settings', 'Settings']];
 
 export async function activate(sdk) {
-    const doc = globalThis.document;
-    const root = node(doc, null, 'section', undefined, 'atri-illustration-ui'); root.dataset.atriaOfficialIllustration = 'true';
-    sdk.ui.mount(root); sdk.ui.style(ILLUSTRATION_CSS);
+    const doc = globalThis.document, win = doc.defaultView;
+    const context = sdk.context;
+    const writable = Boolean(context.sessionId && !context.historical);
+    const root = el(doc, 'div', { className: 'atri-ill', attrs: { 'data-atria-official-illustration': 'true' } });
+    sdk.ui.mount(root); sdk.ui.style(ILLUSTRATION_EXPERIENCE_CSS);
     const shellRoot = globalThis.Atria?.shell?.getRoot?.();
-    if (shellRoot) {
-        shellRoot.append(root);
-        Object.assign(root.style, { position: 'absolute', inset: '0', zIndex: '5', pointerEvents: 'none' });
+    if (shellRoot) { shellRoot.append(root); Object.assign(root.style, { position: 'absolute', inset: '0', zIndex: '5', pointerEvents: 'none' }); }
+
+    let config = null, ready = null, open = false, tab = 'story', detailId = null, focusVersion = null, editing = false, disposed = false;
+    let pending = null, view = null, retouch = null, statusTimer = null, lastView = '';
+    let suggestions = [], suggestionsLoaded = false;
+
+    // ── Floating controls ────────────────────────────────────────────────
+    const launcher = el(doc, 'button', { className: 'atri-ill-launcher', attrs: { type: 'button', 'aria-expanded': 'false', 'aria-haspopup': 'dialog', 'aria-controls': 'atri-ill-panel' },
+        on: { click: () => (open ? close() : show()) } }, [icon(doc, 'image', 17), el(doc, 'span', { text: t('Illustrations') })]);
+    const dot = el(doc, 'span', { className: 'atri-ill-dot', attrs: { hidden: true, 'aria-hidden': 'true' } }); launcher.append(dot);
+    const chip = el(doc, 'button', { className: 'atri-ill-chip', attrs: { type: 'button', hidden: true }, on: { mousedown: event => event.preventDefault(), click: () => void illustrateSelection() } },
+        [icon(doc, 'sparkles', 15), el(doc, 'span', { text: t('Illustrate') }), el(doc, 'kbd', { text: 'Alt I', attrs: { 'aria-hidden': 'true' } })]);
+    chip.setAttribute('aria-keyshortcuts', 'Alt+I');
+    const panel = el(doc, 'aside', { className: 'atri-ill-panel', attrs: { id: 'atri-ill-panel', role: 'dialog', 'aria-modal': 'false', 'aria-labelledby': 'atri-ill-title', hidden: true, 'data-atria-owns-escape': 'true' } });
+    root.append(launcher, chip, panel);
+    for (const node of [launcher, chip, panel]) node.style.pointerEvents = 'auto';
+    // Arrow keys inside the panel (tabs, versions, sliders) must not reach the story's swipe shortcuts.
+    panel.addEventListener('keydown', event => { if (event.key.startsWith('Arrow')) event.stopPropagation(); });
+    // A reading preference for this viewer: hide every generated image in the story without
+    // changing which version each passage shows.
+    const VIEW_KEY = 'atria.illustrations.hidden';
+    let imagesHidden = false;
+    try { imagesHidden = win.localStorage.getItem(VIEW_KEY) === 'true'; } catch { /* storage unavailable */ }
+    const visibility = el(doc, 'button', { className: 'atri-ill-icon-btn', attrs: { type: 'button', 'aria-label': t('Hide images in the story'), title: t('Hide images in the story') },
+        on: { click: () => {
+            imagesHidden = !imagesHidden; try { win.localStorage.setItem(VIEW_KEY, String(imagesHidden)); } catch { /* storage unavailable */ }
+            applyImageVisibility(); say(imagesHidden ? t('Images are hidden in the story. Nothing was deleted.') : t('Images are shown in the story.'));
+        } } });
+    function applyImageVisibility() {
+        doc.documentElement.classList.toggle('atri-illustrations-hidden', imagesHidden);
+        visibility.setAttribute('aria-pressed', String(imagesHidden));
+        visibility.replaceChildren(icon(doc, imagesHidden ? 'eye-off' : 'eye'));
     }
-    const toolbar = node(doc, root, 'div', undefined, 'atri-illustration-toolbar atri-illustration-actions');
-    toolbar.setAttribute('aria-label', translateShellText('Illustration tools'));
-    if (doc.defaultView.ResizeObserver) {
-        const observer = new doc.defaultView.ResizeObserver(() => root.style.setProperty('--atri-illustration-toolbar-height', toolbar.getBoundingClientRect().height + 'px'));
-        observer.observe(toolbar); sdk.onDispose(() => observer.disconnect());
-    }
-    const panel = node(doc, root, 'aside', undefined, 'atri-illustration-panel'); panel.hidden = true; panel.setAttribute('aria-label', translateShellText('Annotation card'));
-    toolbar.style.pointerEvents = panel.style.pointerEvents = 'auto';
-    const status = node(doc, toolbar, 'span'); status.setAttribute('role', 'status');
-    let mode = false, pending = null, selectedId = null, settings = (await sdk.illustrations.settings.read()).value, configEditor;
-    let visualConfiguration = await runtimeRequest('/visual/configuration');
-    const drafts = new Map(), operations = new Map(), imageOperations = new Map(), watchers = new Map();
-    const terminal = new Set(['completed', 'failed', 'cancelled', 'stale', 'uncertain_submission']);
-    const promptErrors = { native_generation_route_missing: translateShellText('Create an illustration prompt route, then select it in illustration settings.'), native_generation_route_ambiguous: translateShellText('Several prompt routes are available. Select one in illustration settings.'), generation_secret_unavailable: translateShellText('The prompt connection secret is unavailable. Check the connection.'), native_illustration_source_unavailable: translateShellText('This older save lacks the original context. You can enter a prompt directly.'), generation_context_budget_exceeded: translateShellText('The selection and character details exceed the model context limit. Choose a larger prompt model.'), native_illustration_prompt_invalid: translateShellText('The model returned an invalid format. Retry prompt generation.') };
-    const taskLabels = { queued: translateShellText('Waiting for the prompt model'), running: translateShellText('Generating a prompt'), streaming: translateShellText('Generating a prompt'), retrying: translateShellText('Retrying prompt generation'), finalizing: translateShellText('Saving the prompt version'), completed: translateShellText('Prompt version saved'), failed: translateShellText('Prompt generation failed. You can retry.'), cancelled: translateShellText('Prompt task cancelled'), stale: translateShellText('The annotation is unavailable. The result was not saved.') };
-    const imageLabels = { submitting: translateShellText('Submitting the image task'), submitted: translateShellText('The provider accepted the image task.'), result_received: translateShellText('Image received. Waiting to publish.'), uncertain_submission: translateShellText('Submission status is uncertain. Check the provider. This task will not be resent automatically.'), queued: translateShellText('Image task queued'), running: translateShellText('Generating an image'), finalizing: translateShellText('Saving the image version'), completed: translateShellText('Image version saved'), failed: translateShellText('Image generation failed. You can retry.'), cancelled: translateShellText('Image task cancelled'), stale: translateShellText('The image destination is unavailable. The result was not saved.') };
-    const imageErrors = { native_illustration_connection_missing: translateShellText('Select an image connection in illustration settings first.'), native_illustration_connection_invalid: translateShellText('Check the NovelAI image adapter and full endpoint URL.'), native_illustration_capabilities_invalid: translateShellText('Use the provider documentation to declare third-party image capabilities.'), native_illustration_prompt_empty: translateShellText('Confirm or enter an image prompt first.'), native_illustration_model_unsupported: translateShellText('The connection does not declare this model. Check its parameters and capabilities.'), native_illustration_parameters_unsupported: translateShellText('The image size, sampler or parameters exceed the declared connection capabilities.'), native_illustration_characters_unsupported: translateShellText('This model supports up to six separate character prompts.'), native_illustration_image_authentication_failed: translateShellText('The image provider rejected the selected secret. Check the connection.'), native_illustration_image_rate_limited: translateShellText('The image provider is rate limiting requests. Retry later.'), native_illustration_image_response_invalid: translateShellText('The image response does not match the protocol or is not a valid PNG. Check the connection capabilities.'), native_illustration_image_unreachable: translateShellText('The image provider is unreachable. You can retry.'), generation_secret_unavailable: translateShellText('The selected connection secret is unavailable. Check the connection.') };
-    function watch(operation, submitted, step = 'prompt') {
-        const id = operation.operationId;
-        const labels = step === 'image' ? imageLabels : taskLabels, tasks = step === 'image' ? imageOperations : operations;
-        if (watchers.has(id) || disposed) return;
-        watchers.set(id, null);
-        const poll = async () => {
-            if (disposed) return;
-            try {
-                const result = await sdk.illustrations[step]('status', { operationId: id });
-                if (disposed) return;
-                const annotationId = result.operation.anchor.annotationId;
-                tasks.set(annotationId, result.operation);
-                if (terminal.has(result.operation.status)) {
-                    watchers.delete(id);
-                    if (selectedId === annotationId) readDraft();
-                    const local = drafts.get(annotationId);
-                    if (step === 'prompt' && submitted && JSON.stringify(local) === submitted) drafts.delete(annotationId);
-                    if (selectedId === annotationId && !panel.hidden && panelKind === 'annotations') renderCard();
-                    const failureDetail = result.operation.errorCode === 'generation_context_budget_exceeded' ? translateShellText('; the selection and characters exceed the model context limit. Choose a larger prompt model') : result.operation.errorCode === 'native_illustration_prompt_invalid' ? translateShellText('; the model returned an invalid format. Retry prompt generation') : '';
-                    notify(labels[result.operation.status] + (step === 'image' && result.operation.errorCode ? ': ' + (imageErrors[result.operation.errorCode] ?? translateShellText('Check the image connection and retry.')) : failureDetail) + (step === 'prompt' && result.operation.status === 'completed' && drafts.has(annotationId) ? translateShellText('; your draft is preserved. Apply the new version from history.') : ''), result.operation.status === 'failed');
-                    return;
-                }
-                const indicator = panel.querySelector('[data-' + step + '-status="' + annotationId + '"]');
-                if (indicator) indicator.textContent = labels[result.operation.status];
-                watchers.set(id, setTimeout(poll, 750));
-            } catch (error) {
-                watchers.delete(id); if (!disposed) notify(translateShellText('Could not load task status. Reopen the card to reconnect.'), true);
-            }
-        };
-        void poll();
-    }
-    let readDraft = () => {}, busy = false, disposed = false, galleryEditor = null, panelKind = 'annotations';
-    const leavePanel = kind => {
-        if (!confirmAtriaDraftLeave(doc, panel)) return false;
-        readDraft(); readDraft = () => {};
-        galleryEditor?.dispose(); galleryEditor = null;
-        configEditor?.dispose(); configEditor = null;
-        panel.style.width = ''; panelKind = kind;
-        return true;
+    applyImageVisibility();
+    sdk.onDispose(() => doc.documentElement.classList.remove('atri-illustrations-hidden'));
+    const head = el(doc, 'div', { className: 'atri-ill-head' }, [el(doc, 'h2', { text: t('Illustrations'), attrs: { id: 'atri-ill-title' } }), visibility, iconButton(doc, t('Close'), 'close', () => close())]);
+    const tabs = el(doc, 'div', { className: 'atri-ill-tabs', attrs: { role: 'tablist', 'aria-label': t('Illustration sections') } });
+    const status = el(doc, 'div', { className: 'atri-ill-status', attrs: { role: 'status', 'aria-live': 'polite' } });
+    const body = el(doc, 'div', { className: 'atri-ill-body', attrs: { role: 'tabpanel', tabindex: '-1' } });
+    panel.append(head, tabs, status, body);
+
+    const say = (text, kind = 'info', actionLabel = null, onAction = null) => {
+        clearTimeout(statusTimer);
+        status.replaceChildren(...(text ? [el(doc, 'span', { text }), actionLabel ? action(doc, actionLabel, onAction, { size: 'sm', variant: 'plain' }) : null] : []).filter(Boolean));
+        status.dataset.kind = kind; status.setAttribute('role', kind === 'error' ? 'alert' : 'status');
+        if (text && kind !== 'error') statusTimer = setTimeout(() => { if (!disposed) status.replaceChildren(); }, 6000);
     };
+    const report = error => say(illustrationErrorText(error), 'error', isSettingsError(error?.code) ? t('Open settings') : null, () => switchTab('settings'));
+
+    // ── State helpers ────────────────────────────────────────────────────
+    const snapshot = () => sdk.illustrations.snapshot();
+    const annotations = () => snapshot().state.annotations.filter(item => item.deletedAt === undefined);
+    const imagesOf = id => snapshot().state.images.filter(image => image.annotationId === id).sort((a, b) => a.createdAt - b.createdAt);
+    const annotationOf = id => snapshot().state.annotations.find(item => item.annotationId === id);
+    const flow = createIllustrationFlow({ sdk, readSettings: async () => (await sdk.illustrations.settings.read()).value,
+        saveConsent: consent => updateIllustrationSettings(settings => { settings.costConsents = [...(settings.costConsents ?? []).filter(item => item.targetFingerprint !== consent.targetFingerprint), consent]; }),
+        onChange: annotationId => {
+            dot.hidden = !flow.activeCount();
+            const task = flow.get(annotationId);
+            if (task?.phase === 'done') say(annotationOf(annotationId)?.selectedImageVersionId === task.newVersionId ? t('The illustration is in your story.') : t('New version ready. Choose it under Versions to show it in the story.'), 'success');
+            if (task?.phase === 'cancelled') say(t('Cancelled. Nothing was added to the story.'));
+            if (task?.phase === 'failed' && !(open && detailId === annotationId)) say(task.error, 'error', isSettingsError(task.errorCode) ? t('Open settings') : t('Open'), () => isSettingsError(task.errorCode) ? switchTab('settings') : openDetail(annotationId));
+            if (open && !editing && !retouch && (tab === 'story' || tab === 'gallery') && (detailId === null || detailId === annotationId)) render();
+        } });
+    sdk.onDispose(() => flow.dispose());
+    async function refreshConfig() { try { config = await loadIllustrationConfig(); ready = illustrationReadiness(config, context.packageId); } catch { config = null; ready = null; } }
+
+    // ── Selection → one-click illustration ──────────────────────────────
     const navigation = globalThis.Atria?.shell?.getNavigation?.();
     const syncVisibility = () => {
         const route = navigation?.getRoute();
-        root.hidden = !sdk.context.sessionId || Boolean(route && (route.domain !== 'play' || route.child?.id?.startsWith('utility.') || route.child?.id?.startsWith('skills')));
-        if (root.hidden) panel.hidden = true;
+        root.hidden = !context.sessionId || Boolean(route && (route.domain !== 'play' || route.child?.id?.startsWith('utility.') || route.child?.id?.startsWith('skills')));
+        if (root.hidden && open) close({ restoreFocus: false });
     };
-    const unsubscribeNavigation = navigation?.subscribe(syncVisibility);
-    sdk.onDispose(() => unsubscribeNavigation?.()); syncVisibility();
-    const writable = Boolean(sdk.context.sessionId && !sdk.context.historical);
-    toolbar.hidden = !sdk.context.sessionId;
-    const notify = (text, error = false) => { if (!disposed) { status.textContent = text; status.setAttribute('role', error ? 'alert' : 'status'); } };
-    const run = callback => async () => {
-        if (busy || disposed) return;
-        busy = true;
-        try { await callback(); } catch (error) { notify(error.status === 409 ? translateShellText('The annotation changed. Your draft is preserved. Reopen the card and compare before saving.') : imageErrors[error.code] ?? promptErrors[error.code] ?? error.message, true); } finally { busy = false; }
-    };
-    // Reconnect to server-owned tasks. UI disposal only releases polling.
-    async function refreshTasks() {
-        if (!writable) return;
+    const unsubscribe = navigation?.subscribe(syncVisibility); sdk.onDispose(() => unsubscribe?.()); syncVisibility();
+    if (writable) sdk.illustrations.setSelectionMode(true);
+    function placeChip() {
+        root.style.setProperty('--atri-ill-inset', sdk.illustrations.toolbarInset() + 'px');
+        const selection = writable ? sdk.illustrations.selection() : null;
+        if (selection) pending = selection; else if (!chip.contains(doc.activeElement)) pending = null;
+        const range = pending && doc.getSelection()?.rangeCount ? doc.getSelection().getRangeAt(0) : null;
+        const rect = range?.getBoundingClientRect();
+        if (!pending || !rect || (!rect.width && !rect.height)) { chip.hidden = true; return; }
+        chip.hidden = false;
+        const width = chip.offsetWidth || 120, height = chip.offsetHeight || 36, gap = 10;
+        const x = Math.min(win.innerWidth - width - 12, Math.max(12, rect.left + rect.width / 2 - width / 2));
+        const above = rect.top - height - gap, y = above > 60 ? above : Math.min(win.innerHeight - height - 12, rect.bottom + gap);
+        Object.assign(chip.style, { left: x + 'px', top: y + 'px' });
+    }
+    for (const type of ['selectionchange', 'pointerup', 'keyup']) sdk.events.listen(doc, type, placeChip);
+    // The composer settles after resize (rotation, keyboard); measure the inset again on the next frame.
+    sdk.events.listen(win, 'resize', () => { placeChip(); win.requestAnimationFrame(() => { if (!disposed) placeChip(); }); }); sdk.events.listen(win, 'scroll', placeChip, { capture: true, passive: true });
+    sdk.illustrations.onSurfacesChanged(placeChip);
+    async function illustrateSelection() {
+        if (!pending || !writable) return;
+        const selection = { ...pending }; pending = null; chip.hidden = true; doc.getSelection()?.removeAllRanges();
+        await illustrateAnchor(selection);
+    }
+    /** Selected or suggested passage → annotation → description → image. */
+    async function illustrateAnchor(selection) {
         try {
-            for (const step of ['prompt', 'image']) {
-                const latest = new Map((await sdk.illustrations[step]('list')).map(operation => [operation.anchor.annotationId, operation]));
-                for (const [annotationId, operation] of latest) {
-                    (step === 'image' ? imageOperations : operations).set(annotationId, operation);
-                    if (!terminal.has(operation.status)) watch(operation, undefined, step);
-                    else if (operation.status === 'completed') await sdk.illustrations[step]('status', { operationId: operation.operationId });
-                }
+            // The same passage opens its existing illustration instead of adding a duplicate.
+            const existing = annotations().find(item => item.anchor.messageId === selection.messageId && item.anchor.variantId === selection.variantId
+                && item.anchor.start === selection.start && item.anchor.end === selection.end);
+            if (existing) { openDetail(existing.annotationId); return; }
+            await refreshConfig();
+            const settings = config?.settings ?? (await sdk.illustrations.settings.read()).value;
+            const { draft } = createIllustrationDraft(selection.quote, settings, context.packageId);
+            const speaker = sdk.illustrations.speaker(selection);
+            // A named speaker who appears in the passage joins it even without a saved appearance.
+            if (speaker && selection.quote.includes(speaker.displayName) && !draft.characters.some(item => item.character.name === speaker.displayName)) draft.characters.push({ character: speakerDrawingCharacter(speaker), dynamicPrompt: '', clothing: '' });
+            const result = await sdk.illustrations.command('createAnnotation', { ...selection, draft, expectedHead: snapshot().head });
+            const annotationId = result.state.annotations.at(-1).annotationId;
+            if (!ready?.service) { openDetail(annotationId); say(t('Choose an image service first. Your passage is saved.'), 'error', t('Open settings'), () => switchTab('settings')); return; }
+            if (!ready.writes) { editing = true; openDetail(annotationId); say(ready.manual ? t('Write what to draw, then press Draw.') : t('No model is set to write descriptions. Write one yourself, or choose a model in settings.'), ready.manual ? 'info' : 'error'); return; }
+            openDetail(annotationId);
+            void flow.illustrate(annotationId);
+        } catch (error) { show(); report(error); }
+    }
+    // Alt+I illustrates the selection from the keyboard.
+    sdk.events.listen(doc, 'keydown', event => {
+        if (event.altKey && !event.ctrlKey && !event.metaKey && event.code === 'KeyI' && pending) { event.preventDefault(); void illustrateSelection(); }
+    });
+    // Images in the story open their illustration.
+    sdk.events.listen(doc, 'click', event => {
+        const figure = event.target?.closest?.('[data-atria-illustration]');
+        if (figure && event.target.tagName === 'IMG') { openDetail(figure.dataset.atriaIllustration); }
+    });
+    // The panel owns Escape while open, before the shell's route handling.
+    sdk.events.listen(win, 'keydown', event => {
+        if (event.key !== 'Escape' || !open || event.isComposing || event.keyCode === 229) return;
+        if (!panel.contains(doc.activeElement) && doc.activeElement !== doc.body && doc.activeElement !== launcher) return;
+        event.preventDefault(); event.stopImmediatePropagation();
+        if (retouch) { closeRetouch(); return; }
+        if (detailId && tab === 'story' || detailId && tab === 'gallery') { detailId = null; editing = false; render(); body.focus(); return; }
+        close();
+    }, { capture: true });
+
+    // ── Panel lifecycle ──────────────────────────────────────────────────
+    async function show(nextTab = null) {
+        if (!open) { open = true; panel.hidden = false; root.style.zIndex = OPEN_LAYER; launcher.setAttribute('aria-expanded', 'true'); }
+        await refreshConfig(); void loadSuggestions();
+        if (nextTab) tab = nextTab; else if (!detailId && ready && !ready.service && !annotations().length) tab = 'settings';
+        render(); placeChip();
+        if (!panel.contains(doc.activeElement)) (panel.querySelector('[aria-selected=true]') ?? body).focus();
+    }
+    function close({ restoreFocus = true } = {}) {
+        if (retouch && !confirmAtriaDraftLeave(doc, retouch.root)) return;
+        closeRetouch(false);
+        open = false; editing = false; remember(); panel.hidden = true; root.style.zIndex = '5'; launcher.setAttribute('aria-expanded', 'false'); disposeView();
+        if (restoreFocus) launcher.focus();
+    }
+    function switchTab(next) { if (retouch && !confirmAtriaDraftLeave(doc, retouch.root)) return; closeRetouch(false); tab = next; detailId = null; editing = false; if (!open) void show(next); else render(); }
+    function openDetail(annotationId, versionId = null) { closeRetouch(false); detailId = annotationId; focusVersion = versionId; if (tab !== 'gallery') tab = 'story'; if (!open) void show(); else render(); }
+    function disposeView() { view?.dispose?.(); view = null; }
+    function closeRetouch(rerender = true) { if (!retouch) return; retouch.dispose(); retouch = null; panel.dataset.wide = 'false'; if (rerender && open) render(); }
+
+    function renderTabs() {
+        const count = annotations().length;
+        tabs.replaceChildren(...TABS.map(([id, label]) => el(doc, 'button', { className: 'atri-ill-tab', attrs: { type: 'button', role: 'tab', 'aria-selected': String(tab === id), tabindex: tab === id ? '0' : '-1' },
+            on: { click: () => switchTab(id), keydown: event => {
+                const index = TABS.findIndex(([key]) => key === id), next = event.key === 'ArrowRight' ? index + 1 : event.key === 'ArrowLeft' ? index - 1 : null;
+                if (next === null) return; event.preventDefault(); const target = TABS[(next + TABS.length) % TABS.length][0]; switchTab(target); tabs.querySelector('[aria-selected=true]')?.focus();
+            } } }, [el(doc, 'span', { text: t(label) }), id === 'story' && count ? el(doc, 'span', { className: 'atri-ill-count', text: String(count) }) : null])));
+    }
+    // The host restarts plugins after Runtime changes; keep the reader where they were.
+    const UI_KEY = 'atria.illustrations.panel';
+    const remember = () => { try { win.sessionStorage.setItem(UI_KEY, JSON.stringify({ sessionId: context.sessionId, open, tab, detailId })); } catch { /* storage unavailable */ } };
+    function render() {
+        remember();
+        if (disposed || !open) return;
+        renderTabs(); disposeView();
+        const key = tab + ':' + (detailId ?? '') + ':' + Boolean(retouch) + ':' + editing, scroll = key === lastView ? body.scrollTop : 0; lastView = key;
+        body.replaceChildren();
+        if (retouch) { body.append(retouch.root); return; }
+        if (tab === 'settings') {
+            const setup = mountIllustrationSetup({ document: doc, parent: body, packageId: context.packageId, onChanged: async next => { config = next; ready = illustrationReadiness(next, context.packageId); },
+                openAdvanced: () => navigation?.navigate('play', { child: { id: 'utility.plugins:official', label: t('Extensions'), kind: 'workspace' }, reason: 'illustration-advanced', history: 'push' }) });
+            view = setup; return;
+        }
+        if (tab === 'characters') { view = mountIllustrationCharacters({ document: doc, parent: body, packageId: context.packageId, say, participants: () => sdk.illustrations.participants() }); return; }
+        if (detailId && annotationOf(detailId)) renderDetail(detailId); else { detailId = null; tab === 'gallery' ? renderGallery() : renderStory(); }
+        body.scrollTop = scroll;
+    }
+
+    // ── Story tab ────────────────────────────────────────────────────────
+    function renderStory() {
+        if (ready && !ready.service) body.append(el(doc, 'div', { className: 'atri-ill-card atri-ill-stack' }, [el(doc, 'h3', { text: t('Set up illustrations') }),
+            el(doc, 'p', { className: 'atri-ill-muted', text: t('Choose an image service and an art style. It takes about a minute.') }),
+            el(doc, 'div', {}, [action(doc, t('Start setup'), () => switchTab('settings'), { variant: 'primary', icon: 'arrow-r' })])]));
+        if (writable) body.append(el(doc, 'div', { className: 'atri-ill-hint', attrs: { style: 'margin:12px 0' } }, [icon(doc, 'sparkles'), el(doc, 'p', { text: t('Select a passage in the story, then choose “Illustrate”. The picture appears right below it.') })]));
+        else body.append(el(doc, 'p', { className: 'atri-ill-muted', text: t('This is a past version of the story. Illustrations are read-only here.') }));
+        renderSuggestions();
+        const items = annotations().sort((a, b) => b.createdAt - a.createdAt);
+        if (!items.length) { body.append(el(doc, 'div', { className: 'atri-ill-empty' }, [icon(doc, 'image', 30), el(doc, 'p', { text: t('No illustrations in this story yet.') })])); return; }
+        const list = el(doc, 'ul', { className: 'atri-ill-list', attrs: { 'aria-label': t('Illustrations in this story') } });
+        for (const annotation of items) {
+            const images = imagesOf(annotation.annotationId), task = flow.get(annotation.annotationId), active = flow.isActive(annotation.annotationId);
+            const shown = images.find(image => image.imageVersionId === annotation.selectedImageVersionId);
+            const preview = shown ?? images.at(-1);
+            const stateText = active || task?.phase === 'failed' ? phaseText(task) : shown ? t('In the story') : images.length ? t('Hidden from the story') : t('No image yet');
+            const kind = active ? 'busy' : task?.phase === 'failed' ? 'error' : shown ? 'done' : '';
+            list.append(el(doc, 'li', {}, [el(doc, 'button', { className: 'atri-ill-item', attrs: { type: 'button' }, on: { click: () => openDetail(annotation.annotationId) } }, [
+                el(doc, 'span', { className: 'atri-ill-thumb', attrs: { 'data-busy': String(active) } }, [preview ? el(doc, 'img', { attrs: { src: thumbUrl(context, preview.imageVersionId), alt: '', loading: 'lazy', decoding: 'async' } }) : icon(doc, 'image', 20)]),
+                el(doc, 'span', {}, [el(doc, 'span', { className: 'atri-ill-quote', text: annotation.anchor.quote }), el(doc, 'span', { className: 'atri-ill-state', text: stateText, attrs: { 'data-kind': kind } })]),
+            ])]));
+        }
+        body.append(list);
+    }
+
+    // ── Suggested passages (Director, “Suggest passages” mode) ───────────
+    const SUGGESTION_LIMIT = 3;
+    const suggesting = () => writable && config?.settings?.enabled !== false && config?.settings?.director?.mode === 'semi';
+    const overlaps = (anchor, other) => anchor.messageId === other.messageId && anchor.variantId === other.variantId && anchor.start < other.end && other.start < anchor.end;
+    async function loadSuggestions() {
+        if (!suggesting()) { suggestions = []; suggestionsLoaded = false; return; }
+        try {
+            // Scan records each committed turn once; later calls only list pending shots.
+            const shots = await sdk.illustrations.visual('director', 'scan');
+            suggestions = shots.filter(shot => shot.status === 'awaiting_review' || shot.status === 'awaiting_approval').sort((a, b) => b.score.score - a.score.score);
+        } catch { suggestions = []; }
+        suggestionsLoaded = true;
+        if (open && tab === 'story' && !detailId && !retouch) render();
+    }
+    function renderSuggestions() {
+        if (!suggesting() || !suggestionsLoaded) return;
+        const taken = annotations().map(item => item.anchor);
+        const visible = suggestions.filter(shot => !taken.some(anchor => overlaps(shot.source.anchor, anchor))).slice(0, SUGGESTION_LIMIT);
+        if (!visible.length) return;
+        const skip = async shot => {
+            try { await sdk.illustrations.visual('director', 'skip', { shotId: shot.shotId }); suggestions = suggestions.filter(item => item.shotId !== shot.shotId); render(); } catch (error) { report(error); }
+        };
+        body.append(el(doc, 'section', { className: 'atri-ill-suggest', attrs: { 'aria-labelledby': 'atri-ill-suggest-title' } }, [
+            el(doc, 'h3', { text: t('Suggested passages'), attrs: { id: 'atri-ill-suggest-title' } }),
+            el(doc, 'ul', { className: 'atri-ill-suggest-list' }, visible.map(shot => el(doc, 'li', { className: 'atri-ill-suggest-item' }, [
+                el(doc, 'p', { className: 'atri-ill-quote', text: shot.source.anchor.quote }),
+                el(doc, 'div', { className: 'atri-ill-row' }, [
+                    action(doc, t('Illustrate'), () => { suggestions = suggestions.filter(item => item.shotId !== shot.shotId); const { contentHash: _hash, ...anchor } = shot.source.anchor; void illustrateAnchor(anchor); }, { size: 'sm', variant: 'primary', icon: 'sparkles' }),
+                    action(doc, t('Skip'), () => skip(shot), { size: 'sm', variant: 'plain' })]),
+            ])))]));
+    }
+
+    // ── Gallery tab ──────────────────────────────────────────────────────
+    function renderGallery() {
+        const live = new Set(annotations().map(item => item.annotationId));
+        const selected = new Set(annotations().map(item => item.selectedImageVersionId).filter(Boolean));
+        const images = snapshot().state.images.filter(image => live.has(image.annotationId)).sort((a, b) => b.createdAt - a.createdAt);
+        if (!images.length) { body.append(el(doc, 'div', { className: 'atri-ill-empty' }, [icon(doc, 'grid', 30), el(doc, 'p', { text: t('Images you create in this story appear here.') })])); return; }
+        body.append(el(doc, 'p', { className: 'atri-ill-muted', text: f('${0} images in this story. Open one to choose which version the story shows.', [images.length]), attrs: { style: 'margin-bottom:12px' } }),
+            el(doc, 'div', { className: 'atri-ill-grid' }, images.map(image => el(doc, 'button', { className: 'atri-ill-tile', attrs: { type: 'button', 'aria-label': f('Open image: ${0}', [annotationOf(image.annotationId)?.anchor.quote.slice(0, 40) ?? '']) },
+                on: { click: () => openDetail(image.annotationId, image.imageVersionId) } }, [el(doc, 'img', { attrs: { src: thumbUrl(context, image.imageVersionId), alt: '', loading: 'lazy', decoding: 'async' } }),
+                selected.has(image.imageVersionId) ? el(doc, 'em', { text: t('In story') }) : null]))));
+    }
+
+    // ── Detail ───────────────────────────────────────────────────────────
+    function renderDetail(annotationId) {
+        const annotation = annotationOf(annotationId), images = imagesOf(annotationId), task = flow.get(annotationId), active = flow.isActive(annotationId);
+        const shownId = annotation.selectedImageVersionId;
+        const viewing = images.find(image => image.imageVersionId === (focusVersion ?? task?.newVersionId ?? shownId)) ?? images.find(image => image.imageVersionId === shownId) ?? images.at(-1);
+        const deleted = annotation.deletedAt !== undefined, canEdit = writable && !deleted;
+        body.append(el(doc, 'button', { className: 'atri-ill-back', attrs: { type: 'button' }, on: { click: () => { detailId = null; editing = false; render(); } } }, [icon(doc, 'chevron-left', 16), el(doc, 'span', { text: tab === 'gallery' ? t('Gallery') : t('All illustrations') })]));
+        const quote = el(doc, 'blockquote', { className: 'atri-ill-quote', text: annotation.anchor.quote, attrs: { 'data-full': 'true' } });
+        body.append(quote);
+        // Stage: progress, confirmation, failure or the image itself.
+        const stage = el(doc, 'div', { className: 'atri-ill-stage', attrs: { 'data-busy': String(active && task.phase !== 'confirm') } });
+        if (active && task.phase !== 'confirm') {
+            const steps = task.withWriting ? [['writing', t('Describe')], ['drawing', t('Draw')]] : [['drawing', t('Draw')]];
+            const at = steps.findIndex(([id]) => id === task.phase);
+            stage.append(el(doc, 'div', { className: 'atri-ill-progress', attrs: { role: 'status' } }, [
+                steps.length < 2 ? null : el(doc, 'div', { className: 'atri-ill-steps' }, steps.map(([id, label], index) => el(doc, 'span', { text: (index < at ? '✓ ' : '') + label, attrs: { 'data-state': index < at ? 'done' : index === at ? 'active' : 'todo' } }))),
+                el(doc, 'p', { text: phaseText(task) }),
+                el(doc, 'p', { className: 'atri-ill-muted', text: t('You can keep reading. The image appears in the story when it is ready.') }),
+                task.step !== 'cancelling' && task.operationId ? action(doc, t('Cancel'), async () => { try { await flow.cancel(annotationId); } catch (error) { report(error); } }, { size: 'sm', icon: 'stop' }) : null]));
+        } else if (task?.phase === 'confirm') {
+            stage.dataset.confirm = 'true'; stage.append(confirmBox(annotationId, task));
+        } else if (viewing) {
+            stage.append(el(doc, 'img', { attrs: { src: nativeAssetUrl(viewing.assetId), alt: viewing.alt || annotation.anchor.quote, width: viewing.width, height: viewing.height, decoding: 'async' } }));
+        } else stage.append(el(doc, 'div', { className: 'atri-ill-progress' }, [icon(doc, 'image', 30), el(doc, 'p', { className: 'atri-ill-muted', text: t('No image yet.') })]));
+        body.append(stage);
+        if (task?.phase === 'failed') body.append(el(doc, 'div', { className: 'atri-ill-confirm', attrs: { role: 'alert', style: 'background:var(--soft-vermilion);border-color:transparent' } }, [
+            el(doc, 'p', { text: task.error }), el(doc, 'div', { className: 'atri-ill-row' }, [
+                isSettingsError(task.errorCode) ? action(doc, t('Open settings'), () => switchTab('settings'), { size: 'sm', variant: 'primary' }) : null,
+                canEdit ? action(doc, t('Try again'), () => { flow.dismiss(annotationId); return annotation.draft?.prompt?.trim() && !/route_|prompt_invalid|context_budget/.test(task.errorCode ?? '') ? flow.redraw(annotationId) : flow.illustrate(annotationId, { rewrite: Boolean(ready?.writes) }); }, { size: 'sm', icon: 'retry' }) : null,
+                action(doc, t('Dismiss'), () => { flow.dismiss(annotationId); render(); }, { size: 'sm', variant: 'plain' })])]));
+        // Versions: choosing one shows it in the story.
+        if (images.length > 1 || (images.length === 1 && !shownId)) {
+            body.append(el(doc, 'p', { className: 'atri-ill-muted', text: t('Versions — choose one to show it in the story') }));
+            body.append(el(doc, 'div', { className: 'atri-ill-versions', attrs: { role: 'group', 'aria-label': t('Versions') } }, images.map((image, index) => el(doc, 'button', { className: 'atri-ill-version',
+                attrs: { type: 'button', 'aria-pressed': String(image === viewing), 'aria-current': image.imageVersionId === shownId ? 'true' : null, disabled: !canEdit,
+                    'aria-label': f('Version ${0}${1}', [index + 1, image.imageVersionId === shownId ? t(' (in the story)') : '']) },
+                on: { click: async () => { focusVersion = image.imageVersionId; try { if (image.imageVersionId !== shownId) { await sdk.illustrations.command('selectImageVersion', { annotationId, imageVersionId: image.imageVersionId, expectedHead: snapshot().head }); say(t('The story now shows this version.')); } } catch (error) { report(error); } render(); } } },
+            [el(doc, 'img', { attrs: { src: thumbUrl(context, image.imageVersionId), alt: '', loading: 'lazy' } })]))));
+        }
+        if (canEdit && !active) {
+            const primary = el(doc, 'div', { className: 'atri-ill-row', attrs: { style: 'margin-top:12px' } });
+            const hasPrompt = Boolean(annotation.draft?.prompt?.trim());
+            if (!images.length) primary.append(action(doc, ready?.writes ? t('Illustrate') : t('Draw'), () => (ready?.writes ? flow.illustrate(annotationId) : hasPrompt ? flow.redraw(annotationId) : (editing = true, render())), { variant: 'primary', icon: 'sparkles' }));
+            else {
+                primary.append(action(doc, t('Draw again'), () => (hasPrompt ? flow.redraw(annotationId) : flow.illustrate(annotationId)), { variant: 'primary', icon: 'retry' }));
+                if (ready?.writes) primary.append(action(doc, t('New scene'), () => flow.illustrate(annotationId), { icon: 'sparkles' }));
             }
-        } catch { /* The card remains editable if task inventory is unavailable. */ }
+            primary.append(el(doc, 'span', { className: 'atri-ill-spacer' }));
+            const editToggle = action(doc, t('Edit description'), () => { editing = !editing; render(); }, { variant: 'plain', icon: 'pencil', size: 'sm' });
+            editToggle.setAttribute('aria-expanded', String(editing));
+            primary.append(editToggle);
+            body.append(primary);
+            if (editing) body.append(editor(annotation));
+            const more = el(doc, 'div', { className: 'atri-ill-row', attrs: { style: 'margin-top:8px' } });
+            if (viewing) more.append(action(doc, t('Retouch an area'), () => openRetouch(annotation, viewing), { variant: 'plain', icon: 'brush', size: 'sm' }));
+            if (shownId) more.append(action(doc, t('Hide from story'), async () => { try { await sdk.illustrations.command('selectImageVersion', { annotationId, imageVersionId: null, expectedHead: snapshot().head }); say(t('Hidden from the story. The image is kept here.')); render(); } catch (error) { report(error); } }, { variant: 'plain', icon: 'eye', size: 'sm' }));
+            else if (viewing) more.append(action(doc, t('Show in story'), async () => { try { await sdk.illustrations.command('selectImageVersion', { annotationId, imageVersionId: viewing.imageVersionId, expectedHead: snapshot().head }); say(t('Shown in the story.')); render(); } catch (error) { report(error); } }, { variant: 'plain', icon: 'eye', size: 'sm' }));
+            more.append(deleteControl(annotation));
+            body.append(more);
+        }
+        if (viewing) body.append(details(doc, t('Details'), [facts(doc, [[t('Created'), formatAtriaDate(viewing.createdAt)], [t('Model'), viewing.requestSnapshot?.target?.model ?? viewing.parameters?.model],
+            [t('Size'), viewing.width && viewing.height ? viewing.width + ' × ' + viewing.height : ''], [t('Service'), viewing.requestSnapshot?.connection?.displayName]]),
+        el(doc, 'pre', { text: [viewing.prompt, viewing.negativePrompt ? '\n' + t('Avoid:') + ' ' + viewing.negativePrompt : ''].join('') })]));
     }
-    await refreshTasks();
-    function capture() {
-        root.style.setProperty('--atri-illustration-controls-inset', sdk.illustrations.toolbarInset() + 'px');
-        if (!mode || disposed) return;
-        const selection = sdk.illustrations.selection();
-        if (selection) pending = selection;
-        else if (!doc.getSelection()?.isCollapsed || !root.contains(doc.activeElement)) pending = null;
-        create.disabled = !pending || !writable; create.textContent = pending ? translateShellText('Annotate selection') : translateShellText('Select text to annotate');
+    function confirmBox(annotationId, task) {
+        const cost = task.preview.cost, known = cost.kind !== 'unknown' && cost.upperBound !== null;
+        const quota = (task.preview.quotas ?? []).find(item => item.perDay && item.model !== '*') ?? (task.preview.quotas ?? []).find(item => item.perDay) ?? null;
+        const counted = !known && Boolean(quota);
+        const currency = cost.currency || config?.budget?.value?.currency || 'USD';
+        let amount = known ? cost.upperBound : 0.05, remember = false;
+        const amountInput = input(doc, String(amount), value => { amount = Math.max(0, Number(value) || 0); }, { type: 'number' });
+        amountInput.addEventListener('input', () => { amount = Math.max(0, Number(amountInput.value) || 0); });
+        const box = el(doc, 'div', { className: 'atri-ill-confirm', attrs: { role: 'group', 'aria-label': t('Confirm cost') } }, [
+            el(doc, 'strong', { text: known ? f('This image costs up to ${0} ${1}.', [cost.upperBound, currency]) : counted ? f('This uses 1 of today’s ${0} requests for ${1} (${2} used).', [quota.perDay, quota.model === '*' ? t('this service') : quota.model, quota.used.day]) : t('This service may charge for each image.') }),
+            known || counted ? null : el(doc, 'p', { className: 'atri-ill-muted', text: t('Atria cannot see its price, so it counts the amount below against your daily limit.') }),
+            known || counted ? null : field(doc, f('Count this image as (${0})', [currency]), amountInput),
+            (task.preview.externalAssetIds ?? []).length ? el(doc, 'p', { className: 'atri-ill-muted', text: t('Your source image and the painted area will be sent to this service.') }) : null,
+            (() => { const box = el(doc, 'input', { attrs: { type: 'checkbox' } }); box.addEventListener('change', () => { remember = box.checked; }); return el(doc, 'label', { className: 'atri-ill-check' }, [box, el(doc, 'span', { text: t('Don’t ask again for this service') })]); })(),
+            el(doc, 'div', { className: 'atri-ill-row' }, [
+                action(doc, t('Draw'), () => { if (counted) amount = 0; else if (!known && !(amount > 0)) { say(t('Enter an amount above 0.'), 'error'); amountInput.focus(); return; } flow.answer(annotationId, { maxCost: known ? cost.upperBound : amount, currency, remember }); }, { variant: 'primary' }),
+                action(doc, t('Cancel'), () => flow.answer(annotationId, null), { variant: 'plain' })]),
+        ]);
+        queueMicrotask(() => box.querySelector('button[data-variant=primary]')?.focus());
+        return box;
     }
-    const toggle = button(doc, toolbar, translateShellText('Reading mode'), run(() => {
-        readDraft(); mode = !mode; toggle.textContent = mode ? translateShellText('Illustration mode') : translateShellText('Reading mode'); toggle.setAttribute('aria-pressed', String(mode));
-        sdk.illustrations.setSelectionMode(mode); create.hidden = !mode;
-        if (!mode) { panel.hidden = true; pending = null; }
-        notify(mode ? translateShellText('Select text with a mouse, or long press and adjust the selection on a phone.') : translateShellText('Reading mode')); capture();
-    })); toggle.setAttribute('aria-pressed', 'false'); toggle.disabled = !writable;
-    const create = button(doc, toolbar, translateShellText('Select text to annotate'), run(async () => {
-        if (!pending) return;
-        if (!leavePanel('annotations')) return;
-        const selection = { ...pending }, previous = sdk.illustrations.snapshot();
-        const nextSettings = await sdk.illustrations.settings.read(); settings = nextSettings.value;
-        const { draft } = createIllustrationDraft(selection.quote, settings, sdk.context.packageId);
-        const result = await sdk.illustrations.command('createAnnotation', { ...selection, draft, expectedHead: previous.head });
-        selectedId = result.state.annotations.at(-1).annotationId; pending = null;
-        visualConfiguration = await runtimeRequest('/visual/configuration');
-        notify(translateShellText('Annotation saved.')); capture(); renderCard();
-    })); create.disabled = true; create.hidden = true;
-    // Keep desktop selection on the explicit action. Touch uses its captured
-    // canonical range and leaves native selection handles under browser control.
-    sdk.events.listen(create, 'mousedown', event => event.preventDefault());
-    button(doc, toolbar, translateShellText('Annotations and history'), run(async () => { if (!leavePanel('annotations')) return; await refreshTasks(); visualConfiguration = await runtimeRequest('/visual/configuration'); if (!mode && writable) { mode = true; toggle.textContent = translateShellText('Illustration mode'); toggle.setAttribute('aria-pressed', 'true'); sdk.illustrations.setSelectionMode(true); create.hidden = false; } renderCard(); }));
-    button(doc, toolbar, translateShellText('Gallery / Media Studio'), run(async () => {
-        if (!leavePanel('gallery')) return;
-        panel.replaceChildren(); panel.hidden = false; panel.style.width = 'min(980px, calc(100vw - 32px))';
-        button(doc, panel, translateShellText('Close gallery'), () => { if (!leavePanel('none')) return; panel.hidden = true; });
-        const opened = await mountVisualGallery({ document: doc, parent: panel, sdk, report: error => notify(error.message, true),
-            onJob: started => { const operation = { operationId: started.operationId, status: 'queued', anchor: {} }; watch(operation, undefined, 'image'); } });
-        if (disposed || panelKind !== 'gallery') { opened.dispose(); return; } galleryEditor = opened;
-    }));
-    sdk.onDispose(() => galleryEditor?.dispose());
-    button(doc, toolbar, translateShellText('Image candidates'), run(async () => {
-        if (!leavePanel('director')) return;
-        panel.replaceChildren(); panel.hidden = false;
-        button(doc, panel, translateShellText('Close candidates'), () => panel.hidden = true);
-        await mountVisualDirector({ document: doc, parent: panel, sdk, report: error => notify(error.message, true) });
-    }));
-    button(doc, toolbar, translateShellText('Illustration settings'), run(() => {
-        if (!leavePanel('settings')) return;
-        panel.replaceChildren(); panel.hidden = false;
-        button(doc, panel, translateShellText('Close settings'), run(async () => { if (configEditor && !confirmAtriaDraftLeave(doc, configEditor.root)) return; configEditor?.dispose(); configEditor = null; settings = (await sdk.illustrations.settings.read()).value; visualConfiguration = await runtimeRequest('/visual/configuration'); panel.hidden = true; }));
-        configEditor = mountIllustrationSettings({ document: doc, parent: panel, client: sdk.illustrations.settings, packageId: sdk.context.packageId, showEnabled: false });
-    }));
-    sdk.events.listen(doc, 'selectionchange', capture);
-    sdk.events.listen(doc, 'pointerup', capture);
-    sdk.events.listen(doc, 'keyup', capture);
-    sdk.events.listen(doc, 'input', capture);
-    sdk.events.listen(doc.defaultView, 'resize', capture);
-    if (doc.defaultView.visualViewport) sdk.events.listen(doc.defaultView.visualViewport, 'resize', capture);
-    capture();
-    sdk.events.listen(panel, 'keydown', event => { if (event.key === 'Escape' && !event.defaultPrevented && !event.isComposing && event.keyCode !== 229) { readDraft(); panel.hidden = true; toggle.focus(); } });
-    sdk.illustrations.onSurfacesChanged(capture);
-    function renderCard() {
-        if (disposed || panelKind !== 'annotations') return;
-        const sameCard = panel.querySelector('.atri-illustration-card')?.dataset.annotationId === selectedId;
-        const openDetails = new Set(sameCard ? [...panel.querySelectorAll('details[open][data-section]')].map(item => item.dataset.section) : []);
-        configEditor?.dispose(); configEditor = null;
-        panel.replaceChildren(); panel.hidden = false;
-        const snapshot = sdk.illustrations.snapshot(), state = snapshot.state;
-        const annotations = state.annotations;
-        if (!annotations.some(item => item.annotationId === selectedId)) selectedId = annotations.find(item => item.deletedAt === undefined)?.annotationId ?? annotations[0]?.annotationId;
-        const heading = node(doc, panel, 'div', undefined, 'atri-illustration-actions'); node(doc, heading, 'h3', translateShellText('Annotation'));
-        button(doc, heading, translateShellText('Close card'), run(() => { readDraft(); panel.hidden = true; toggle.focus(); }));
-        if (!annotations.length) { node(doc, panel, 'p', mode ? translateShellText('Select text with a mouse, or long press and adjust the selection on a phone.') : translateShellText('Turn on illustration mode and select text to create an annotation.')); readDraft = () => {}; return; }
-        select(doc, panel, translateShellText('Current annotation'), selectedId, annotations.map(item => [item.annotationId, (item.deletedAt === undefined ? '' : translateShellText('Deleted · ')) + item.anchor.quote.slice(0, 48)]), id => {
-            try { readDraft(); selectedId = id; renderCard(); } catch (error) { notify(error.message, true); }
-        });
-        const annotation = annotations.find(item => item.annotationId === selectedId);
-        const card = node(doc, panel, 'article', undefined, 'atri-illustration-card'); card.dataset.annotationId = annotation.annotationId;
-        node(doc, card, 'blockquote', annotation.anchor.quote);
-        const deleted = annotation.deletedAt !== undefined;
-        const draft = drafts.get(selectedId) ?? structuredClone(annotation.draft ?? createIllustrationDraft(annotation.anchor.quote, settings, sdk.context.packageId).draft);
-        drafts.set(selectedId, draft);
-        const editor = node(doc, card, 'fieldset'); editor.disabled = !writable || deleted; node(doc, editor, 'legend', translateShellText('Prompt and characters'));
-        const speaker = sdk.illustrations.speaker(annotation.anchor);
-        if (speaker && !draft.characters.some(item => item.character.storyParticipantId === speaker.participantId)) {
-            button(doc, editor, formatShellText('Add speaker · ${0}', [speaker.displayName]), run(() => {
-                readDraft(); draft.characters.push({ character: speakerDrawingCharacter(speaker), dynamicPrompt: '', clothing: '' }); renderCard();
-            }));
-        }
-        const allowed = settings.characters.filter(item => item.enabled && settings.works[sdk.context.packageId]?.characterIds.includes(item.id));
-        const matches = matchDrawingCharacters(annotation.anchor.quote, settings.characters, allowed.map(item => item.id));
-        for (const ambiguity of matches.ambiguous) node(doc, editor, 'p', formatShellText('Several characters are named “${0}”. Choose the intended character below.', [ambiguity.name]));
-        const manual = select(doc, editor, translateShellText('Add a character, including pronoun references'), '', [['', translateShellText('Choose a drawing character')], ...allowed.filter(item => !draft.characters.some(current => current.character.id === item.id)).map(item => [item.id, item.name + ' · ' + item.id])], () => {});
-        button(doc, editor, translateShellText('Add selected character'), run(() => {
-            readDraft(); const character = allowed.find(item => item.id === manual.value);
-            if (!character || draft.characters.some(item => item.character.id === character.id)) return;
-            draft.characters.push({ character: structuredClone(character), dynamicPrompt: '', clothing: character.defaultClothing }); renderCard();
-        }));
-        for (const item of draft.characters) {
-            const group = node(doc, editor, 'fieldset'); node(doc, group, 'legend', item.character.name);
-            if (item.character.storyParticipantId) field(doc, group, translateShellText('Fixed appearance prompt'), item.character.fixedPrompt, text => item.character.fixedPrompt = text, { multiline: true });
-            else node(doc, group, 'p', formatShellText('Fixed appearance: ${0}', [item.character.fixedPrompt || translateShellText('Not provided')]));
-            field(doc, group, formatShellText('Outfit · ${0}', [item.character.name]), item.clothing, text => item.clothing = text);
-            field(doc, group, formatShellText('Scene description · ${0}', [item.character.name]), item.dynamicPrompt, text => item.dynamicPrompt = text, { multiline: true });
-            button(doc, group, formatShellText('Remove character · ${0}', [item.character.name]), run(() => { readDraft(); draft.characters = draft.characters.filter(current => current !== item); renderCard(); }));
-        }
-        field(doc, editor, translateShellText('Scene and composition'), draft.scene, text => draft.scene = text, { multiline: true });
-        field(doc, editor, translateShellText('Image prompt, directly editable'), draft.prompt, text => draft.prompt = text, { multiline: true });
-        const preset = node(doc, editor, 'details'); preset.dataset.section = 'preset'; preset.open = openDetails.has('preset'); node(doc, preset, 'summary', translateShellText('Annotation preset and parameters'));
-        const parsePreset = renderIllustrationPreset(doc, preset, draft.preset);
-        const imageSelection = { imageTargetId: annotation.imageSelection?.imageTargetId ?? null, imageRenderingId: annotation.imageSelection?.imageRenderingId ?? null };
-        const targetChoices = [['', translateShellText('Use the inherited target')], ...visualConfiguration.targets.map(item => [item.imageTargetId, item.displayName])];
-        const renderingChoices = [['', translateShellText('Use the inherited style')], ...visualConfiguration.renderings.map(item => [item.imageRenderingId, item.displayName])];
-        select(doc, editor, translateShellText('Image target for this annotation'), imageSelection.imageTargetId ?? '', targetChoices, value => imageSelection.imageTargetId = value || null);
-        select(doc, editor, translateShellText('Image style for this annotation'), imageSelection.imageRenderingId ?? '', renderingChoices, value => imageSelection.imageRenderingId = value || null);
-        let taskTargetId = '', taskRenderingId = '';
-        select(doc, editor, translateShellText('Target for this generation only'), '', targetChoices, value => taskTargetId = value);
-        select(doc, editor, translateShellText('Style for this generation only'), '', renderingChoices, value => taskRenderingId = value);
-        readDraft = () => { parsePreset(); assertIllustrationDraft(draft); };
-        const actions = node(doc, editor, 'div', undefined, 'atri-illustration-actions');
-        button(doc, actions, translateShellText('Save card'), run(async () => {
-            readDraft(); await sdk.illustrations.command('updateAnnotation', { annotationId: annotation.annotationId, draft, imageSelection, expectedHead: snapshot.head });
-            drafts.delete(annotation.annotationId); notify(translateShellText('Card saved.')); renderCard();
-        }));
-        const operation = operations.get(annotation.annotationId);
-        const active = operation && !terminal.has(operation.status);
-        const promptButton = button(doc, actions, active ? translateShellText('Generating prompt') : translateShellText('Generate prompt'), run(async () => {
-            readDraft(); const submitted = structuredClone(draft);
-            await sdk.illustrations.command('updateAnnotation', { annotationId: annotation.annotationId, draft: submitted, imageSelection, expectedHead: sdk.illustrations.snapshot().head });
-            const started = await sdk.illustrations.prompt('start', { annotationId: annotation.annotationId });
-            const operation = { operationId: started.operationId, status: 'queued', anchor: { annotationId: annotation.annotationId } };
-            operations.set(annotation.annotationId, operation); watch(operation, JSON.stringify(submitted));
-            notify(translateShellText('Prompt task submitted. You can keep reading or editing the card.')); renderCard();
-        })); promptButton.disabled = Boolean(active); promptButton.setAttribute('aria-busy', String(Boolean(active)));
-        const taskStatus = node(doc, actions, 'span', operation ? taskLabels[operation.status] : '');
-        taskStatus.dataset.promptStatus = annotation.annotationId; taskStatus.setAttribute('role', 'status');
-        if (active) button(doc, actions, translateShellText('Cancel prompt task'), run(async () => {
-            await sdk.illustrations.prompt('cancel', { operationId: operation.operationId }); notify(translateShellText('Prompt cancellation requested.'));
-        }));
-        const imageOperation = imageOperations.get(annotation.annotationId), imageActive = imageOperation && !terminal.has(imageOperation.status);
-        const imageButton = button(doc, actions, imageActive ? translateShellText('Generating image') : translateShellText('Generate image'), run(async () => {
-            readDraft(); const submitted = structuredClone(draft);
-            const saved = await sdk.illustrations.command('updateAnnotation', { annotationId: annotation.annotationId, draft: submitted, imageSelection, expectedHead: sdk.illustrations.snapshot().head });
-            const preview = await sdk.illustrations.image('prepare', { annotationId: annotation.annotationId, expectedHead: saved.head,
-                ...(taskTargetId ? { imageTargetId: taskTargetId } : {}), ...(taskRenderingId ? { imageRenderingId: taskRenderingId } : {}) });
-            const approvalBox = node(doc, actions, 'fieldset'); node(doc, approvalBox, 'legend', translateShellText('Confirm image task'));
-            node(doc, approvalBox, 'p', preview.target.name + ' · ' + preview.target.model + ' · ' + (preview.cost.kind === 'unknown' ? translateShellText('Cost unknown') : preview.cost.kind === 'free' ? translateShellText('No API charge') : translateShellText('Estimated maximum: ') + preview.cost.upperBound + ' ' + preview.cost.currency));
-            node(doc, approvalBox, 'p', translateShellText('Target source: ') + (preview.selection.imageTargetIdOrigin ?? translateShellText('Style default')) + translateShellText('; style source: ') + (preview.selection.imageRenderingIdOrigin ?? translateShellText('Default')));
-            node(doc, approvalBox, 'p', translateShellText('Results enter history first. Select a version to display it in the story.'));
-            let maxCost = String(preview.cost.upperBound ?? 0), currency = preview.cost.currency || 'USD', allowUnknownCost = false;
-            field(doc, approvalBox, translateShellText('Cost limit for this task'), maxCost, text => maxCost = text, { type: 'number' });
-            field(doc, approvalBox, translateShellText('Currency'), currency, text => currency = text);
-            if (preview.cost.kind === 'unknown') field(doc, approvalBox, translateShellText('I accept unknown provider costs and reserve the entered amount'), false, value => allowUnknownCost = value, { type: 'checkbox' });
-            button(doc, approvalBox, translateShellText('Approve generation'), run(async () => {
-                const started = await sdk.illustrations.image('start', { prepareId: preview.prepareId, approval: { targetFingerprint: preview.targetFingerprint,
-                    requestHash: preview.requestHash, maxCost: Number(maxCost), currency, allowUnknownCost, externalAssetIds: [], omittedPreferred: [] } });
-                const operation = { operationId: started.operationId, status: 'queued', anchor: { annotationId: annotation.annotationId } };
-                imageOperations.set(annotation.annotationId, operation); watch(operation, undefined, 'image');
-                notify(translateShellText('Image task submitted. You can keep reading or editing.')); renderCard();
-            }));
-            button(doc, approvalBox, translateShellText('Cancel'), () => approvalBox.remove());
-            approvalBox.querySelector('input')?.focus();
-        }));
-        const syncImageButton = () => { imageButton.disabled = Boolean(imageActive) || !draft.prompt.trim(); imageButton.setAttribute('aria-busy', String(Boolean(imageActive))); };
-        syncImageButton(); editor.addEventListener('input', syncImageButton);
-        const imageStatus = node(doc, actions, 'span', imageOperation ? imageLabels[imageOperation.status] : '');
-        imageStatus.dataset.imageStatus = annotation.annotationId; imageStatus.setAttribute('role', 'status');
-        if (imageActive) button(doc, actions, translateShellText('Cancel image task'), run(async () => {
-            await sdk.illustrations.image('cancel', { operationId: imageOperation.operationId }); notify(translateShellText('Image cancellation requested.'));
-        }));
-        node(doc, editor, 'p', translateShellText('Prompt generation saves a new version. Generate an image separately, or enter a prompt directly.'));
-        button(doc, editor, translateShellText('Compose prompt from current sections'), run(() => { readDraft(); draft.prompt = composeIllustrationPrompt(draft); renderCard(); }));
-        button(doc, editor, translateShellText('Apply latest characters and preset'), run(async () => {
-            readDraft(); settings = (await sdk.illustrations.settings.read()).value;
-            draft.characters = draft.characters.map(item => {
-                const character = settings.characters.find(current => current.id === item.character.id);
-                return character ? { ...item, character: structuredClone(character) } : item;
-            });
-            draft.preset = structuredClone(settings.works[sdk.context.packageId]?.preset ?? settings.preset);
-            notify(translateShellText('Character and preset snapshots updated. The full prompt is preserved and can be recomposed from sections.')); renderCard();
-        }));
-        const preview = node(doc, editor, 'details'); node(doc, preview, 'summary', translateShellText('Preview image request'));
-        const previewText = node(doc, preview, 'pre');
-        const previewInput = () => { previewText.textContent = JSON.stringify({ authoring: 'raw', prompt: draft.prompt, negativePrompt: draft.preset.negativePrompt, style: draft.preset.style }, null, 2); };
-        editor.addEventListener('input', () => { if (preview.open) previewInput(); });
-        preview.addEventListener('toggle', () => { if (preview.open) { try { readDraft(); previewInput(); } catch (error) { notify(error.message, true); } } });
-        const promptHistory = node(doc, card, 'details'); promptHistory.dataset.section = 'prompts'; promptHistory.open = openDetails.has('prompts'); node(doc, promptHistory, 'summary', translateShellText('Prompt history'));
-        for (const version of [...(annotation.promptVersions ?? [])].reverse()) {
-            const row = node(doc, promptHistory, 'article');
-            node(doc, row, 'p', formatAtriaDate(version.createdAt)); node(doc, row, 'pre', version.draft.prompt);
-            const evidence = node(doc, row, 'details'); node(doc, evidence, 'summary', translateShellText('Generation context, characters and route'));
-            evidence.addEventListener('toggle', () => { if (evidence.open && !evidence.querySelector('pre')) node(doc, evidence, 'pre', JSON.stringify({ characters: version.draft.characters, preset: version.draft.preset, template: version.template, request: version.requestSnapshot }, null, 2)); });
-            const apply = button(doc, row, translateShellText('Use this prompt version'), run(() => { readDraft(); drafts.set(annotation.annotationId, structuredClone(version.draft)); renderCard(); notify(translateShellText('Version loaded into the editor. Save the card to apply it.')); })); apply.disabled = !writable || deleted;
-        }
-        if (!annotation.promptVersions?.length) node(doc, promptHistory, 'p', translateShellText('No generated prompt versions yet.'));
-        button(doc, editor, translateShellText('Delete annotation'), run(async () => {
-            await sdk.illustrations.command('deleteAnnotation', { annotationId: annotation.annotationId, expectedHead: snapshot.head });
-            drafts.delete(annotation.annotationId); notify(translateShellText('Annotation deleted. Image history is preserved.')); renderCard();
-        }));
-        const history = node(doc, card, 'details', undefined, 'atri-illustration-history'); history.dataset.section = 'history'; history.open = openDetails.has('history'); node(doc, history, 'summary', translateShellText('Image history'));
-        const images = state.images.filter(item => item.annotationId === annotation.annotationId);
-        if (!images.length) node(doc, history, 'p', translateShellText('No image versions yet.'));
-        const hide = button(doc, history, translateShellText('Hide the displayed image'), run(async () => {
-            readDraft(); await sdk.illustrations.command('selectImageVersion', { annotationId: annotation.annotationId, imageVersionId: null, expectedHead: snapshot.head }); renderCard();
-        })); hide.disabled = !writable || deleted || !annotation.selectedImageVersionId;
-        for (const image of images) {
-            const version = node(doc, history, 'article'); const img = node(doc, version, 'img');
-            img.src = nativeAssetUrl(image.assetId); img.alt = image.alt || annotation.anchor.quote; img.width = image.width; img.height = image.height; img.loading = 'lazy'; img.decoding = 'async';
-            node(doc, version, 'p', image.imageVersionId === annotation.selectedImageVersionId ? translateShellText('Displayed version') : translateShellText('Previous version'));
-            const details = node(doc, version, 'details'); node(doc, details, 'summary', translateShellText('Actual prompt and parameters'));
-            details.addEventListener('toggle', () => { if (details.open && !details.querySelector('pre')) node(doc, details, 'pre', JSON.stringify({ prompt: image.prompt, negativePrompt: image.negativePrompt, parameters: image.parameters, ...(image.requestSnapshot ? { requestSnapshot: image.requestSnapshot } : {}) }, null, 2)); });
-            const choose = button(doc, version, translateShellText('Display this version'), run(async () => {
-                readDraft(); await sdk.illustrations.command('selectImageVersion', { annotationId: annotation.annotationId, imageVersionId: image.imageVersionId, expectedHead: snapshot.head }); renderCard();
-            })); choose.disabled = !writable || deleted || image.imageVersionId === annotation.selectedImageVersionId;
-        }
-        if (deleted) node(doc, card, 'p', translateShellText('This annotation was deleted. Its image history is preserved.'));
+    function editor(annotation) {
+        const draft = structuredClone(annotation.draft ?? createIllustrationDraft(annotation.anchor.quote, config?.settings ?? { characters: [], works: {}, preset: { style: '', quality: '', negativePrompt: '', parameters: {} } }, context.packageId).draft);
+        const library = (config?.settings.characters ?? []).filter(item => item.enabled);
+        const people = el(doc, 'div', { className: 'atri-ill-presets', attrs: { role: 'group', 'aria-label': t('Characters in this image') } });
+        const drawPeople = () => {
+            people.replaceChildren(...draft.characters.map(item => el(doc, 'span', { className: 'atri-ill-tag' }, [el(doc, 'span', { text: item.character.name }),
+                el(doc, 'button', { className: 'atri-ill-char-remove', attrs: { type: 'button', 'aria-label': f('Remove ${0}', [item.character.name]) }, on: { click: () => { draft.characters = draft.characters.filter(current => current !== item); drawPeople(); } } }, [icon(doc, 'close', 12)])])));
+            const options = library.filter(item => !draft.characters.some(current => current.character.id === item.id));
+            if (options.length) {
+                const picker = el(doc, 'select', { attrs: { 'aria-label': t('Add a character'), style: 'width:auto;min-height:30px' } }, [el(doc, 'option', { text: t('+ Add character'), attrs: { value: '' } }), ...options.map(item => el(doc, 'option', { text: item.name, attrs: { value: item.id } }))]);
+                picker.addEventListener('change', () => { const character = library.find(item => item.id === picker.value); if (character) { draft.characters.push({ character: structuredClone(character), dynamicPrompt: '', clothing: character.defaultClothing }); drawPeople(); } });
+                people.append(picker);
+            }
+            if (!draft.characters.length && !options.length) people.append(el(doc, 'span', { className: 'atri-ill-muted', text: t('Add characters in the Cast tab to keep their looks consistent.') }));
+        };
+        drawPeople();
+        const tagEditor = mountTagEditor(doc, { value: draft.prompt || composeIllustrationPrompt(draft), label: t('Description'), onChange: value => { draft.prompt = value; } });
+        const save = async thenDraw => {
+            draft.prompt = tagEditor.value;
+            if (thenDraw && !draft.prompt.trim()) { say(t('Add an image description first.'), 'error'); return; }
+            const current = annotationOf(annotation.annotationId);
+            await sdk.illustrations.command('updateAnnotation', { annotationId: annotation.annotationId, draft, imageSelection: current.imageSelection ?? { imageTargetId: null, imageRenderingId: null }, expectedHead: snapshot().head });
+            editing = false;
+            if (thenDraw) void flow.redraw(annotation.annotationId); else { say(t('Description saved.')); render(); }
+        };
+        const negative = ready?.connection ? supportsNegativePrompt(ready.connection.providerAdapter) : true;
+        return el(doc, 'div', { className: 'atri-ill-card atri-ill-stack', attrs: { style: 'margin-top:12px' } }, [
+            el(doc, 'div', { className: 'atri-ill-field' }, [el(doc, 'span', { text: t('Who is in it') }), people, el(doc, 'small', { text: t('Their saved appearance is added to the description.') })]),
+            el(doc, 'div', { className: 'atri-ill-field' }, [el(doc, 'span', { text: t('What to draw') }), tagEditor.root, el(doc, 'small', { text: negative ? t('Short English tags work best for most models.') : t('This service also understands full sentences.') })]),
+            el(doc, 'div', { className: 'atri-ill-row' }, [action(doc, t('Save and draw'), async () => { try { await save(true); } catch (error) { report(error); } }, { variant: 'primary', icon: 'sparkles' }),
+                action(doc, t('Save'), async () => { try { await save(false); } catch (error) { report(error); } }),
+                action(doc, t('Cancel'), () => { editing = false; render(); }, { variant: 'plain' })]),
+        ]);
     }
-    return () => { disposed = true; for (const timer of watchers.values()) clearTimeout(timer); watchers.clear(); configEditor?.dispose(); galleryEditor?.dispose(); drafts.clear(); };
+    function deleteControl(annotation) {
+        const wrap = el(doc, 'span', { className: 'atri-ill-row' });
+        const ask = action(doc, t('Delete illustration'), () => {
+            wrap.replaceChildren(el(doc, 'span', { className: 'atri-ill-muted', text: t('Remove it from the story?') }),
+                action(doc, t('Delete'), async () => { try { await sdk.illustrations.command('deleteAnnotation', { annotationId: annotation.annotationId, expectedHead: snapshot().head }); detailId = null; say(t('Illustration deleted.')); render(); } catch (error) { report(error); } }, { variant: 'destructive', size: 'sm' }),
+                action(doc, t('Keep'), () => { wrap.replaceChildren(ask); ask.focus(); }, { variant: 'plain', size: 'sm' }));
+            wrap.querySelector('[data-variant=destructive]')?.focus();
+        }, { variant: 'plain', icon: 'trash', size: 'sm' });
+        wrap.append(ask); return wrap;
+    }
+    async function openRetouch(annotation, image) {
+        try {
+            panel.dataset.wide = 'true';
+            retouch = await mountIllustrationRetouch({ document: doc, sdk, annotation, image, report, flow,
+                onDone: () => { closeRetouch(); }, onSubmitted: () => { closeRetouch(); say(t('Retouching… the new version will appear here.')); } });
+            render();
+        } catch (error) { panel.dataset.wide = 'false'; retouch = null; report(error); }
+    }
+
+    // Reconnect to tasks that were running before a reload, then keep the launcher honest.
+    await refreshConfig();
+    if (writable) await flow.resume();
+    dot.hidden = !flow.activeCount();
+    placeChip();
+    try { const saved = JSON.parse(win.sessionStorage.getItem(UI_KEY) ?? 'null'); if (saved?.open && saved.sessionId === context.sessionId) { detailId = saved.detailId ?? null; await show(saved.tab); } } catch { /* storage unavailable */ }
+    return () => { disposed = true; clearTimeout(statusTimer); disposeView(); closeRetouch(false); flow.dispose(); };
 }

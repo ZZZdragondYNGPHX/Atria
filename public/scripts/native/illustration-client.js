@@ -46,6 +46,16 @@ export function createIllustrationExtensionApi({ runtime, document: doc, generat
             const entry = runtime.snapshot.timeline.find(item => item.messageId === anchor.messageId && item.activeVariantId === anchor.variantId);
             return entry?.participant ? publicParticipant(entry) : null;
         },
+        /** Distinct named speakers in the current story, newest first. */
+        participants: scope => {
+            if (runtime.snapshot?.session.sessionId !== scope.sessionId || runtime.snapshot.revision.branchId !== scope.branchId) return [];
+            const seen = new Map();
+            for (const entry of [...runtime.snapshot.timeline].reverse()) {
+                const participant = entry.participant ? publicParticipant(entry) : null;
+                if (participant?.displayName && !seen.has(participant.displayName)) seen.set(participant.displayName, participant);
+            }
+            return [...seen.values()];
+        },
         selectionMode: (scope, enabled) => setIllustrationSelectionMode(doc, scope, enabled),
         subscribe: onIllustrationSurfacesChanged,
         async prompt(scope, action, input, signal, step = 'prompts') {

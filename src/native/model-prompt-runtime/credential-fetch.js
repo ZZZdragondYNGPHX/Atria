@@ -7,24 +7,29 @@ import { credentialNetworkTarget } from './credential-targets.js';
 
 // Validate DNS results inside socket creation, rather than resolving once and
 // allowing fetch to resolve the name again. TLS still verifies the original host.
+// Proxy clients in fake-IP mode (Clash, sing-box, Surge) answer every public name with an
+// address from the RFC 2544 benchmarking range and map it back to that name. It is neither
+// internet- nor LAN-routable, so it is accepted for public names; private ranges stay denied.
+const FAKE_IP = ipaddr.parseCIDR('198.18.0.0/15');
+const publicAddress = address => { const parsed = ipaddr.process(address); return parsed.range() === 'unicast' || parsed.kind() === 'ipv4' && parsed.match(FAKE_IP); };
 export function credentialLookup(resolve = lookup) {
     return (hostname, options, callback) => {
         const local = hostname.toLowerCase() === 'localhost';
         Promise.resolve(resolve(hostname, { all: true, verbatim: true })).then(addresses => {
-            if (!addresses.length || addresses.some(item => ipaddr.process(item.address).range() !== (local ? 'loopback' : 'unicast')))
+            if (!addresses.length || addresses.some(item => local ? ipaddr.process(item.address).range() !== 'loopback' : !publicAddress(item.address)))
                 throw new Error('native_credential_network_denied');
             callback(null, ...(options?.all ? [addresses] : [addresses[0].address, addresses[0].family]));
         }).catch(() => callback(Object.assign(new Error('Native credential destination denied'), { code: 'native_credential_network_denied' })));
     };
 }
 const http = new HttpAgent({ lookup: credentialLookup() }), https = new HttpsAgent({ lookup: credentialLookup() });
-export async function credentialFetch(url, options = {}) {
+export async function credentialFetch(url, { allowInsecureHttp = false, ...options } = {}) {
     const target = new URL(String(url));
     // Adapters may append bounded discovery cursors or provider query fields;
     // credentials/user-info and fragment targets remain forbidden.
     if (target.username || target.password || target.hash) throw new Error('native_credential_target_invalid');
     const policyTarget = new URL(target); policyTarget.search = '';
-    credentialNetworkTarget(policyTarget.href);
+    credentialNetworkTarget(policyTarget.href, { allowInsecure: allowInsecureHttp });
     return fetch(url, { ...options, redirect: 'error', agent: parsed => parsed.protocol === 'https:' ? https : http });
 }
 export async function publicTargetFetch(url, options = {}) {

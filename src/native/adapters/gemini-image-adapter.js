@@ -1,9 +1,10 @@
 import { visualObject, visualError } from '../../../public/shared/native-visual-contract.js';
+import { GEMINI_IMAGE_MODELS, GEMINI_ASPECT_RATIOS } from '../../../public/shared/image-service-catalog.js';
 import { protocolManifest, imageSemanticPrompt } from '../image-registry.js';
 import { imageEndpoint, imageRoute, imageJson, imageBase64, normalizeImage, readImageInput } from './image-transport.js';
 
-const models = new Set(['gemini-2.5-flash-image', 'gemini-3-pro-image', 'gemini-3-pro-image-preview', 'gemini-3.1-flash-image', 'gemini-3.1-flash-image-preview', 'gemini-3.1-flash-lite-image', 'gemini-nano-banana-2.1']);
-const ratios = new Set(['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9']);
+const models = new Set(GEMINI_IMAGE_MODELS);
+const ratios = new Set(GEMINI_ASPECT_RATIOS);
 // The documented GenerateContent image protocol is distinct from text Routes.
 // Semantic editing is never advertised as a Canonical Mask operation.
 export function createGeminiImageAdapter({ fetchImpl = fetch } = {}) {

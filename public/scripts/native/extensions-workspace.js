@@ -29,7 +29,9 @@ export function mountExtensionsWorkspace({ document: doc = document, body, slot 
     const drafts = observeAtriaDrafts({ document: doc, root });
     let child, disposed = false, sequence = 0;
     const content = el(doc, 'div', 'atri-extensions-content');
-    const tabs = extensionTabs(doc, root, [['skills', 'Skills'], ['plugins', 'Plugins']], 'skills', show);
+    // `utility.plugins:official` deep-links to the official plugins (e.g. illustration advanced settings).
+    const pluginKind = route?.child?.id?.split(':')[1] === 'official' ? 'official' : null;
+    const tabs = extensionTabs(doc, root, [['skills', 'Skills'], ['plugins', 'Plugins']], pluginKind ? 'plugins' : 'skills', show);
     root.append(content);
     async function show(tab) {
         if (!confirmAtriaDraftLeave(doc, content)) return;
@@ -44,20 +46,20 @@ export function mountExtensionsWorkspace({ document: doc = document, body, slot 
         try {
             controller = tab === 'skills'
                 ? await mountSkillsWorkspace({ document: doc, body: mount, route, organization: true })
-                : mountExtensionPlugins({ document: doc, body: mount, ...dependencies });
+                : mountExtensionPlugins({ document: doc, body: mount, ...(pluginKind ? { kind: pluginKind } : {}), ...dependencies });
         } catch (error) { if (!disposed && token === sequence) feedback(doc, mount, error.message, true); }
         if (disposed || token !== sequence) controller?.dispose(); else child = controller;
     }
-    void show('skills');
+    void show(pluginKind ? 'plugins' : 'skills');
     return { root, dispose() { disposed = true; sequence++; drafts.dispose(); child?.dispose(); root.remove(); } };
 }
 
 export function mountExtensionPlugins({ document: doc = document, body, client = nativeExtensionsClient,
     productClient = nativeProductClient, presets = () => runtimeRequest('/presets'), runtime = globalThis.Atria?.extensions,
-    confirm = confirmLibraryAction, ...dependencies } = {}) {
+    confirm = confirmLibraryAction, kind: initialKind = 'external', ...dependencies } = {}) {
     const root = el(doc, 'section', 'atri-extension-plugins', undefined, body);
     const drafts = observeAtriaDrafts({ document: doc, root });
-    let kind = 'external', disposed = false, sequence = 0, builtins, saving = false, receipt = null;
+    let kind = initialKind, disposed = false, sequence = 0, builtins, saving = false, receipt = null;
     const tabs = extensionTabs(doc, root, [['external', 'External plugins'], ['local', 'Local scripts'], ['builtin', 'Built-in tools'], ['official', 'Official plugins']], kind, async next => { if (saving || !confirmAtriaDraftLeave(doc, content)) return; kind = next; await load(); });
     const tools = el(doc, 'div', 'atria-utility-workspace__actions', undefined, root);
     const content = el(doc, 'div', 'atri-extension-list', undefined, root);

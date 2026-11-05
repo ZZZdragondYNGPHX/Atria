@@ -4,6 +4,10 @@ import { translateShellText as t } from '../atria-shell/localization.js';
 import { defaultIllustrationPreset, OFFICIAL_PROMPT_TEMPLATE, assertIllustrationSettings } from '../../shared/illustration-plugin-contract.js';
 import { illustrationSettingsClient } from './illustration-client.js';
 import { runtimeRequest } from './runtime-client.js';
+import { ILLUSTRATION_EXPERIENCE_CSS } from './illustration-style.js';
+import { mountIllustrationSetup, updateIllustrationSettings } from './illustration-setup.js';
+import { mountIllustrationCharacters } from './illustration-characters.js';
+import { el, toggle } from './illustration-kit.js';
 import { nativeProductClient } from './product-client.js';
 import { illustrationNode as node, illustrationField as field, illustrationSelect as select, illustrationButton as button, ILLUSTRATION_CSS } from './illustration-ui.js';
 
@@ -17,7 +21,7 @@ export function renderIllustrationPreset(doc, parent, preset) {
     return read;
 }
 
-export function mountIllustrationSettings({ document: doc = globalThis.document, parent, client = illustrationSettingsClient,
+function mountAdvancedIllustrationSettings({ document: doc = globalThis.document, parent, client = illustrationSettingsClient,
     configuration = async () => ({ ...await runtimeRequest('/configuration'), ...await runtimeRequest('/visual/configuration') }), works = () => nativeProductClient.listWorks(), packageId, showEnabled = true } = {}) {
     const root = node(doc, parent, 'section', undefined, 'atri-illustration-ui');
     node(doc, root, 'style', ILLUSTRATION_CSS);
@@ -142,4 +146,25 @@ export function mountIllustrationSettings({ document: doc = globalThis.document,
         } catch (error) { fail(error); }
     })();
     return { root, ready, dispose() { disposed = true; root.remove(); } };
+}
+
+/** Extensions page: the same task-first setup as in Play, plus the complete form under Advanced. */
+export function mountIllustrationSettings({ document: doc = globalThis.document, parent, client = illustrationSettingsClient, packageId = '' } = {}) {
+    const root = el(doc, 'section', { className: 'atri-ill atri-ill-page' }); parent.append(root);
+    root.append(el(doc, 'style', { text: ILLUSTRATION_EXPERIENCE_CSS }));
+    const status = el(doc, 'p', { className: 'atri-ill-status', attrs: { role: 'status' } });
+    const say = (text, kind = 'info') => { status.textContent = text; status.dataset.kind = kind; };
+    const enabled = toggle(doc, t('Turn on Atria illustrations'), false, async on => { try { await updateIllustrationSettings(value => { value.enabled = on; }); say(on ? t('Illustrations are on. Open a story to use them.') : t('Illustrations are off.')); } catch (error) { say(error.message, 'error'); } });
+    root.append(el(doc, 'header', { className: 'atri-ill-row', attrs: { style: 'margin-bottom:8px' } }, [el(doc, 'h2', { text: t('Atria illustrations'), attrs: { style: 'margin:0;flex:1' } }), el(doc, 'label', { className: 'atri-ill-row atri-ill-muted' }, [el(doc, 'span', { text: t('On') }), enabled])]),
+        el(doc, 'p', { className: 'atri-ill-muted', text: t('Select a passage while reading and choose “Illustrate”. Atria writes a description from the story and draws it with your image service.') }), status);
+    void client.read().then(record => { enabled.checked = record.value.enabled; }).catch(() => {});
+    const advanced = el(doc, 'details', { className: 'atri-ill-details' }, [el(doc, 'summary', { text: t('Advanced settings') }), el(doc, 'p', { className: 'atri-ill-muted', text: t('Prompt template, per-work overrides, workflow mapping and raw parameters. Most stories do not need these.') })]);
+    let full = null;
+    advanced.addEventListener('toggle', () => { if (advanced.open && !full) full = mountAdvancedIllustrationSettings({ document: doc, parent: advanced, client, packageId: packageId || undefined, showEnabled: false }); });
+    const setup = mountIllustrationSetup({ document: doc, parent: root, packageId, openAdvanced: () => { advanced.open = true; advanced.scrollIntoView({ block: 'start' }); } });
+    const characters = el(doc, 'section', { className: 'atri-ill-section', attrs: { 'aria-label': t('Cast') } }, [el(doc, 'header', {}, [el(doc, 'h3', { text: t('Cast') })])]);
+    root.append(characters);
+    const cast = mountIllustrationCharacters({ document: doc, parent: characters, packageId, say });
+    root.append(advanced);
+    return { root, ready: setup.ready, dispose() { setup.dispose(); cast.dispose(); full?.dispose(); root.remove(); } };
 }

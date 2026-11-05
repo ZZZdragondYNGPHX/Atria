@@ -17,7 +17,24 @@ export function visualSessionOwner(record, records = []) {
     return null;
 }
 export const defaultVisualBudget = () => ({ schemaVersion: 2, imageHour: 2, imageDay: 8, autoConcurrency: 1,
-    plannerHour: 8, plannerDay: 24, plannerTokensDay: 30000, currency: 'USD', moneyDay: 0, autoMoneyDay: 0 });
+    plannerHour: 8, plannerDay: 24, plannerTokensDay: 30000, currency: 'USD', moneyDay: 0, autoMoneyDay: 0, requestQuotas: [] });
+// Some services sell a number of requests per model per day (or per minute) instead of charging per image.
+// Each quota belongs to one connection and one model actually sent (V5 Full Medium is its own model), so
+// presets on different services or models are counted independently. Model '*' is a limit the provider
+// shares across every model of that connection. No quota applies unless the reader sets one.
+export const imageQuotaModel = (compiled, target) => String(compiled?.body?.model ?? target.model).replace(/-inpainting$/, '');
+export const requestQuotasFor = (budget, connectionProfileId, model) => (budget.requestQuotas ?? [])
+    .filter(item => item.connectionProfileId === connectionProfileId && (item.model === model || item.model === '*'));
+const QUOTA_ACTIVE = new Set(['queued', 'submitting', 'submitted', 'running', 'result_received', 'uncertain_submission']);
+/** Requests a quota has counted: sent or pending jobs whose reservation was not released, within the window. */
+function quotaCount(jobs, quota, now, windowMs) {
+    return jobs.filter(item => !item.reservation.released && item.connection.connectionProfileId === quota.connectionProfileId
+        && (quota.model === '*' || imageQuotaModel(item.compiled, item.target) === quota.model)
+        && (now - item.createdAt < windowMs || windowMs >= 86400000 && QUOTA_ACTIVE.has(item.status))).length;
+}
+export function quotaUsage(jobs, quota, now) {
+    return { ...(quota.perDay ? { day: quotaCount(jobs, quota, now, 86400000) } : {}), ...(quota.perMinute ? { minute: quotaCount(jobs, quota, now, 60000) } : {}) };
+}
 export class VisualStore {
     constructor({ engine, now = Date.now }) { this.engine = engine; this.now = now; }
     async read(handle, type, id) {
@@ -37,15 +54,32 @@ export class VisualStore {
             return { value: record.doc, revision: record.integrity };
         }));
     }
+    /** Applicable quotas for a connection and model, each with its current usage. */
+    async quotaState(handle, budget, connectionProfileId, model) {
+        const quotas = requestQuotasFor(budget, connectionProfileId, model);
+        if (!quotas.length) return [];
+        const jobs = await this.list(handle, 'job'), now = this.now();
+        return quotas.map(quota => ({ ...quota, used: quotaUsage(jobs, quota, now) }));
+    }
     async budget(handle) {
         const row = await this.read(handle, 'budget', 'account');
-        return { value: row.value ?? defaultVisualBudget(), revision: row.revision };
+        return { value: { ...defaultVisualBudget(), ...row.value }, revision: row.revision };
     }
     async configureBudget(handle, value, expectedHash) {
         if (!value || Object.keys(value).sort().join(',') !== Object.keys(defaultVisualBudget()).sort().join(',') || value.schemaVersion !== 2
             || typeof value.currency !== 'string' || !/^[A-Z]{3}$/.test(value.currency)) visualError('budget_invalid');
         for (const field of ['imageHour', 'imageDay', 'autoConcurrency', 'plannerHour', 'plannerDay', 'plannerTokensDay']) visualInteger(value[field]);
         for (const field of ['moneyDay', 'autoMoneyDay']) if (!Number.isFinite(value[field]) || value[field] < 0) visualError('budget_invalid');
+        const quotaKeys = new Set(), limit = value => value === undefined || Number.isSafeInteger(value) && value >= 1 && value <= 100000;
+        if (!Array.isArray(value.requestQuotas) || value.requestQuotas.length > 64) visualError('budget_invalid');
+        for (const quota of value.requestQuotas) {
+            const key = quota && quota.connectionProfileId + '\n' + quota.model;
+            if (!quota || Object.keys(quota).some(field => !['connectionProfileId', 'model', 'perDay', 'perMinute'].includes(field))
+                || typeof quota.connectionProfileId !== 'string' || !/^[A-Za-z0-9_.:-]{1,128}$/.test(quota.connectionProfileId)
+                || typeof quota.model !== 'string' || !/^(?:\*|[A-Za-z0-9_.:/-]{1,128})$/.test(quota.model)
+                || !limit(quota.perDay) || !limit(quota.perMinute) || quota.perDay === undefined && quota.perMinute === undefined || quotaKeys.has(key)) visualError('budget_invalid');
+            quotaKeys.add(key);
+        }
         return this.write(handle, 'budget', 'account', value, expectedHash);
     }
     async reserve(handle, job) {
@@ -59,11 +93,17 @@ export class VisualStore {
             const jobs = await listNativeDocuments(tx, { kind: K.versionedJsonResource, handle, resourceType: 'atri.visual.job' });
             const duplicate = jobs.find(item => item.intentKey === job.intentKey);
             if (duplicate) return duplicate;
-            const budget = await getNativeDocument(tx, visualKey(handle, 'budget', 'account')) ?? defaultVisualBudget();
+            const budget = { ...defaultVisualBudget(), ...await getNativeDocument(tx, visualKey(handle, 'budget', 'account')) };
             const occupied = jobs.filter(item => !item.reservation.released && (['queued', 'submitting', 'submitted', 'running', 'result_received', 'uncertain_submission'].includes(item.status) || this.now() - item.createdAt < 86400000));
             const automatic = occupied.filter(item => item.mode === 'automatic');
             if (job.mode === 'automatic' && (automatic.length >= budget.imageDay || automatic.filter(item => this.now() - item.createdAt < 3600000).length >= budget.imageHour
                 || jobs.filter(item => item.mode === 'automatic' && ['queued', 'submitting', 'submitted', 'running', 'uncertain_submission'].includes(item.status)).length >= budget.autoConcurrency)) visualError('budget_exceeded');
+            // Requests still holding their reservation within the rolling day count; definite rejections were released.
+            for (const quota of requestQuotasFor(budget, job.connection.connectionProfileId, imageQuotaModel(job.compiled, job.target))) {
+                const used = quotaUsage(jobs, quota, this.now());
+                if (quota.perDay && used.day >= quota.perDay) visualError('request_quota_exceeded');
+                if (quota.perMinute && used.minute >= quota.perMinute) visualError('request_rate_limited');
+            }
             const amount = job.reservation.amount;
             if (amount > 0 && (budget.currency !== job.reservation.currency || occupied.reduce((sum, item) => sum + item.reservation.amount, 0) + amount > budget.moneyDay
                 || job.mode === 'automatic' && automatic.reduce((sum, item) => sum + item.reservation.amount, 0) + amount > budget.autoMoneyDay)) visualError('budget_exceeded');

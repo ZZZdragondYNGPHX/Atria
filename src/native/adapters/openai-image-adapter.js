@@ -1,9 +1,9 @@
 import { visualObject, visualError } from '../../../public/shared/native-visual-contract.js';
 import { protocolManifest, imageSemanticPrompt } from '../image-registry.js';
+import { OPENAI_IMAGE_MODELS, imageSizeRule, imageSizeProblem } from '../../../public/shared/image-service-catalog.js';
 import { imageEndpoint, imageRoute, imageJson, imageBase64, normalizeImage, canonicalMaskPng, readImageInput } from './image-transport.js';
 
-const models = new Set(['gpt-image-1', 'gpt-image-1-mini', 'gpt-image-1.5', 'gpt-image-2', 'gpt-image-2-2026-04-21',
-    'gpt-image-2.5-sunburst', 'gpt-image-2.5-flare', 'gpt-image-2.5-sunburst-2026-09-08', 'gpt-image-2.5-flare-2026-09-08']);
+const models = new Set(OPENAI_IMAGE_MODELS);
 export function createOpenaiImageAdapter({ fetchImpl = fetch } = {}) {
     return {
         describe: ({ target, connection, fingerprint }) => {
@@ -23,9 +23,9 @@ export function createOpenaiImageAdapter({ fetchImpl = fetch } = {}) {
             if (p.input_fidelity && (target.model.startsWith('gpt-image-2') || !['low', 'high'].includes(p.input_fidelity)
                 || target.model === 'gpt-image-1-mini' && p.input_fidelity !== 'low')) visualError('parameters_unsupported');
             const size = p.size ?? '1024x1024';
-            if (!['auto', '1024x1024', '1536x1024', '1024x1536'].includes(size)) {
-                const match = /^(\d{2,4})x(\d{2,4})$/.exec(size), width = Number(match?.[1]), height = Number(match?.[2]);
-                if (!target.model.startsWith('gpt-image-2') || !match || width % 16 || height % 16 || width > 3840 || height > 2160 || width * height > 8294400 || width / height < 1 / 3 || width / height > 3) visualError('geometry_unsupported');
+            if (size !== 'auto') {
+                const [width, height] = size.split('x').map(Number);
+                if (imageSizeProblem(imageSizeRule({ providerAdapter: 'provider.openai-images' }, target.model), width, height)) visualError('geometry_unsupported');
             }
             const images = ir.references.filter(ref => ref.purpose !== 'mask'), mask = ir.references.find(ref => ref.purpose === 'mask');
             if (images.length > 16 || ['img2img', 'inpaint'].includes(ir.operation) && !images.length || ir.operation === 'inpaint' && !mask) visualError('input_missing');

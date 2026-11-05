@@ -38,16 +38,16 @@ async function unzip(bytes, signal) {
 }
 export function createNovelaiImageProvider({ fetchImpl = fetch } = {}) {
     return Object.freeze({
-        async generate({ endpoint, body, responseFormat }, { secret, signal }) {
+        async generate({ endpoint, body, responseFormat, userAgent, allowInsecureHttp = false }, { secret, signal }) {
             let response;
             try {
-                response = await fetchImpl(endpoint, { method: 'POST', redirect: 'error', signal,
-                    headers: { 'Content-Type': 'application/json', Accept: responseFormat === 'json' ? 'application/json' : responseFormat === 'png' ? 'image/png' : 'application/zip', Authorization: 'Bearer ' + secret },
+                response = await fetchImpl(endpoint, { method: 'POST', redirect: 'error', signal, ...(allowInsecureHttp ? { allowInsecureHttp } : {}),
+                    headers: { 'Content-Type': 'application/json', Accept: responseFormat === 'json' ? 'application/json' : responseFormat === 'png' ? 'image/png' : 'application/zip', Authorization: 'Bearer ' + secret, ...(userAgent ? { 'User-Agent': userAgent } : {}) },
                     body: JSON.stringify(body) });
-            } catch { fail(signal?.aborted ? 'image_cancelled' : 'image_unreachable'); }
+            } catch (error) { fail(signal?.aborted ? 'image_cancelled' : error?.code === 'native_credential_insecure_target' ? 'image_insecure_target' : 'image_unreachable'); }
             if (!response.ok) {
-                await response.body?.cancel();
-                fail(response.status === 401 || response.status === 403 ? 'image_authentication_failed' : response.status === 429 ? 'image_rate_limited' : 'image_request_failed');
+                if (typeof response.body?.cancel === 'function') await response.body.cancel(); else response.body?.destroy?.();
+                fail(response.status === 401 || response.status === 403 ? 'image_authentication_failed' : response.status === 429 ? 'image_rate_limited' : response.status < 500 ? 'image_request_rejected' : 'image_request_failed');
             }
             let bytes = await readBounded(response.body, signal);
             try {

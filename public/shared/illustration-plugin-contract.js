@@ -11,13 +11,12 @@ function text(value, max = 65536) { if (typeof value !== 'string' || value.lengt
 function identity(value) { if (typeof value !== 'string' || !/^[a-z][a-z0-9_-]{0,127}$/.test(value)) throw new TypeError('Invalid illustration preference identity'); return value; }
 export function assertIllustrationPreset(value) {
     object(value, ['style', 'quality', 'negativePrompt', 'parameters']);
-    object(value.parameters, ['width', 'height', 'steps', 'scale', 'seed', 'sampler', 'model', 'noiseSchedule', 'sm', 'smDyn']);
+    object(value.parameters, ['width', 'height', 'steps', 'scale', 'seed', 'sampler', 'model', 'noiseSchedule', 'tier']);
     for (const [key, item] of Object.entries(value.parameters)) {
         if (['width', 'height', 'steps'].includes(key) && (!Number.isSafeInteger(item) || item < 1 || item > (key === 'steps' ? 100 : 32768))) throw new TypeError('Invalid illustration parameter');
         if (key === 'seed' && (!Number.isSafeInteger(item) || item < -1 || item > 4294967295)) throw new TypeError('Invalid illustration seed');
         if (key === 'scale' && (typeof item !== 'number' || !Number.isFinite(item) || item < 0 || item > 100)) throw new TypeError('Invalid illustration scale');
-        if (['model', 'sampler', 'noiseSchedule'].includes(key)) text(item, 128);
-        if (['sm', 'smDyn'].includes(key) && typeof item !== 'boolean') throw new TypeError('Invalid illustration parameter');
+        if (['model', 'sampler', 'noiseSchedule', 'tier'].includes(key)) text(item, 128);
     }
     return { style: text(value.style), quality: text(value.quality), negativePrompt: text(value.negativePrompt), parameters: structuredClone(value.parameters) };
 }
@@ -39,7 +38,7 @@ export function speakerDrawingCharacter(speaker) {
         aliases: [], fixedPrompt: '', defaultClothing: '', enabled: true, storyActorId: '', storyParticipantId: speaker.participantId });
 }
 export function assertIllustrationSettings(value) {
-    object(value, ['schemaVersion', 'enabled', 'characters', 'works', 'preset', 'imageTargetId', 'imageRenderingId', 'director', 'promptRouteId', 'template']);
+    object(value, ['schemaVersion', 'enabled', 'characters', 'works', 'preset', 'imageTargetId', 'imageRenderingId', 'director', 'promptRouteId', 'template', 'costConsents', 'promptMode']);
     if (value.schemaVersion !== 2 || typeof value.enabled !== 'boolean' || !Array.isArray(value.characters) || value.characters.length > 1024) throw new TypeError('Invalid illustration settings');
     const characters = value.characters.map(assertDrawingCharacter), ids = new Set(characters.map(item => item.id));
     if (ids.size !== characters.length) throw new TypeError('Duplicate drawing character');
@@ -60,7 +59,15 @@ export function assertIllustrationSettings(value) {
         if (!/^[a-f0-9]{64}$/.test(value.director.autoApproval.targetFingerprint) || !Number.isFinite(value.director.autoApproval.maxCost) || value.director.autoApproval.maxCost < 0
             || typeof value.director.autoApproval.currency !== 'string' || !Array.isArray(value.director.autoApproval.externalAssetIds) || !Array.isArray(value.director.autoApproval.omittedPreferred)) throw new TypeError('Invalid automatic authorization');
     }
-    const settings = { schemaVersion: 2, enabled: value.enabled, characters, works, preset: assertIllustrationPreset(value.preset), imageTargetId: text(value.imageTargetId, 128), imageRenderingId: text(value.imageRenderingId, 128), director: structuredClone(value.director), promptRouteId: text(value.promptRouteId, 128), template: text(value.template) };
+    // Remembered per-service cost consent; the server still authorizes each task against the budget ledger.
+    const costConsents = value.costConsents ?? [];
+    if (!Array.isArray(costConsents) || costConsents.length > 64) throw new TypeError('Invalid illustration cost consent');
+    for (const consent of costConsents) {
+        object(consent, ['targetFingerprint', 'maxCost', 'currency']);
+        if (!/^[a-f0-9]{64}$/.test(consent.targetFingerprint) || !Number.isFinite(consent.maxCost) || consent.maxCost < 0 || typeof consent.currency !== 'string' || consent.currency.length > 8) throw new TypeError('Invalid illustration cost consent');
+    }
+    if (value.promptMode !== undefined && !['auto', 'manual'].includes(value.promptMode)) throw new TypeError('Invalid illustration prompt mode');
+    const settings = { schemaVersion: 2, enabled: value.enabled, characters, works, preset: assertIllustrationPreset(value.preset), imageTargetId: text(value.imageTargetId, 128), imageRenderingId: text(value.imageRenderingId, 128), director: structuredClone(value.director), promptRouteId: text(value.promptRouteId, 128), template: text(value.template), ...(costConsents.length ? { costConsents: structuredClone(costConsents) } : {}), ...(value.promptMode === 'manual' ? { promptMode: 'manual' } : {}) };
     if (JSON.stringify(settings).length > 4 * 1024 * 1024) throw new TypeError('Illustration settings exceed budget');
     return settings;
 }

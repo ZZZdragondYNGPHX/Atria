@@ -60,9 +60,14 @@ export async function captureIllustrationContext(core, handle, sessionId, anchor
     return assertIllustrationPromptContext({ schemaVersion: 1, source, items: [...history, ...(selected.participant ? [item('illustration-speaker', 'context.fact', JSON.stringify(publicParticipant(selected)))] : []), ...(neighbors ? [item('illustration-paragraphs', 'context.fact', neighbors)] : []), ...facts] });
 }
 
+const DESCRIPTION_OUTPUT_TOKENS = 1024;
 export function createIllustrationContext({ context, anchor, draft, template }) {
     return async (request, resolved, provider, compiler) => {
-        const reserve = effectiveOutputReserve(resolved);
+        // A description is a short JSON reply. Without an explicit output limit,
+        // reserving the model's whole output window would spend most of the daily
+        // description budget on a single request; providers derive max_tokens from this.
+        const reserve = resolved.generation.output.maxTokens === undefined || resolved.generation.output.maxTokens === null
+            ? Math.min(effectiveOutputReserve(resolved), DESCRIPTION_OUTPUT_TOKENS) : effectiveOutputReserve(resolved);
         const maxTokens = resolved.model.limits.contextTokens - reserve;
         if (maxTokens < 1) throw new GenerationError('generation_context_budget_exceeded');
         const source = context.source;

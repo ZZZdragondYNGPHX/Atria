@@ -43,7 +43,7 @@ const ERROR_CODES = new Set([...COMPUTE_ADMISSION_CODES, 'native_generation_budg
     'generation_adapter_control_unsupported', 'generation_adapter_prompt_unsupported', 'generation_adapter_output_budget',
     'generation_adapter_sampling_invalid', 'generation_adapter_stop_invalid', 'generation_adapter_stream_invalid',
     'generation_adapter_message_invalid',
-    'generation_output_authority_changed',
+    'generation_output_authority_changed', 'generation_illustration_budget_exceeded',
 ]);
 
 export class GenerationError extends Error {

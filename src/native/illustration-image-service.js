@@ -7,7 +7,7 @@ import { assertNativeId, createNativeId } from './identity.js';
 import { hashNativeDocument } from './repositories/common.js';
 import { IllustrationService } from './illustration-service.js';
 import { nativeTaskScheduler } from './task-scheduler.js';
-import { VisualStore } from './visual-store.js';
+import { VisualStore, imageQuotaModel, requestQuotasFor } from './visual-store.js';
 import { ImageJobWorker, newImageJob } from './image-worker.js';
 import { createImageRegistry, resolveImageSelection } from './image-registry.js';
 import { VersionedJsonResourceHandler } from './model-prompt-runtime/persistence.js';
@@ -182,10 +182,12 @@ export class IllustrationImageService {
         const prepared = { prepareId, source, selection, connection, target, rendering, compiled: plan.compiled, evidence,
             targetFingerprint: plan.fingerprint, mediaOperation: media?.mediaOperation ?? null, expectedHead: presentation.head, expiresAt: Date.now() + 300000 };
         await this.store.write(handle, 'prepared', prepareId, prepared, null);
+        const quotas = await this.store.quotaState(handle, (await this.store.budget(handle)).value, connection.connectionProfileId, imageQuotaModel(plan.compiled, target));
         return { prepareId, targetFingerprint: plan.fingerprint, requestHash: evidence.requestHash, source, selection, target: { id: targetId, model: target.model, name: target.displayName },
-            capabilities: plan.manifest, constraints: plan.constraints, cost: plan.manifest.cost, externalAssetIds: plan.effectiveReferences.map(ref => ref.assetId), prompt: ir.prompt, expiresAt: prepared.expiresAt };
+            capabilities: plan.manifest, constraints: plan.constraints, cost: plan.manifest.cost, externalAssetIds: plan.effectiveReferences.map(ref => ref.assetId), prompt: ir.prompt, expiresAt: prepared.expiresAt,
+            ...(quotas.length ? { quotas } : {}) };
     }
-    authorize(prepared, approval, mode) {
+    authorize(prepared, approval, mode, quotas = []) {
         visualObject(approval, ['targetFingerprint', 'requestHash', 'maxCost', 'currency', 'allowUnknownCost', 'externalAssetIds', 'omittedPreferred']);
         if (approval.targetFingerprint !== prepared.targetFingerprint || approval.requestHash !== prepared.evidence.requestHash) visualError('approval_conflict');
         if (!Number.isFinite(approval.maxCost) || approval.maxCost < 0 || typeof approval.currency !== 'string' || typeof approval.allowUnknownCost !== 'boolean'
@@ -193,8 +195,10 @@ export class IllustrationImageService {
         for (const ref of prepared.compiled.inputAssetRefs ?? prepared.evidence.ir.references) if (!approval.externalAssetIds.includes(ref.assetId)) visualError('external_transfer_unauthorized');
         const cost = prepared.evidence.capabilities.cost;
         if (mode === 'automatic' && prepared.connection.providerAdapter.startsWith('provider.novelai-image')) visualError('human_initiation_required');
-        if (cost.kind === 'unknown' && (mode === 'automatic' || !approval.allowUnknownCost || approval.maxCost <= 0)) visualError('cost_unauthorized');
-        if (cost.kind !== 'free' && (approval.maxCost <= 0 || cost.currency && approval.currency !== cost.currency || cost.upperBound !== null && cost.upperBound > approval.maxCost)) visualError('cost_unauthorized');
+        // With a request quota the quota bounds an unknown-price service; no money estimate is needed.
+        const quotaBound = cost.kind === 'unknown' && quotas.some(quota => quota.perDay);
+        if (cost.kind === 'unknown' && (mode === 'automatic' || !approval.allowUnknownCost || approval.maxCost <= 0 && !quotaBound)) visualError('cost_unauthorized');
+        if (cost.kind !== 'free' && (approval.maxCost <= 0 && !quotaBound || cost.currency && approval.currency !== cost.currency || cost.upperBound !== null && cost.upperBound > approval.maxCost)) visualError('cost_unauthorized');
         for (const omission of prepared.evidence.constraints.omitted) if (omission.tier === 'preferred' && !approval.omittedPreferred.includes(omission.capability)) visualError('degradation_unauthorized');
         return { amount: cost.kind === 'free' ? 0 : cost.upperBound ?? approval.maxCost, currency: cost.kind === 'free' ? '' : approval.currency };
     }
@@ -216,7 +220,8 @@ export class IllustrationImageService {
             const config = (await this.host.extensions.illustrationSettings(handle)).value.director;
             if (config.mode !== 'automatic' || !config.autoApproval || config.autoApproval.targetFingerprint !== prepared.targetFingerprint) visualError('automatic_unauthorized');
         }
-        const { amount, currency } = this.authorize(prepared, input.approval, mode);
+        const quotas = requestQuotasFor((await this.store.budget(handle)).value, prepared.connection.connectionProfileId, imageQuotaModel(prepared.compiled, prepared.target));
+        const { amount, currency } = this.authorize(prepared, input.approval, mode, quotas);
         const mediaOperation = prepared.mediaOperation ?? { schemaVersion: 2, mediaOperationId: createNativeId('mediaOperation'), kind: prepared.evidence.ir.operation,
             source: prepared.source, parentImageVersionIds: [], inputAssets: [], mask: null, geometry: null };
         const job = await this.store.reserve(handle, newImageJob({ source: prepared.source, intentKey: mode === 'automatic' ? 'auto:' + visualFingerprint({ sessionId: prepared.source.sessionId, variantId: prepared.source.anchor.variantId, start: prepared.source.anchor.start, end: prepared.source.anchor.end }) : input.prepareId, fingerprint: prepared.evidence.requestHash,

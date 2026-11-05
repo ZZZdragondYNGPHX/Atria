@@ -145,6 +145,7 @@ export class VisualDirector {
     async skip(handle, shotId, expectedRevision) {
         const row = await this.store.read(handle, 'shot', shotId); if (!row.value) visualError('shot_missing');
         await resolveVisualSource(this.host.sessionCore, handle, row.value.source);
-        return this.store.write(handle, 'shot', shotId, { ...row.value, status: 'skipped', reason: 'user_skip' }, expectedRevision);
+        // Skipping is idempotent; a reader without the row revision skips the current one.
+        return this.store.write(handle, 'shot', shotId, { ...row.value, status: 'skipped', reason: 'user_skip' }, expectedRevision ?? row.revision);
     }
 }

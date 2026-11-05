@@ -1575,7 +1575,8 @@ export class NativeGenerationHost {
                                     agentId: role, lane: capture.lane, attemptScope: 'provider_send' });
                                 if (prediction) await assertPredictionCaptureCurrent(prediction.capture);
                                 if (input.role === 'illustration_prompt' && this.persistence._engine) await new VisualStore({ engine: this.persistence._engine }).reservePlanner(handle,
-                                    { reservationId: attemptId + ':' + retry, tokens: prepared.snapshot.diagnostics.inputTokens + prepared.snapshot.contextPlan.budget.reservedOutputTokens });
+                                    { reservationId: attemptId + ':' + retry, tokens: prepared.snapshot.diagnostics.inputTokens + prepared.snapshot.contextPlan.budget.reservedOutputTokens })
+                                    .catch(error => { throw error.code === 'native_visual_planner_budget_exceeded' ? new GenerationError('generation_illustration_budget_exceeded') : error; });
                                 await orchestrationSend?.beforeSend?.({ receipt, prepared, resolved: prepared.resolved,
                                     snapshot: actualSnapshot, compiledBinding: actualSnapshot?.diagnostics.compiledBinding, budgetAttemptRef: receipt?.budgetAttemptRef });
                                 if (sendBank) await sendBank.assertCurrent();

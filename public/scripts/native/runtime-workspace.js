@@ -18,6 +18,8 @@ import { NOVELAI_IMAGE_ENDPOINT, NOVELAI_IMAGE_ADAPTERS, officialNovelaiCapabili
 import { assertComputeBudget } from '../../shared/native-compute-budget.js';
 import { connectionRequiresSecret } from '../../shared/native-connection-auth.js';
 import { mountApiPresetFields } from './api-preset-fields.js';
+// Sent only when the reader opts in for a relay that rejects non-browser clients.
+const BROWSER_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
 
 const sectionLabels = { routes: 'API presets', models: 'API presets', connections: 'Services', retrieval: 'Memory search', diagnostics: 'Diagnostics' };
 const resourceLabels = { routes: 'API preset', models: 'API preset', connections: 'service' };
@@ -66,7 +68,7 @@ function assertRuntimeEditorShape(value) {
 }
 
 export function mountNativeRuntimeWorkspace({ document: doc, body, section, route, host }) {
-    let disposed = false; let data; let refillList = null; let scopedResources = []; let selectedRoute = route; let activeEditor = null; let restoreShell = () => {};
+    let disposed = false; let returnToIllustrations = false; let data; let refillList = null; let scopedResources = []; let selectedRoute = route; let activeEditor = null; let restoreShell = () => {};
     const controller = new AbortController();
     const root = doc.createElement('section');
     root.className = 'atri-runtime'; root.dataset.atriaRuntimeNative = section;
@@ -318,8 +320,12 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             notice('Describe what your relay supports, using the JSON from its documentation. If it forwards official NovelAI requests unchanged, use official forwarding.', relay);
             const imageCapabilities = field(relay, 'Image capabilities (JSON)', value.options?.imageCapabilities ? JSON.stringify(value.options.imageCapabilities, null, 2) : '', undefined, true);
             button('Use official protocol forwarding', () => { imageCapabilities.value = JSON.stringify(officialNovelaiCapabilities(), null, 2); }, relay);
+            const userAgent = field(relay, 'User-Agent (only if your relay asks for a browser client)', value.options?.userAgent ?? '');
+            button('Use a browser User-Agent', () => { userAgent.value = BROWSER_USER_AGENT; }, relay);
+            const insecureLabel = node('label', undefined, relay); const insecure = node('input', undefined, insecureLabel); insecure.type = 'checkbox'; insecure.checked = value.options?.allowInsecureHttp === true;
+            node('span', 'Allow a plain http:// address. Your API key is sent unencrypted; use only for a relay you trust.', insecureLabel);
             const imageExample = node('details', undefined, relay); node('summary', 'Format example', imageExample);
-            notice('responseFormat: zip / json (images[].image base64) / png. Declare model IDs, characterPrompts, sm, maxPixels, maxSteps, samplers and noiseSchedules in models.', imageExample);
+            notice('responseFormat: zip / json (images[].image base64) / png. Declare model IDs, maxPixels, maxSteps, samplers and noiseSchedules in models.', imageExample);
             node('pre', JSON.stringify({ responseFormat: 'zip', models: [officialNovelaiCapabilities().models[0]] }, null, 2), imageExample);
             const compatibility = node('details', undefined, fields); compatibility.className = 'atri-runtime-more';
             node('summary', 'Compatibility options', compatibility);
@@ -413,9 +419,9 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             serialize = () => {
                 if (creating || !secret.value && connectionRequiresSecret(adapter.value)) throw Object.assign(new Error('Select a stored Secret'), { code: 'native_secret_selection_required' });
                 const options = { ...value.options }; for (const key of ['toolSchemaMode', 'responseMode']) delete options[key];
-                delete options.imageCapabilities;
+                delete options.imageCapabilities; delete options.userAgent; delete options.allowInsecureHttp;
                 if (NOVELAI_IMAGE_ADAPTERS.includes(adapter.value)) {
-                    const imageOptions = adapter.value === 'provider.novelai-image-compatible' ? { imageCapabilities: JSON.parse(imageCapabilities.value) } : {};
+                    const imageOptions = adapter.value === 'provider.novelai-image-compatible' ? { imageCapabilities: JSON.parse(imageCapabilities.value), ...(userAgent.value.trim() ? { userAgent: userAgent.value.trim() } : {}), ...(insecure.checked ? { allowInsecureHttp: true } : {}) } : {};
                     const candidate = { ...value, options: imageOptions, providerAdapter: adapter.value, transport: 'transport.http', endpoint: endpoint.value, secretRef: { scope: 'player', secretId: secret.value } };
                     novelaiConnectionCapabilities(candidate);
                     return candidate;
@@ -600,7 +606,8 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                 notice('Saved. Refreshing…', status);
                 data = await runtimeRequest('/configuration', { signal: controller.signal });
                 if (disposed || editorToken !== editorSequence) return;
-                renderList(); notice(section === 'routes' ? 'API preset saved. Stories using it pick up these parameters on their next reply.' : 'Service saved. API presets that use it pick up the change on their next request.'); root.querySelector('input')?.focus();
+                renderList(); notice(section === 'routes' ? 'API preset saved. Stories using it pick up these parameters on their next reply.' : 'Service saved. API presets that use it pick up the change on their next request.');
+                if (section === 'connections' && returnToIllustrations) { returnToIllustrations = false; button('Back to illustration setup', () => globalThis.history.back(), canvas).dataset.variant = 'primary'; canvas.lastElementChild.focus(); } else root.querySelector('input')?.focus();
                 void host.refreshSearch?.();
             } catch (error) {
                 if (!disposed && editorToken === editorSequence) {
@@ -725,6 +732,11 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         const id = next?.child?.id?.split(':').slice(1).join(':');
         const item = data?.[section]?.find(item => item[ids[section]] === id);
         if (section === 'routes' && id === 'new') { if (activeEditor !== 'setup') openSetup({ inline: !data.routes.length }); return; }
+        // Illustration setup links here to add an image service directly.
+        if (section === 'connections' && id === 'new-image') {
+            if (activeEditor !== 'new-image') { returnToIllustrations = true; if (environment.get().mode !== 'compact') renderList(); void edit({ schemaVersion: 1, scope: 'player', connectionProfileId: 'conn_' + crypto.randomUUID().replaceAll('-', ''), displayName: '', providerAdapter: 'provider.novelai-image' }, true).then(() => { activeEditor = 'new-image'; }); }
+            return;
+        }
         if (!item || activeEditor === id) return;
         // Arriving from the setup flow: show the list beside the editor.
         if (!root.querySelector('.atri-runtime-split') && environment.get().mode !== 'compact') renderList();

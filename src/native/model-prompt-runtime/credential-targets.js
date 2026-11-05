@@ -4,17 +4,20 @@ import { hashNativeDocument as hash } from '../repositories/common.js';
 import { assertConnectionProfile } from './contracts.js';
 
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
-export function credentialNetworkTarget(endpoint) {
+// Plain-http remote targets are refused unless the reader opted in for that one connection
+// (only NovelAI-compatible relays offer the option; the key is then sent unencrypted).
+export const allowsInsecureHttp = connection => connection?.providerAdapter === 'provider.novelai-image-compatible' && connection.options?.allowInsecureHttp === true;
+export function credentialNetworkTarget(endpoint, { allowInsecure = false } = {}) {
     const url = new URL(endpoint), hostname = url.hostname.replace(/^\[|\]$/g, '').toLowerCase();
     if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) fail('native_credential_target_invalid');
     const range = isIP(hostname) ? ipaddr.process(hostname).range() : null;
     const local = hostname === 'localhost' || range === 'loopback';
     if (range && !['unicast', 'loopback'].includes(range)) fail('native_credential_network_denied');
-    if (url.protocol !== 'https:' && !local) fail('native_credential_insecure_target');
+    if (url.protocol !== 'https:' && !local && !allowInsecure) fail('native_credential_insecure_target');
     return { endpoint: url.href, origin: url.origin, path: url.pathname, local };
 }
 export function canonicalCredentialTarget(value) {
-    const connection = assertConnectionProfile(value), target = credentialNetworkTarget(connection.endpoint);
+    const connection = assertConnectionProfile(value), target = credentialNetworkTarget(connection.endpoint, { allowInsecure: allowsInsecureHttp(connection) });
     return { ...target, connectionProfileId: connection.connectionProfileId, providerAdapter: connection.providerAdapter,
         transport: connection.transport, secretRef: connection.secretRef ?? null,
         networkPolicy: connection.networkPolicy, options: connection.options };

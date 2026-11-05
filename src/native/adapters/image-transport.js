@@ -11,13 +11,15 @@ export function imageRoute(endpoint, path) {
     const base = imageEndpoint(endpoint);
     return base.replace(/\/$/, '') + '/' + path.replace(/^\//, '');
 }
+// credentialFetch returns node-fetch responses (Node Readable bodies, no cancel()).
+const releaseBody = async response => { try { if (typeof response.body?.cancel === 'function') await response.body.cancel(); else response.body?.destroy?.(); } catch { /* already closed */ } };
 export async function boundedImageBytes(response, signal, max = 32 * 1024 * 1024) {
-    if (!response.ok) { await response.body?.cancel(); visualError(response.status === 429 ? 'rate_limited' : [401, 403].includes(response.status) ? 'authentication_failed' : 'request_failed'); }
+    if (!response.ok) { await releaseBody(response); visualError(response.status === 429 ? 'rate_limited' : [401, 403].includes(response.status) ? 'authentication_failed' : response.status < 500 ? 'request_rejected' : 'request_failed'); }
     const chunks = []; let total = 0;
-    if (Number(response.headers.get('content-length') ?? 0) > max) { await response.body?.cancel(); visualError('response_limit'); }
+    if (Number(response.headers.get('content-length') ?? 0) > max) { await releaseBody(response); visualError('response_limit'); }
     for await (const chunk of response.body ?? []) {
         if (signal?.aborted) visualError('cancelled');
-        total += chunk.length; if (total > max) { await response.body?.cancel().catch(() => {}); visualError('response_limit'); }
+        total += chunk.length; if (total > max) { await releaseBody(response); visualError('response_limit'); }
         chunks.push(Buffer.from(chunk));
     }
     return Buffer.concat(chunks);

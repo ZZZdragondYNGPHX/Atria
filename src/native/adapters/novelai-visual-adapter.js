@@ -34,7 +34,7 @@ export function createNovelaiVisualAdapter({ fetchImpl = fetch } = {}) {
             { combinations: [{ features: ['identity', 'vibe'], state: 'unsupported', evidence: 'NovelAI Precise Reference cannot be combined with Vibe' }] });
         },
         compile({ ir, target, connection, seed }) {
-            visualObject(target.nativeParameters, ['width', 'height', 'steps', 'scale', 'seed', 'sampler', 'noiseSchedule', 'sm', 'smDyn', 'strength', 'noise', 'inpaintStrength', 'referenceStrength', 'referenceInformation', 'referenceFidelity', 'upscaleBlurSigma']);
+            visualObject(target.nativeParameters, ['width', 'height', 'steps', 'scale', 'seed', 'sampler', 'noiseSchedule', 'tier', 'strength', 'noise', 'inpaintStrength', 'referenceStrength', 'referenceInformation', 'referenceFidelity', 'upscaleBlurSigma']);
             const model = target.model.replace(/-inpainting$/, '');
             const { strength = .7, noise = 0, inpaintStrength = 1, referenceStrength = 1, referenceInformation = 1, referenceFidelity = 1, upscaleBlurSigma = 0, ...sampling } = target.nativeParameters;
             for (const value of [strength, noise, inpaintStrength, referenceStrength, referenceInformation, referenceFidelity]) if (!Number.isFinite(value) || value < 0 || value > 1) visualError('parameters_invalid');
@@ -50,7 +50,7 @@ export function createNovelaiVisualAdapter({ fetchImpl = fetch } = {}) {
                 body: { model, image: { assetId: base.assetId, contentHash: base.contentHash }, declared_blur_sigma: upscaleBlurSigma }, transforms: [{ kind: 'generative-upscale', contentMayChange: true }] };
             if (ir.operation === 'img2img') { body.action = 'img2img'; Object.assign(body.parameters, { image: base, strength, noise, extra_noise_seed: seed }); } else if (ir.operation === 'inpaint') {
                 if (!mask) visualError('mask_missing');
-                body.action = 'infill'; body.model = model + '-inpainting';
+                body.action = 'infill'; body.model = body.model + '-inpainting';
                 Object.assign(body.parameters, { image: base, mask, img2img: { strength: inpaintStrength, noise, extra_noise_seed: seed }, add_original_image: false });
                 transforms.push({ kind: 'gray8-to-opaque-white-edit-png', modelMode: body.model });
             } else if (!['txt2img', 'regenerate'].includes(ir.operation)) visualError('operation_unsupported');
@@ -64,7 +64,9 @@ export function createNovelaiVisualAdapter({ fetchImpl = fetch } = {}) {
                 body.parameters.director_reference_secondary_strength_values = precise.map(() => referenceFidelity);
                 transforms.push({ kind: 'precise-reference-black-padding', dimensions: ['1024x1536', '1536x1024', '1472x1472'] });
             }
-            return { endpoint: connection.endpoint, ...rendered, transforms };
+            // Some relays only accept browser-like clients; the connection may name the User-Agent to send.
+            return { endpoint: connection.endpoint, ...rendered, transforms, ...(connection.options?.userAgent ? { userAgent: connection.options.userAgent } : {}),
+                ...(connection.options?.allowInsecureHttp === true ? { allowInsecureHttp: true } : {}) };
         },
         async generate(compiled, options) {
             const body = structuredClone(compiled.body), parameters = body.parameters;
