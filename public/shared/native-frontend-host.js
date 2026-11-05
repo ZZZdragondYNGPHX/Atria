@@ -56,13 +56,13 @@ const targets = {
     'host.conversation.alternatives': read(hostObject({ ...MESSAGE_SCHEMA.properties, alternativeBranchId: id }), false, true),
     'host.conversation.inspect': { ...read(rows(MESSAGE_SCHEMA)), inputSchema: hostObject({ revisionId: id }) },
     'host.conversation.switch': action(hostObject({ branchId: id })),
-    'host.conversation.generation': { ...read(GENERATION_SCHEMA, true), revisionBound: false },
-    'host.conversation.cancel': { ...action(HOST_EMPTY, true), revisionBound: false },
-    'host.composer.get': { ...read(hostObject({ text }), true), revisionBound: false },
-    'host.composer.set': { ...action(hostObject({ text }), true), revisionBound: false },
-    'host.composer.append': { ...action(hostObject({ text }), true), revisionBound: false },
-    'host.composer.clear': { ...action(HOST_EMPTY, true), revisionBound: false },
-    'host.composer.focus': { ...action(HOST_EMPTY, true), revisionBound: false },
+    'host.conversation.generation': read(GENERATION_SCHEMA, true),
+    'host.conversation.cancel': action(HOST_EMPTY, true),
+    'host.composer.get': read(hostObject({ text }), true),
+    'host.composer.set': action(hostObject({ text }), true),
+    'host.composer.append': action(hostObject({ text }), true),
+    'host.composer.clear': action(HOST_EMPTY, true),
+    'host.composer.focus': action(HOST_EMPTY, true),
     'host.composer.submit': action(HOST_EMPTY, true),
     'host.session.status': read(SESSION_SCHEMA),
     'host.session.begin': action(hostObject({ inputJson: string(65536), invocationId: id })),
@@ -75,6 +75,12 @@ const targets = {
     'host.session.exit': action(HOST_EMPTY, true),
     'host.session.diagnostics': read(hostObject({ ...SESSION_SCHEMA.properties, failed: { type: 'boolean' }, historical: { type: 'boolean' } }), true),
 };
+// Local drafts and generation status do not read or mutate a world revision.
+// Keep this runtime policy outside the immutable compiled target contract.
+export function hostTargetRequiresRevision(target) {
+    return !(target.service === 'host.composer' && ['get', 'set', 'append', 'clear', 'focus'].includes(target.method)
+        || target.service === 'host.conversation' && ['generation', 'cancel'].includes(target.method));
+}
 export function fixedHostTarget(target, blockSchema) {
     fields(target, ['service', 'method', 'blockType']);
     const key = target.service + '.' + target.method;

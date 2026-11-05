@@ -1,4 +1,4 @@
-import { fixedHostTarget } from '../../../public/shared/native-frontend-host.js';
+import { hostTargetRequiresRevision, fixedHostTarget } from '../../../public/shared/native-frontend-host.js';
 import { readFixedHost, writeFixedHost } from './host-services.js';
 import { onFrontendEpochInvalidated } from './epoch.js';
 import { randomUUID } from 'node:crypto';
@@ -114,7 +114,7 @@ export class FrontendBridgeService {
             if (request.method === 'host.authorize') {
                 const target = binding.target.service && fixedHostTarget(binding.target, binding.outputSchema?.properties?.data);
                 if (!target?.local) throw bridgeFailure('bridge_method_denied');
-                if (target.revisionBound !== false && request.revision !== base.revision.revisionId) throw bridgeFailure('bridge_revision_stale');
+                if (hostTargetRequiresRevision(binding.target) && request.revision !== base.revision.revisionId) throw bridgeFailure('bridge_revision_stale');
                 bridgeValue(request.input ?? {}, binding.inputSchema);
                 return receipt({});
             }

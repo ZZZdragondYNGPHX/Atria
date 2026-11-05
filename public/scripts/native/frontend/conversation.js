@@ -1,4 +1,4 @@
-import { fixedHostTarget, projectConversation, projectPresentation, projectSession, projectMessageBlocks } from '../../../shared/native-frontend-host.js';
+import { hostTargetRequiresRevision, projectConversation, projectPresentation, projectSession, projectMessageBlocks } from '../../../shared/native-frontend-host.js';
 import { bridgeFailure } from '../../../shared/native-frontend-bridge.js';
 
 // Host adapter over the one existing Session runtime and generation entrypoint.
@@ -23,7 +23,7 @@ export function createHeadlessConversation({ runtime, composer, stop, actions = 
         blocks: (type, entries, variants) => current()?.snapshot ? projectMessageBlocks(view(entries, variants), type) : [],
         generation: () => ({ ...(current()?.generationProjection ?? { state: 'idle', text: '', error: '' }) }),
         async invoke(target, input, revision) {
-            const value = guard(revision, fixedHostTarget(target).revisionBound !== false), key = target.service + '.' + target.method;
+            const value = guard(revision, hostTargetRequiresRevision(target)), key = target.service + '.' + target.method;
             const draft = () => { if (!composer) throw bridgeFailure('bridge_host_unavailable'); return composer; };
             if (key === 'host.persona.openSelector') {
                 if (value.failed || value.history) throw bridgeFailure('bridge_session_readonly');
