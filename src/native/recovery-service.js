@@ -18,7 +18,7 @@ import { assertWritable } from '../storage/read-only-mode.js';
 import { ConflictError, NotFoundError } from '../storage/errors.js';
 import { resourceFingerprint, resourceContentBytes, RECOVERY_RETENTION_MS } from '../storage/resource-catalog.js';
 import { readAccountContent, listAccountFiles } from '../storage/resource-accounting.js';
-import { RECOVERY_PROTOCOL, recoveryKey, recoveryRecords, recoveryReferences, documentReferencesKey, withRecoveryPublication } from './recovery-roots.js';
+import { RECOVERY_PROTOCOL, recoveryKey, recoveryRecords, recoveryReferences, documentReferencesKey, withRecoveryPublication, isRecoveryRecord } from './recovery-roots.js';
 import { orchestrationProjectReferences } from './orchestration/reference-roots.js';
 
 export const RECOVERABLE_DESCRIPTORS = {
@@ -36,7 +36,11 @@ const hashBytes = bytes => createHash('sha256').update(bytes).digest('hex');
 const recordId = row => resourceFingerprint(row.key);
 const conflict = code => { throw new ConflictError(code); };
 const sessionKinds = new Set([K.session, K.runControl, K.branch, K.timelineEntry, K.timelineVariant, K.sessionState, K.sessionRevision, K.savePoint, K.commitReceipt, K.sharedAccess, K.sharedAccessRevision]);
-const packageKinds = new Set([K.package, K.packageVersion, K.packageState]);
+const packageKinds = new Set([K.package, K.packageVersion, K.packageState, K.realm, K.realmRevision, K.playerContinuity, K.playerContinuityRevision]);
+const ownsSessionRecord = (row, sessionIds, native) => sessionKinds.has(row.key.kind) && sessionIds.has(row.key.sessionId)
+    || row.key.kind === K.maintenance && [...sessionIds].some(id => row.key.scope === 'session:' + id)
+    || runtimeCheckpointOwner(row)?.type === 'session' && sessionIds.has(runtimeCheckpointOwner(row).id)
+    || sessionIds.has(visualSessionOwner(row, native));
 const exactDependencies = new Set([K.packageVersion, K.worldRevision, K.knowledgeRevision, K.personaRevision, K.versionedJsonResourceRevision, K.assetRef]);
 
 /** Native business-object lifecycle. The storage manager supplies identities;
@@ -59,6 +63,11 @@ export class NativeRecoveryService {
     }
 
     async lock(handle, target, operation) {
+        if (target.type === 'package') return withNativeResourceWrite(handle, 'package:' + target.id, () => this.sessions.continuity.lock(handle, target.id, async () => {
+            const ids = (await this.sessions.list(handle)).filter(session => session.packageId === target.id).map(session => session.sessionId).sort();
+            const enter = index => index === ids.length ? operation() : withSessionWrite(handle, ids[index], () => enter(index + 1));
+            return enter(0);
+        }));
         if (['connection', 'model', 'route', 'retrieval'].includes(target.type) || target.type === 'versioned' && VERSIONED_MODEL_PROMPT_RESOURCE_TYPES.includes(target.resourceType)) return withRuntimeWrite(handle, operation);
         if (target.type === 'versioned' && target.resourceType?.startsWith('atri.extensions.')) return withNativeResourceWrite(handle, 'extensions', operation);
         if (target.type === 'session') {
@@ -113,12 +122,16 @@ export class NativeRecoveryService {
                 || target.expectedFingerprint !== undefined && root.integrity !== target.expectedFingerprint
                 || target.expectedRevision !== undefined && root.doc.revision !== target.expectedRevision) conflict('storage_preview_stale');
             const [, field] = descriptors[target.type];
+            const sessionIds = new Set(target.type === 'session' ? [target.id] : target.type === 'package'
+                ? native.filter(row => row.key.kind === K.session && row.doc.packageId === target.id).map(row => row.key.sessionId) : []);
             records = native.filter(row => {
-                if (target.type === 'session') return sessionKinds.has(row.key.kind) && row.key.sessionId === target.id
-                    || row.key.kind === K.maintenance && row.key.scope === 'session:' + target.id
-                    || runtimeCheckpointOwner(row)?.type === 'session' && runtimeCheckpointOwner(row).id === target.id
-                    || visualSessionOwner(row, native) === target.id;
-                if (target.type === 'package') return packageKinds.has(row.key.kind) && row.key.packageId === target.id;
+                if (target.type === 'session') return ownsSessionRecord(row, sessionIds, native);
+                if (target.type === 'package') return packageKinds.has(row.key.kind) && row.key.packageId === target.id
+                    || ownsSessionRecord(row, sessionIds, native)
+                    // Keep previously deleted conversations deleted. Their recovery
+                    // entries travel with the work instead of blocking its removal.
+                    || isRecoveryRecord(row) && row.doc.target.type === 'session'
+                        && row.doc.records.some(record => record.key.kind === K.session && record.doc.packageId === target.id);
                 if (target.type === 'world') return [K.world, K.worldRevision].includes(row.key.kind) && row.key.worldId === target.id;
                 if (target.type === 'knowledge') return [K.knowledgeBase, K.knowledgeRevision, K.knowledgeEntry].includes(row.key.kind) && row.key.knowledgeBaseId === target.id;
                 if (target.type === 'persona') return [K.persona, K.personaRevision].includes(row.key.kind) && row.key.personaId === target.id;
@@ -200,7 +213,8 @@ export class NativeRecoveryService {
             if (result.references.length) conflict('native_persona_referenced');
         }
         const root = ['project', 'backup'].includes(target.type) ? null : this.rootKey(handle, target);
-        const retained = await recoveryRecords(tx, handle);
+        const owned = new Set(records.map(recordId));
+        const retained = (await recoveryRecords(tx, handle)).filter(row => !owned.has(recordId(row)));
         if (root && (await recoveryReferences(tx, handle, root, retained)).length) conflict('native_resource_retained_for_recovery');
         for (const record of records) if ((await recoveryReferences(tx, handle, record.key, retained)).length) conflict('native_resource_retained_for_recovery');
         if (this.graph) {
@@ -212,7 +226,6 @@ export class NativeRecoveryService {
             }
         }
         const all = (observation?.content || await readAccountContent(tx, handle)).native;
-        const owned = new Set(records.map(recordId));
         // Includes independent Agent material and Runtime/library references not
         // represented by ResourceGraph. Scope labels alone are not a cascade.
         const checkpoints = new RuntimeCheckpointStore({ engine: this.engine, handle });
@@ -245,8 +258,13 @@ export class NativeRecoveryService {
             // removal. The Native transaction durably publishes both before ACK.
             await withRecoveryPublication(async () => {
                 if (target.type === 'session') await this.sessions.delete(handle, target.id, { expectedRevisionId: closure.records.find(row => row.key.kind === K.session).doc.headRevisionId });
-                else if (target.type === 'package') await this.packages.delete(handle, target.id);
-                else if (target.type === 'world') await this.worlds.delete(handle, target.id);
+                else if (target.type === 'package') {
+                    // Package-wide continuity is removed with all its conversations,
+                    // so pending transfers no longer need a separate user action.
+                    for (const row of closure.records) if ([K.realm, K.realmRevision, K.playerContinuity, K.playerContinuityRevision].includes(row.key.kind)) await tx.deleteResource(row.key);
+                    for (const row of closure.records) if (row.key.kind === K.session) await this.sessions.delete(handle, row.key.sessionId);
+                    await this.packages.delete(handle, target.id);
+                } else if (target.type === 'world') await this.worlds.delete(handle, target.id);
                 else if (target.type === 'knowledge') await this.knowledge.delete(handle, target.id);
                 else if (target.type === 'binding') await this.knowledge.deleteBinding(handle, target.id);
                 else if (target.type === 'persona') {
@@ -264,14 +282,14 @@ export class NativeRecoveryService {
                         await this.library.delete(handle, { scope: 'library', resourceType: target.resourceType, resourceId: target.id, revision: root.doc.currentRevision }, () => []);
                     }
                 }
+                for (const row of closure.records) {
+                    // Terminal Ironman control is a permanent anti-rollback authority.
+                    if (row.key.kind === K.runControl && row.doc.mode === 'ironman') continue;
+                    if ([K.connectionProfile, K.modelProfile, K.runtimeRoute].includes(row.key.kind)) continue;
+                    await tx.deleteResource(row.key);
+                }
+                await tx.putResource(recoveryKey(handle, id), nativeRecord(doc));
             });
-            for (const row of closure.records) {
-                // Terminal Ironman control is a permanent anti-rollback authority.
-                if (row.key.kind === K.runControl && row.doc.mode === 'ironman') continue;
-                if ([K.connectionProfile, K.modelProfile, K.runtimeRoute].includes(row.key.kind)) continue;
-                await tx.deleteResource(row.key);
-            }
-            await tx.putResource(recoveryKey(handle, id), nativeRecord(doc));
             this.graph?.invalidate(handle);
             return this.publicRecord(doc);
         }));

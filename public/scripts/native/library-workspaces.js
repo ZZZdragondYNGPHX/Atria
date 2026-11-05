@@ -355,10 +355,8 @@ async function workDetail(doc, root, host, id, refresh) {
     if (!work.sessions?.length) state(doc, games, 'empty', 'No game progress yet', 'Start a new story from this work.');
     work.sessions?.forEach(item => sessionRow(doc, games, item, host, refresh, work.package.displayName));
     const management = disclosure(doc, root, 'Manage work');
-    el(doc, 'p', '', tl('Export any progress you want to keep, then remove dependent Sessions before uninstalling this Work.'), management);
-    action(doc, management, 'Review dependent Sessions', () => { games.scrollIntoView?.({ block: 'start' }); games.setAttribute('tabindex', '-1'); games.focus(); });
+    el(doc, 'p', '', tl('Deleting this work also deletes its conversations and saved progress.'), management);
     action(doc, management, 'Delete Work', async () => {
-        if (!await confirmLibraryAction('Delete this installed Work? Existing Native Sessions must be deleted first.')) return;
         await client.deleteWork(id); host.openLibrarySection('works');
     }, { danger: true });
 }

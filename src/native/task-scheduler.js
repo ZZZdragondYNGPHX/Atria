@@ -43,6 +43,11 @@ export class NativeTaskScheduler {
         return [...this.operations.values()].some(operation => operation.owner === owner && operation.view.anchor?.sessionId === sessionId
             && (!terminal.has(operation.view.status) || this.running.has(operation) || this.suspended.has(operation)));
     }
+    async cancelSessionWork(owner, sessionId) {
+        const operations = [...this.operations.values()].filter(operation => operation.owner === owner && operation.view.anchor?.sessionId === sessionId);
+        for (const operation of operations) this.cancel(owner, operation.view.operationId);
+        await Promise.all(operations.map(operation => operationCompletions.get(operation)?.promise));
+    }
     hasOwnerWork(owner) { return [...this.operations.values()].some(operation => operation.owner === owner && (!terminal.has(operation.view.status) || this.running.has(operation) || this.suspended.has(operation))); }
     hasProjectWork(owner, projectId) { return [...this.operations.values()].some(operation => operation.owner === owner && operation.view.anchor?.projectId === projectId && (!terminal.has(operation.view.status) || this.running.has(operation) || this.suspended.has(operation))); }
     async withForegroundWork(owner, operation) {

@@ -2,6 +2,7 @@ import { getStorageEngine, getSessionRepo, getPackageRepo, getWorldRepo, getKnow
 import { getUserDirectories, getAccountQuotaBytes } from '../users.js';
 import { getNativeStudioServices } from '../endpoints/native-studio.js';
 import { ResourceCenterService } from './resource-center.js';
+import { nativeTaskScheduler } from '../native/task-scheduler.js';
 
 const centers = new WeakMap();
 export function getResourceCenter() {
@@ -18,6 +19,10 @@ export function getResourceCenter() {
 
 export async function recycleNativeResource(handle, target, expected = {}) {
     const center = getResourceCenter();
+    if (target.type === 'package') {
+        const sessions = (await getSessionRepo().list(handle)).filter(session => session.packageId === target.id);
+        await Promise.all(sessions.map(session => nativeTaskScheduler.cancelSessionWork(handle, session.sessionId)));
+    }
     const checked = { ...target };
     for (const field of ['expectedRevisionId', 'baseVersionId', 'expectedIntegrity', 'expectedFingerprint', 'baseRevision', 'expectedRevision']) {
         if (expected?.[field] !== undefined) checked[field] = expected[field];
