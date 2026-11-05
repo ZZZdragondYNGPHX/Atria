@@ -34,6 +34,9 @@ export function publicBridgeError(error) {
     if (code.startsWith('bridge_')) return code;
     if (/conflict|stale/.test(code)) return 'bridge_revision_stale';
     if (/cancel/.test(code)) return 'bridge_cancelled';
+    if (code === 'native_generation_budget_exhausted') return 'bridge_generation_budget_exhausted';
+    if (code === 'generation_provider_timeout') return 'bridge_generation_timeout';
+    if (code === 'generation_provider_failed') return 'bridge_generation_failed';
     // Closed public refusal reasons, never raw Authority/provider diagnostics.
     const refusal = authorityPublicRefusal(error);
     if (refusal) return 'bridge_authority_' + refusal;
