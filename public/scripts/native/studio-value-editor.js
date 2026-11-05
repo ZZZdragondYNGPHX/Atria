@@ -13,7 +13,7 @@ export function mountStudioValueEditor({ document: doc, root, value, label, onRe
     const toggle = doc.createElement('button'); toggle.type = 'button';
     const content = doc.createElement('div'); content.className = 'atri-studio-value-fields';
     const feedback = doc.createElement('p'); feedback.hidden = true; feedback.tabIndex = -1; feedback.id = 'atria-studio-value-feedback-' + ++editorSequence;
-    const review = doc.createElement('button'); review.type = 'button'; review.textContent = t('Review Changes'); review.dataset.variant = 'primary';
+    const review = doc.createElement('button'); review.type = 'button'; review.textContent = t('Save changes'); review.dataset.variant = 'primary';
     toolbar.append(toggle); shell.append(toolbar, content, feedback, review);
     function fail(error) {
         feedback.hidden = false; feedback.setAttribute('role', 'alert');

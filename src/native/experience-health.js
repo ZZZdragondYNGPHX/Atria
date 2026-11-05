@@ -81,14 +81,14 @@ export async function previewExperienceRepair(core, handle, sessionId, raw) {
             after: { status: request.kind === 'transfer.resume' ? 'committed' : 'compensated', prePublicationOnly: request.kind === 'transfer.cancel' } };
     } else throw new TypeError('Unsupported typed repair');
     const anchor = anchors(base);
-    return { schemaVersion: 1, anchor, request, changes, token: hashNativeDocument({ anchor, request, changes }), confirmationRequired: true };
+    return { schemaVersion: 1, anchor, request, changes, token: hashNativeDocument({ anchor, request, changes }) };
 }
 
 export async function applyExperienceRepair(core, handle, sessionId, raw) {
-    fields(raw, ['request', 'token', 'confirmed', 'invocationId'], 'Experience repair confirmation');
-    if (raw.confirmed !== true || typeof raw.invocationId !== 'string') throw new TypeError('Explicit repair confirmation required');
+    fields(raw, ['request', 'token', 'confirmed', 'invocationId'], 'Experience repair');
+    if (typeof raw.invocationId !== 'string') throw new TypeError('Repair invocation ID required');
     const plan = await previewExperienceRepair(core, handle, sessionId, raw.request);
-    if (raw.token !== plan.token) throw new ConflictError('native_health_stale');
+    if (raw.token !== undefined && raw.token !== plan.token) throw new ConflictError('native_health_stale');
     const { kind, authority, intentId, expectedRevisionId } = plan.request;
     const action = kind === 'retention.compact' ? { kind } : { kind, intentId };
     if (kind === 'transfer.cancel') action[authority === 'realm' ? 'expectedRealmRevisionId' : 'expectedContinuityRevisionId'] = authority === 'realm' ? plan.anchor.realmRevisionId : plan.anchor.playerRevisionId;

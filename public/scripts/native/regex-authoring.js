@@ -50,8 +50,7 @@ export function mountNativeRegexRules({ parent, scripts = [], save }) {
         node('span', rule.disabled ? 'Disabled' : 'Enabled', row).className = 'atri-regex-rule-state';
         button(row, 'Edit rule', () => edit(rule));
         button(row, 'Delete rule', async () => {
-            const { Popup, POPUP_TYPE } = await import('../popup.js');
-            if (await new Popup(tl('Delete this Regex rule?'), POPUP_TYPE.CONFIRM).show() && current()) await save(scripts.filter(item => item.id !== rule.id));
+            if (current()) await save(scripts.filter(item => item.id !== rule.id));
         });
         for (const [label, delta] of [['Move rule up', -1], ['Move rule down', 1]]) {
             button(row, label, async () => { const next = [...scripts]; [next[index], next[index + delta]] = [next[index + delta], next[index]]; await save(next); }).disabled = index + delta < 0 || index + delta >= scripts.length;

@@ -5,7 +5,6 @@ import { translateShellText as tl, formatShellText as ft } from './atria-shell/l
 import { BrowserResourceCenter } from './browser-resource-center.js';
 import { notifyStorageChange } from './native/storage-change-events.js';
 import { StorageCenterDrawer, containStorageDialogFocus, prefersStorageReducedMotion } from './storage-center-drawer.js';
-import { callGenericPopup, POPUP_RESULT, POPUP_TYPE } from './popup.js';
 
 const labels = { sessions: 'Sessions & saves', projects: 'Works & projects', knowledge: 'Worlds & knowledge', media: 'Media & attachments',
     personas: 'Personal identities', agents: 'Agent material', settings: 'Settings & integrations', recovery: 'Backups & recycle bin',
@@ -309,7 +308,7 @@ export class StorageCenterPanel {
             if (!this.selection.size) return;
             const bar = node('div', 'storage-center-selection');
             bar.append(node('span', '', ft('${0} selected', [numeric(this.selection.size)])), button('Clear selection', () => { this.selection.clear(); draw(); select(); search.focus({ preventScroll: true }); }, 'plain'));
-            bar.append(button(this.scope === 'server' ? 'Preview recycle bin move' : 'Preview permanent deletion', () => this.preview(this.scope === 'server' ? 'trash' : 'purge', [...this.selection.values()]), 'primary'));
+            bar.append(button(this.scope === 'server' ? 'Move to recycle bin' : 'Permanently delete', () => this.performAction(this.scope === 'server' ? 'trash' : 'purge', [...this.selection.values()]), 'primary'));
             selectionBar.append(bar);
             if (!hadSelection && !this.keyboard && !prefersStorageReducedMotion()) bar.animate([{ transform: 'translateY(8px)', opacity: 0 }, { transform: 'translateY(0)', opacity: 1 }], { duration: 160, easing: 'cubic-bezier(.23,1,.32,1)' });
         };
@@ -367,7 +366,7 @@ export class StorageCenterPanel {
             this.notice(scope === 'server' ? 'This keeps the complete recovery closure for 30 days and does not immediately release its data.' : 'Browser deletion cannot be restored from the server recycle bin.', scope === 'server' ? 'neutral' : 'warning', content);
             const controls = node('div', 'storage-center-actions');
             if (scope === 'server') controls.append(button('Open business workspace', () => this.openBusiness(item, checked), 'primary'));
-            const review = button(scope === 'server' ? 'Preview recycle bin move' : 'Preview permanent deletion', () => this.preview(scope === 'server' ? 'trash' : 'purge', [item.target])); review.disabled = !checked.allowed; controls.append(review); content.append(controls);
+            const remove = button(scope === 'server' ? 'Move to recycle bin' : 'Permanently delete', () => this.performAction(scope === 'server' ? 'trash' : 'purge', [item.target])); controls.append(remove); content.append(controls);
         } catch (error) {
             if (generation !== this.detailGeneration || this.closed || scope !== this.scope) return;
             content.removeAttribute('aria-busy'); content.replaceChildren(); this.notice(error.message, 'warning', content); content.append(button('Retry', () => this.detail(item)));
@@ -403,7 +402,7 @@ export class StorageCenterPanel {
             const card = node('section', 'storage-center-card'); card.append(node('h2', '', tl('Safe to clean')));
             const keys = new Set(suggestions.map(item => JSON.stringify(item.target)));
             if (!this.safeInitialized) { this.safeSelection = new Set(keys); this.safeInitialized = true; } else this.safeSelection = new Set([...this.safeSelection].filter(key => keys.has(key)));
-            const review = button('Preview safe cleanup', () => this.preview('clean', suggestions.filter(item => this.safeSelection.has(JSON.stringify(item.target))).map(item => item.target)), 'primary');
+            const review = button('Clean verified data', () => this.performAction('clean', suggestions.filter(item => this.safeSelection.has(JSON.stringify(item.target))).map(item => item.target)), 'primary');
             const summary = node('span', 'storage-center-note');
             const update = () => { summary.textContent = ft('${0} selected', [numeric(this.safeSelection.size)]); review.disabled = !this.safeSelection.size; };
             for (const item of suggestions) {
@@ -425,7 +424,7 @@ export class StorageCenterPanel {
         if (this.scope === 'browser') { this.note('Browser actions do not promise persistent recovery. Use a new preview for any permanent deletion.'); return; }
         this.notice('Recycle bin data is included in the total. Moving an item there retains its usage for 30 days.');
         this.content.append(button('Account backup & export', () => this.openBackups()));
-        for (const item of this.data.historyReviews || []) this.content.append(button(ft('Review local Git publication: ${0}', [item.name]), () => this.preview('history', [item.target])));
+        for (const item of this.data.historyReviews || []) this.content.append(button(ft('Review local Git publication: ${0}', [item.name]), () => this.performAction('history', [item.target])));
         const list = node('section', 'storage-center-recovery-list');
         for (const item of this.data.recovery) {
             const row = node('article', 'storage-center-recovery'), copy = node('div'); copy.append(node('h3', '', item.name));
@@ -478,9 +477,6 @@ export class StorageCenterPanel {
         if (this.legacyRestoreBusy || this.closed) return;
         this.legacyRestoreBusy = true; control.disabled = true;
         try {
-            const content = node('div'); content.append(node('p', '', tl('The original path must be free. Existing data will never be overwritten.')), node('strong', '', item.relativePath || item.id));
-            const confirmed = await callGenericPopup(content, POPUP_TYPE.CONFIRM, '', { okButton: tl('Restore original item'), cancelButton: tl('Cancel'), defaultResult: POPUP_RESULT.NEGATIVE });
-            if (confirmed !== POPUP_RESULT.AFFIRMATIVE || this.closed || this.scope !== 'server' || this.region !== 'recovery') return;
             await legacyRecoveryRequest('restore', { id: item.id });
             this.legacyRestored.add(item.id);
             if (this.closed || this.scope !== 'server') return;
@@ -501,27 +497,32 @@ export class StorageCenterPanel {
         this.notice('Retained for 30 days. Restored objects keep their original identities and do not restart background work.', 'neutral', content);
         const controls = node('div', 'storage-center-actions');
         for (const action of ['restore', 'purge']) {
-            const control = button(actions[action], () => this.preview(action, [{ type: 'recovery', id: item.id }]), action === 'restore' ? 'primary' : 'secondary');
+            const control = button(actions[action], () => this.performAction(action, [{ type: 'recovery', id: item.id }]), action === 'restore' ? 'primary' : 'secondary');
             control.disabled = item.state !== 'retained'; controls.append(control);
         }
-        if (item.state === 'paused-review') controls.append(button('Review interrupted recovery', () => this.preview('repair', [{ type: 'recovery', id: item.id }])));
+        if (item.state === 'paused-review') controls.append(button('Resume reviewed recovery', () => this.performAction('repair', [{ type: 'recovery', id: item.id }])));
         content.append(controls); this.drawer.open(item.name, content);
     }
-    async preview(action, targets) {
+    async performAction(action, targets) {
         if (!targets.length || this.previewBusy) return;
         const scope = this.scope, generation = ++this.previewGeneration, source = document.activeElement;
         this.previewBusy = true; if (source?.tagName === 'BUTTON') source.disabled = true;
         this.drawer.body.querySelector('[data-preview-error]')?.remove();
         this.status.textContent = tl('Checking the fixed selection…');
         try {
-            const task = scope === 'server' ? await this.api('preview', { action, targets }) : await this.browser.preview(action, targets);
+            const task = scope === 'server' ? await this.api('perform', { action, targets }) : await this.browser.preview(action, targets);
             if (this.closed || generation !== this.previewGeneration || scope !== this.scope) {
-                if (scope === 'server') await this.api('stop', { id: task.id }); else this.browser.save({ ...task, status: 'stopped' });
+                if (scope === 'browser') this.browser.save({ ...task, status: 'stopped' });
                 return;
             }
-            this.previewReturn = { region: this.region, category: this.category };
-            this.drawer.close(true); this.activeTask = task; this.renderTask(task, true);
+            this.drawer.close(true); this.activeTask = task; this.renderTask(task);
             this.content.querySelector('h1')?.focus({ preventScroll: true }); this.body.scrollTop = 0;
+            if (scope === 'browser') {
+                const update = progress => { if (this.activeTask?.id === task.id) { this.activeTask = progress; if (this.taskView) this.renderTask(progress); } };
+                const result = await this.browser.execute(task.id, update); update(result); await this.remeasureAfterTask();
+            } else {
+                void this.watchTask(task.id);
+            }
         } catch (error) {
             if (generation === this.previewGeneration && scope === this.scope) {
                 this.error(error);
@@ -529,26 +530,25 @@ export class StorageCenterPanel {
             }
         } finally { this.previewBusy = false; if (source?.isConnected && source.tagName === 'BUTTON') source.disabled = false; }
     }
-    renderTask(task, confirm = false) {
+    renderTask(task) {
         if (this.closed || this.scope !== task.scope) return;
         const previousLabel = this.content.contains(document.activeElement) ? document.activeElement.textContent : null;
         const scrollTop = this.body.scrollTop;
         this.taskView = true;
         this.drawResources = null;
         this.content.replaceChildren();
-        this.heading(confirm ? 'Review fixed operation' : 'Operation result', actions[task.action]);
+        this.heading('Operation result', actions[task.action]);
         this.note(task.scope === 'server' ? 'Current account · Server' : 'This device · Current site');
         if (task.action === 'trash') this.notice('This keeps the complete recovery closure for 30 days and does not immediately release its data.');
         if (['purge', 'clean'].includes(task.action)) this.notice('This action cannot be undone.', 'warning');
-        if (task.scope === 'browser') this.notice('Keep this page open. Interrupted browser work requires a fresh review; completed changes remain effective.', 'warning');
-        const pending = task.items.filter(item => item.status === 'pending'), complete = task.items.filter(item => ['succeeded', 'failed', 'blocked', 'repreview'].includes(item.status));
-        const eligibleBytes = pending.some(item => item.bytes == null) ? null : pending.reduce((sum, item) => sum + item.bytes, 0);
+        if (task.scope === 'browser') this.notice('Keep this page open. You can retry interrupted items; completed changes remain effective.', 'warning');
+        const complete = task.items.filter(item => ['succeeded', 'failed', 'blocked', 'repreview'].includes(item.status));
         const metrics = node('section', 'storage-center-preview-metrics');
-        for (const [label, value] of [[confirm ? 'Ready to process' : 'Objects processed', numeric(confirm ? pending.length : complete.length)], [confirm ? 'Data in this operation' : 'Processed data', size(confirm ? eligibleBytes : task.processedBytes)], ['Immediate space release', task.action === 'trash' ? size(0) : size(task.estimatedPhysicalRelease)]]) {
+        for (const [label, value] of [['Objects processed', numeric(complete.length)], ['Processed data', size(task.processedBytes)], ['Immediate space release', task.action === 'trash' ? size(0) : size(task.estimatedPhysicalRelease)]]) {
             const stat = node('div'); stat.append(node('span', '', tl(label)), node('strong', 'storage-center-numeric', value)); metrics.append(stat);
         }
         this.content.append(metrics);
-        if (!confirm && ['running', 'queued'].includes(task.status)) {
+        if (['running', 'queued'].includes(task.status)) {
             const progress = node('progress', 'storage-center-progress'); progress.max = task.items.length; progress.value = complete.length; progress.setAttribute('aria-label', tl('Objects processed')); this.content.append(progress);
         }
         this.note('Physical space released cannot be inferred from the amount processed. Usage is measured again after completion.');
@@ -558,46 +558,18 @@ export class StorageCenterPanel {
         const list = node('div', 'storage-center-results');
         for (const item of task.items) { const row = node('div', 'storage-center-result'); row.dataset.state = item.status; row.append(node('strong', '', item.name), node('span', 'storage-center-numeric', size(item.bytes)), node('span', 'storage-center-badge', tl(states[item.status] || item.status))); if (item.reason) this.note(explain(item.reason), row); if (item.consequences?.includes('ironman-remains-terminal')) this.note('Ironman termination is permanent. Recovery does not revive the run.', row); if (item.resumePhase) this.note(ft('Reviewed recovery phase: ${0}', [item.resumePhase]), row); if (item.consequences?.includes('permanent-deletion')) this.note('This action cannot be undone.', row); list.append(row); } this.content.append(list);
         const controls = node('div', 'storage-center-actions storage-center-preview-actions');
-        if (confirm) {
-            const execute = button(actions[task.action], async () => {
-                execute.disabled = true;
-                try {
-                    if (['purge', 'clean'].includes(task.action) && !await this.confirmPermanent(task)) return;
-                    if (this.closed || this.scope !== task.scope || this.activeTask?.id !== task.id) return;
-                    if (task.scope === 'browser') {
-                        const update = progress => { if (this.activeTask?.id === task.id) { this.activeTask = progress; if (this.taskView) this.renderTask(progress); } };
-                        const result = await this.browser.execute(task.id, update); update(result); await this.remeasureAfterTask();
-                    } else { await this.api('execute', { id: task.id }); this.watchTask(task.id); }
-                } catch (error) { this.error(error); } finally { if (execute.isConnected) execute.disabled = false; }
-            }, ['purge', 'clean'].includes(task.action) ? 'destructive' : 'primary'); execute.disabled = !task.items.some(item => item.status === 'pending'); controls.append(execute, button('Cancel', async () => { try { if (task.scope === 'server') await this.api('stop', { id: task.id }); else this.browser.save({ ...task, status: 'stopped' }); this.render(); } catch (error) { this.error(error); } }));
-        } else if (['queued', 'running'].includes(task.status)) {
+        if (['queued', 'running'].includes(task.status)) {
             const stop = button('Stop after current object', async () => {
                 stop.disabled = true;
                 try { if (task.scope === 'server') await this.api('stop', { id: task.id }); else this.browser.stop(task.id); this.status.textContent = tl('Stopping after the current object. Completed changes remain effective.'); } catch (error) { this.error(error); stop.disabled = false; }
             }); stop.disabled = Boolean(task.stopRequested); controls.append(stop);
         } else {
-            const remaining = task.items.filter(item => item.status !== 'succeeded').map(item => item.target); if (remaining.length) controls.append(button('Review remaining items again', () => this.preview(task.action, remaining)));
+            const remaining = task.items.filter(item => item.status !== 'succeeded').map(item => item.target); if (remaining.length) controls.append(button('Retry remaining items', () => this.performAction(task.action, remaining)));
             controls.append(button('Refresh resources', () => { this.selection.clear(); this.navigate('overview'); void this.refresh(); }));
         }
         this.content.append(controls); this.status.textContent = ft('Operation ${0}: ${1}', [task.id, tl(states[task.status] || task.status)]); this.status.dataset.error = 'false';
         if (previousLabel) [...controls.querySelectorAll('button')].find(item => item.textContent === previousLabel)?.focus({ preventScroll: true });
         this.body.scrollTop = scrollTop;
-    }
-    async confirmPermanent(task) {
-        const content = node('div', 'storage-center-permanent-confirm');
-        content.append(node('h2', '', tl('Confirm permanent deletion')), node('p', '', tl('This action cannot be undone.')));
-        const label = node('label'), check = node('input'); check.type = 'checkbox'; check.name = 'confirm-permanent-deletion';
-        label.append(check, node('span', '', tl('I reviewed this list and understand that these data cannot be recovered.'))); content.append(label);
-        const result = await callGenericPopup(content, POPUP_TYPE.CONFIRM, '', {
-            okButton: tl('Permanently delete'), cancelButton: tl('Back to preview'), animation: 'none',
-            defaultResult: POPUP_RESULT.NEGATIVE,
-            onOpen: popup => {
-                const update = () => { popup.okButton.setAttribute('aria-disabled', String(!check.checked)); popup.okButton.classList.toggle('disabled', !check.checked); };
-                check.addEventListener('change', update); update();
-            },
-            onClosing: popup => popup.result !== POPUP_RESULT.AFFIRMATIVE || check.checked,
-        });
-        return result === POPUP_RESULT.AFFIRMATIVE && check.checked && task.id === this.activeTask?.id;
     }
     async remeasureAfterTask() {
         const scope = this.scope;
@@ -632,7 +604,7 @@ export class StorageCenterPanel {
                 this.note(formatAtriaDate(task.createdAt), card);
                 const done = task.items.filter(item => item.status === 'succeeded').length;
                 card.append(node('strong', 'storage-center-task-count', `${numeric(done)} / ${numeric(task.items.length)}`));
-                card.append(button('View operation', () => { this.activeTask = task; this.renderTask(task, task.status === 'preview'); if (['queued', 'running'].includes(task.status) && task.scope === 'server') void this.watchTask(task.id); }, 'plain')); this.content.append(card);
+                card.append(button('View operation', () => { this.activeTask = task; this.renderTask(task); if (['queued', 'running'].includes(task.status) && task.scope === 'server') void this.watchTask(task.id); }, 'plain')); this.content.append(card);
             }
         } catch (error) { if (!this.closed && generation === this.renderGeneration && scope === this.scope) this.error(error); }
     }

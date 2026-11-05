@@ -803,11 +803,6 @@ class PromptManager {
 
         // Delete selected prompt from list form and close edit form (in-place DOM removal)
         this.handleDeletePrompt = async () => {
-            const userChoice = await Popup.show.confirm(t`Are you sure you want to delete this prompt?`, null);
-            if (!userChoice) {
-                return;
-            }
-
             const appendPromptFooter = /** @type {HTMLSelectElement|null} */(document.getElementById(this.configuration.prefix + 'prompt_manager_footer_append_prompt'));
             const promptID = appendPromptFooter?.value;
             const prompt = this.getPromptById(promptID);

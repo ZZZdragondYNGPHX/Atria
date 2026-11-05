@@ -11958,5 +11958,22 @@
     "Chat completions (image relays that return the picture in the reply)": "对话补全（在回复中返回图片的画图中转）",
     "This service uses a plain http:// address. Allow it for this service in Runtime, or use https.": "此服务使用明文 http:// 地址。请在 Runtime 中为该服务允许明文地址，或改用 https。",
     "The image service failed on its side. Try again later.": "画图服务端出错。请稍后再试。",
-    "This service cannot do that kind of edit. Choose another service.": "此服务不支持这种编辑。请换一个服务。"
+    "This service cannot do that kind of edit. Choose another service.": "此服务不支持这种编辑。请换一个服务。",
+    "Retry remaining items": "重试剩余项目",
+    "Resume transfer": "继续转移",
+    "Cancel transfer": "取消转移",
+    "Repair retention": "修复保留数据",
+    "Choose what to delete": "选择删除内容",
+    "Create goal": "创建目标",
+    "Save changes": "保存修改",
+    "Revision saved.": "修订已保存。",
+    "Save commits your project edits. Existing exact references keep their versions.": "保存会提交项目修改，现有精确引用保留其版本。",
+    "Edit project Actors and save your changes. Existing sessions keep their exact package version.": "编辑项目角色并保存修改。现有会话保留其精确作品版本。",
+    "Edit project starting points and save your changes. Existing Sessions and Saves keep their exact package.": "编辑项目起点并保存修改。现有会话和存档保留其精确作品版本。",
+    "Edit project Worlds and save your changes. Library revisions and existing Sessions keep their versions.": "编辑项目世界并保存修改。资料库修订和现有会话保留原版本。",
+    "Edit project Knowledge and save your changes. Library revisions and existing Sessions keep their versions.": "编辑项目知识并保存修改。资料库修订和现有会话保留原版本。",
+    "Edit project files and save your changes directly.": "编辑项目文件后直接保存修改。",
+    "Save commits your edits after validation. Errors leave your draft available for correction.": "保存时自动校验并提交修改。遇到错误会保留草稿，方便修正。",
+    "Changes were not saved. Fix the reported error and try again.": "修改未保存，请根据错误提示修正后重试。",
+    "Keep this page open. You can retry interrupted items; completed changes remain effective.": "请保持页面打开。中断的项目可以重试，已完成的修改仍然生效。"
 }

@@ -100,16 +100,12 @@ export function mountPersonaWorkspace({ document: doc, body, route, host, browse
             });
             action(doc, manage, 'Use as default', async () => {
                 const baseline = await client.readPersonaDefault();
-                if (!fresh(current) || !await doc.defaultView.confirm(tl('Set this exact revision as the account default? Existing sessions keep their identity.'))) return;
                 if (!fresh(current)) return;
                 await client.setPersonaDefault({ selection: item.ref, expectedFingerprint: baseline.expectedFingerprint }); feedback(doc, area, 'Saved successfully.');
             }, { disabled: item.area.archived });
             action(doc, manage, 'Used By', async () => { const result = await client.getPersonaUsedBy(item.ref.personaId); if (fresh(current)) disclosure(doc, area, 'Used By', result.references); });
             action(doc, manage, 'Delete permanently', async () => {
                 if (!confirmAtriaDraftLeave(doc, form)) return;
-                const result = await client.getPersonaUsedBy(item.ref.personaId); if (!fresh(current)) return;
-                disclosure(doc, area, 'Used By', result.references);
-                if (result.references.length || !doc.defaultView.confirm(tl('Delete this unreferenced Persona permanently?'))) return;
                 if (!fresh(current)) return;
                 await client.deletePersona({ personaId: item.ref.personaId, expectedFingerprint: item.expectedFingerprint }); await show({ child: { id: 'personas' } });
             }, { danger: true });

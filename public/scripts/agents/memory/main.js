@@ -4043,13 +4043,7 @@ async function resetMemoryGraphForWorkspace(context) {
         }
     };
     assertScope();
-    const confirmed = await context.callGenericPopup(
-        i18n('Reset current chat memory graph? This cannot be undone.'),
-        context.POPUP_TYPE.CONFIRM,
-        '',
-        { okButton: i18n('Reset'), cancelButton: i18n('Cancel') },
-    );
-    if (confirmed !== context.POPUP_RESULT.AFFIRMATIVE) return { cancelled: true };
+
 
     assertScope();
     if (base && nativeSessionRuntime.snapshot?.revision?.revisionId !== base.revision.revisionId) throw new Error(i18n('The current Session changed. Reopen Memory before resetting.'));
@@ -9694,19 +9688,7 @@ ${renderEdgeFormEditorHtml(latest, editorId, edge, selectedEdgeIndex)}
             notifyError(i18nFormat('Node not found: ${0}', nodeId));
             return;
         }
-        const confirm = await context.callGenericPopup(
-            i18nFormat(
-                'Delete node ${0}: ${1}? This will remove its subtree and related edges.',
-                nodeId,
-                String(node.title || ''),
-            ),
-            context.POPUP_TYPE.CONFIRM,
-            '',
-            { okButton: i18n('Delete'), cancelButton: i18n('Cancel') },
-        );
-        if (confirm !== context.POPUP_RESULT.AFFIRMATIVE) {
-            return;
-        }
+
         const beforeStore = normalizeStoreForRuntime(latest);
         dropNode(latest, nodeId, true);
         await persistLatest(
@@ -10029,23 +10011,6 @@ ${renderEdgeFormEditorHtml(latest, editorId, edge, selectedEdgeIndex)}
         }
         if (!Number.isInteger(selectedEdgeIndex) || selectedEdgeIndex < 0 || !latest.edges?.[selectedEdgeIndex]) {
             notifyError(i18n('No edge selected. Click an edge in graph first.'));
-            return;
-        }
-
-        const edge = latest.edges[selectedEdgeIndex];
-        const confirm = await context.callGenericPopup(
-            i18nFormat(
-                'Delete edge #${0}: ${1} -> ${2} [${3}]?',
-                selectedEdgeIndex,
-                escapeHtml(String(edge.from || '')),
-                escapeHtml(String(edge.to || '')),
-                escapeHtml(String(edge.type || '')),
-            ),
-            context.POPUP_TYPE.CONFIRM,
-            '',
-            { okButton: i18n('Delete'), cancelButton: i18n('Cancel') },
-        );
-        if (confirm !== context.POPUP_RESULT.AFFIRMATIVE) {
             return;
         }
 
@@ -12509,9 +12474,6 @@ async function openSchemaEditorPopup(context, settings, root) {
         rerender(current);
     });
     jQuery(document).on(`click${namespace}`, `${selector} .atria-schema-editor-reset`, function () {
-        if (!window.confirm(i18n('Reset schema editor content to default? This will overwrite current unsaved schema edits.'))) {
-            return;
-        }
         rerender(normalizeNodeTypeSchema(structuredClone(defaultNodeTypeSchema)));
         notifySuccess(i18n('Schema reset to default in editor.'));
     });
@@ -13153,9 +13115,6 @@ function bindUi() {
     });
 
     root.find('#atria_rpg_memory_advanced_reset').off('click').on('click', function () {
-        if (!window.confirm(i18n('Reset advanced settings editor to default? This will overwrite current unsaved advanced edits.'))) {
-            return;
-        }
         hydrateAdvancedTabFields(root, defaultSettings);
         applyAdvancedTabToLiveSettings(root, settings);
         notifySuccess(i18n('Advanced settings reset to defaults in editor.'));

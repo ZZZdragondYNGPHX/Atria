@@ -188,7 +188,7 @@ export function mountWorldEditor({ document: doc, root, value, worldId = null, l
                 structured(advancedFields, 'metadata', 'World metadata');
             } else note(body, 'Use Source to repair this object. The original value is kept.');
         }
-        action(doc, body, 'Review Changes', async () => {
+        action(doc, body, 'Save changes', async () => {
             const next = advanced ? JSON.parse(source) : draft; validate(next);
             shell.inert = true;
             const rev = snapshot ? next.revision : next;

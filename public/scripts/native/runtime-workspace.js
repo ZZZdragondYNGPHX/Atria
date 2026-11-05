@@ -9,7 +9,7 @@ import { nativeSessionRuntime } from './session-runtime.js';
 import { createAtriaShellEnvironment } from '../atria-shell/environment.js';
 import { createAtriaStatePanel } from '../atria-shell/primitives.js';
 import { createAtriaIcon } from '../atria-shell/icons.js';
-import { confirmLibraryAction, referenceRemediation } from './library-ui.js';
+import { referenceRemediation } from './library-ui.js';
 import { createStudioNativeId } from './studio-authoring.js';
 import { nativeStudioClient } from './studio-client.js';
 import { mountRuntimeSetup, normalizeChatEndpoint } from './runtime-setup.js';
@@ -575,7 +575,6 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                 if (remove.disabled) return;
                 remove.disabled = true;
                 try {
-                    if (!await confirmLibraryAction('Delete this Runtime resource? Referenced items cannot be deleted.')) return;
                     if (disposed || editorToken !== editorSequence) return;
                     await runtimeRequest('/configuration/' + section + '/' + encodeURIComponent(value[ids[section]]), { method: 'DELETE', signal: controller.signal });
                     if (disposed || editorToken !== editorSequence) return;

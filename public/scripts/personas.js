@@ -1481,13 +1481,6 @@ export async function convertCharacterToPersona(characterId = null) {
     let description = getCharacterDescription(characters[characterId]);
     const overwriteName = `${name} (Persona).png`;
 
-    if (overwriteName in power_user.personas) {
-        const confirm = await Popup.show.confirm(t`Overwrite Existing Persona`, t`This character exists as a persona already. Do you want to overwrite it?`);
-        if (!confirm) {
-            console.log('User cancelled the overwrite of the persona');
-            return false;
-        }
-    }
 
     if (description.includes('{{char}}') || description.includes('{{user}}')) {
         const confirm = await Popup.show.confirm(t`Persona Description Macros`, t`This character has a description that uses <code>{{char}}</code> or <code>{{user}}</code> macros. Do you want to swap them in the persona description?`);
@@ -2203,16 +2196,6 @@ async function deletePersona(avatarId, { silent = false } = {}) {
     const preferredCharacterAvatar = getCurrentCharacterAvatarForDedicatedPersona();
     const name = getPersonaNameByAvatar(avatarId, { preferredCharacterAvatar }) || '';
 
-    if (!silent) {
-        const confirm = await Popup.show.confirm(
-            t`Delete Persona` + `: ${name}`,
-            t`Are you sure you want to delete this avatar?` + '<br />' + t`All information associated with its linked persona will be lost.`);
-
-        if (!confirm) {
-            console.debug('User cancelled deleting avatar');
-            return false;
-        }
-    }
 
     const request = await fetch('/api/avatars/delete', {
         method: 'POST',
@@ -2447,31 +2430,12 @@ async function toggleDefaultPersona(avatarId, { quiet = false } = {}) {
 
 
     if (avatarId === currentDefault) {
-        if (!quiet) {
-            const confirm = await Popup.show.confirm(t`Are you sure you want to remove the default persona?`, power_user.personas[avatarId]);
-            if (!confirm) {
-                console.debug('User cancelled removing default persona');
-                return;
-            }
-        }
-
         console.log(`Removing default persona ${avatarId}`);
         if (power_user.persona_show_notifications && !isPersonaPanelOpen()) {
             toastr.info(t`This persona will no longer be used by default when you open a new chat.`, t`Default Persona Removed`);
         }
         delete power_user.default_persona;
     } else {
-        if (!quiet) {
-            const confirm = await Popup.show.confirm(t`Set Default Persona`,
-                t`Are you sure you want to set \"${power_user.personas[avatarId]}\" as the default persona?`
-                + '<br /><br />'
-                + t`This name and avatar will be used for all new chats, as well as existing chats where the user persona is not locked.`);
-            if (!confirm) {
-                console.debug('User cancelled setting default persona');
-                return;
-            }
-        }
-
         power_user.default_persona = avatarId;
         if (power_user.persona_show_notifications && !isPersonaPanelOpen()) {
             toastr.success(t`Set to ${power_user.personas[avatarId]}.This persona will be used by default when you open a new chat.`, t`Default Persona`);
@@ -3036,22 +3000,8 @@ async function onPersonasRestoreInput(e) {
  * @returns {Promise<void>}
  */
 async function syncUserNameToPersona({ start = 0, end = chat.length - 1, quiet = false, nameFilter = '' } = {}) {
-    const isRangeAll = start === 0 && end === chat.length - 1;
     const hasNameFilter = nameFilter?.trim();
-    const confirmMessage = isRangeAll && !hasNameFilter
-        ? t`All user-sent messages in this chat will be attributed to ${name1}.`
-        : isRangeAll && hasNameFilter
-            ? t`User-sent messages with name "${nameFilter}" will be attributed to ${name1}.`
-            : !isRangeAll && !hasNameFilter
-                ? t`User-sent messages in the specified range will be attributed to ${name1}.`
-                : t`User-sent messages with name "${nameFilter}" in the specified range will be attributed to ${name1}.`;
 
-    if (!quiet) {
-        const confirmation = await Popup.show.confirm(t`Are you sure?`, confirmMessage);
-        if (!confirmation) {
-            return;
-        }
-    }
 
     for (let i = start; i <= end; i++) {
         const mes = chat[i];
@@ -3097,14 +3047,6 @@ async function duplicatePersona(avatarId, { silent = false, select = false } = {
         return '';
     }
 
-    if (!silent) {
-        const confirm = await Popup.show.confirm(t`Are you sure you want to duplicate this persona?`, personaName);
-
-        if (!confirm) {
-            console.debug('User cancelled duplicating persona');
-            return '';
-        }
-    }
 
     const newAvatarId = `${Date.now()}-${personaName.replace(/[^a-zA-Z0-9]/g, '')}.png`;
     const descriptor = getPersonaDescriptorByAvatar(avatarId, { preferredCharacterAvatar });

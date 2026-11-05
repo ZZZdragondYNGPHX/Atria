@@ -1336,11 +1336,6 @@ class PresetManager {
             return false;
         }
 
-        const headerText = !this.isAdvancedFormatting() ? t`Delete this preset?` : t`Delete this template?`;
-        const confirm = await Popup.show.confirm(headerText, t`This action is irreversible and your current settings will be overwritten.`);
-        if (!confirm) {
-            return false;
-        }
 
         const presetSnapshot = this.getStoredPreset(resolvedName);
         const extensions = this.readPresetExtensionField({ name: resolvedName, path: '' });
@@ -2125,13 +2120,6 @@ export async function initPresetManager() {
                 return;
             }
 
-            const confirmText = !presetManager.isAdvancedFormatting()
-                ? t`Resetting a <b>default preset</b> will restore the default settings.`
-                : t`Resetting a <b>default template</b> will restore the default settings.`;
-            const confirm = await Popup.show.confirm(t`Are you sure?`, confirmText);
-            if (!confirm) {
-                return;
-            }
 
             await presetManager.deletePreset();
             await presetManager.savePreset(name, data.preset);
@@ -2140,14 +2128,6 @@ export async function initPresetManager() {
             const successToast = !presetManager.isAdvancedFormatting() ? t`Default preset restored` : t`Default template restored`;
             toastr.success(successToast);
         } else {
-            const confirmText = !presetManager.isAdvancedFormatting()
-                ? t`Resetting a <b>custom preset</b> will restore to the last saved state.`
-                : t`Resetting a <b>custom template</b> will restore to the last saved state.`;
-            const confirm = await Popup.show.confirm(t`Are you sure?`, confirmText);
-            if (!confirm) {
-                return;
-            }
-
             const option = presetManager.findPreset(name);
             presetManager.selectPreset(option);
             const successToast = !presetManager.isAdvancedFormatting() ? t`Preset restored` : t`Template restored`;

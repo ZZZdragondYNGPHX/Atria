@@ -1,5 +1,5 @@
 import { t } from './i18n.js';
-import { callGenericPopup, Popup, POPUP_TYPE } from './popup.js';
+import { callGenericPopup, POPUP_TYPE } from './popup.js';
 import { getFileExtension, sortMoments, timestampToMoment } from './utils.js';
 import { displayPastChats, getRequestHeaders, importCharacterChat } from '../script.js';
 import { importGroupChat } from './group-chats.js';
@@ -120,11 +120,6 @@ class BackupsBrowser {
      * @returns {Promise<boolean>} True if deleted, false otherwise.
      */
     async deleteBackup(name) {
-        const confirm = await Popup.show.confirm(t`Are you sure?`);
-        if (!confirm) {
-            return false;
-        }
-
         const response = await fetch('/api/backups/chat/delete', {
             method: 'POST',
             headers: getRequestHeaders(),

@@ -58,7 +58,7 @@ export async function mountSourceEditor({ document: doc, root, projectId, stageO
         let loaded = null, sequence = 0, busy = false, disposed = false; const drafts = new Map(); const originals = new Map();
         const observe = (callback, value) => { if (!disposed && shell.isConnected) { try { callback(value); } catch { /* Presentation observers do not own drafts. */ } } };
         const markDirty = () => { shell.dataset.atriaDraftDirty = String([...drafts].some(([path, text]) => text !== originals.get(path))); };
-        const review = el(doc, 'button', 'atri-library-button atri-library-button--primary', tl('Review Source Change'), shell); review.type = 'button'; review.disabled = true;
+        const review = el(doc, 'button', 'atri-library-button atri-library-button--primary', tl('Save changes'), shell); review.type = 'button'; review.disabled = true;
         function showDiff() {
             const result = sourceTextDiff(loaded?.info.text || '', editor.value); diff.textContent = result.text || tl('No text changes.');
             note.textContent = result.truncated ? tl('Diff preview is truncated. The complete edited file will be reviewed.') : '';
@@ -96,7 +96,7 @@ export async function mountSourceEditor({ document: doc, root, projectId, stageO
                 await validateSourceText(current.info, text, { validateStructured: validateStructured ? (value, text) => validateStructured(current.path, value, text) : null });
                 if (current.info.text === text) { feedback(doc, shell, tl('No text changes.')); return; }
                 if (disposed || !shell.isConnected || loaded !== current) return;
-                showDiff(); await stageOperations([sourceWriteOperation(current.path, text)], tl('Review Source Change'));
+                showDiff(); await stageOperations([sourceWriteOperation(current.path, text)], tl('Save changes'));
             } catch (error) { if (!disposed && shell.isConnected) { editor.setAttribute('aria-invalid', 'true'); feedback(doc, shell, tl('Check the file format. Your draft is still here.') + ' ' + error.message, true); } } finally { busy = false; review.disabled = !loaded || loaded.info.readOnly; chooser.disabled = false; editor.disabled = !loaded || loaded.info.readOnly; observe(onReviewBusy, false); }
         });
         action(doc, shell, 'Reload file', async () => { if (!busy && confirmAtriaDraftLeave(doc, shell)) await load(true); });

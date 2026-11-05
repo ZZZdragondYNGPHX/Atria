@@ -4,7 +4,7 @@ import { isFrontendConsoleDebugLoggingEnabled } from './console-adapter.js';
 import { installFrontendLogging } from './bootstrap.js';
 import { frontendLogStore } from './logger.js';
 import { t, translate } from '../i18n.js';
-import { POPUP_RESULT, POPUP_TYPE, callGenericPopup } from '../popup.js';
+import { POPUP_TYPE, callGenericPopup } from '../popup.js';
 import { recentUserActionStore } from './recent-actions.js';
 import { createSafeConfigSnapshot } from './safe-config.js';
 import {
@@ -605,14 +605,7 @@ export async function openLogsWorkspace({ canViewServerLogs = false, container =
     root.querySelector('.atriaLogsClear').addEventListener('click', async () => {
         try {
             if (state.expertSource === 'backend' && !canViewServerLogs) return;
-            const confirmText = state.expertSource === 'backend'
-                ? t`Clear captured backend raw logs? Existing diagnostic incidents will be kept.`
-                : t`Clear captured frontend raw logs? Existing diagnostic incidents will be kept.`;
-            const confirmed = await callGenericPopup(confirmText, POPUP_TYPE.CONFIRM, '', {
-                okButton: t`Clear raw logs`,
-                cancelButton: t`Cancel`,
-            });
-            if (confirmed !== POPUP_RESULT.AFFIRMATIVE) return;
+
 
             if (state.expertSource === 'backend') {
                 await api('/logs/clear', { method: 'POST', body: {} });

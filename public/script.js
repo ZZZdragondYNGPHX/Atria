@@ -3806,8 +3806,8 @@ export async function deleteMessage(id, swipeDeletionIndex = undefined, askConfi
     }
 
     let deleteOnlySwipe = canDeleteSwipe;
-    if (askConfirmation) {
-        const result = await callGenericPopup(t`Are you sure you want to delete this message?`, POPUP_TYPE.CONFIRM, null, {
+    if (askConfirmation && canDeleteSwipe) {
+        const result = await callGenericPopup(t`Choose what to delete`, POPUP_TYPE.CONFIRM, null, {
             okButton: canDeleteSwipe ? t`Delete Swipe` : t`Delete Message`,
             cancelButton: 'Cancel',
             customButtons: canDeleteSwipe ? [t`Delete Message`] : null,
@@ -10226,16 +10226,6 @@ export async function duplicateCharacter({ avatar = null, silent = false } = {})
         targetAvatar = characters[this_chid].avatar;
     }
 
-    // Show confirmation unless silent
-    if (!silent) {
-        const confirmMessage = $(await renderTemplateAsync('duplicateConfirm'));
-        const confirm = await callGenericPopup(confirmMessage, POPUP_TYPE.CONFIRM);
-
-        if (!confirm) {
-            console.log('User cancelled duplication');
-            return '';
-        }
-    }
 
     const body = { avatar_url: targetAvatar };
     const response = await fetch('/api/characters/duplicate', {
@@ -17066,11 +17056,6 @@ export async function setCharacterSettingsOverrides() {
     });
 
     $template.find('.remove_scenario_override').on('click', async function () {
-        const confirm = await Popup.show.confirm(t`Are you sure you want to remove all overrides?`, t`This action cannot be undone.`);
-        if (!confirm) {
-            return;
-        }
-
         $scenario.val('');
         pendingChanges.scenario = '';
         $examples.val('');
@@ -17764,10 +17749,6 @@ function addAlternateGreeting(template, greeting, index, getArray, popup) {
         event.preventDefault();
         event.stopPropagation();
 
-        const confirm = await callGenericPopup(t`Are you sure you want to delete this alternate greeting?`, POPUP_TYPE.CONFIRM);
-        if (!confirm) {
-            return;
-        }
 
         const array = getArray();
         array.splice(index, 1);
@@ -19873,10 +19854,7 @@ jQuery(async function () {
             return;
         }
 
-        const result = await callGenericPopup('<h3>' + t`Delete the Chat File?` + '</h3>', POPUP_TYPE.CONFIRM);
-        if (result === POPUP_RESULT.AFFIRMATIVE) {
-            await handleDeleteChat(deleteFileName, selected_group, false);
-        }
+        await handleDeleteChat(deleteFileName, selected_group, false);
     });
 
     $('#advanced_div').on('click', function () {
@@ -20639,13 +20617,6 @@ jQuery(async function () {
                 await hideChatMessageRange(start, end, unhide);
             }
         } else if (action === 'delete') {
-            if (power_user.confirm_message_delete) {
-                const confirmed = await callGenericPopup(t`Are you sure you want to delete selected messages?`, POPUP_TYPE.CONFIRM);
-                if (confirmed !== POPUP_RESULT.AFFIRMATIVE) {
-                    return;
-                }
-            }
-
             for (const messageId of [...messageIds].sort((a, b) => b - a)) {
                 await deleteMessage(messageId, undefined, false);
             }
@@ -21062,15 +21033,7 @@ jQuery(async function () {
             }
         } else if (id == 'option_start_new_chat') {
             if ((selected_group || this_chid !== undefined) && !is_send_press) {
-                let deleteCurrentChat = false;
-                const result = await Popup.show.confirm(t`Start new chat?`, await renderTemplateAsync('newChatConfirm'), {
-                    onClose: () => { deleteCurrentChat = !!$('#del_chat_checkbox').prop('checked'); },
-                });
-                if (!result) {
-                    return;
-                }
-
-                await doNewChat({ deleteCurrentChat: deleteCurrentChat });
+                await doNewChat({ deleteCurrentChat: false });
             }
             if (!selected_group && this_chid === undefined && !is_send_press) {
                 const alreadyInTempChat = this_chid === undefined && name2 === neutralCharacterName;
@@ -21404,11 +21367,6 @@ jQuery(async function () {
     });
 
     $(document).on('click', '.mes_edit_copy', async function () {
-        const confirmation = await callGenericPopup(t`Create a copy of this message?`, POPUP_TYPE.CONFIRM);
-        if (!confirmation) {
-            return;
-        }
-
         hideSwipeButtons();
         const oldScroll = chatElement[0].scrollTop;
         const clone = structuredClone(chat[this_edit_mes_id]);

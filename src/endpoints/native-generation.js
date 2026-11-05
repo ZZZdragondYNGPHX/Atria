@@ -245,7 +245,7 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             if (!controller.signal.aborted) response.status(code.includes('conflict') ? 409 : 400).json({ error: code });
         } finally { response.off('close', abort); }
     });
-    for (const action of ['create-preflight', 'create-checked']) router.post('/goals/' + action, async (req, res) => {
+    for (const action of ['create', 'create-preflight', 'create-checked']) router.post('/goals/' + action, async (req, res) => {
         const handle = req.user?.profile?.handle; if (!handle) return res.sendStatus(401);
         res.set('Cache-Control', 'private, no-store');
         try {
@@ -253,6 +253,10 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             if (core) core.load = (owner, id) => host.sessionCore.observe(owner, id);
             const service = new AgentGoalService({ engine: host.persistence._engine, sessionCore: core, studio: host.studio, agent: host.agent, chatRepo: getChats() });
             if (action === 'create-preflight') return res.json(await service.previewCreate(handle, req.body));
+            if (action === 'create') {
+                const checked = await service.previewCreate(handle, req.body);
+                return res.json(await service.create(handle, req.body, { expectedAnchorFingerprint: checked.anchorFingerprint }));
+            }
             fields(req.body, ['definition', 'expectedAnchorFingerprint'], 'Reviewed Goal creation');
             if (!/^[a-f0-9]{64}$/.test(req.body.expectedAnchorFingerprint || '')) throw new TypeError('Exact Goal anchor required');
             res.json(await service.create(handle, req.body.definition, { expectedAnchorFingerprint: req.body.expectedAnchorFingerprint }));

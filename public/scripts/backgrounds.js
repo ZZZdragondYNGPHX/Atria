@@ -1328,8 +1328,6 @@ async function onDeleteFolder(folderId) {
     const folder = folderList.find(f => f.id === folderId);
     if (!folder) return;
 
-    const confirm = await Popup.show.confirm(t`Delete folder "${folder.name}"?`, t`Images will not be deleted, only the folder grouping.`);
-    if (!confirm) return;
 
     try {
         const response = await fetch('/api/image-metadata/folders/delete', {

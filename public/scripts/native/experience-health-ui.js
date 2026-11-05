@@ -17,7 +17,7 @@ export function mountExperienceHealth({ document, root, runtime, request = nativ
     root.classList.add('atri-experience-panel');
     const sessionId = runtime.snapshot?.session.sessionId;
     const controller = new AbortController();
-    let disposed = false; let report = null; let plan = null; let busy = false; let taskReport = null;
+    let disposed = false; let report = null; let busy = false; let taskReport = null;
     const status = document.createElement('p'); status.setAttribute('role', 'status');
     const content = document.createElement('div');
     const bindingSetup = document.createElement('div');
@@ -33,10 +33,12 @@ export function mountExperienceHealth({ document, root, runtime, request = nativ
         busy = true; status.setAttribute('role', 'status'); status.textContent = t('Working…'); content.querySelectorAll('button').forEach(node => { node.disabled = true; });
         try { await fn(); if (current()) status.textContent = t('Ready'); } catch (error) { if (current()) { status.textContent = t(error.message); status.setAttribute('role', 'alert'); } } finally { busy = false; if (current()) render(); }
     }
-    async function refresh() { const value = await post('health'); if (current()) { report = value; plan = null; taskReport = null; } }
-    async function preview(kind, effect = {}) {
-        const value = await post('health/preview', { request: { kind, ...effect, expectedRevisionId: report.anchor.revisionId } });
-        if (current()) plan = value;
+    async function refresh() { const value = await post('health'); if (current()) { report = value; taskReport = null; } }
+    async function repair(kind, effect = {}) {
+        if (runtime.history || runtime.generation) throw new Error('Repair requires the active session');
+        await post('health/apply', { repair: { request: { kind, ...effect, expectedRevisionId: report.anchor.revisionId }, invocationId: invocationId() } });
+        if (!current()) return;
+        await runtime.open(sessionId); if (current()) await refresh();
     }
     function render() {
         content.replaceChildren(button('Refresh health', refresh));
@@ -76,23 +78,12 @@ export function mountExperienceHealth({ document, root, runtime, request = nativ
         for (const item of report.diagnostics) {
             content.append(paragraph(item.code));
             if (item.code === 'transfer.prepared') content.append(
-                button('Preview resume', () => preview('transfer.resume', { authority: item.authority, intentId: item.intentId })),
-                button('Preview cancellation', () => preview('transfer.cancel', { authority: item.authority, intentId: item.intentId })),
+                button('Resume transfer', () => repair('transfer.resume', { authority: item.authority, intentId: item.intentId })),
+                button('Cancel transfer', () => repair('transfer.cancel', { authority: item.authority, intentId: item.intentId })),
             );
         }
         content.append(paragraph('Existing sessions keep their exact package and schema. Player and Realm are never rewound by restoring a session.'));
-        if (report.repairKinds.includes('retention.compact')) content.append(button('Preview retention repair', () => preview('retention.compact')));
-        if (plan) {
-            const details = document.createElement('details'); const summary = document.createElement('summary'); summary.textContent = t('Proposed changes');
-            const pre = document.createElement('pre'); pre.textContent = JSON.stringify(plan.changes, null, 2); details.append(summary, pre); details.open = true;
-            content.append(details, paragraph('Review these changes before confirming. A changed session requires a fresh preview.'), button('Confirm repair', async () => {
-                if (runtime.history || runtime.generation) throw new Error('Repair requires the active session');
-                const saved = plan;
-                await post('health/apply', { repair: { request: saved.request, token: saved.token, confirmed: true, invocationId: invocationId() } });
-                if (!current()) return;
-                await runtime.open(sessionId); if (current()) await refresh();
-            }));
-        }
+        if (report.repairKinds.includes('retention.compact')) content.append(button('Repair retention', () => repair('retention.compact')));
     }
     root.replaceChildren(status, bindingSetup, content); render(); void run(refresh);
     return { dispose() { disposed = true; controller.abort(); root.replaceChildren(); root.classList.remove('atri-experience-panel'); } };

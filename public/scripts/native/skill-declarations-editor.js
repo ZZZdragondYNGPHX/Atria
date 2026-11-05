@@ -77,7 +77,7 @@ export function mountSkillDeclarationsEditor({ document: doc, root, value = [], 
                 draft.push(''); render(); body.querySelectorAll('input').item(draft.length - 1)?.focus();
             });
         }
-        action(doc, toolbar, 'Review Changes', async () => {
+        action(doc, toolbar, 'Save changes', async () => {
             try {
                 const next = advanced ? JSON.parse(source) : draft; validateSkillDeclarations(next);
                 await onReview(structuredClone(next));

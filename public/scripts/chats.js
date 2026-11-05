@@ -446,12 +446,6 @@ async function deleteMessageFile(messageBlock, messageId, fileIndex) {
         return;
     }
 
-    const confirm = await callGenericPopup('Are you sure you want to delete this file?', POPUP_TYPE.CONFIRM);
-
-    if (confirm !== POPUP_RESULT.AFFIRMATIVE) {
-        console.debug('Delete file cancelled');
-        return;
-    }
 
     const message = chat[messageId];
 
@@ -1333,14 +1327,6 @@ async function moveAttachment(attachment, source, callback) {
  * @returns {Promise<void>} A promise that resolves when the attachment is deleted.
  */
 export async function deleteAttachment(attachment, source, callback, confirm = true) {
-    if (confirm) {
-        const result = await callGenericPopup('Are you sure you want to delete this attachment?', POPUP_TYPE.CONFIRM);
-
-        if (result !== POPUP_RESULT.AFFIRMATIVE) {
-            return;
-        }
-    }
-
     ensureAttachmentsExist();
 
     switch (source) {
@@ -1604,12 +1590,6 @@ async function openAttachmentManager() {
                 return;
             }
 
-            if (action.confirmMessage) {
-                const confirm = await callGenericPopup(action.confirmMessage, POPUP_TYPE.CONFIRM);
-                if (confirm !== POPUP_RESULT.AFFIRMATIVE) {
-                    return;
-                }
-            }
 
             const includeDisabled = true;
             const attachments = getDataBankAttachments(includeDisabled);

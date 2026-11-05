@@ -7262,13 +7262,6 @@ async function onPresetImportFileChange(e) {
         return;
     }
 
-    if (name in openai_setting_names) {
-        const confirm = await callGenericPopup('Preset name already exists. Overwrite?', POPUP_TYPE.CONFIRM);
-
-        if (!confirm) {
-            return;
-        }
-    }
 
     await eventSource.emit(event_types.OAI_PRESET_IMPORT_READY, { data: presetBody, presetName: name });
 
@@ -7391,11 +7384,6 @@ async function onDeletePresetClick() {
         return;
     }
 
-    const confirm = await callGenericPopup(t`Delete the preset? This action is irreversible and your current settings will be overwritten.`, POPUP_TYPE.CONFIRM);
-
-    if (!confirm) {
-        return;
-    }
 
     const nameToDelete = oai_settings.preset_settings_openai;
     const value = openai_setting_names[oai_settings.preset_settings_openai];
@@ -7447,12 +7435,6 @@ async function onDeletePresetClick() {
 }
 
 async function onLogitBiasPresetDeleteClick() {
-    const value = await callGenericPopup(t`Delete the preset?`, POPUP_TYPE.CONFIRM);
-
-    if (!value) {
-        return;
-    }
-
     $(`#openai_logit_bias_preset option[value="${oai_settings.bias_preset_selected}"]`).remove();
     delete oai_settings.bias_presets[oai_settings.bias_preset_selected];
     oai_settings.bias_preset_selected = null;

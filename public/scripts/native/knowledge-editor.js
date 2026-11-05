@@ -1,8 +1,8 @@
 import { knowledgeFormControls } from './knowledge-form-controls.js';
 import { mountKnowledgeEntryBrowser } from './knowledge-entry-browser.js';
 import { createStudioNativeId } from './studio-authoring.js';
-import { KNOWLEDGE_DELIVERY_POSITIONS, validateKnowledgeEditorValue } from './knowledge-contracts.js';
-import { el, action, disclosure, feedback, confirmLibraryAction } from './library-ui.js';
+import { KNOWLEDGE_DELIVERY_POSITIONS, validateKnowledgeEditorValue, removeKnowledgeEntryFromDraft } from './knowledge-contracts.js';
+import { el, action, disclosure, feedback } from './library-ui.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
 import { mountAuthoredContentEditor } from './authored-content-editor.js';
 import { mountStateConditionEditor } from './state-condition-editor.js';
@@ -21,8 +21,8 @@ function sectionDraft(entry, key) {
 }
 
 /** Edits one detached revision draft; only onReview can hand it to an owner. */
-export function mountKnowledgeEditor({ document: doc, root, value, initialEntryId, initialAction, openEntry = true, browseState = {}, label = 'Knowledge revision JSON', onReview, confirmDelete = confirmLibraryAction, validate = () => {}, isCurrent = () => true }) {
-    let draft = clone(value), disposed = false, submitting = false, generation = 0;
+export function mountKnowledgeEditor({ document: doc, root, value, initialEntryId, initialAction, openEntry = true, browseState = {}, label = 'Knowledge revision JSON', onReview, validate = () => {}, isCurrent = () => true }) {
+    let draft = clone(value), disposed = false, submitting = false;
     let selected = Math.max(0, draft.entries.findIndex(entry => entry.knowledgeEntryId === initialEntryId)); let editing = Boolean(initialEntryId) && openEntry; let entryFields; let browser;
     let advanced = false; let source = ''; let openSections = new Set(['Discovery', 'Delivery', 'Lifecycle']);
     const shell = el(doc, 'section', 'atri-knowledge-editor', undefined, root);
@@ -46,11 +46,8 @@ export function mountKnowledgeEditor({ document: doc, root, value, initialEntryI
     function updateTitle(select, entry) { select.options[selected].textContent = entryName(entry, selected) + ' · ' + entry.knowledgeEntryId; browser.refresh(); }
     async function deleteSelectedEntry() {
         const entry = draft.entries[selected];
-        const owners = draft.entries.filter(other => other.knowledgeEntryId !== entry.knowledgeEntryId && ['requiredEntryIds', 'relatedEntryIds'].some(key => other.relations?.[key]?.includes(entry.knowledgeEntryId)));
-        if (owners.length) { showError(new Error(tl('Remove references from these entries before deleting:') + ' ' + owners.map(item => entryName(item, draft.entries.indexOf(item))).join(', '))); return; }
-        const sequence = generation;
-        if (!await confirmDelete('Remove this entry from the draft revision?') || !current() || sequence !== generation || draft.entries[selected] !== entry || submitting) return;
-        draft.entries.splice(selected, 1); syncEntryIds(); selected = Math.max(0, selected - 1); changeView();
+        if (!current() || submitting) return;
+        removeKnowledgeEntryFromDraft(draft, entry.knowledgeEntryId); selected = Math.max(0, selected - 1); changeView();
     }
     function renderConditions(parent, entry) {
         mountStateConditionEditor({ document: doc, root: parent, getValue: () => entry.applicability,
@@ -73,7 +70,6 @@ export function mountKnowledgeEditor({ document: doc, root, value, initialEntryI
         input(parent, 'Exclusive group', relations.exclusiveGroup || '', value => { if (value) relations.exclusiveGroup = value; else delete relations.exclusiveGroup; });
     }
     function render() {
-        generation++;
         trackDraft();
         controls.replaceChildren(); fields.replaceChildren(); status.replaceChildren();
         action(doc, controls, advanced ? 'Fields' : 'Source', () => {
@@ -126,7 +122,7 @@ export function mountKnowledgeEditor({ document: doc, root, value, initialEntryI
                 disclosure(doc, entryFields, 'Exact entry identity', { knowledgeEntryId: entry.knowledgeEntryId });
             }
         }
-        action(doc, controls, 'Review Changes', async () => {
+        action(doc, controls, 'Save changes', async () => {
             if (submitting || !current()) return;
             try {
                 const next = advanced ? JSON.parse(source) : clone(draft);
@@ -141,5 +137,5 @@ export function mountKnowledgeEditor({ document: doc, root, value, initialEntryI
     }
     render();
     if (initialAction === 'delete') queueMicrotask(() => { void deleteSelectedEntry().catch(showError); });
-    return { getDraft: () => clone(draft), getSource: () => advanced ? source : JSON.stringify(draft, null, 2), dispose: () => { disposed = true; generation++; } };
+    return { getDraft: () => clone(draft), getSource: () => advanced ? source : JSON.stringify(draft, null, 2), dispose: () => { disposed = true; } };
 }

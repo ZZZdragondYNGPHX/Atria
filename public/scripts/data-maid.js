@@ -1,7 +1,7 @@
 import { getRequestHeaders } from '../script.js';
 import { VIDEO_EXTENSIONS } from './constants.js';
 import { t } from './i18n.js';
-import { callGenericPopup, Popup, POPUP_TYPE } from './popup.js';
+import { callGenericPopup, POPUP_TYPE } from './popup.js';
 import { renderTemplateAsync } from './templates.js';
 import { humanFileSize, timestampToMoment } from './utils.js';
 
@@ -240,10 +240,7 @@ class DataMaidDialog {
         categoryElement.querySelectorAll('.dataMaidDeleteAll').forEach(button => {
             button.addEventListener('click', async (event) => {
                 event.stopPropagation();
-                const confirm = await Popup.show.confirm(t`Are you sure?`, t`This will permanently delete all files in this category. THIS CANNOT BE UNDONE!`);
-                if (!confirm) {
-                    return;
-                }
+
 
                 const hashes = items.map(item => item.hash).filter(hash => hash);
                 await this.delete(hashes);
@@ -257,10 +254,6 @@ class DataMaidDialog {
                 const item = button.closest('.dataMaidItem');
                 const hash = item?.getAttribute('data-hash');
                 if (hash) {
-                    const confirm = await Popup.show.confirm(t`Are you sure?`, t`This will permanently delete the file. THIS CANNOT BE UNDONE!`);
-                    if (!confirm) {
-                        return;
-                    }
                     if (await this.delete([hash])) {
                         item.remove();
                         items.splice(items.findIndex(i => i.hash === hash), 1);

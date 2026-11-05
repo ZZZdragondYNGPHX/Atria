@@ -741,15 +741,6 @@ export async function openSkillManagerPanel({ context, initialScope = null, init
     }
 
     async function handleDelete(scope, name) {
-        const ok = await context.callGenericPopup(
-            t('Delete skill "${0}" from ${1}? This cannot be undone.')
-                .replace('${0}', name)
-                .replace('${1}', formatScopeLabel(scope, t)),
-            context.POPUP_TYPE.CONFIRM,
-            '',
-            { okButton: t('Delete'), cancelButton: t('Cancel') },
-        );
-        if (!isAffirmative(ok)) return;
         try {
             await context.skills.delete(scope, name);
             toast(t('Deleted skill: ${0}').replace('${0}', name), 'success');
@@ -769,20 +760,6 @@ export async function openSkillManagerPanel({ context, initialScope = null, init
         if (!newName || typeof newName !== 'string') return;
         const trimmed = String(newName).trim();
         if (!trimmed || trimmed === oldName) return;
-        if (hasRenameCollision(state.skills, scope, oldName, trimmed)) {
-            const confirm = await context.callGenericPopup(
-                t('A skill named "${0}" already exists in ${1}. Server will refuse the rename. Try a different name?')
-                    .replace('${0}', trimmed)
-                    .replace('${1}', formatScopeLabel(scope, t)),
-                context.POPUP_TYPE.CONFIRM,
-                '',
-                { okButton: t('Retry'), cancelButton: t('Cancel') },
-            );
-            if (isAffirmative(confirm)) {
-                await handleRename(scope, oldName);
-            }
-            return;
-        }
         try {
             await context.skills.rename(scope, oldName, trimmed);
             toast(t('Renamed: ${0} -> ${1}')
@@ -801,23 +778,6 @@ export async function openSkillManagerPanel({ context, initialScope = null, init
             toast(t('Skill already in that scope.'), 'info');
             return;
         }
-        if (hasMoveScopeCollision(state.skills, name, fromScope, toScope)) {
-            const ok = await context.callGenericPopup(
-                t('A skill named "${0}" already exists in ${1}. Move will fail unless you delete the existing one first. Proceed anyway?')
-                    .replace('${0}', name)
-                    .replace('${1}', formatScopeLabel(toScope, t)),
-                context.POPUP_TYPE.CONFIRM,
-                '',
-                { okButton: t('Proceed'), cancelButton: t('Cancel') },
-            );
-            if (!isAffirmative(ok)) return;
-        }
-        const confirmed = await context.callGenericPopup(
-            t('Moving changes which projects or sessions can resolve this Skill. References to its name are not rewritten.')
-                + '\n' + formatScopeLabel(fromScope, t) + ' → ' + formatScopeLabel(toScope, t),
-            context.POPUP_TYPE.CONFIRM, '', { okButton: t('Move'), cancelButton: t('Cancel') },
-        );
-        if (!isAffirmative(confirmed)) return;
         try {
             await context.skills.moveScope(name, fromScope, toScope);
             toast(t('Moved ${0}: ${1} -> ${2}')

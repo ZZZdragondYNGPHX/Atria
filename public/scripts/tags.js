@@ -1956,11 +1956,6 @@ async function onTagsPruneClick() {
         return;
     }
 
-    const confirm = await Popup.show.confirm(t`Prune ${tagsToPrune.length} tags and ${tagMapsToPrune.length} references`, t`Are you sure you want to remove all unused tags and references to missing or deleted characters and groups?`);
-
-    if (!confirm) {
-        return;
-    }
 
     for (const tag of tagsToPrune) {
         tags.splice(tags.indexOf(tag), 1);

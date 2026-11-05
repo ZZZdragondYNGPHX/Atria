@@ -3,7 +3,7 @@ import { translateShellText as tl, formatShellText as formatProductText } from '
 import { getRequestHeaders } from '../script.js';
 import { downloadFromServer } from './atria-download.js';
 import { t } from './i18n.js';
-import { callGenericPopup, POPUP_RESULT, POPUP_TYPE } from './popup.js';
+import { callGenericPopup, POPUP_TYPE } from './popup.js';
 import { createBackupSyncProviderRegistry } from './backup-sync/providers.js';
 import { renderTemplateAsync } from './templates.js';
 import { humanFileSize } from './utils.js';
@@ -504,18 +504,6 @@ async function requestScratchCreds(kind) {
 }
 
 async function restoreArchive({ handle, file, preflight, onProgress = () => {} }) {
-    const confirmText = preflight.mode === 'full'
-        ? tl('Full restore will replace the selected scope with the account state in this archive. A recovery point will be created first. Continue?')
-        : preflight.mode === 'overwrite'
-            ? tl('A recovery point will be created before replacing the selected categories with this archive. Continue?')
-            : tl('Merge restore creates a recovery point. Conflicting paths will use the archive version. Continue?');
-    const confirmed = await callGenericPopup(confirmText, POPUP_TYPE.CONFIRM, '', {
-        okButton: tl('Start restore'),
-        cancelButton: tl('Cancel'),
-        wide: true,
-    });
-    if (confirmed !== POPUP_RESULT.AFFIRMATIVE) return null;
-
     let scratchFields = {};
     if (preflight.scratchCredsNeeded) {
         const creds = await requestScratchCreds(preflight.scratchCredsNeeded);
@@ -569,14 +557,6 @@ async function loadRestoreRecoveryPoints(root) {
         restore.className = 'menu_button menu_button_icon';
         restore.innerHTML = tl('<i class="fa-fw fa-solid fa-rotate-left" aria-hidden="true"></i><span>Restore this point</span>');
         restore.addEventListener('click', async () => {
-            const confirmed = await callGenericPopup(
-                formatProductText('Restore account recovery point ${0}? The current state will be saved first.', [point.id]),
-                POPUP_TYPE.CONFIRM,
-                '',
-                { okButton: tl('Restore'), cancelButton: tl('Cancel'), wide: true },
-            );
-            if (confirmed !== POPUP_RESULT.AFFIRMATIVE) return;
-
             restore.disabled = true;
             try {
                 const result = await postJson('/api/users/restore-backup/recovery/apply', { id: point.id });
@@ -804,17 +784,7 @@ export async function openBackupSyncCenter({
         const session = activeArchiveRestore;
         if (!session || session.state !== 'running') return;
 
-        const confirmed = await callGenericPopup(
-            tl('Cancel this restore and return to the previous state?'),
-            POPUP_TYPE.CONFIRM,
-            '',
-            {
-                okButton: tl('Cancel and roll back'),
-                cancelButton: tl('Continue restore'),
-                wide: true,
-            },
-        );
-        if (confirmed !== POPUP_RESULT.AFFIRMATIVE) return;
+
         if (activeArchiveRestore !== session || session.state !== 'running') return;
 
         session.state = 'cancelling';

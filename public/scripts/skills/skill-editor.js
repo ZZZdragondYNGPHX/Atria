@@ -447,13 +447,6 @@ export async function openSkillEditor({ context, scope, name, t = (s) => s, onCh
             toast(t('Cannot delete SKILL.md from the editor — delete the whole skill from the manager.'), 'error');
             return;
         }
-        const ok = await context.callGenericPopup(
-            t('Delete file "${0}"? This cannot be undone.').replace('${0}', path),
-            context.POPUP_TYPE.CONFIRM,
-            '',
-            { okButton: t('Delete'), cancelButton: t('Cancel') },
-        );
-        if (state.closed || state.saving || !isAffirmative(ok)) return;
         try {
             await context.skills.deleteFile({ scope, name, path });
             toast(t('Deleted ${0}').replace('${0}', path), 'success');

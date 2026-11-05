@@ -1,10 +1,10 @@
 import { extensionsRequest } from './extensions-client.js';
-import { el, action, field, feedback, confirmLibraryAction } from './library-ui.js';
+import { el, action, field, feedback } from './library-ui.js';
 import { skillEntryKey, skillInvocationMode, SKILL_INVOCATION_PATHS } from '../../shared/extension-contract.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
 
 /** Presentation only: preferences use the shared ExtensionsStore revision. */
-export function createSkillOrganization({ request = extensionsRequest, confirm = confirmLibraryAction } = {}) {
+export function createSkillOrganization({ request = extensionsRequest } = {}) {
     let query = '', filter = 'all', busy = false;
     const collapsed = new Set();
     async function render(mount, skills, refresh) {
@@ -59,7 +59,7 @@ export function createSkillOrganization({ request = extensionsRequest, confirm =
                 const name = field(doc, manage, 'Folder name', folder.name); name.maxLength = 80;
                 action(doc, manage, 'Rename folder', async () => { if (name.value.trim()) await save(value => { value.folders.find(item => item.id === folder.id).name = name.value.trim(); }); });
                 action(doc, manage, 'Delete folder', async () => {
-                    if (await confirm('Delete this folder? Its Skills will move to Unfiled.')) await save(value => {
+                    await save(value => {
                         value.folders = value.folders.filter(item => item.id !== folder.id);
                         for (const pref of Object.values(value.skills)) if (pref.folderId === folder.id) pref.folderId = null;
                         if (filter === folder.id) filter = 'all';

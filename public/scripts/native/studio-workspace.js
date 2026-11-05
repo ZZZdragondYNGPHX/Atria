@@ -479,7 +479,7 @@ function renderActorsEditor(documentRef, body, state, stageProject) {
     const duplicateIds = new Set(actors.map(actor => actor.actorId)).size !== actors.length;
     if (!actors.some(actor => actor.actorId === state.actorSelection)) state.actorSelection = actors[0]?.actorId;
     const collection = state.actorCollection || !actors.length || duplicateIds;
-    body.append(heading(documentRef, 'Actors', 'Edit project Actors, then review changes before applying. Existing sessions keep their exact package version.'));
+    body.append(heading(documentRef, 'Actors', 'Edit project Actors and save your changes. Existing sessions keep their exact package version.'));
     body.append(actionRow(documentRef,
         button(documentRef, 'Actor fields', () => {
             if (!state.confirmEditorLeave()) return;
@@ -520,7 +520,7 @@ function renderEntryPointsEditor(documentRef, body, state, stageProject) {
     const duplicateIds = new Set(entries.map(entry => entry.entryPointId)).size !== entries.length;
     if (!entries.some(entry => entry.entryPointId === state.entryPointSelection)) state.entryPointSelection = entries[0]?.entryPointId;
     const collection = state.entryPointCollection || !entries.length || duplicateIds;
-    body.append(heading(documentRef, 'EntryPoints', 'Edit project starting points, then review changes before applying. Existing Sessions and Saves keep their exact package.'));
+    body.append(heading(documentRef, 'EntryPoints', 'Edit project starting points and save your changes. Existing Sessions and Saves keep their exact package.'));
     appendFirstEntryTarget(documentRef, body, state.source);
     body.append(actionRow(documentRef,
         button(documentRef, 'EntryPoint fields', () => {
@@ -554,7 +554,7 @@ function renderEntryPointsEditor(documentRef, body, state, stageProject) {
     state.entryPointEditor = mountStudioEntryPointsEditor({ document: documentRef, root: body, value: collection ? entries : entry, projectSource: state.source, collection,
         onReview: async parsed => {
             const accepted = await stageProject(patchStudioEntryPoints(state.source, entry?.entryPointId, parsed, collection), formatProductText(collection ? 'Update ${0} collection' : 'Update ${0} resource', ['EntryPoints']));
-            if (accepted) state.pending.entryPointSelection = collection ? state.entryPointSelection : parsed.entryPointId;
+            if (accepted) state.entryPointSelection = collection ? state.entryPointSelection : parsed.entryPointId;
         },
     });
 }
@@ -570,7 +570,7 @@ function renderLibraryContentEditor(documentRef, body, state, stageProject, view
     const ambiguous = new Set(worlds.map(item => identity(item))).size !== worlds.length || worlds.some(item => state.source.dependencies[view].some(ref => (isWorld ? ref.worldId : ref.knowledgeBaseId) === identity(item)));
     if (!worlds.some(item => identity(item) === state[selectionKey])) state[selectionKey] = worlds[0] && identity(worlds[0]);
     const collection = state[collectionKey] || !worlds.length || ambiguous;
-    body.append(heading(documentRef, title, isWorld ? 'Edit project Worlds, then review changes before applying. Library revisions and existing Sessions keep their versions.' : 'Edit project Knowledge, then review changes before applying. Library revisions and existing Sessions keep their versions.'));
+    body.append(heading(documentRef, title, isWorld ? 'Edit project Worlds and save your changes. Library revisions and existing Sessions keep their versions.' : 'Edit project Knowledge and save your changes. Library revisions and existing Sessions keep their versions.'));
     body.append(actionRow(documentRef,
         button(documentRef, isWorld ? 'World fields' : 'Knowledge fields', () => {
             if (!state.confirmEditorLeave()) return;
@@ -603,7 +603,7 @@ function renderLibraryContentEditor(documentRef, body, state, stageProject, view
         isCurrent: () => !state.disposed && state.editorSequence === sequence,
         onReview: async parsed => {
             const accepted = await stageProject(patch(state.source, world && identity(world), parsed, collection), formatProductText(collection ? 'Update ${0} collection' : 'Update ${0} resource', [title]));
-            if (accepted) state.pending[selectionKey] = collection ? state[selectionKey] : identity(parsed);
+            if (accepted) state[selectionKey] = collection ? state[selectionKey] : identity(parsed);
         },
     });
 }
@@ -830,29 +830,10 @@ async function mountProjectStudio(documentRef, root, projectId, host, initialTas
 
     async function stageOperations(operations, label) {
         if (state.disposed || state.refreshRequired || state.inspecting || state.applying) return false;
-        state.inspecting = true; renderActivity(); updateMobile();
-        const workspace = workspaceFor(operations);
-        let accepted = false;
-        try {
-            const inspected = await nativeStudioClient.inspectWorkspace(projectId, workspace);
-            if (state.disposed) return false;
-            state.pending = { label, workspace, inspected };
-            state.activityOpen = true; if (environment.get().mode === 'compact') state.mobileView = 'more';
-            accepted = true;
-            state.activityTab = 'changes';
-            log('review', formatProductText('ChangeSet review ready: ${0}', [label]), inspected.changes);
-        } catch (error) {
-            if (error.status === 409) {
-                state.pending = { label, workspace, conflict: error };
-                state.activityTab = 'changes';
-                log('conflict', 'Project revision changed. Reload before applying this ChangeSet.', error.details);
-            } else {
-                log('error', error?.message || String(error));
-            }
-        }
-        state.inspecting = false; renderActivity(); updateMobile();
-        const focus = activity.querySelector('h4, [role=alert]'); if (focus) { focus.tabIndex = -1; focus.focus(); }
-        return accepted;
+        state.pending = { label, workspace: workspaceFor(operations) };
+        const saved = await applyPending();
+        if (!saved) throw new Error(t('Changes were not saved. Fix the reported error and try again.'));
+        return true;
     }
 
     function stageProject(nextSource, label) {
@@ -897,9 +878,11 @@ async function mountProjectStudio(documentRef, root, projectId, host, initialTas
             renderEditor();
             renderInspector();
             const heading = center.querySelector('h3'); if (heading) { heading.tabIndex = -1; heading.focus(); }
+            return true;
         } catch (error) {
             if (state.refreshRequired) {
                 log('error', t('Saved, but the list could not refresh. Reload to see the saved version.'), error.message);
+                return true;
             } else if (error.status === 409) {
                 state.pending = { ...state.pending, conflict: error };
                 log('conflict', 'ChangeSet conflict: the project advanced. Reload latest before retrying.', error.details);
@@ -1076,7 +1059,7 @@ async function mountProjectStudio(documentRef, root, projectId, host, initialTas
             field(documentRef, 'Project name', projectName),
             field(documentRef, 'Package name', packageName),
             field(documentRef, 'Package version', versionInput),
-            actionRow(documentRef, button(documentRef, 'Review Changes', () => {
+            actionRow(documentRef, button(documentRef, 'Save changes', () => {
                 const next = patchProjectSource(state.source, source => {
                     source.project.displayName = projectName.value;
                     source.package.name = packageName.value;
@@ -1104,7 +1087,7 @@ async function mountProjectStudio(documentRef, root, projectId, host, initialTas
             field(documentRef, 'Mode', mode),
             field(documentRef, 'Frontend source index', frontend),
             field(documentRef, 'Runtime features', features),
-            actionRow(documentRef, button(documentRef, 'Review Changes', async () => {
+            actionRow(documentRef, button(documentRef, 'Save changes', async () => {
                 const experience = assertFrontendExperience(mode.value === 'text' ? { mode: 'text' } : {
                     mode: mode.value, frontend: { kind: 'native', version: 3, source: frontend.value }, features: JSON.parse(features.value),
                 }, { authoring: true });
@@ -1263,7 +1246,7 @@ async function mountProjectStudio(documentRef, root, projectId, host, initialTas
     }
 
     async function renderSource(body) {
-        body.append(heading(documentRef, 'Source', 'Edit project files directly, then review the proposed changes before applying.'));
+        body.append(heading(documentRef, 'Source', 'Edit project files and save your changes directly.'));
         const controller = await mountSourceEditor({ document: documentRef, root: body, projectId, stageOperations, initialPath: state.sourceFileSelection,
             onSelection: path => { if (!state.disposed && body.isConnected) { state.sourceFileSelection = path; tree.render(); } },
             onReviewBusy: busy => { if (!state.disposed && body.isConnected) { state.sourceReviewing = busy; tree.render(); } },
@@ -1673,7 +1656,7 @@ async function mountProjectStudio(documentRef, root, projectId, host, initialTas
                 technicalDetails(documentRef, pre.textContent, 'Agent ChangeSet details'),
             );
         } else {
-            body.append(panel(documentRef, 'empty', 'No pending ChangeSet', 'Structured edits first enter review; applying runs validation and commits only on success.'));
+            body.append(panel(documentRef, 'empty', 'No pending ChangeSet', 'Save commits your edits after validation. Errors leave your draft available for correction.'));
         }
     }
 

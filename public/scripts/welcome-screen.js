@@ -720,11 +720,6 @@ async function deleteRecentCharacterChat(avatarId, fileName) {
         return;
     }
     try {
-        const confirm = await callGenericPopup(t`Delete the Chat File?`, POPUP_TYPE.CONFIRM);
-        if (!confirm) {
-            console.log('Deletion cancelled by user');
-            return;
-        }
         const deleted = await deleteCharacterChatByName(String(characterId), fileName);
         if (!deleted) {
             return;
@@ -748,11 +743,6 @@ async function deleteRecentGroupChat(groupId, fileName) {
         return;
     }
     try {
-        const confirm = await callGenericPopup(t`Delete the Chat File?`, POPUP_TYPE.CONFIRM);
-        if (!confirm) {
-            console.log('Deletion cancelled by user');
-            return;
-        }
         const deleted = await deleteGroupChatByName(groupId, fileName);
         if (!deleted) {
             return;

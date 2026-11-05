@@ -16,7 +16,7 @@ import { mountKnowledgeEntryBrowser } from './knowledge-entry-browser.js';
 import { createAtriaStatePanel } from '../atria-shell/primitives.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
 import { arrayBufferToBase64, nativeProductClient as client } from './product-client.js';
-import { el, action, heading, disclosure, field, cover, feedback, libraryError, confirmLibraryAction, referenceRemediation, worldParameterSummary } from './library-ui.js';
+import { el, action, heading, disclosure, field, cover, feedback, libraryError, referenceRemediation, worldParameterSummary } from './library-ui.js';
 
 const actions = (doc, parent) => el(doc, 'div', 'atri-library-actions', undefined, parent);
 const time = value => value ? formatAtriaDate(value) : '—';
@@ -150,7 +150,6 @@ function sessionRow(doc, parent, session, host, refresh, workName) {
     const extra = actions(doc, more);
     action(doc, extra, 'Export .atriasave', async () => download(doc, await client.exportSession(session.sessionId), `${session.displayTitle || session.sessionId}.atriasave`), { disabled: !ready });
     action(doc, extra, 'Delete', async () => {
-        if (!await confirmLibraryAction('Delete this Native Session and all of its SavePoints?')) return;
         await client.deleteSession(session.sessionId); await refresh();
     }, { danger: true });
     if (!ready) {
@@ -452,7 +451,6 @@ async function resourceDetail(doc, root, route, host, browseState = {}, owner = 
             el(doc, 'h4', '', tl('Resolve references before deleting'), blockers);
             await referenceRemediation(doc, blockers, { details: { references } }, host); return;
         }
-        if (!await confirmLibraryAction(knowledge ? 'Delete this Native Knowledge Base?' : 'Delete this Native World?')) return;
         await (knowledge ? client.deleteKnowledge(id) : client.deleteWorld(id)); host.openLibrarySection(knowledge ? 'knowledge' : 'worlds');
     }, { danger: true });
     if (knowledge) {

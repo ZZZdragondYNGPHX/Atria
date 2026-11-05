@@ -4,5 +4,5 @@ import { safeProseLink } from '../../../shared/native-safe-prose.js';
 export function openHostExternal(value) {
     const url = safeProseLink(value);
     if (!url) throw new TypeError('Unsafe external link');
-    if (globalThis.confirm('Open external link?\n' + url)) globalThis.open(url, '_blank', 'noopener,noreferrer');
+    globalThis.open(url, '_blank', 'noopener,noreferrer');
 }

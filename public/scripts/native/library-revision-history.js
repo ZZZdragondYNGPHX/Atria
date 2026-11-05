@@ -5,7 +5,7 @@ import { nativeProductClient as client } from './product-client.js';
 import { nativeStudioClient } from './studio-client.js';
 import { createStudioNativeId } from './studio-authoring.js';
 import { mountLibraryRevisionEditor } from './library-revision-editor.js';
-import { el, action, disclosure, field, feedback, confirmLibraryAction } from './library-ui.js';
+import { el, action, disclosure, field, feedback } from './library-ui.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
 
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -54,7 +54,6 @@ export function mountLibraryRevisionHistory({ document: doc, root, detail, knowl
         disclosure(doc, row, 'Exact revision details', revision);
         resourceBundleExport(doc, row, { scope: 'library', resourceType: knowledge ? 'core.knowledge' : 'core.world', resourceId, revision: id }, resource.displayName);
         action(doc, row, 'Delete unused revision', async () => {
-            if (!await confirmLibraryAction('Delete this earlier revision? Only unreferenced revisions can be deleted.')) return;
             await nativeStudioClient.deleteLibraryRevision({ scope: 'library', resourceType: knowledge ? 'core.knowledge' : 'core.world', resourceId, revision: id });
             await onReload();
         }, { disabled: id === resource.currentRevisionId });
@@ -90,15 +89,12 @@ export function mountLibraryRevisionHistory({ document: doc, root, detail, knowl
             el(doc, 'p', '', tl('Create an independent resource from this exact revision. World dependency bindings remain shared.'), fork);
             const name = field(doc, fork, 'New resource name', resource.displayName + ' · ' + tl('Fork')); name.required = true;
             const forkResourceId = createStudioNativeId(knowledge ? 'kb' : 'world');
-            action(doc, fork, 'Review fork', () => {
+            action(doc, fork, 'Create fork', async () => {
                 if (!name.value.trim()) { name.reportValidity(); return; }
                 const displayName = name.value.trim();
-                const review = disclosure(doc, fork, 'Fork destination', { displayName, sourceRevision: id }); review.open = true;
-                action(doc, review, 'Create fork', async () => {
-                    const saved = await client.forkLibraryRevision(kind, resourceId, { revisionId: id, displayName, forkResourceId });
-                    review.replaceChildren(); feedback(doc, review, tl('Saved'));
-                    if (knowledge) host.openLibraryKnowledge(saved.knowledgeBaseId, displayName); else host.openLibraryWorld(saved.worldId, displayName);
-                }, { primary: true });
+                const saved = await client.forkLibraryRevision(kind, resourceId, { revisionId: id, displayName, forkResourceId });
+                feedback(doc, fork, tl('Saved'));
+                if (knowledge) host.openLibraryKnowledge(saved.knowledgeBaseId, displayName); else host.openLibraryWorld(saved.worldId, displayName);
             });
             workspace.scrollIntoView?.({ block: 'nearest' });
         });

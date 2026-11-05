@@ -75,11 +75,6 @@ export function cover(doc, id, title) {
     return node;
 }
 
-export async function confirmLibraryAction(message) {
-    const { Popup } = await import('../popup.js');
-    return Boolean(await Popup.show.confirm(tl('Confirm deletion'), tl(message)));
-}
-
 export async function savePassword() {
     const { Popup, POPUP_TYPE } = await import('../popup.js');
     return new Popup(tl('Save password (leave blank if none)'), POPUP_TYPE.INPUT, '').show();

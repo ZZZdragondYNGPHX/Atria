@@ -2,7 +2,7 @@ import { mountPromptQuality } from './prompt-quality.js';
 import { confirmAtriaDraftLeave } from '../atria-shell/workspace-leave-guard.js';
 import { mountStudioRuntimeEditor } from './studio-runtime-editor.js';
 import { formatShellText as formatProductText } from '../atria-shell/localization.js';
-import { referenceRemediation, confirmLibraryAction } from './library-ui.js';
+import { referenceRemediation } from './library-ui.js';
 import { resourceBundleExport, mountResourceBundleImport } from './resource-bundle-controls.js';
 import { mountPromptCondition, mountPromptParameters, mountPromptDerive } from './prompt-semantics.js';
 import { renderResourceReferenceRows } from './resource-reference-rows.js';
@@ -454,12 +454,12 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                 draft = clone(resource); jsonBuffer = null; lastEdit = null; future.length = 0;
                 history.push({ draft: clone(draft), jsonBuffer, dependencies: clone(upgradeDependencies) }); render(); root.dataset.atriaDraftDirty = String(isDirty());
             } });
-        const save = action(doc, root, librarySurface ? 'Save revision' : 'Review / save revision', async () => {
+        const save = action(doc, root, 'Save revision', async () => {
             if (save.disabled || submitting || submitted || !root.isConnected) return; submitting = true; save.disabled = true; save.setAttribute('aria-busy', 'true'); status.replaceChildren();
             try {
                 rememberFolds(); const value = read(); if (!advanced && jsonBuffer !== null) jsonValue(jsonBuffer);
                 root.inert = true;
-                if (upgradeDependencies.length) await onSave(value, { dependencies: upgradeDependencies }); else await onSave(value); element(doc, 'p', librarySurface ? 'Saved immutable Library revision.' : 'Revision submitted. Studio changes require human Review / Apply.', status); submitted = true; root.dataset.atriaDraftDirty = 'false';
+                if (upgradeDependencies.length) await onSave(value, { dependencies: upgradeDependencies }); else await onSave(value); element(doc, 'p', librarySurface ? 'Saved immutable Library revision.' : 'Revision saved.', status); submitted = true; root.dataset.atriaDraftDirty = 'false';
                 root.dispatchEvent(new doc.defaultView.CustomEvent('atria-draft-committed', { bubbles: true }));
             } catch (e) { if (root.isConnected) error(doc, status, e); } finally { submitting = false; root.inert = false; save.disabled = submitted; save.removeAttribute('aria-busy'); }
         });
@@ -543,7 +543,6 @@ export function mountPromptLibrary({ document: doc, body, route, host }) {
                         });
                         element(doc, 'small', 'Archiving hides all revisions from active lists. Existing exact references remain available.', row);
                         if (type !== 'core.generation-profile') action(doc, row, 'Delete resource', async () => {
-                            if (!await confirmLibraryAction('Delete this Prompt resource and all its revisions? This cannot be undone.')) return;
                             try {
                                 await runtimeRequest('/resources/delete', { method: 'POST', body: entry.ref });
                                 selectedRef = null; void host.refreshSearch?.(); await render();
@@ -588,7 +587,7 @@ export async function mountStudioPromptTools({ document: doc, body, state, stage
             if (!await stageProject(source, 'Update Package Runtime')) throw new Error('ChangeSet could not be prepared. Check Problems / Changes; edits remain here.');
         } });
     element(doc, 'h3', runtimeDesign ? 'Runtime Design' : 'Prompt Authoring', body);
-    element(doc, 'p', 'Project edits enter an A1 ChangeSet. Review and Apply Changes to commit; exact references never follow latest.', body);
+    element(doc, 'p', 'Save commits your project edits. Existing exact references keep their versions.', body);
     const loading = element(doc, 'p', 'Loading exact resources…', body);
     try {
         const all = await runtimeRequest('/resources'); if (!body.isConnected) return; loading.remove();

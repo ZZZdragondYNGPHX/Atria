@@ -195,3 +195,12 @@ export function parseKnowledgeRegex(value) {
     if (/[^imsu]/.test(flags)) throw new TypeError(formatProductText('Supported regular expression flags: i, m, s, u'));
     return new RegExp(literal ? literal[1] : value, flags);
 }
+
+/** Delete a draft entry together with its incoming draft relations. */
+export function removeKnowledgeEntryFromDraft(draft, entryId) {
+    draft.entries = draft.entries.filter(entry => entry.knowledgeEntryId !== entryId);
+    for (const entry of draft.entries) for (const key of ['requiredEntryIds', 'relatedEntryIds']) {
+        if (entry.relations?.[key]) entry.relations[key] = entry.relations[key].filter(id => id !== entryId);
+    }
+    if (draft.revision) draft.revision.entryIds = draft.entries.map(entry => entry.knowledgeEntryId);
+}

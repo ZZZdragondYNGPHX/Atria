@@ -1,6 +1,6 @@
 import { confirmAtriaDraftLeave, observeAtriaDrafts } from '../atria-shell/workspace-leave-guard.js';
 import { mountIllustrationSettings } from './illustration-settings-ui.js';
-import { el, action, field, feedback, confirmLibraryAction } from './library-ui.js';
+import { el, action, field, feedback } from './library-ui.js';
 import { nativeExtensionsClient } from './extensions-client.js';
 import { nativeProductClient } from './product-client.js';
 import { runtimeRequest } from './runtime-client.js';
@@ -56,7 +56,7 @@ export function mountExtensionsWorkspace({ document: doc = document, body, slot 
 
 export function mountExtensionPlugins({ document: doc = document, body, client = nativeExtensionsClient,
     productClient = nativeProductClient, presets = () => runtimeRequest('/presets'), runtime = globalThis.Atria?.extensions,
-    confirm = confirmLibraryAction, kind: initialKind = 'external', ...dependencies } = {}) {
+    kind: initialKind = 'external', ...dependencies } = {}) {
     const root = el(doc, 'section', 'atri-extension-plugins', undefined, body);
     const drafts = observeAtriaDrafts({ document: doc, root });
     let kind = initialKind, disposed = false, sequence = 0, builtins, saving = false, receipt = null;
@@ -120,10 +120,10 @@ export function mountExtensionPlugins({ document: doc = document, body, client =
                 el(doc, 'p', '', '', card).dataset.extensionStatus = item.id;
                 action(doc, card, 'Edit', () => edit(item.id));
                 if (kind === 'external') action(doc, card, 'Update', async () => {
-                    if (await confirm('Update this plugin? It will be disabled until you enable it again.') && !disposed && token === sequence) { receipt = await client.install(item.sourceUrl, { id: item.id, expectedRevision: item.revision }); await load(); }
+                    if (!disposed && token === sequence) { receipt = await client.install(item.sourceUrl, { id: item.id, expectedRevision: item.revision }); await load(); }
                 });
                 action(doc, card, 'Delete', async () => {
-                    if (await confirm('Delete this extension?') && !disposed && token === sequence) { await client.remove(item.id, item.revision); await load(); }
+                    if (!disposed && token === sequence) { await client.remove(item.id, item.revision); await load(); }
                 }, { danger: true });
             }
             if (receipt) { feedback(doc, content, 'Saved successfully.'); receipt = null; }

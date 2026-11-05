@@ -626,11 +626,6 @@ class RegexPresetManager {
             return;
         }
 
-        const presetName = capabilitySettings.regex_presets[presetIndex].name;
-        const confirm = await Popup.show.confirm(t`Are you sure you want to delete this regex preset?`, presetName);
-        if (!confirm) {
-            return;
-        }
 
         capabilitySettings.regex_presets.splice(presetIndex, 1);
 
@@ -1015,10 +1010,6 @@ async function loadRegexScripts() {
             download(fileData, fileName, 'application/json');
         });
         scriptHtml.find('.delete_regex').on('click', async function () {
-            const confirm = await callGenericPopup(t`Are you sure you want to delete this regex script?`, POPUP_TYPE.CONFIRM);
-            if (!confirm) {
-                return;
-            }
             await deleteRegexScript(script.id, scriptType, true, owner);
             await requestRegexChatReload();
         });
@@ -2227,10 +2218,7 @@ export async function init() {
             toastr.warning(t`No regex scripts selected for deletion.`);
             return;
         }
-        const confirm = await callGenericPopup(t`Are you sure you want to delete the selected regex scripts?`, POPUP_TYPE.CONFIRM);
-        if (!confirm) {
-            return;
-        }
+
         for (const script of scripts) {
             await deleteRegexScript(script.id, getScriptType(script), false, script.__regexScope?.owner || 'global');
         }

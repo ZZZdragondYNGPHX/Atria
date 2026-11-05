@@ -18,8 +18,8 @@ export function mountGoalAuthoring({ root, scope, sources, request, onCreated = 
     const tokens = field(doc, fields, 'Token limit', '16000', 'number'); tokens.min = '1'; tokens.step = '1';
     const notice = el(doc, 'div', '', undefined, form);
     const review = el(doc, 'div', '', undefined, form);
-    let disposed = false, busy = false, preview = null, published = false, sequence = 0;
-    function invalidate(event) { ++sequence; preview = null; review.replaceChildren(); confirm.disabled = true; form.dataset.atriaDraftDirty = String(Boolean(event || intent.value)); }
+    let disposed = false, busy = false, published = false, sequence = 0;
+    function invalidate(event) { ++sequence; review.replaceChildren(); form.dataset.atriaDraftDirty = String(Boolean(event || intent.value)); }
     function selectSource() { const choice = sources[Number(source.value)]; expected.value = choice ? (typeof choice.value === 'string' ? choice.value : JSON.stringify(choice.value)) : ''; invalidate(); }
     function definition() {
         const choice = sources[Number(source.value)];
@@ -32,25 +32,19 @@ export function mountGoalAuthoring({ root, scope, sources, request, onCreated = 
     }
     async function run(fn) {
         if (busy || disposed || published || !writable()) return;
-        busy = true; fields.disabled = true; form.dataset.atriaSavePending = 'true'; prepare.disabled = confirm.disabled = true; form.setAttribute('aria-busy', 'true'); notice.replaceChildren();
-        try { await fn(); } catch (error) { if (!disposed) feedback(doc, notice, error.message, true); } finally { busy = false; if (!disposed) { form.dataset.atriaSavePending = 'false'; fields.disabled = published; prepare.disabled = published || !sources.length; confirm.disabled = published || !preview; form.setAttribute('aria-busy', 'false'); } }
+        busy = true; fields.disabled = true; form.dataset.atriaSavePending = 'true'; prepare.disabled = true; form.setAttribute('aria-busy', 'true'); notice.replaceChildren();
+        try { await fn(); } catch (error) { if (!disposed) feedback(doc, notice, error.message, true); } finally { busy = false; if (!disposed) { form.dataset.atriaSavePending = 'false'; fields.disabled = published; prepare.disabled = published || !sources.length; form.setAttribute('aria-busy', 'false'); } }
     }
-    const prepare = action(doc, form, 'Review goal', () => run(async () => {
-        preview = null; review.replaceChildren(); const version = sequence, input = definition();
-        const result = await request('create-preflight', input);
+    const prepare = action(doc, form, 'Create goal', () => run(async () => {
+        const version = sequence, input = definition();
+        const result = await request('create', input);
         if (disposed || version !== sequence) return;
-        preview = { input, anchor: result.anchorFingerprint, version };
-        el(doc, 'p', '', `${tl('Ready to create')} · ${input.intent} · ${input.budget.maxRequests} ${tl('requests')} · ${input.budget.maxTokens} ${tl('tokens')}`, review);
-    }), { disabled: !sources.length });
-    const confirm = action(doc, form, 'Create reviewed goal', () => run(async () => {
-        if (!preview || preview.version !== sequence) return;
-        const result = await request('create-checked', { definition: preview.input, expectedAnchorFingerprint: preview.anchor });
         published = true;
         if (disposed) return;
         form.dataset.atriaDraftDirty = 'false'; form.dispatchEvent(new doc.defaultView.CustomEvent('atria-draft-committed', { bubbles: true }));
         review.replaceChildren(); el(doc, 'p', 'atria-goal-receipt', tl('Goal created.') + ' ' + (result.goalId ?? ''), review);
         try { await onCreated(result); } catch { if (!disposed) feedback(doc, notice, 'Saved, but the goal list could not refresh. Refresh goals to read the saved result.'); }
-    }), { disabled: true, primary: true });
+    }), { disabled: !sources.length, primary: true });
     fields.addEventListener('input', invalidate); source.addEventListener('change', selectSource); selectSource();
     return () => { disposed = true; ++sequence; form.remove(); };
 }

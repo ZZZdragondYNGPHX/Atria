@@ -2179,6 +2179,7 @@ router.post('/storage/center/:operation', async (request, response) => {
         const operations = {
             snapshot: () => center.snapshot(handle),
             detail: () => center.detail(handle, body.target),
+            perform: () => center.perform(handle, body.action, body.targets),
             preview: () => center.preview(handle, body.action, body.targets),
             execute: () => center.execute(handle, body.id),
             task: () => center.task(handle, body.id),

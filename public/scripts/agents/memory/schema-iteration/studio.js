@@ -1274,8 +1274,6 @@ export async function openSchemaIterationStudio(deps) {
     }
 
     async function clearAllHistory() {
-        // eslint-disable-next-line no-alert
-        if (!confirm(t('Clear all session history?'))) return;
         // Abort any in-flight LLM call BEFORE deleting so a slow response
         // can't land in a session that's about to be wiped.
         try { state.abortController?.abort(); } catch { /* ignore */ }

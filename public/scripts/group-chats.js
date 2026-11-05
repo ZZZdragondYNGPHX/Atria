@@ -2132,11 +2132,6 @@ async function uploadGroupAvatar(event) {
 }
 
 async function restoreGroupAvatar() {
-    const confirm = await Popup.show.confirm('Are you sure you want to restore the group avatar?', 'Your custom image will be deleted, and a collage will be used instead.');
-    if (!confirm) {
-        return;
-    }
-
     if (!openGroupId) {
         $('#group_avatar_preview img').attr('src', default_avatar);
         $('#rm_group_restore_avatar').hide();

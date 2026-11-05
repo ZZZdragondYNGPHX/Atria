@@ -77,15 +77,8 @@ export function mountAssetEditor({ document: doc, root, source, projectId, stage
             row.querySelector('[data-asset-removal]')?.remove();
             const refs = await references(asset, refsBox); if (!row.isConnected) return;
             if (refs.length) { feedback(doc, row, tl('Remove the references before deleting this asset.'), true); return; }
-            const confirm = el(doc, 'div', '', undefined, row); confirm.dataset.assetRemoval = 'true';
-            el(doc, 'p', '', tl('Remove this asset and its project file? Installed Works are unchanged.'), confirm);
-            action(doc, confirm, 'Review asset removal', async () => {
-                const refs = await references(asset, refsBox); if (!confirm.isConnected) return;
-                if (refs.length) throw new Error(tl('Remove the references before deleting this asset.'));
-                const next = clone(); next.assetFiles = assets.filter(item => item.assetId !== asset.assetId);
-                await stageOperations([sourceDeleteOperation(asset.path), projectSaveOperation(projectId, next)], tl('Remove project asset'));
-            }, { danger: true });
-            action(doc, confirm, 'Cancel', () => confirm.remove());
+            const next = clone(); next.assetFiles = assets.filter(item => item.assetId !== asset.assetId);
+            await stageOperations([sourceDeleteOperation(asset.path), projectSaveOperation(projectId, next)], tl('Remove project asset'));
         });
     }
     el(doc, 'h4', '', tl('Import asset'), editor); form(editor);

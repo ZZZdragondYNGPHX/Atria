@@ -163,6 +163,10 @@ export class ResourceCenterService {
             retentionDays: action === 'trash' ? 30 : null, recoverable: action === 'trash' };
         return this.saveTask(handle, doc);
     }
+    async perform(handle, action, targets) {
+        const task = await this.preview(handle, action, targets);
+        return this.execute(handle, task.id);
+    }
     async execute(handle, id) {
         const doc = await this.task(handle, id);
         if (doc.status === 'preview') {

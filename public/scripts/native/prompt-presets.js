@@ -106,16 +106,6 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
         const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
         const a = node('a'); a.href = url; a.download = value.displayName.replace(/[^\p{L}\p{N}_ -]/gu, '_').slice(0, 80) + '.prompt-preset.json'; a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
     };
-    const confirmRemoval = async (next, modules, affected, label) => {
-        const content = node('div', undefined, doc.createDocumentFragment());
-        node('p', 'Delete the selected items? Program references will be removed together. Pinned history remains available.', content);
-        literal('h4', label, content);
-        node('h4', 'Modules to delete', content); const list = node('ul', undefined, content); modules.forEach(e => literal('li', e.resource.displayName, list));
-        node('h4', 'Affected programs', content); const programs = node('ul', undefined, content); affected.forEach(e => literal('li', e.resource.displayName, programs));
-        const { Popup, POPUP_TYPE } = await import('../popup.js');
-        const heading = doc.createElement('h3'); heading.textContent = tl('Confirm deletion'); content.prepend(heading);
-        if (await new Popup(content, POPUP_TYPE.CONFIRM).show()) await save(next);
-    };
     const categoryPath = id => { const c = preset.categories.find(c => c.id === id); return c ? (c.parentId ? categoryPath(c.parentId) + ' / ' : '') + c.name : tl('Uncategorized'); };
     const descendants = id => {
         const ids = new Set([id]);
@@ -308,7 +298,7 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
         const categoryMenu = menu(toolbar, 'Category actions', category ? [
             ['Rename category', () => categoryDialog(category)],
             ['Move category', () => categoryDialog(category, true)],
-            ['Delete category', async () => { rememberListPosition(); const { next, modules, affected } = removePresetCategory(preset, category.id); await confirmRemoval(next, modules, affected, categoryPath(category.id)); }, true],
+            ['Delete category', async () => { rememberListPosition(); const { next } = removePresetCategory(preset, category.id); await save(next); }, true],
         ] : []);
         categoryMenu.disabled = !category;
         menu(nav, 'Module list actions', [
@@ -328,8 +318,8 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
                     rememberListPosition();
                     const staging = clone(preset), categoryId = createStudioNativeId('cat');
                     staging.categories.push({ id: categoryId, name: entry.resource.displayName, parentId: null }); staging.moduleCategories[idOf(entry)] = categoryId;
-                    const { next, modules, affected } = removePresetCategory(staging, categoryId);
-                    await confirmRemoval(next, modules, affected, entry.resource.displayName);
+                    const { next } = removePresetCategory(staging, categoryId);
+                    await save(next);
                 }, true],
             ]);
             literal('p', categoryPath(preset.moduleCategories[idOf(entry)]), row);
@@ -367,11 +357,8 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
                 row.addEventListener('click', event => { if (!event.target.closest('button, details')) void open(preset.presetId).catch(fail); });
                 button(row, 'Export preset', async () => exportPreset(await runtimeRequest('/presets/' + preset.presetId)));
                 button(row, 'Delete preset', async () => {
-                    const { Popup, POPUP_TYPE } = await import('../popup.js');
-                    if (await new Popup(tl('Delete this preset and its Regex rules? Pinned Prompt history remains available.'), POPUP_TYPE.CONFIRM).show()) {
-                        await runtimeRequest('/presets/' + preset.presetId, { method: 'DELETE', body: { expectedRevision: preset.revision } });
-                        await list();
-                    }
+                    await runtimeRequest('/presets/' + preset.presetId, { method: 'DELETE', body: { expectedRevision: preset.revision } });
+                    await list();
                 }).classList.add('atri-library-button--danger');
             }
             const existing = node('details', undefined, root); node('summary', 'Existing resources — migrate into an independent preset', existing);

@@ -1,4 +1,4 @@
-import { el, action, disclosure, field, confirmLibraryAction } from '../native/library-ui.js';
+import { el, action, disclosure, field } from '../native/library-ui.js';
 import { translateShellText as tl } from './localization.js';
 import { BUILTIN_THEMES, contrastRatio, createPalette, parseThemeImport, resolveThemeColors } from './theme-model.js';
 import { parseAtriaColor } from './appearance.js';
@@ -95,7 +95,6 @@ export function mountThemeControls({ document: doc, root, service }) {
         download(doc, theme.name, theme);
     });
     const deleteTheme = action(doc, assets, 'Delete custom theme', async () => {
-        if (!await confirmLibraryAction('Delete this custom theme? Referencing day and night slots will use their defaults.')) return;
         const theme = service.getState().preview?.theme || service.effective(Boolean(system?.matches)).theme;
         await service.deleteTheme(theme.id);
     }, { danger: true });

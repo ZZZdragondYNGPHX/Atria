@@ -1,3 +1,4 @@
+import { removeKnowledgeEntryFromDraft } from './knowledge-contracts.js';
 import { confirmAtriaDraftLeave } from '../atria-shell/workspace-leave-guard.js';
 import { mountWorldEditor } from './world-editor.js';
 import { mountKnowledgeEditor } from './knowledge-editor.js';
@@ -27,34 +28,25 @@ export function mountLibraryRevisionEditor({ document: doc, root, detail, knowle
     disclosure(doc, section, 'Editing base revision', { resourceId: resource.knowledgeBaseId || resource.worldId, revisionId: baseRevisionId });
     const close = action(doc, section, 'Back to resource', () => { if (confirmAtriaDraftLeave(doc, section)) return onClose(); });
     const editor = el(doc, 'div', '', undefined, section);
-    const review = el(doc, 'section', 'atri-library-section', undefined, section); review.hidden = true;
+    const status = el(doc, 'div', '', undefined, section);
     const mountEditor = knowledge ? mountKnowledgeEditor : mountWorldEditor;
-    mountEditor({ document: doc, root: editor, value, worldId: resource.worldId, initialEntryId, initialAction: entryAction, openEntry: entryEnabled === undefined, browseState, label: knowledge ? 'Knowledge revision JSON' : 'World revision JSON',
-        onReview: (draft, { dependencies = [] } = {}) => {
-            editor.hidden = true; review.hidden = false; review.replaceChildren();
-            el(doc, 'h3', '', tl('Review revision'), review);
-            el(doc, 'p', '', tl(saveRevision ? 'Saving creates a new Work version and new revisions of Worlds that use this source. Existing stories keep their resources until you choose an update.' : 'Saving creates a new revision and moves the Library head. It does not update existing bindings, Projects or Sessions.'), review);
-            for (const item of dependencies) {
-                const row = el(doc, 'div', 'atri-library-version', undefined, review);
-                el(doc, 'h4', '', item.name, row); el(doc, 'p', 'atri-library-meta', item.exact || tl('Project-owned source'), row);
+    const save = async draft => {
+        close.disabled = true; status.replaceChildren();
+        try {
+            const input = { baseRevisionId, content: draft };
+            const saved = await (saveRevision ? saveRevision(input) : knowledge ? client.commitKnowledgeRevision(resource.knowledgeBaseId, input) : client.commitWorldRevision(resource.worldId, input));
+            section.dispatchEvent(new doc.defaultView.CustomEvent('atria-draft-committed', { bubbles: true }));
+            editor.inert = true;
+            feedback(doc, status, tl('Saved immutable Library revision.'));
+            try { await onSaved(saved); } catch (error) {
+                feedback(doc, status, tl('Saved. The view could not be refreshed.') + ' ' + libraryError(error), true);
+                action(doc, status, 'Try again', () => onSaved(saved));
             }
-            const content = disclosure(doc, review, 'Revision content', draft); content.open = true;
-            const back = action(doc, review, 'Back to editing', () => { review.hidden = true; editor.hidden = false; editor.querySelector('button')?.focus(); });
-            const save = action(doc, review, saveRevision ? 'Save Knowledge original' : 'Save immutable revision', async () => {
-                close.disabled = back.disabled = true;
-                try {
-                    const input = { baseRevisionId, content: draft };
-                    const saved = await (saveRevision ? saveRevision(input) : knowledge ? client.commitKnowledgeRevision(resource.knowledgeBaseId, input) : client.commitWorldRevision(resource.worldId, input));
-                    section.dispatchEvent(new doc.defaultView.CustomEvent('atria-draft-committed', { bubbles: true }));
-                    save.remove(); back.remove();
-                    feedback(doc, review, tl('Saved immutable Library revision.'));
-                    try { await onSaved(saved); } catch (error) {
-                        feedback(doc, review, tl('Saved. The view could not be refreshed.') + ' ' + libraryError(error), true);
-                        action(doc, review, 'Try again', () => onSaved(saved));
-                    }
-                } catch (error) { feedback(doc, review, libraryError(error), true); } finally { close.disabled = back.disabled = false; }
-            }, { primary: true });
-            save.focus();
-        },
-    });
+        } finally { close.disabled = false; }
+    };
+    if (knowledge && (entryAction === 'delete' || typeof entryEnabled === 'boolean')) {
+        if (entryAction === 'delete') removeKnowledgeEntryFromDraft(value, initialEntryId);
+        const run = () => save(value).catch(error => { feedback(doc, status, libraryError(error), true); action(doc, status, 'Try again', run); });
+        void run();
+    } else mountEditor({ document: doc, root: editor, value, worldId: resource.worldId, initialEntryId, initialAction: entryAction, openEntry: entryEnabled === undefined, browseState, label: knowledge ? 'Knowledge revision JSON' : 'World revision JSON', onReview: save });
 }

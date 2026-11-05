@@ -3,7 +3,7 @@ import { nativeProductClient as client } from './product-client.js';
 import { createStudioNativeId } from './studio-authoring.js';
 import { knowledgeFormControls } from './knowledge-form-controls.js';
 import { normalizeKnowledgeDelivery } from './knowledge-contracts.js';
-import { el, action, disclosure, feedback, confirmLibraryAction } from './library-ui.js';
+import { el, action, disclosure, feedback } from './library-ui.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
 
 export function mountKnowledgeBindingManager({ document: doc, root, detail, host }) {
@@ -83,7 +83,6 @@ export function mountKnowledgeBindingManager({ document: doc, root, detail, host
                     });
                 }
                 action(doc, form, 'Delete binding', async () => {
-                    if (!await confirmLibraryAction('Delete this Library binding?')) return;
                     await client.deleteKnowledgeBinding(draft.knowledgeBindingId, existing.integrity); close(); await reload();
                 }, { danger: true, disabled: existing.references.length > 0 });
             }
