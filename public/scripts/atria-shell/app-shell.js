@@ -750,7 +750,7 @@ export function createAtriaAppShell({
                 row.append(retry); searchStatus.append(row);
             }
         }
-        if (status?.domains) {
+        if (status?.domains && status.failures?.length) { // Coverage only matters when some sources failed.
             const details = element(documentRef, 'details');
             details.open = coverageOpen;
             details.append(element(documentRef, 'summary', '', tl('Search coverage')));

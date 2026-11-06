@@ -1,9 +1,8 @@
-import { renderResourceReferenceRows } from './resource-reference-rows.js';
 import { promptStageEntries, promptStageModuleRefs, promptProgramResourceRefs, mapPromptStageRefs } from '../../shared/prompt-module-order.js';
 import { confirmAtriaDraftLeave } from '../atria-shell/workspace-leave-guard.js';
 import { translateShellText as tl, formatShellText as formatProductText } from '../atria-shell/localization.js';
 import { runtimeRequest } from './runtime-client.js';
-import { newPromptResource, resourceRef, PROMPT_TYPES, mountPromptEditor } from './prompt-authoring.js';
+import { newPromptResource, resourceRef, PROMPT_TYPES, mountPromptEditor, PROMPT_TARGET_LABELS } from './prompt-authoring.js';
 import { createStudioNativeId } from './studio-authoring.js';
 import { mountNativeRegexRules } from './regex-authoring.js';
 import { createAtriaIcon } from '../atria-shell/icons.js';
@@ -33,10 +32,23 @@ export function removePresetCategory(preset, categoryId) {
     return { next, modules: preset.entries.filter(e => moduleIds.has(idOf(e))), affected: preset.entries.filter(e => e.resourceType === PROGRAM && (e.resource.stages.some(s => promptStageModuleRefs(s).some(r => moduleIds.has(r.resourceId))) || (e.resource.derive || []).some(op => moduleIds.has(op.moduleId) || moduleIds.has(op.replacementRef?.resourceId) || moduleIds.has(op.entry?.moduleRef?.resourceId) || removedEntries.has(op.stageId + '/' + (op.entryId ?? op.position?.before ?? op.position?.after))))) };
 }
 
+// A module only compiles in stages it names; placing it in a stage is enough to name it.
+export function syncModuleStages(preset) {
+    const used = new Map();
+    for (const program of preset.entries.filter(e => e.resourceType === PROGRAM)) for (const stage of program.resource.stages)
+        for (const ref of promptStageModuleRefs(stage)) used.set(ref.resourceId + ':' + ref.revision, [...(used.get(ref.resourceId + ':' + ref.revision) || []), stage.stageId]);
+    for (const entry of preset.entries.filter(e => e.resourceType === MODULE)) {
+        const stages = used.get(idOf(entry) + ':' + entry.resource.revision) || [];
+        entry.resource.stages = [...new Set([...entry.resource.stages, ...stages])];
+    }
+    return preset;
+}
+const ACCEPTS = { 'context.fact': 'Facts & world info', 'context.history': 'Chat history', 'context.input': 'The player’s message', 'context.player-persona': 'Player persona', 'context.directive': 'Host instructions' };
+
 export function mountPromptPresets({ document: doc, body, host, route }) {
     let disposed = false, sequence = 0, preset = null, section = null;
     let lastReceipt = null;
-    let categoryFilter = 'all', listPosition = null, closeMenu = () => {}, adoptionRefs = [];
+    let categoryFilter = 'all', listPosition = null, closeMenu = () => {};
     const editorFoldStates = new Map();
     let split = null, pane = null, detailPane = null, listToken = 0;
     const ensureSplit = () => {
@@ -71,8 +83,8 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
             preset = saved; lastReceipt = receipt; renderDetail(); restoreListPosition();
         };
         try {
-            await runtimeRequest('/presets/' + preset.presetId, { method: 'PUT', body: { preset: next, expectedRevision: preset.revision }, onCommitted: async result => {
-                receipt = result; adoptionRefs = preset.refs ?? [];
+            await runtimeRequest('/presets/' + preset.presetId, { method: 'PUT', body: { preset: syncModuleStages(next), expectedRevision: preset.revision }, onCommitted: async result => {
+                receipt = result;
                 if (disposed || token !== sequence) return;
                 body.dispatchEvent(new doc.defaultView.CustomEvent('atria-draft-committed', { bubbles: true }));
                 await refresh();
@@ -88,7 +100,7 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
     };
     const markSelected = () => { for (const row of pane?.querySelectorAll('[data-atri-preset-id]') || []) row.setAttribute('aria-current', String(row.dataset.atriPresetId === preset?.presetId)); };
     const open = async id => {
-        const token = ++sequence; closeMenu(); categoryFilter = 'all'; listPosition = null; lastReceipt = null; adoptionRefs = [];
+        const token = ++sequence; closeMenu(); categoryFilter = 'all'; listPosition = null; lastReceipt = null;
         if (!pane?.isConnected || !pane.childElementCount) void renderPresetList();
         const { root } = detail();
         const loading = node('p', 'Loading exact resources…', root); loading.setAttribute('role', 'status');
@@ -100,7 +112,7 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
             loading.remove(); throw error;
         }
     };
-    const create = async (value, importing = false) => { const result = await runtimeRequest('/presets', { method: 'POST', body: { preset: value, importing } }); await open(result.presetId); };
+    const create = async (value, importing = false) => { const result = await runtimeRequest('/presets', { method: 'POST', body: { preset: value, importing } }); await open(result.presetId); await renderPresetList(); };
     const exportPreset = value => {
         const data = { format: value.format, schemaVersion: 1, programId: value.programId, ...(value.programRevision ? { programRevision: value.programRevision } : {}), categories: value.categories, moduleCategories: value.moduleCategories, entries: value.entries, regexScripts: value.regexScripts || [] };
         const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
@@ -255,24 +267,12 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
         literal('h2', preset.entries.find(e => idOf(e) === preset.programId && (!preset.programRevision || e.resource.revision === preset.programRevision)).resource.displayName, root);
         root.dataset.atriPresetRevision = preset.revision;
         if (lastReceipt?.presetId === preset.presetId) {
-            const version = String(lastReceipt.revision);
-            const receipt = literal('p', formatProductText('Saved. Preset version ${0}.', [version.slice(0, 12)]), root);
-            receipt.title = version;
+            // API presets follow the preset on save; name them so the effect is visible.
+            const followed = (lastReceipt.followedBy || []).map(item => item.displayName);
+            const receipt = literal('p', followed.length ? formatProductText('Saved. ${0} use this version from the next request.', [followed.join(', ')]) : tl('Saved.'), root);
             receipt.className = 'atri-library-feedback'; receipt.setAttribute('role', 'status');
-            button(root, 'Review pinned consumers', async () => {
-                const references = (await Promise.all(adoptionRefs.filter(ref => ref.resourceType === PROGRAM).map(ref => runtimeRequest('/resources/used-by', { method: 'POST', body: ref })))).flat();
-                const panel = node('section', undefined, root); node('p', 'Saving keeps consumer versions pinned. Open each owner to adopt this revision through its existing controls.', panel);
-                const unique = [...new Map(references.map(item => [JSON.stringify([item.node, item.edge]), item])).values()];
-                renderResourceReferenceRows({ document: doc, root: panel, references: unique, host });
-            });
         }
-        if (!section) {
-            node('p', 'Prompt presets contain text, ordering and Regex rules. Model and generation settings belong to API presets.', root);
-            const cards = node('div', undefined, root); cards.className = 'atri-preset-sections';
-            for (const [type, label] of [[PROGRAM, 'Prompt Programs'], [MODULE, 'Prompt Modules']]) button(cards, label, () => { section = type; renderDetail(); });
-            button(cards, 'Preset Regex', () => { section = 'regex'; renderDetail(); });
-            return;
-        }
+        if (!section) { renderOverview(root); return; }
         if (section === 'regex') {
             node('h3', 'Preset Regex', root);
             const owner = preset;
@@ -326,6 +326,80 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
         }
         if (!modules.length) node('p', preset.entries.some(e => e.resourceType === MODULE) ? 'No modules in this category.' : 'No modules yet. Create a module, then add it to the program.', root);
     }
+    // The preset at a glance: what is sent, in order, with one switch per block.
+    // A switch writes the same derive operation the advanced editor shows.
+    function renderOverview(root) {
+        node('p', 'What this preset sends to the model, in order. Switch a block off to skip it, or open it to change its text. Models and their settings are chosen in API presets.', root).className = 'atri-preset-intro';
+        const usage = node('section', undefined, root); usage.className = 'atri-preset-usage'; void renderUsage(usage);
+        const main = preset.entries.find(e => e.resourceType === PROGRAM && idOf(e) === preset.programId && (!preset.programRevision || e.resource.revision === preset.programRevision));
+        const modules = preset.entries.filter(e => e.resourceType === MODULE);
+        const disabled = new Set((main.resource.derive || []).filter(op => op.op === 'disable' && op.entryId).map(op => op.stageId + '/' + op.entryId));
+        const list = node('ol', undefined, root); list.className = 'atri-preset-overview';
+        for (const stage of main.resource.stages) for (const item of promptStageEntries(stage)) {
+            const row = node('li', undefined, list); row.className = 'atri-preset-block';
+            const off = disabled.has(stage.stageId + '/' + item.entryId);
+            row.dataset.off = String(off);
+            const toggle = node('input', undefined, node('label', undefined, row)); toggle.type = 'checkbox'; toggle.checked = !off; toggle.className = 'atri-preset-switch';
+            const text = node('div', undefined, row);
+            if (item.kind === 'module') {
+                const module = modules.find(e => idOf(e) === item.moduleRef.resourceId && e.resource.revision === item.moduleRef.revision);
+                const name = module?.resource.displayName || item.moduleRef.resourceId;
+                toggle.setAttribute('aria-label', formatProductText('Send “${0}”', [name]));
+                literal('strong', name, text);
+                literal('small', tl(PROMPT_TARGET_LABELS[module?.resource.target] || module?.resource.target || ''), text);
+                if (module) literal('p', module.resource.body.replace(/\s+/g, ' ').slice(0, 160) + (module.resource.body.length > 160 ? '…' : ''), text);
+                if (module) button(row, 'Edit text', () => { section = MODULE; edit(module); });
+            } else {
+                const label = item.accepts.map(kind => tl(ACCEPTS[kind] || kind)).join(' · ');
+                toggle.setAttribute('aria-label', formatProductText('Send “${0}”', [label]));
+                literal('strong', label, text); node('small', 'Story context, inserted by Atria', text);
+            }
+            toggle.addEventListener('change', async () => {
+                toggle.disabled = true;
+                const next = clone(preset);
+                const program = next.entries.find(e => e.resourceType === PROGRAM && idOf(e) === idOf(main) && e.resource.revision === main.resource.revision);
+                program.resource.derive = (program.resource.derive || []).filter(op => !(op.op === 'disable' && op.stageId === stage.stageId && op.entryId === item.entryId));
+                if (!toggle.checked) program.resource.derive.push({ op: 'disable', stageId: stage.stageId, entryId: item.entryId });
+                try { await save(next); } catch (error) { toggle.checked = !toggle.checked; toggle.disabled = false; fail(error); }
+            });
+        }
+        if (!list.childElementCount) node('p', 'This preset sends nothing yet. Open Structure & order to add blocks.', root);
+        const cards = node('div', undefined, root); cards.className = 'atri-preset-sections';
+        for (const [id, label, hint] of [[PROGRAM, 'Structure & order', 'Stages, order, conditions and typed parameters'], [MODULE, 'Text blocks', 'Every block’s text, grouped in categories'], ['regex', 'Text replacements', 'Regex rules applied to input and output']]) {
+            const card = button(cards, label, () => { section = id; renderDetail(); });
+            node('small', hint, card);
+        }
+        const footer = node('div', undefined, root); footer.className = 'atri-prompt-actions atri-preset-footer';
+        const current = preset;
+        button(footer, 'Export preset', async () => exportPreset(await runtimeRequest('/presets/' + current.presetId)));
+        button(footer, 'Delete preset', async () => {
+            const { routes } = await runtimeRequest('/configuration');
+            const using = routes.filter(item => item.promptProgramRef?.resourceId === current.presetId).map(item => item.displayName);
+            const { Popup, POPUP_TYPE, POPUP_RESULT } = await import('../popup.js');
+            const message = using.length ? formatProductText('Delete “${0}”? ${1} keep using its last version until you choose another prompt preset.', [current.displayName, using.join(', ')]) : formatProductText('Delete “${0}”?', [current.displayName]);
+            if (await new Popup(message, POPUP_TYPE.CONFIRM, '', { okButton: tl('Delete'), cancelButton: tl('Cancel') }).show() !== POPUP_RESULT.AFFIRMATIVE) return;
+            await runtimeRequest('/presets/' + current.presetId, { method: 'DELETE', body: { expectedRevision: current.revision } });
+            await list();
+        }).classList.add('atri-library-button--danger');
+    }
+    async function renderUsage(parent) {
+        const presetId = preset.presetId;
+        try {
+            const { routes } = await runtimeRequest('/configuration');
+            if (disposed || preset?.presetId !== presetId || !parent.isConnected) return;
+            const using = routes.filter(item => item.promptProgramRef?.resourceId === presetId);
+            literal('p', using.length ? formatProductText('Used by ${0}.', [using.map(item => item.displayName).join(', ')]) : tl('No API preset uses this preset yet.'), parent);
+            const others = routes.filter(item => !using.includes(item));
+            if (!others.length) return;
+            const row = node('div', undefined, parent); row.className = 'atri-prompt-actions';
+            const choose = select(row, 'Use with', [['', tl('Choose an API preset…')], ...others.map(item => [item.runtimeRouteId, item.displayName])], '');
+            button(row, 'Use this preset', async () => {
+                if (!choose.value) { choose.focus(); return; }
+                await runtimeRequest('/api-presets/' + encodeURIComponent(choose.value) + '/prompt-preset', { method: 'PUT', body: { presetId } });
+                parent.replaceChildren(); await renderUsage(parent);
+            });
+        } catch { if (parent.isConnected) node('p', 'Could not load API presets.', parent); }
+    }
     function emptyDetail() {
         main().replaceChildren();
         const empty = node('div'); empty.className = 'atri-library-resource-empty';
@@ -342,24 +416,22 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
         try {
             const presets = await runtimeRequest('/presets'); if (disposed || token !== listToken) return;
             pane.replaceChildren(); const root = node('section', undefined, pane); root.className = 'atri-prompt-preset atri-prompt-preset-list'; node('h2', 'Prompt Presets', root);
+            // Your presets come first; creating and importing are one compact row below them.
+            const rows = node('div', undefined, root);
             const tools = node('div', undefined, root); tools.className = 'atri-prompt-actions';
             const template = select(tools, 'Start from', PROMPT_TEMPLATES.map(([id, label]) => [id, tl(label)]), 'blank');
             button(tools, 'New preset', () => create(newPromptPreset(template.value)));
-            node('p', 'Prompt presets contain text, ordering and Regex rules. Model and generation settings belong to API presets.', root);
-            const file = field(root, 'Import preset'); file.type = 'file'; file.accept = '.json,application/json';
-            node('p', 'Generation parameters in older files are kept separately. Use Reuse saved configuration in an API preset to copy them.', root);
-            button(root, 'Import selected preset', async () => { if (!file.files?.length) { file.focus(); return; } await create(JSON.parse(await file.files[0].text()), true); });
-            if (!presets.length) node('p', 'No presets yet. Create a preset or import a file.', root);
+            // Choosing the file is the import; there is no second confirm step.
+            const file = doc.createElement('input'); file.type = 'file'; file.accept = '.json,application/json'; file.hidden = true; tools.append(file);
+            file.addEventListener('change', () => { const chosen = file.files?.[0]; file.value = ''; if (chosen) void chosen.text().then(text => create(JSON.parse(text), true)).catch(fail); });
+            button(tools, 'Import preset…', () => file.click());
+            if (!presets.length) node('p', 'No presets yet. Create a preset or import a file.', rows);
             for (const preset of presets) {
-                const row = node('article', undefined, root); row.className = 'atri-prompt-resource atri-library-row'; row.dataset.atriPresetId = preset.presetId;
+                const row = node('article', undefined, rows); row.className = 'atri-prompt-resource atri-library-row'; row.dataset.atriPresetId = preset.presetId;
                 row.prepend(createAtriaIcon(doc, 'layers', { size: 16 }));
                 literal('h3', preset.displayName, row); button(row, 'Open preset', () => open(preset.presetId));
+                // Rows only open; export and delete live on the preset's page.
                 row.addEventListener('click', event => { if (!event.target.closest('button, details')) void open(preset.presetId).catch(fail); });
-                button(row, 'Export preset', async () => exportPreset(await runtimeRequest('/presets/' + preset.presetId)));
-                button(row, 'Delete preset', async () => {
-                    await runtimeRequest('/presets/' + preset.presetId, { method: 'DELETE', body: { expectedRevision: preset.revision } });
-                    await list();
-                }).classList.add('atri-library-button--danger');
             }
             const existing = node('details', undefined, root); node('summary', 'Existing resources — migrate into an independent preset', existing);
             button(existing, 'Choose existing resources', async () => {

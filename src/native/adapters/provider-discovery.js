@@ -1,5 +1,5 @@
 const fail = code => { throw Object.assign(new Error('native_provider_' + code), { code: 'native_provider_' + code }); };
-const formats = ['provider.openai-compatible', 'provider.raw-text', 'provider.anthropic', 'provider.gemini'];
+const formats = ['provider.openai-compatible', 'provider.openai-responses', 'provider.raw-text', 'provider.anthropic', 'provider.gemini'];
 
 // Non-generating, explicit-connection probe. Never follows provider-supplied URLs.
 export function prepareProviderDiscovery(connection) {
@@ -8,10 +8,11 @@ export function prepareProviderDiscovery(connection) {
         || Object.keys(connection.networkPolicy).length) fail('probe_unsupported');
     const url = new URL(connection.endpoint);
     if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) fail('endpoint_invalid');
-    const format = connection.providerAdapter.replace('provider.', '');
+    // The Responses API lists models exactly like Chat Completions does.
+    const format = connection.providerAdapter === 'provider.openai-responses' ? 'openai-compatible' : connection.providerAdapter.replace('provider.', '');
     if (format === 'gemini') url.pathname = url.pathname.replace(/\/$/, '') + '/models';
     else {
-        const suffix = format === 'anthropic' ? /\/messages\/?$/ : /\/(?:chat\/)?completions\/?$/;
+        const suffix = format === 'anthropic' ? /\/messages\/?$/ : /\/(?:(?:chat\/)?completions|responses)\/?$/;
         if (!suffix.test(url.pathname)) fail('probe_unsupported');
         url.pathname = url.pathname.replace(suffix, '/models');
     }

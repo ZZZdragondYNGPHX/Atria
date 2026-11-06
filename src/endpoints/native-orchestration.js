@@ -10,6 +10,7 @@ import { getNativeGenerationHost } from './native-generation.js';
 import { createHostRouteResolver } from '../native/model-prompt-runtime/prompt-controls.js';
 import { RunObservationService } from '../native/orchestration/run-observation-service.js';
 import { getNativeReviewOrigin } from '../native/orchestration/review-origin.js';
+import { checkSessionTarget } from '../native/orchestration/session-target-check.js';
 
 const observationServices = new WeakMap();
 const services = () => {
@@ -88,7 +89,12 @@ export function createNativeOrchestrationRouter(getServices = services) {
         assertObject(input.body, ['sourceSelector'], 'getBinding');
         return plans.getBinding(handle, input.body.sourceSelector);
     }));
-    router.post('/bindings/save', route(true, (plans, handle, input) => plans.saveBinding(handle, input.commandId, input.body)));
+    router.post('/bindings/save', route(true, async (plans, handle, input) => {
+        // Applying a library Plan is where the chosen target's requirements are checked.
+        if (input.body?.sourceSelector?.domain === 'native_session' && input.body.planRef)
+            await checkSessionTarget({ plans, sessionCore: getNativeSessionServices().core, handle, sourceSelector: input.body.sourceSelector, planRef: input.body.planRef });
+        return plans.saveBinding(handle, input.commandId, input.body);
+    }));
     for (const method of ['list', 'observe', 'details', 'diagnostics']) router.post('/runs/' + method,
         route(false, (observations, handle, input, options) => observations[method](handle, input.body, options), 'observations'));
     router.post('/runs/cancel', route(true, (observations, handle, input) => observations.cancel(handle, input.commandId, input.body), 'observations'));

@@ -35,6 +35,7 @@ import {
     sourceWriteOperation,
 } from './studio-authoring.js';
 import { nativeStudioClient } from './studio-client.js';
+import { nativeProductClient } from './product-client.js';
 import { mountNativeStudioAgent } from './studio-agent.js';
 import { mountFrontendEditor } from './studio-frontend-editor.js';
 import { assertFrontendExperience, resourcePath } from '../../shared/native-frontend-contract.js';
@@ -266,11 +267,11 @@ async function renderProjectList(documentRef, root, host) {
     const title = documentRef.createElement('h2'); title.textContent = header.firstElementChild.textContent; header.firstElementChild.replaceWith(title);
     root.append(header);
     const surface = documentRef.createElement('section'); surface.className = 'atri-studio-project-surface'; root.append(surface);
-    const creation = documentRef.createElement('details'); creation.className = 'atri-studio-details';
-    const newProject = documentRef.createElement('summary'); newProject.textContent = t('New Project');
+    // Creating a project is the main action here: a visible name field and button, not a disclosure.
+    const creation = documentRef.createElement('form'); creation.className = 'atri-studio-create';
     const name = textInput(documentRef, '', 'Project name'); name.required = true; name.maxLength = 160;
     name.addEventListener('input', () => name.setCustomValidity(''));
-    creation.append(newProject, field(documentRef, 'Project name', name), button(documentRef, 'Create Project', async () => {
+    const create = button(documentRef, 'Create Project', async () => {
         if (!name.value.trim()) { name.setCustomValidity(t('Enter a project name.')); name.focus(); name.reportValidity(); return; }
         const projectId = createStudioNativeId('project');
         const source = {
@@ -284,7 +285,10 @@ async function renderProjectList(documentRef, root, host) {
             await nativeStudioClient.createProject(source);
             host.openBuild(projectId, source.project.displayName);
         } finally { creation.inert = false; }
-    }, { primary: true }));
+    }, { primary: true });
+    create.type = 'submit';
+    creation.addEventListener('submit', event => event.preventDefault());
+    creation.append(field(documentRef, 'New project name', name), create);
     surface.append(creation);
     const importing = documentRef.createElement('details'); importing.className = 'atri-studio-details';
     const importTitle = documentRef.createElement('summary'); importTitle.textContent = t('Import source package');
@@ -332,7 +336,8 @@ async function renderProjectList(documentRef, root, host) {
     importing.append(importTitle, heading(documentRef, 'Editable source', 'Source imports create a separate project. Runtime packages are for playing, not editing.'), importForm);
     surface.append(importing);
     const search = textInput(documentRef, '', 'Search projects'); search.type = 'search';
-    surface.append(field(documentRef, 'Search projects', search));
+    const searchField = field(documentRef, 'Search projects', search); searchField.hidden = projects.length < 8;
+    surface.append(searchField);
     const list = documentRef.createElement('div'); list.className = 'atri-studio-project-list'; surface.append(list);
     const fill = () => {
         list.replaceChildren();
@@ -342,7 +347,7 @@ async function renderProjectList(documentRef, root, host) {
             try { await host.refreshSearch?.(); } catch { /* Search retries when next opened. */ }
             search.focus();
         }));
-        if (!found.length) list.append(panel(documentRef, 'empty', projects.length ? 'No matching projects' : 'Your first project starts here', projects.length ? 'Try a different project name.' : 'Choose New Project to begin. Your edits are reviewed before they become a project revision.'));
+        if (!found.length) list.append(panel(documentRef, 'empty', projects.length ? 'No matching projects' : 'Your first project starts here', projects.length ? 'Try a different project name.' : 'Name your first project above to begin.'));
     };
     search.addEventListener('input', fill); fill();
 }
@@ -947,22 +952,33 @@ async function mountProjectStudio(documentRef, root, projectId, host, initialTas
         }
     }
 
-    async function runBuild({ download = false } = {}) {
+    async function runBuild({ download = false, install = false } = {}) {
         if (state.exporting || !state.confirmEditorLeave() || state.refreshRequired) return;
         state.exporting = true;
         const editorToken = state.editorSequence, baseRevision = state.revision.revision;
         try {
-            const report = await (download ? nativeStudioClient.build(projectId, baseRevision) : nativeStudioClient.preflight(projectId, baseRevision));
+            const report = await (download || install ? nativeStudioClient.build(projectId, baseRevision) : nativeStudioClient.preflight(projectId, baseRevision));
             if (state.disposed || editorToken !== state.editorSequence || baseRevision !== state.revision.revision) return;
             state.buildReport = report;
             log('success', 'Build preflight completed.', report.preflight);
-            if (download) {
+            state.installed = null;
+            if (download || install) {
                 const built = report;
                 const bytes = Uint8Array.from(globalThis.atob(built.data), char => char.charCodeAt(0));
                 const fileName = built.fileName || (projectId + '.atria');
-                downloadStudioFile(documentRef, new Blob([bytes], { type: built.mediaType || 'application/octet-stream' }), fileName);
-                log('success', formatProductText('Built ${0} from exact revision ${1}.', [fileName, state.revision.revision.slice(0, 12)]));
+                const blob = new Blob([bytes], { type: built.mediaType || 'application/octet-stream' });
                 delete state.buildReport.data;
+                if (download) {
+                    downloadStudioFile(documentRef, blob, fileName);
+                    log('success', formatProductText('Built ${0} from exact revision ${1}.', [fileName, state.revision.revision.slice(0, 12)]));
+                } else {
+                    // Same install path as Library → Add a work, without the file round trip.
+                    const preflight = await nativeProductClient.preflightPackage(blob);
+                    await nativeProductClient.installPackage(blob, preflight.requiredPermissions, preflight.update?.previous?.packageVersionId || null);
+                    if (state.disposed) return;
+                    state.installed = { packageId: preflight.packageId, name: preflight.name, version: preflight.version };
+                    void host.refreshSearch?.();
+                }
             }
             state.activeView = 'build'; state.mobileView = 'editor'; updateMobile();
             renderEditor();
@@ -1342,12 +1358,18 @@ async function mountProjectStudio(documentRef, root, projectId, host, initialTas
     }
 
     function renderBuild(body) {
-        body.append(heading(documentRef, 'Runtime package', 'Protected by default. Players can import and play without a password; this package cannot restore an editable project.'));
+        body.append(heading(documentRef, 'Play or share', 'Install this revision in your Library to play it, or export a file others can install. The file cannot be edited back into a project.'));
         body.append(actionRow(
             documentRef,
-            button(documentRef, 'Run Preflight', () => runBuild({ download: false })),
-            button(documentRef, 'Export runtime package', () => runBuild({ download: true }), { primary: true }),
+            button(documentRef, 'Install to Library', () => runBuild({ install: true }), { primary: true }),
+            button(documentRef, 'Export runtime package', () => runBuild({ download: true })),
+            button(documentRef, 'Check only', () => runBuild({ download: false })),
         ));
+        if (state.installed) {
+            const done = documentRef.createElement('p'); done.setAttribute('role', 'status');
+            done.textContent = formatProductText('${0} ${1} is installed in your Library.', [state.installed.name, state.installed.version]);
+            body.append(done, actionRow(documentRef, button(documentRef, 'Open in Library', () => host.openLibraryWork(state.installed.packageId, state.installed.name), { primary: true })));
+        }
         const sourceExport = documentRef.createElement('form'); sourceExport.className = 'atri-studio-details';
         sourceExport.dataset.atriaDraftDirty = 'false';
         sourceExport.addEventListener('submit', event => event.preventDefault());
@@ -1385,7 +1407,7 @@ async function mountProjectStudio(documentRef, root, projectId, host, initialTas
                 state.exporting = false; sourceExport.inert = false; exportSource.disabled = false;
                 if (!state.disposed && sourceExport.isConnected) exportSource.focus();
             }
-        }, { primary: true });
+        });
         exportSource.type = 'submit';
         const encryptionField = field(documentRef, 'Encrypt with a password', encrypt); encryptionField.className = 'checkbox_label'; encryptionField.prepend(encrypt);
         sourceExport.append(encryptionField, passwords, exportSource, status); body.append(sourceExport);

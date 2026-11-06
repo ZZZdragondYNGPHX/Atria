@@ -104,7 +104,10 @@ export async function inspectModelCapabilities({ handle, definition, dependencyP
                 issues.push({ code: 'native_orchestration_dependency_stale', severity: 'blocking', fieldPath: 'dependencyPins.' + pin.pinId });
                 return { evidence, issues, models };
             }
-            if (!resolved.route.executionPolicy?.computeBudget) { unavailable(); return { evidence, issues, models }; }
+            if (!resolved.route.executionPolicy?.computeBudget?.localWork) {
+                issues.push({ code: 'native_orchestration_route_budget_required', severity: 'blocking', fieldPath: 'dependencyPins.' + pin.pinId });
+                return { evidence, issues, models };
+            }
             assertComputeBudget(resolved.route.executionPolicy.computeBudget);
             const failure = await readModelFailurePlan({ handle, node, dependencyPins, resolver, routeRef: pin.resourceRef, role: route.role,
                 requirements }, resolved);

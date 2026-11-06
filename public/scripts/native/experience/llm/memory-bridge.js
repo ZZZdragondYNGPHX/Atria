@@ -249,7 +249,7 @@ export function nativeTurnMemoryQuery(snapshot, userInput, information) {
             semantic: item.semantic,
             data: item.data,
         }))
-        : [];
+        : (snapshot.timeline ?? []).slice(-2).map(entry => ({ role: entry.role, content: truncate(entry.content, 2000) }));
     if (visible.length) parts.push('Current visible context: ' + stringifyCompact(visible, 8000));
     return truncate(parts.join('\n') || 'Current Native package turn', MAX_QUERY_CHARS);
 }
@@ -267,8 +267,10 @@ export async function recallNativePackageTurnMemory(options = {}) {
         throw new Error('Native Package Turn Memory recall requires a Session snapshot');
     }
     const target = { kind: 'narrator' };
-    const information = informationContext(snapshot, target, options.informationTaskId);
-    if (!information?.memory) {
+    // A work without information rules sets no disclosure limits on Memory.
+    const declared = Boolean(snapshot.manifest?.runtime?.experienceContract?.informationRuntime);
+    const information = declared ? informationContext(snapshot, target, options.informationTaskId) : null;
+    if (declared && !information?.memory) {
         return Object.freeze({ status: 'denied', evidence: Object.freeze([]), query: '' });
     }
 
@@ -276,18 +278,18 @@ export async function recallNativePackageTurnMemory(options = {}) {
     const context = Object.assign(Object.create(baseContext), { nativeSnapshot: snapshot });
     const memoryApi = options.memoryApi || context?.getCapabilityApi?.('memory-graph') || null;
     const query = nativeTurnMemoryQuery(snapshot, options.userInput, information);
-    if (!memoryApi || typeof memoryApi.openSession !== 'function') {
-        return Object.freeze({ status: 'unavailable', evidence: Object.freeze([]), query });
-    }
-    const session = await memoryApi.openSession(context);
-    options.assertCurrent?.();
-    if (!session || typeof session.recallMemory !== 'function') {
+    // Recall is a read. A write session captures new sources on open, which
+    // commits a Revision and invalidates the very snapshot this recall is for.
+    const recall = typeof memoryApi?.recallMemory === 'function'
+        ? (q, recallOptions) => memoryApi.recallMemory(context, q, { ...recallOptions, readOnly: true })
+        : null;
+    if (!recall) {
         return Object.freeze({ status: 'unavailable', evidence: Object.freeze([]), query });
     }
 
     let result;
     try {
-        result = await session.recallMemory(query, { signal: options.signal, requester: target, informationTaskId: options.informationTaskId });
+        result = await recall(query, { signal: options.signal, requester: target, informationTaskId: options.informationTaskId });
     } catch (error) {
         if (options.signal?.aborted || error?.name === 'AbortError' || NATIVE_RETRIEVAL_SCOPE_ERRORS.includes(error?.code)) throw error;
         return Object.freeze({ status: 'unavailable', evidence: Object.freeze([]), query });
@@ -295,7 +297,7 @@ export async function recallNativePackageTurnMemory(options = {}) {
     options.assertCurrent?.();
     result?.assertCurrent?.();
 
-    const visibleMessages = new Set(informationSourceMessageIds(snapshot, information));
+    const visibleMessages = new Set(declared ? informationSourceMessageIds(snapshot, information) : snapshot.timeline.map(entry => entry.messageId));
     const rawEvidence = Array.isArray(result?.evidence) && result.evidence.length
         ? result.evidence
         : [{

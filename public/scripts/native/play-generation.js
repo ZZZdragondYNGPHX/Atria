@@ -73,7 +73,23 @@ export async function runNativePlayGeneration({ runtime, type, signal, input = '
         }
         const messages = quietPrompt ? [{ role: 'user', content: quietPrompt }]
             : originalType === 'continue' ? [{ role: 'user', content: 'Continue the previous assistant response without repeating its existing text.' }] : [];
-        const result = await execute({ role: 'narrator', messages, abortSignal: signal, onChunk: host.onChunk });
+        // Recalled Memory reaches the narrator the same way it does for Package Turns.
+        let hostMemoryEvidence;
+        if (!['quiet', 'impersonate'].includes(originalType)) {
+            try {
+                const memory = await recallNativePackageTurnMemory({ snapshot: runtime.snapshot, userInput: input, signal,
+                    context: host.context?.() ?? globalThis.Atria?.getContext?.() });
+                if (memory.evidence?.length) hostMemoryEvidence = memory.evidence;
+            } catch (error) {
+                if (signal?.aborted) throw error;
+                console.warn('[native-play] Memory recall skipped for this reply', error);
+            }
+        }
+        const result = await execute({ role: 'narrator', messages, abortSignal: signal, onChunk: host.onChunk, ...(hostMemoryEvidence ? { hostMemoryEvidence } : {}) });
+        // The Context inspector shows what this reply was actually built from.
+        if (result.snapshot?.contextPlan && !['quiet', 'impersonate'].includes(originalType)) {
+            runtime.lastReplyContext = { sessionId: runtime.snapshot?.session?.sessionId, plan: result.snapshot.contextPlan };
+        }
         if (signal?.aborted) throw Object.assign(new Error('Native generation cancelled'), { code: 'generation_cancelled' });
         if (originalType === 'quiet') return result.assistantText;
         if (originalType === 'impersonate') { await host.impersonate?.(result.assistantText); return result.assistantText; }

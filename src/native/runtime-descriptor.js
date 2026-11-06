@@ -68,7 +68,8 @@ function runtimeSource(manifest, entryPoint) {
     if (entryRuntime.experienceContract !== undefined) {
         throw new TypeError('experienceContract belongs to Package.runtime and cannot be overridden by an EntryPoint');
     }
-    const experience = experienceRuntimeSource(entryRuntime.experience ?? packageRuntime.experience);
+    // A work that declares no Frontend is a plain text experience.
+    const experience = experienceRuntimeSource(entryRuntime.experience ?? packageRuntime.experience ?? { mode: 'text' });
 
     const packageGame = gameRuntimeSource(packageRuntime.game);
     const entryGame = gameRuntimeSource(entryRuntime.game);

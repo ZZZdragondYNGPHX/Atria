@@ -5,7 +5,8 @@ import { readSecret, SECRET_KEYS } from '../endpoints/secrets.js';
 import { assertRetrievalRef, assertRetrievalProfile, NATIVE_RETRIEVAL_SCOPE_ERRORS, NATIVE_RETRIEVAL_COMPUTE_ERRORS } from '../../public/scripts/native/retrieval-contracts.js';
 import { assertWritable } from '../storage/read-only-mode.js';
 import { prepareRetrievalCompute } from './retrieval-compute.js';
-import { getOpenAIBatchVector, supportsOpenAIEmbeddingSource } from '../vectors/openai-vectors.js';
+import { getOpenAIBatchVector, supportsOpenAIEmbeddingSource, openAIEmbeddingBody } from '../vectors/openai-vectors.js';
+import { rerank } from '../vectors/rerank.js';
 import { insertNativeIndex, queryNativeIndexes, nativeRetrievalIndexPath } from './vector-index-work.js';
 import { hashNativeDocument } from './repositories/common.js';
 import { embeddingBatches } from '../vectors/embedding-batches.js';
@@ -43,6 +44,54 @@ export async function executeNativeEmbedding({ directories, profile: value, comp
         topK: input.topK, threshold: input.threshold, includeVectors: input.includeVectors === true, compute, signal,
         getVector: async () => (await vectors([input.searchText]))[0] })).single;
 }
+
+/** One small real request through the same address and key memory uses.
+ * Failures come back as a reason the editor can explain, never as a throw. */
+export async function testRetrievalProfile(directories, value, signal) {
+    const profile = assertRetrievalProfile(value);
+    if (['transformers', 'webllm'].includes(profile.source) || profile.mode === 'embed' && !supportsOpenAIEmbeddingSource(profile.source))
+        return { ok: false, reason: 'untestable' };
+    let secret;
+    try { secret = resolveRetrievalSecret(directories, profile.secretRef); } catch { return { ok: false, reason: 'secret' }; }
+    const started = Date.now();
+    const sample = ['Atria memory search test.', 'An unrelated sentence about the weather.'];
+    let url;
+    try {
+        if (profile.mode === 'embed') {
+            url = profile.endpoint + '/embeddings';
+            const response = await fetch(url, { method: 'POST', redirect: 'error', signal: AbortSignal.any([signal, AbortSignal.timeout(30000)]),
+                headers: { 'Content-Type': 'application/json', ...(secret ? { Authorization: `Bearer ${secret}` } : {}), ...profile.headers },
+                body: JSON.stringify(openAIEmbeddingBody(sample.slice(0, 1), profile.source, profile.model)) });
+            if (!response.ok) return { ok: false, status: response.status, url, reason: failureReason(response.status) };
+            const data = await response.json().catch(() => null);
+            const vector = data?.data?.[0]?.embedding;
+            if (!Array.isArray(vector) || !vector.length || vector.some(n => !Number.isFinite(n))) return { ok: false, url, reason: 'response' };
+            return { ok: true, mode: 'embed', dimensions: vector.length, latencyMs: Date.now() - started };
+        }
+        url = profile.endpoint;
+        const ranked = await rerank(profile.source, { model: profile.model, reverseProxy: profile.endpoint, proxyPassword: secret }, 'memory search',
+            sample.map((text, index) => ({ text, index, hash: index })), 2, directories);
+        return { ok: true, mode: 'rerank', top: ranked[0]?.index ?? null, latencyMs: Date.now() - started };
+    } catch (error) {
+        const status = Number(/(\d{3})\b/.exec(error?.message || '')?.[1]) || null;
+        return { ok: false, url, ...(status ? { status, reason: failureReason(status) } : { reason: error?.name === 'AbortError' || error?.type === 'aborted' ? 'timeout' : /Invalid rerank/.test(error?.message) ? 'response' : 'unreachable' }) };
+    }
+}
+/** The provider's own model list (OpenAI-style GET /models), so users pick instead of typing IDs. */
+export async function listRetrievalModels(directories, { endpoint, secretRef }, signal) {
+    const url = new URL(String(endpoint || '').replace(/\/+$/, '') + '/models');
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) throw new TypeError('Invalid endpoint');
+    let secret;
+    try { secret = resolveRetrievalSecret(directories, secretRef ? { secretId: String(secretRef.secretId) } : null); } catch { return { ok: false, reason: 'secret' }; }
+    try {
+        const response = await fetch(url.href, { redirect: 'error', signal: AbortSignal.any([signal, AbortSignal.timeout(20000)]), headers: secret ? { Authorization: `Bearer ${secret}` } : {} });
+        if (!response.ok) return { ok: false, status: response.status, url: url.href, reason: failureReason(response.status) };
+        const data = await response.json().catch(() => null);
+        const ids = (Array.isArray(data?.data) ? data.data : Array.isArray(data?.models) ? data.models : []).map(item => typeof item === 'string' ? item : item?.id ?? item?.name).filter(id => typeof id === 'string' && id.length <= 256);
+        return { ok: true, models: [...new Set(ids)].sort().slice(0, 2000) };
+    } catch (error) { return { ok: false, url: url.href, reason: error?.name === 'AbortError' ? 'timeout' : 'unreachable' }; }
+}
+const failureReason = status => [404, 405].includes(status) ? 'address' : [401, 403].includes(status) ? 'key' : status === 429 ? 'busy' : status >= 500 ? 'down' : 'rejected';
 
 export function resolveRetrievalSecret(directories, ref) {
     if (!ref) return '';

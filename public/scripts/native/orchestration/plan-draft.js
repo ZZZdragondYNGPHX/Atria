@@ -36,9 +36,9 @@ export function defaultNodeShape(kind) {
 
 export function emptyDefinition() {
     const limits = Object.fromEntries(LIMIT_FIELDS.map(field => [field, 0]));
-    Object.assign(limits, { maxNodes: 16, maxEdges: 32, maxSteps: 32, maxAttempts: 32, maxConcurrency: 1, maxEdgeVisits: 1, deadlineMs: 300000 });
+    Object.assign(limits, { maxNodes: 16, maxEdges: 32, maxSteps: 32, maxAttempts: 32, maxConcurrency: 1, maxEdgeVisits: 32, deadlineMs: 300000 });
     return { nodes: [], edges: [], entryNodeIds: [], capabilityCeiling: [], graphChangePolicy: { allowedOperations: [], allowedNodeKinds: [] },
-        limits, outputContract: { kind: 'rp_narration', ownerNodeId: null, slot: 'narration', allowPartial: false } };
+        limits, outputContract: { kind: 'rp_narration', ownerNodeId: null, slot: 'assistant', allowPartial: false, resultPolicy: { outputType: 'text', maxBytes: 16384 } } };
 }
 
 /** Starter: one agent feeding the single output. Still needs a pinned Model. */
@@ -85,9 +85,22 @@ export function nodeRemovalImpact(definition, nodeId) {
 export function compatiblePorts(definition, fromNodeId, toNodeId) {
     const from = definition.nodes.find(node => node.nodeId === fromNodeId), to = definition.nodes.find(node => node.nodeId === toNodeId);
     if (!from || !to) return [];
-    const pairs = [];
+    const pairs = [], used = new Set(definition.edges.filter(edge => edge.to.nodeId === toNodeId && !edge.loopBack).map(edge => edge.to.port));
     for (const out of from.outputs) for (const input of to.inputs) if (out.type === input.type) pairs.push({ from: out.name, to: input.name });
-    return pairs;
+    if (to.kind !== 'output') for (const out of from.outputs) {
+        if (to.inputs.some(input => input.type === out.type && !used.has(input.name))) continue;
+        let name = 'in', suffix = 2;
+        while (to.inputs.some(input => input.name === name)) name = 'in' + suffix++;
+        pairs.push({ from: out.name, to: name, create: { name, type: out.type } });
+    }
+    // Free existing ports first, then a new port, then ports already fed.
+    const rank = pair => pair.create ? 1 : used.has(pair.to) ? 2 : 0;
+    return pairs.sort((a, b) => rank(a) - rank(b));
+}
+
+function syncEntries(definition) {
+    const fed = new Set(definition.edges.filter(edge => !edge.loopBack).map(edge => edge.to.nodeId));
+    definition.entryNodeIds = definition.nodes.filter(node => node.kind !== 'output' && !fed.has(node.nodeId)).map(node => node.nodeId);
 }
 
 export function edgeTypeMismatch(definition, edge) {
@@ -178,7 +191,13 @@ export class PlanDraft {
             doc.definition.nodes.push({ nodeId, kind, label: label || kind, inputs: shape.inputs, outputs: shape.outputs, dependencyPinIds: [], capabilities: [], policy: shape.policy });
             if (!doc.definition.entryNodeIds.length && kind !== 'output') doc.definition.entryNodeIds.push(nodeId);
             if (kind === 'output' && !doc.definition.outputContract.ownerNodeId) doc.definition.outputContract.ownerNodeId = nodeId;
+            // A narration output writes the story reply; declare that up front.
+            if (kind === 'output' && doc.definition.outputContract.kind === 'rp_narration' && doc.definition.outputContract.ownerNodeId === nodeId) {
+                doc.definition.nodes.at(-1).capabilities = ['chat.output'];
+                if (!doc.definition.capabilityCeiling.includes('chat.output')) doc.definition.capabilityCeiling.push('chat.output');
+            }
             if (position) doc.viewState.positions[nodeId] = { x: Math.round(position.x), y: Math.round(position.y) };
+            syncEntries(doc.definition);
             return nodeId;
         });
     }
@@ -203,6 +222,7 @@ export class PlanDraft {
             definition.entryNodeIds = definition.entryNodeIds.filter(id => id !== nodeId);
             if (definition.outputContract.ownerNodeId === nodeId) definition.outputContract.ownerNodeId = null;
             delete doc.viewState.positions[nodeId];
+            syncEntries(definition);
         });
     }
 
@@ -213,6 +233,21 @@ export class PlanDraft {
             if (index < 0 || target < 0 || target >= nodes.length) return;
             const [node] = nodes.splice(index, 1);
             nodes.splice(target, 0, node);
+        });
+    }
+
+    /** Choosing a node's model or audience pin attaches it; a model pin also declares the send it needs. */
+    useNodePin(nodeId, field, pinId) {
+        return this.transact('node.pin', doc => {
+            const node = doc.definition.nodes.find(item => item.nodeId === nodeId);
+            if (!node) throw new TypeError('Missing node');
+            if (pinId && !node.dependencyPinIds.includes(pinId)) node.dependencyPinIds.push(pinId);
+            if (pinId || field === 'agentPinId') node.policy = { ...node.policy, [field]: pinId };
+            else { node.policy = { ...node.policy }; delete node.policy[field]; }
+            if (field === 'agentPinId' && pinId) {
+                if (!node.capabilities.includes('generation.send')) node.capabilities.push('generation.send');
+                if (!doc.definition.capabilityCeiling.includes('generation.send')) doc.definition.capabilityCeiling.push('generation.send');
+            }
         });
     }
 
@@ -246,7 +281,14 @@ export class PlanDraft {
     addEdge({ from, to, condition = 'always', maxVisits = 1, loopBack = false }) {
         return this.transact('edge.add', doc => {
             const edgeId = newEdgeId();
+            const targetNode = doc.definition.nodes.find(node => node.nodeId === to.nodeId);
+            const source = doc.definition.nodes.find(node => node.nodeId === from.nodeId)?.outputs.find(port => port.name === from.port);
+            if (targetNode && source && !targetNode.inputs.some(port => port.name === to.port)) targetNode.inputs.push({ name: to.port, type: source.type, required: !loopBack });
             doc.definition.edges.push({ edgeId, from: clone(from), to: clone(to), condition, maxVisits, loopBack });
+            // A wired forward input is one the node waits for.
+            const target = doc.definition.nodes.find(node => node.nodeId === to.nodeId)?.inputs.find(port => port.name === to.port);
+            if (target && !loopBack) target.required = true;
+            syncEntries(doc.definition);
             return edgeId;
         });
     }
@@ -260,7 +302,7 @@ export class PlanDraft {
     }
 
     removeEdge(edgeId) {
-        return this.transact('edge.remove', doc => { doc.definition.edges = doc.definition.edges.filter(edge => edge.edgeId !== edgeId); });
+        return this.transact('edge.remove', doc => { doc.definition.edges = doc.definition.edges.filter(edge => edge.edgeId !== edgeId); syncEntries(doc.definition); });
     }
 
     setEntry(nodeId, entry) {

@@ -90,6 +90,9 @@
     }
 
     const resume = (() => {
+        // Opening another area directly is not a return to the story.
+        const route = new URLSearchParams(window.location.search).get('atriaRoute');
+        if (route && route !== 'play') return null;
         const value = read(RESUME_KEY);
         if (!value || value.v !== 1) return null;
         const work = clip(value.work, 120);

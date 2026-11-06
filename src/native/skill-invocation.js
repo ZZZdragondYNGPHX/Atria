@@ -69,8 +69,10 @@ export function isNarrativeSkillInvocation(role, taskPlan, runtime) {
 export async function prepareNarrativeSkills({ repository, settings, context, work = (_kind, _input, operation) => operation() }) {
     const selected = await work('skill_inventory', { scope: 'all', context, settings, path: 'narrative' }, async () =>
         resolveSkillInvocation(await repository.list({ scope: 'all' }), { context, settings, path: 'narrative' }));
-    const entries = await loadAlwaysSkills(await pinSkillEntries(selected,
-        opts => work('skill_pin', opts, () => repository.pin(opts))),
+    // Pinning the selected Skills is one step: one local job, however many Skills are installed.
+    const pinned = selected.length ? await work('skill_pin', { skills: selected.map(({ scope, name, installedHash }) => ({ scope, name, expectedHash: installedHash })) },
+        () => pinSkillEntries(selected, opts => repository.pin(opts))) : [];
+    const entries = await loadAlwaysSkills(pinned,
     opts => work('skill_load', opts, () => repository.readFile(opts)));
     const inventory = entries.map(({ name, scope, description, invocationMode, installedHash, version }) => ({ name, scope, description, invocationMode, installedHash, version }));
     const tools = entries.length ? [
@@ -118,15 +120,23 @@ export async function runNarrativeSkillLoop({ execute, skills, transcript, signa
         checkCancellation(signal);
         await fresh();
         if (roundCount() >= 6) throw new Error('native_skill_round_limit');
-        const result = await execute();
+        // Each round streams provisionally; a round that ends in tool calls is
+        // retracted with a reset so readers never keep text the model replaced.
+        let streamed = false;
+        const roundChunk = onChunk ? chunk => {
+            if (chunk?.text) streamed = true;
+            try { onChunk({ ...chunk, provisional: true }); } catch { /* Observer only. */ }
+        } : undefined;
+        const result = await execute(roundChunk);
         checkCancellation(signal);
         await fresh();
         evidence.push(result.snapshot);
         const calls = result.response?.toolCalls ?? [];
         if (!calls.length) {
-            try { if (result.response?.text) onChunk?.({ text: result.response.text, delta: result.response.text }); } catch { /* Observer only. */ }
+            try { if (result.response?.text) onChunk?.({ text: result.response.text, delta: streamed ? '' : result.response.text }); } catch { /* Observer only. */ }
             return { ...result, skillRounds: evidence };
         }
+        if (streamed) { try { onChunk?.({ text: '', delta: '', provisional: true, reset: true }); } catch { /* Observer only. */ } }
         if (calls.length > 8) throw new Error('native_skill_tool_limit');
         transcript.push({ role: 'assistant', content: result.response.text ?? '',
             ...(result.response.providerState ? { providerState: result.response.providerState } : {}),

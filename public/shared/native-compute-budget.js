@@ -7,6 +7,10 @@ const fail = code => { throw Object.assign(new TypeError(code), { code }); };
 // Every local job admits at least one item. The original physical item
 // envelope bounds retained rows; jobs is the owner's declared allowance.
 const MAX_LOCAL_WORK_ITEMS = 10000;
+// Limits an API preset uses until its owner sets its own. Generous enough that
+// agents, tools and background work run without any extra configuration.
+export const DEFAULT_COMPUTE_BUDGET = Object.freeze({ maxRequests: 32, maxTokens: 4000000,
+    localWork: Object.freeze({ maxJobs: 32, maxItems: MAX_LOCAL_WORK_ITEMS, maxInputBytes: 16777216 }) });
 
 // A provenance marker is an immutable original-bank correlation, never a grant
 // or a second ledger. Only the trusted BudgetPort creates these charge inputs.

@@ -186,18 +186,13 @@ export function mountAtriaPlayProduct({
         picker = openPersonaSelector({ document: documentRef, runtime: activeRuntime(), expectedRevisionId: revision, sessionId });
     };
     persona.addEventListener('click', () => { try { openPicker(); } catch (error) { composerStatus.textContent = error.message; } });
-    // Key hint follows the real send preference; IME composition never sends.
+    // Key hint follows the real send preference.
     const keyHint = documentRef.createElement('span');
     keyHint.className = 'atria-play-composer__hint';
     const renderKeyHint = () => {
         const enterSends = Number(globalThis.Atria?.getContext?.()?.powerUserSettings?.send_on_enter ?? 0) === 1;
         const key = label => { const node = documentRef.createElement('kbd'); node.textContent = label; return node; };
-        keyHint.replaceChildren(
-            ...(enterSends
-                ? [key('Enter'), ' ' + tl('Send') + ' · ', key('Shift'), key('Enter'), ' ' + tl('New line')]
-                : [key('Enter'), ' ' + tl('New line') + ' · ', key('Ctrl'), key('Enter'), ' ' + tl('Send')]),
-            ' · ' + tl('IME composition never sends'),
-        );
+        keyHint.replaceChildren(...(enterSends ? [key('Enter')] : [key('Ctrl'), key('Enter')]), ' ' + tl('Send'));
     };
     renderKeyHint();
     textarea.addEventListener('focus', renderKeyHint);
@@ -242,6 +237,49 @@ export function mountAtriaPlayProduct({
 
     const topSpace = documentRef.createElement('div'), bottomSpace = documentRef.createElement('div');
     for (const spacer of [topSpace, bottomSpace]) { spacer.setAttribute('aria-hidden', 'true'); spacer.className = 'atria-play-window-spacer'; }
+    // The streaming reply reads like the committed one: same column, same prose,
+    // revealed at a steady pace so network bursts never jump the page.
+    const typewriter = (() => {
+        const node = documentRef.createElement('article');
+        node.className = 'atria-play-message'; node.dataset.role = 'assistant';
+        node.dataset.atriaDraft = 'true'; node.dataset.atriaGenerationProjection = 'true';
+        node.setAttribute('aria-live', 'off'); node.setAttribute('aria-busy', 'true');
+        const body = documentRef.createElement('div'); body.className = 'atria-play-message__body';
+        node.append(body);
+        let target = '', shown = 0, frame = 0, last = 0;
+        const reduced = () => globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches || documentRef.body.classList.contains('reduced-motion');
+        const paint = () => {
+            renderSafeProse(body, target.slice(0, shown), { openExternal: openHostExternal });
+            if (following) conversation.scrollTop = conversation.scrollHeight;
+        };
+        const step = time => {
+            frame = 0;
+            const elapsed = last ? Math.min(100, time - last) : 16; last = time;
+            const backlog = target.length - shown;
+            if (backlog <= 0) return;
+            // ~45 chars/s baseline, accelerating with the backlog so the reveal never lags far behind.
+            shown = Math.min(target.length, shown + Math.max(1, Math.round(elapsed * (0.045 + backlog / 1200))));
+            paint();
+            frame = requestAnimationFrame(step);
+        };
+        return {
+            get visible() { return node.isConnected && !node.hidden; },
+            update(text, state) {
+                if (!text) {
+                    if (frame) cancelAnimationFrame(frame);
+                    frame = 0; last = 0; target = ''; shown = 0;
+                    node.remove(); body.replaceChildren();
+                    return;
+                }
+                node.dataset.generationState = state;
+                if (!text.startsWith(target.slice(0, shown))) shown = 0;
+                target = text;
+                if (node.nextSibling !== bottomSpace) conversation.insertBefore(node, bottomSpace);
+                if (reduced()) { shown = target.length; paint(); return; }
+                if (!frame && shown < target.length) { last = 0; frame = requestAnimationFrame(step); }
+            },
+        };
+    })();
     const canShift = () => documentRef.getSelection?.()?.isCollapsed !== false
         && !(conversation.contains(documentRef.activeElement) && documentRef.activeElement !== conversation);
     const window = new ConversationWindow({ scroll: conversation,
@@ -297,11 +335,16 @@ export function mountAtriaPlayProduct({
         }
         runtimeError.replaceChildren(); runtimeError.hidden = false;
         const message = documentRef.createElement('p'); message.textContent = event.detail.message;
-        const action = documentRef.createElement('button'); action.type = 'button';
-        action.className = 'atria-native-play-actions__button';
-        action.textContent = tl('Open Runtime') + ' ' + event.detail.target;
-        action.addEventListener('click', () => globalThis.Atria?.shell?.getWorkspaceHost?.()?.openRuntimeSection(event.detail.target));
-        runtimeError.append(message, action);
+        runtimeError.append(message);
+        if (event.detail.target) {
+            const action = documentRef.createElement('button'); action.type = 'button';
+            action.className = 'atria-native-play-actions__button';
+            const host = () => globalThis.Atria?.shell?.getWorkspaceHost?.();
+            const labels = { plans: 'Open the plan library', routes: 'Open API presets', connections: 'Open services', models: 'Open models', profiles: 'Open API presets', diagnostics: 'Open diagnostics' };
+            action.textContent = tl(labels[event.detail.target] ?? 'Open Runtime');
+            action.addEventListener('click', () => event.detail.target === 'plans' ? host()?.openAgentSection('plans') : host()?.openRuntimeSection(event.detail.target));
+            runtimeError.append(action);
+        }
     };
     composerComponent.append(runtimeError);
     documentRef.addEventListener('atria-native-runtime-error', showRuntimeError);
@@ -378,7 +421,12 @@ export function mountAtriaPlayProduct({
         entries.forEach((entry, index) => {
             const id = text(entry.messageId);
             if (committedEntries.get(id)?.participant) entry = { ...entry, participant: publicParticipant(committedEntries.get(id)) };
-            const node = existing.get(id) || messageNode(documentRef, snapshot, { ...committedEntries.get(id), ...entry });
+            let node = existing.get(id);
+            if (!node) {
+                node = messageNode(documentRef, snapshot, { ...committedEntries.get(id), ...entry });
+                // The committed reply replaces its streamed draft in place, without a second entrance.
+                if (entry.role === 'assistant' && typewriter.visible) node.dataset.atriaFromDraft = 'true';
+            }
             node.dataset.sequence = String(entry.sequence ?? window.from + index);
             node.setAttribute('aria-posinset', String(Number(node.dataset.sequence) + 1)); node.setAttribute('aria-setsize', String(window.total));
             existing.delete(id);
@@ -415,9 +463,7 @@ export function mountAtriaPlayProduct({
         topSpace.style.height = window.offset(window.from) + 'px';
         bottomSpace.style.height = Math.max(0, window.offset(window.total) - window.offset(window.from + entries.length)) + 'px';
         conversation.setAttribute('aria-live', following ? 'polite' : 'off');
-        provisionalNode.hidden = !generating() || !provisional;
-        provisionalNode.textContent = provisional;
-        provisionalNode.dataset.generationState = generation.state;
+        typewriter.update(generating() ? provisional : '', generation.state);
         if (!entries.length) {
             const empty = documentRef.createElement('div');
             empty.className = 'atria-play-conversation__empty';
@@ -435,7 +481,9 @@ export function mountAtriaPlayProduct({
         const writable = runtimeWritable(runtime) && snapshot.states?.atri_run?.status !== 'dead';
         textarea.disabled = !writable || generating() || submitting;
         persona.disabled = !writable || generating() || submitting || Boolean(runtime.generation);
-        persona.textContent = runtime.snapshot.states?.atri_player_persona?.solo?.snapshot.name || tl('Choose Persona');
+        const personaName = runtime.snapshot.states?.atri_player_persona?.solo?.snapshot.name || tl('Choose Persona');
+        // The icon keeps the chip recognisable when compact layouts hide its text.
+        if (persona.dataset.label !== personaName) { persona.dataset.label = personaName; persona.replaceChildren(createAtriaIcon(documentRef, 'person', { size: 15 }), personaName); }
         send.disabled = !writable || (submitting && !generating()) || generation.state === 'cancelling';
         send.setAttribute('aria-busy', String(generation.state === 'cancelling'));
         const action = generating() ? 'Stop' : 'Send';
@@ -472,7 +520,8 @@ export function mountAtriaPlayProduct({
         const originalDraft = textarea.value;
         const value = originalDraft.trim();
         if (submitting || generating()) throw new Error(tl('Generation is already running.'));
-        if (!value || !runtimeWritable(runtime)) throw new Error(tl('Native Composer is not ready.'));
+        if (!value) return null; // Nothing typed: sending is a no-op, not an error.
+        if (!runtimeWritable(runtime)) throw new Error(tl('This story cannot take a new turn right now.'));
         const generate = globalThis.Atria?.getContext?.()?.generateNative;
         if (typeof generate !== 'function') throw new Error(tl('Native generation entrypoint is unavailable.'));
         submitting = true;
@@ -561,9 +610,6 @@ export function mountAtriaPlayProduct({
         focus() { textarea.focus(); }, submit: submitDraft, submitCommitted,
     });
     const headless = createHeadlessConversation({ runtime: activeRuntime, composer: composerApi, stop: () => globalThis.Atria?.getContext?.()?.stopGeneration?.(), actions: { openPersonaSelector: openPicker } });
-    const provisionalNode = documentRef.createElement('aside');
-    provisionalNode.dataset.atriaGenerationProjection = 'true'; provisionalNode.setAttribute('aria-live', 'off');
-    conversationComponent.append(provisionalNode);
     render();
 
     return Object.freeze({

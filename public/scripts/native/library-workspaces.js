@@ -44,16 +44,17 @@ function importSurface(doc, parent, kind, host) {
     const isPackage = kind === 'package';
     const root = el(doc, 'section', 'atri-library-import', undefined, parent);
     root.dataset[isPackage ? 'atriaNativeInstall' : 'atriaNativeSaveImport'] = 'true';
-    heading(doc, root, isPackage ? 'Install / Update .atria' : 'Import .atriasave',
-        isPackage ? 'Choose a work to review its permissions before installing.' : 'Import an Atria save. Its matching work must already be installed.');
+    heading(doc, root, isPackage ? 'Add a work' : 'Import a save',
+        isPackage ? 'Choose an .atria file to install a new work or update one you have.' : 'Choose an .atriasave file exported from Atria.');
     const input = field(doc, root, isPackage ? 'Choose an Atria work' : 'Choose an Atria save', '', 'file');
     input.accept = isPackage ? '.atria,application/octet-stream' : '.atriasave,application/octet-stream';
-    const choose = action(doc, root, isPackage ? 'Choose an Atria work' : 'Choose an Atria save', () => input.click());
+    input.closest('label').hidden = true;
+    const choose = action(doc, root, isPackage ? 'Choose an Atria work' : 'Choose an Atria save', () => input.click(), { primary: true });
+    let sequence = 0; let processing = false;
+    action(doc, root, 'Cancel', () => { if (processing) return; sequence++; host.openLibrarySection('works'); });
     const result = el(doc, 'div', 'atri-library-import-result', undefined, root);
     result.setAttribute('aria-live', 'polite');
-    let sequence = 0; let processing = false;
-    const reset = () => { if (processing) return; sequence++; input.value = ''; result.replaceChildren(); input.focus(); };
-    action(doc, root, 'Cancel', () => { if (processing) return; sequence++; host.openLibrarySection('works'); });
+    const reset = () => { if (processing) return; sequence++; input.value = ''; result.replaceChildren(); choose.focus(); };
     input.addEventListener('change', async () => {
         const file = input.files?.[0]; if (!file) return;
         const token = ++sequence;
@@ -71,30 +72,25 @@ function importSurface(doc, parent, kind, host) {
                 review.dataset[isPackage ? 'atriaPackagePreflight' : 'atriaSavePreflight'] = isPackage ? preflight.packageId : preflight.dependency?.status || 'unknown';
                 el(doc, 'h4', '', isPackage ? preflight.name : file.name, review);
                 el(doc, 'p', '', isPackage ? `${tl('Version')} ${preflight.version}` : tl(ready ? 'Ready to import this save.' : 'Install the matching work in Library before importing this save.'), review);
-                const grants = new Map();
                 if (isPackage) renderPackageUpdateReview(doc, review, preflight);
                 if (isPackage && (preflight.permissions?.length || preflight.requiredPermissions.length)) {
-                    const permissions = el(doc, 'fieldset', 'atri-library-permissions', undefined, review);
-                    el(doc, 'legend', '', tl('Requested permissions'), permissions);
-                    for (const permission of preflight.permissions || preflight.requiredPermissions.map(permission => ({ permission, required: true }))) {
-                        const checkbox = permissionRow(doc, permissions, permission, { checkbox: permission.required });
-                        if (checkbox) grants.set(permission.permission, checkbox);
-                    }
+                    // Installing accepts the required permissions; they are listed, not ticked one by one.
+                    const permissions = disclosure(doc, review, 'What this work can do');
+                    for (const permission of preflight.permissions || preflight.requiredPermissions.map(permission => ({ permission, required: true })))
+                        permissionRow(doc, permissions, permission);
                 }
-                disclosure(doc, review, 'Details', isPackage ? { capabilities: preflight.capabilities, packageId: preflight.packageId, packageVersionId: preflight.packageVersionId } : preflight.dependency?.required || preflight.package);
+                if (!isPackage) disclosure(doc, review, 'Details', preflight.dependency?.required || preflight.package);
                 if (!ready) {
                     mountSaveDependencyRecovery({ document: doc, root: review, preflight, saveData: data, host, isCurrent: current, onReady: inspect }); return;
                 }
                 const passwordInput = isPackage ? null : field(doc, review, 'Save password (leave blank if none)', '', 'password');
                 const controls = actions(doc, review);
-                const submit = action(doc, controls, isPackage ? 'Install / Update' : 'Import Save', async () => {
+                const submit = action(doc, controls, isPackage ? (preflight.update?.previous ? 'Update' : 'Install') : 'Import Save', async () => {
                     if (!current()) return;
                     processing = true; input.disabled = choose.disabled = true;
                     try {
                         let imported;
                         if (isPackage) {
-                            const missing = preflight.requiredPermissions.filter(permission => !grants.get(permission)?.checked);
-                            if (missing.length) throw new Error(tl('Grant required permissions before installation:') + ' ' + missing.join(', '));
                             await client.installPackage(data, preflight.requiredPermissions, preflight.update?.previous?.packageVersionId || null);
                         } else {
                             const password = passwordInput.value; if (!current()) return;
@@ -111,7 +107,6 @@ function importSurface(doc, parent, kind, host) {
                         action(doc, result, isPackage ? 'Open Work' : 'Open Session', () => isPackage
                             ? host.openLibraryWork(preflight.packageId, preflight.name)
                             : openSession(host, imported.session.sessionId), { primary: true });
-                        if (isPackage) disclosure(doc, result, 'Details', { packageId: preflight.packageId, packageVersionId: preflight.packageVersionId, version: preflight.version });
                         action(doc, result, 'Choose another file', reset);
                         void host.refreshSearch?.();
                     } catch (error) {
@@ -120,7 +115,6 @@ function importSurface(doc, parent, kind, host) {
                         if (error.status === 409) action(doc, controls, 'Review file again', inspect);
                     } finally { processing = false; input.disabled = choose.disabled = false; }
                 }, { primary: true });
-                action(doc, controls, 'Cancel', reset);
                 submit.focus();
             };
             await inspect();
@@ -143,12 +137,12 @@ function sessionRow(doc, parent, session, host, refresh, workName) {
     el(doc, 'p', 'atri-library-meta', `${session.saveCount || 0} ${tl('Saves')}`, content);
     const controls = actions(doc, row);
     action(doc, controls, 'Continue', () => openSession(host, session.sessionId), { disabled: !ready, primary: true });
-    const more = disclosure(doc, controls, 'Manage');
+    const more = disclosure(doc, row, 'Manage');
     mountSessionRename({ document: doc, root: more, session, onSaved: refresh });
-    const resourceSetup = el(doc, 'div', '', undefined, more);
-    action(doc, more, 'Worlds & Knowledge', () => mountResourceSetup({ document: doc, root: resourceSetup, packageId: session.packageId, sessionId: session.sessionId, host, onSaved: refresh }), { disabled: !ready });
     const extra = actions(doc, more);
-    action(doc, extra, 'Export .atriasave', async () => download(doc, await client.exportSession(session.sessionId), `${session.displayTitle || session.sessionId}.atriasave`), { disabled: !ready });
+    const resourceSetup = el(doc, 'div', '', undefined, more);
+    action(doc, extra, 'Worlds & Knowledge', () => mountResourceSetup({ document: doc, root: resourceSetup, packageId: session.packageId, sessionId: session.sessionId, host, onSaved: refresh }), { disabled: !ready });
+    action(doc, extra, 'Export save file', async () => download(doc, await client.exportSession(session.sessionId), `${session.displayTitle || session.sessionId}.atriasave`), { disabled: !ready });
     action(doc, extra, 'Delete', async () => {
         await client.deleteSession(session.sessionId); await refresh();
     }, { danger: true });
@@ -169,8 +163,8 @@ function libraryTools(doc, root, host, browseState, placeholder) {
     const input = el(doc, 'input', '', undefined, search); input.type = 'search';
     input.value = browseState.query || ''; input.placeholder = tl(placeholder); input.setAttribute('aria-label', tl(placeholder));
     el(doc, 'kbd', '', '/', search).setAttribute('aria-hidden', 'true');
-    action(doc, bar, 'Import .atriasave', () => host.openLibrarySection('import-save'));
-    action(doc, bar, 'Install / Update .atria', () => host.openLibrarySection('install'), { primary: true });
+    action(doc, bar, 'Import a save', () => host.openLibrarySection('import-save'));
+    action(doc, bar, 'Add a work', () => host.openLibrarySection('install'), { primary: true });
     if (typeof host.setContextActions === 'function') host.setContextActions([bar]);
     else root.prepend(bar);
     return input;
@@ -267,7 +261,7 @@ async function games(doc, root, host, refresh, browseState) {
         list.replaceChildren();
         const query = filter.value.trim().toLowerCase();
         const matching = sessions.filter(item => `${item.displayTitle || ''} ${nameOf(item.packageId) || ''}`.toLowerCase().includes(query));
-        if (!matching.length) state(doc, list, 'empty', sessions.length ? 'No matching stories' : 'No game progress yet', sessions.length ? 'Try another search.' : 'Open a work and start a new story.');
+        if (!matching.length) state(doc, list, 'empty', sessions.length ? 'No matching stories' : 'No stories yet', sessions.length ? 'Try another search.' : 'Open a work and start a new story.');
         for (const item of matching) {
             const row = sessionRow(doc, list, item, host, refresh, nameOf(item.packageId));
             row.prepend(cover(doc, item.packageId, nameOf(item.packageId) || ''));
@@ -295,7 +289,7 @@ async function workDetail(doc, root, host, id, refresh) {
     const controls = actions(doc, content); const latest = work.sessions?.[0];
     if (latest) action(doc, controls, 'Continue', () => openSession(host, latest.sessionId), { disabled: latest.dependency?.status !== 'ready', primary: true });
     const modelSetup = el(doc, 'div', '', undefined, content);
-    action(doc, controls, 'Start New', async () => {
+    action(doc, controls, 'Start a new story', async () => {
         const options = { displayTitle: title.value, packageVersionId: work.packageVersion.packageVersionId, entryPointId: selector.value || entryPoints[0]?.entryPointId };
         let created;
         const start = async () => { created ??= await client.startWork(id, options); await openSession(host, created.session.sessionId); };
@@ -309,35 +303,34 @@ async function workDetail(doc, root, host, id, refresh) {
         el(doc, 'dt', '', tl(label), facts); el(doc, 'dd', '', values?.filter(Boolean).join(', ') || '—', facts);
     }
     mountWorkPermissions({ document: doc, root: info, work, onManage: () => { management.open = true; management.scrollIntoView?.({ block: 'start' }); } });
-    disclosure(doc, info, 'Capabilities', manifest?.capabilities || []);
-    disclosure(doc, info, 'Exact dependencies', {
+    disclosure(doc, info, 'Technical details', {
+        capabilities: manifest?.capabilities || [],
         worlds: manifest?.worlds?.map(item => ({ worldId: item.world.worldId, worldRevisionId: item.revision.worldRevisionId })),
         knowledge: manifest?.knowledge?.map(item => ({ knowledgeBaseId: item.knowledgeBase.knowledgeBaseId, knowledgeRevisionId: item.revision.knowledgeRevisionId })),
         bindings: manifest?.knowledgeBindings || [],
         resources: manifest?.resources?.map(item => ({ resourceType: item.resourceType, origin: item.origin, revision: item.resource.revision })),
         runtime: manifest?.runtime,
     });
-    const versions = section(doc, root, 'Installed versions');
-    for (const version of work.versions || []) {
+    // Only worth showing when there is an older version to choose.
+    const versions = (work.versions?.length ?? 0) > 1 ? section(doc, root, 'Installed versions') : null;
+    for (const version of versions ? work.versions : []) {
         const row = el(doc, 'div', 'atri-library-version', undefined, versions);
         el(doc, 'strong', '', version.version, row);
         if (version.packageVersionId === work.package.currentVersionId) el(doc, 'span', 'atri-library-meta', tl('Current'), row);
-        disclosure(doc, row, 'Details', version);
         row.dataset.atriaInstalledVersion = version.packageVersionId;
         action(doc, row, 'Start from this version', async () => {
             row.querySelector('[data-atria-version-start]')?.remove();
             const exact = await client.getWorkVersion(id, version.packageVersionId);
             const review = el(doc, 'section', 'atri-library-section', undefined, row); review.dataset.atriaVersionStart = 'true';
             el(doc, 'h4', '', exact.manifest.name + ' · ' + exact.packageVersion.version, review);
-            el(doc, 'p', '', tl(exact.current ? 'This is the current default version.' : 'This starts a separate Session on a non-default installed version.'), review);
-            el(doc, 'p', '', tl('The default Work version and existing Sessions remain unchanged.'), review);
+            el(doc, 'p', '', tl(exact.current ? 'This is the version new stories use.' : 'This starts a new story on this older version.'), review);
             const label = el(doc, 'label', 'atri-library-field', tl('Starting point'), review);
             const entries = el(doc, 'select', '', undefined, label); entries.setAttribute('aria-label', tl('Starting point'));
             for (const entry of exact.manifest.entryPoints) { const option = el(doc, 'option', '', entry.displayName, entries); option.value = entry.entryPointId; }
             const versionTitle = sessionTitleField(doc, review);
             const versionSetup = el(doc, 'div', '', undefined, review);
             let createdSessionId = null;
-            action(doc, review, 'Create Session on this version', async () => {
+            action(doc, review, 'Start the story', async () => {
                 const start = async () => {
                     if (!createdSessionId) {
                         const created = await client.startWork(id, { displayTitle: versionTitle.value, packageVersionId: version.packageVersionId, entryPointId: entries.value });
@@ -350,8 +343,8 @@ async function workDetail(doc, root, host, id, refresh) {
             action(doc, review, 'Cancel', () => review.remove());
         });
     }
-    const games = section(doc, root, 'My Games', 'atriaMyGames');
-    if (!work.sessions?.length) state(doc, games, 'empty', 'No game progress yet', 'Start a new story from this work.');
+    const games = section(doc, root, 'My stories', 'atriaMyGames');
+    if (!work.sessions?.length) state(doc, games, 'empty', 'No stories yet', 'Start a new story from this work.');
     work.sessions?.forEach(item => sessionRow(doc, games, item, host, refresh, work.package.displayName));
     const management = disclosure(doc, root, 'Manage work');
     el(doc, 'p', '', tl('Deleting this work also deletes its conversations and saved progress.'), management);

@@ -31,7 +31,7 @@ export function runtimeRemediation(code) {
         generation_capability_unknown: ['This model has no confirmed support for a required option. Review the API preset capabilities or choose another model.', 'routes'],
         generation_capability_unsupported: ['This model does not support a required option. Change the API preset parameters or choose another model.', 'routes'],
         native_processing_failed: ['A declared Processor failed. Open Diagnostics to inspect its stage and fixed source. No candidate was adopted.', 'diagnostics'],
-        generation_provider_endpoint_not_found: ['The generation endpoint returned HTTP 404. For OpenAI-compatible messages, use the full /chat/completions URL.', 'connections'],
+        generation_provider_endpoint_not_found: ['The service answered HTTP 404 (not found). If this API preset worked before, the service or its upstream is having trouble; send again in a moment. Otherwise check the service address.', 'connections'],
         generation_provider_request_rejected: ['The provider rejected the request (HTTP 400/422). Check model and tool/output schema compatibility.', 'connections'],
         generation_provider_reasoning_unsupported: ['The model rejected the reasoning setting. Select Default or none in the API preset, or use an endpoint that supports reasoning with tools.', 'routes'],
         generation_provider_authentication_failed: ['The provider rejected the stored Secret (HTTP 401/403). Check the Secret selected by this connection.', 'connections'],
@@ -72,17 +72,28 @@ export function runtimeRemediation(code) {
         native_generation_budget_lane_denied: ['Optional computation needs a current Run or Project Task and an explicit shared request budget. Review the route settings.', 'routes'],
         native_generation_budget_exhausted: ['The shared budget for this Run or Project Task is exhausted. Previous usage is preserved and optional computation has stopped.', 'diagnostics'],
         native_generation_task_stopped: ['The Project Task changed or stopped. Reload it before computing again. The previous continuation is unavailable.', null],
+        native_orchestration_turn_route_mismatch: ["An API preset used by this story's agent plan changed since the plan was saved. Open the plan and choose Save to library. Your message is saved.", 'plans'],
+        native_orchestration_model_authority_unavailable: ["This story's agent plan can't use one of its models right now. Open the plan and choose Save to library to check it. Your message is saved.", 'plans'],
+        native_orchestration_turn_plan_unavailable: ["This story's agent plan can't run here. Open it in Agents → Orchestration and choose Use in… to see why. Your message is saved.", 'plans'],
+        native_orchestration_limit_exhausted: ['The agent plan reached one of its limits before finishing. Raise the limit in the plan, then send again. Your message is saved.', 'plans'],
+        // Transient service failures: nothing to fix in settings; the player's turn is already saved.
+        generation_provider_failed: ['The model service did not answer. Your message is saved — send again to continue.', null],
+        generation_provider_timeout: ['The model service took too long to answer. Your message is saved — send again to continue.', null],
+        generation_fallback_exhausted: ['The model service did not answer. Your message is saved — send again to continue.', null],
+        generation_response_invalid: ['The model returned an unreadable reply. Your message is saved — send again to continue.', null],
+        generation_provider_authentication_failed: ['The model service rejected the API key. Check the key in Runtime Services.', 'connections'],
         generation_secret_unavailable: ['The exact Secret reference is unavailable. Update the connection reference.', 'connections'],
         generation_context_budget_exceeded: ['The full request exceeds the model budget. Review model limits and selected context.', 'models'],
         generation_adapter_control_unsupported: ['This transport does not support one of the configured controls. Review the profile and model.', 'profiles'],
     };
     const [message, target] = actions[code] || [fmt('Runtime could not complete this request (${0}). Review the route and its exact dependencies.', [code]), 'routes'];
-    return [tl(message), target];
+    return [tl(message), target, Boolean(actions[code])];
 }
 
 export function runtimeGenerationError(code, status) {
-    const [message, target] = runtimeRemediation(code);
-    if (target && globalThis.document && typeof CustomEvent === 'function' && code !== 'generation_continuation_reset_required') {
+    const [message, target, known] = runtimeRemediation(code);
+    const transient = /^generation_(provider_failed|provider_timeout|fallback_exhausted|response_invalid)$/.test(code);
+    if ((target || transient || known) && globalThis.document && typeof CustomEvent === 'function' && code !== 'generation_continuation_reset_required') {
         document.dispatchEvent(new CustomEvent('atria-native-runtime-error', { detail: { message, target } }));
     }
     return Object.assign(new Error(message), { code, status });

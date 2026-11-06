@@ -27,20 +27,16 @@ export function permissionRow(doc, root, permission, { checkbox = false, install
 }
 
 export function renderPackageUpdateReview(doc, root, preflight) {
-    const update = preflight.update; if (!update) return;
+    const update = preflight.update; if (!update?.previous) return;
     const section = el(doc, 'section', 'atri-library-section', undefined, root); section.dataset.atriaPackageUpdateImpact = 'true';
-    el(doc, 'h4', '', tl(update.previous ? 'Update impact' : 'New Work installation'), section);
-    if (update.previous) el(doc, 'p', '', `${update.previous.version || '—'} → ${preflight.version}`, section);
+    el(doc, 'h4', '', fmt('Updates your installed version ${0} to ${1}', [update.previous.version || '—', preflight.version]), section);
     if (update.comparisonAvailable === false) el(doc, 'p', '', tl('The installed content is unavailable for comparison. Review every requested permission before repairing this Work.'), section);
     for (const [key, label] of [['addedPermissions', 'New permissions'], ['removedPermissions', 'Removed permissions'], ['changedPermissions', 'Changed permission requirements']]) {
         if (!update[key]?.length) continue;
         const group = disclosure(doc, section, label); group.open = true;
         for (const permission of update[key]) permissionRow(doc, group, permission);
     }
-    if (update.addedCapabilities?.length || update.removedCapabilities?.length) disclosure(doc, section, 'Capability changes', { added: update.addedCapabilities, removed: update.removedCapabilities });
-    el(doc, 'p', '', fmt('${0} existing Sessions stay pinned to their exact installed versions.', [update.pinnedSessions.length]), section);
-    el(doc, 'p', '', tl('Installing this file changes the default for new Sessions. It does not upgrade existing Sessions or revoke permissions of earlier versions.'), section);
-    if (update.pinnedSessions.length) disclosure(doc, section, 'Pinned Sessions', update.pinnedSessions);
+    el(doc, 'p', '', update.pinnedSessions.length ? fmt('New stories use this version. Your ${0} existing stories keep the version they started with.', [update.pinnedSessions.length]) : tl('New stories use this version.'), section);
 }
 
 export function mountWorkPermissions({ document: doc, root, work, onManage }) {

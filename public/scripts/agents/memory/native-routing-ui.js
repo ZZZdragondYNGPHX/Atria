@@ -11,18 +11,20 @@ export function mountMemoryRouting(parent, service) {
     const make = (tag, className, text, into) => { const node = doc.createElement(tag); if (className) node.className = className; if (text !== undefined) node.textContent = tl(text); into.append(node); return node; };
     const form = make('form', 'workspace-memory-overview-section', undefined, parent);
     make('h3', '', 'Models for memory tasks', form);
-    make('p', 'workspace-hint', 'Leave a task on Default to use the API preset whose purpose is Memory.', form);
+    make('p', 'workspace-hint', 'Leave a task on Default to use the API preset whose purpose is Memory. Changes save right away.', form);
     const fields = make('fieldset', 'workspace-memory-fields', undefined, form); fields.setAttribute('aria-label', tl('Models for memory tasks'));
     const status = make('p', 'workspace-hint', undefined, form); status.setAttribute('role', 'status');
     const actions = make('div', 'workspace-memory-form-actions', undefined, form);
     const refresh = make('button', '', 'Reload list', actions); refresh.type = 'button';
-    const save = make('button', '', 'Save', actions); save.type = 'submit'; save.dataset.variant = 'primary';
+    // Choosing saves; the submit button stays only as the form's submit target.
+    const save = make('button', '', 'Save', actions); save.type = 'submit'; save.hidden = true;
     const draft = normalizeMemoryRoutes(service.getNativeRoutes());
     const draw = routes => {
         fields.replaceChildren();
         for (const [task, label] of Object.entries(MEMORY_ROUTE_TASKS)) {
             mountRuntimeRoutePicker({ parent: fields, role: 'memory', label, value: draft[task], routes, change: ref => {
                 if (ref) draft[task] = ref; else delete draft[task];
+                form.requestSubmit();
             } });
         }
     };

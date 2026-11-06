@@ -12,7 +12,7 @@ export async function executeFirstPartyGeneration(context, role, options = {}) {
             return result;
         }
         const result = await executeNativeGeneration({
-            role, source: options.nativeSource, messages: options.taskMessages || [], tools: options.tools || [],
+            role, source: options.nativeSource, messages: (options.taskMessages || []).map(wireMessage), tools: options.tools || [],
             outputContract: options.jsonSchema || null, abortSignal: options.abortSignal,
             routeRef: options.nativeRouteRef, prompt: options.nativePrompt,
             fallbackMode: options.nativeFallbackMode || 'disabled',
@@ -21,6 +21,14 @@ export async function executeFirstPartyGeneration(context, role, options = {}) {
         observeGenerationResult(observe, result);
         return result;
     } catch (error) { observe?.('request.attempt.failed'); throw error; }
+}
+
+// Callers annotate messages for their own bookkeeping (e.g. Memory's
+// sourceFloorIndex); only the wire fields reach the Native prompt contract.
+const WIRE_MESSAGE_KEYS = ['role', 'content', 'tool_calls', 'tool_call_id', 'name', 'providerState'];
+function wireMessage(message) {
+    if (!message || typeof message !== 'object') return message;
+    return Object.fromEntries(WIRE_MESSAGE_KEYS.filter(key => message[key] !== undefined).map(key => [key, message[key]]));
 }
 
 function observeGenerationResult(observe, result) {

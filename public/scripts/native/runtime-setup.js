@@ -28,6 +28,7 @@ export function normalizeChatEndpoint(adapter, raw) {
     const path = url.pathname.replace(/\/+$/, '');
     if (adapter === 'provider.anthropic') url.pathname = /\/messages$/.test(path) ? path : (path || '/v1') + '/messages';
     else if (adapter === 'provider.gemini') url.pathname = path.replace(/\/models$/, '') || '/v1beta';
+    else if (adapter === 'provider.openai-responses') url.pathname = /\/responses$/.test(path) ? path : (path.replace(/\/(chat\/)?completions$/, '') || '/v1') + '/responses';
     else if (adapter === 'provider.raw-text') url.pathname = /\/completions$/.test(path) ? path : (path || '/v1') + '/completions';
     else if (adapter === 'provider.openai-compatible') url.pathname = /\/(chat\/)?completions$/.test(path) ? path.replace(/\/completions$/, '/chat/completions').replace(/\/chat\/chat\//, '/chat/') : (path || '/v1') + '/chat/completions';
     return url.href;

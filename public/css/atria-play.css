@@ -178,6 +178,8 @@
 .atria-play-message__sequence { margin-inline-start: auto; font: 500 10px/1 var(--font-mono); letter-spacing: 0; color: var(--text-4); font-variant-numeric: tabular-nums; opacity: 0; transition: opacity var(--dur-2); }
 .atria-play-message:is(:hover, :focus-within) .atria-play-message__sequence { opacity: 1; }
 .atria-play-message__body { font: inherit; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text-1); }
+/* A blank source line separates paragraphs that already carry their own spacing. */
+.atria-play-message__body > br { display: none; }
 .atria-narrative-illustration { margin: 30px 0; white-space: normal; }
 .atria-narrative-illustration img { display: block; max-width: 100%; height: auto; border-radius: 16px; border: 1px solid var(--line-2); box-shadow: var(--shadow-2); }
 /* The player's turn: a lumen-lit bubble set inward. */
@@ -191,7 +193,8 @@
 .atria-play-message[data-role="system"] { text-align: center; color: var(--text-3); padding-block: 6px; }
 .atria-play-message[data-role="system"] .atria-play-message__header { display: none; }
 .atria-play-message[data-role="system"] .atria-play-message__body { font: 400 var(--fs-sm)/1.6 var(--font-ui); color: var(--text-3); }
-.atria-play-message[data-atria-draft] .atria-play-message__body::after { content: ""; display: inline-block; width: .5em; height: 1.05em; margin-left: 2px; vertical-align: -.16em; border-radius: 1px; background: var(--tone-lumen); box-shadow: 0 0 14px var(--tone-lumen); animation: atria-caret 1s steps(1) infinite; }
+.atria-play-message[data-atria-from-draft] { animation: none; }
+.atria-play-message[data-atria-draft] .atria-play-message__body > :last-child::after { content: ""; display: inline-block; width: .5em; height: 1.05em; margin-left: 2px; vertical-align: -.16em; border-radius: 1px; background: var(--tone-lumen); box-shadow: 0 0 14px var(--tone-lumen); animation: atria-caret 1s steps(1) infinite; }
 @keyframes atria-caret { 0%, 45% { opacity: 1; } 55%, 100% { opacity: 0; } }
 .atria-play-conversation__empty { padding-block: 12vh; text-align: center; color: var(--text-2); font-family: var(--font-ui); }
 .atria-play-conversation__empty h3 { color: var(--text-1); font: 520 var(--fs-3xl)/1.25 var(--font-display); }
@@ -263,6 +266,13 @@ body.no-blur .atria-play-composer { -webkit-backdrop-filter: none; backdrop-filt
 .atria-native-play-drawer__body h4 { margin: 10px 0 0; font: 600 10.5px/1 var(--font-ui); letter-spacing: .12em; text-transform: uppercase; color: var(--text-3); }
 .atria-native-play-drawer__body p { margin: 0; line-height: 1.6; color: var(--text-2); font-size: var(--fs-sm); }
 .atria-native-play-drawer__row, .atria-native-play-timeline-row { display: grid; gap: 10px; padding: 10px 0 12px; border-bottom: 1px solid var(--line-1); }
+.atria-native-play-options { margin-top: 12px; }
+.atria-native-play-options > summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
+.atria-native-play-options > * + * { margin-top: 12px; }
+.atria-native-play-autosave { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 12px 0 0; padding: 10px 12px; border: 1px solid var(--line-1); border-radius: var(--r-md); }
+.atria-native-play-autosave > legend { padding: 0 4px; font-weight: 600; }
+.atria-native-play-autosave label { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); }
+.atria-native-play-autosave input[type="number"] { width: 64px; }
 .atria-native-play-timeline-row__content { line-height: 1.6; overflow-wrap: anywhere; font-size: var(--fs-sm); }
 .atria-native-play-timeline-row__actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .atria-native-play-drawer pre { padding: 12px; border-radius: var(--r-md); border: 1px solid var(--line-1); background: var(--surface-panel); white-space: pre-wrap; overflow-wrap: anywhere; }

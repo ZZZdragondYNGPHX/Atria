@@ -496,31 +496,10 @@ function refreshCurrentUi() {
     try { void Promise.resolve(currentUiSession?.refresh?.()).catch(error => console.error('Native UI revision refresh failed', error)); } catch (error) { console.error('Native UI revision refresh failed', error); }
 }
 
-async function syncCurrentWorldRevision() {
-    const session = currentWorldSession;
-    if (!session || currentPackage.descriptor?.experienceContract?.lifecycleRuntime
-        || currentPackage.runtime?.experience?.frontend?.version === 3) return reloadGamePackage();
-
-    try {
-        const result = await session.syncBranch();
-        refreshCurrentUi();
-        return result;
-    } catch (error) {
-        if (session !== currentWorldSession) return null;
-        currentWorldSession = null;
-        disposeRuntimeSystems();
-        await disposeCurrentUi();
-        publishPackageState({
-            ...currentPackage,
-            status: GAME_PACKAGE_STATUS.ERROR,
-            active: false,
-            errors: [
-                'Native Game Runtime revision sync failed: ' + (error?.message || String(error)),
-            ],
-        });
-        console.error(`[${MODULE_NAME}] Native Game Runtime revision sync failed`, error);
-        return null;
-    }
+// A Branch change (loading a save, switching routes) remounts the experience
+// through the normal load path, which also re-establishes Experience readiness.
+function syncCurrentWorldRevision() {
+    return reloadGamePackage();
 }
 
 export function getGamePackageState() {

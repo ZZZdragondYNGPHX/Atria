@@ -5211,6 +5211,8 @@ export function addOneMessage(mes, { type = 'normal', insertAfter = null, scroll
         // Special case for persona images.
         avatarImg = mes.force_avatar;
     }
+    // Messages saved before a persona existed carry a dead "file=undefined" avatar URL.
+    if (String(avatarImg).includes('file=undefined')) avatarImg = mes.is_user ? default_user_avatar : default_avatar;
 
     // if mes.extra.uses_system_ui is true, set an override on the sanitizer options
     const sanitizerOverrides = mes.extra?.uses_system_ui ? { MESSAGE_ALLOW_SYSTEM_UI: true } : {};
@@ -5387,6 +5389,8 @@ export function updateMessageElement(mes, { messageId = chat.length - 1, message
         // Special case for persona images.
         avatarImg = mes.force_avatar;
     }
+    // Messages saved before a persona existed carry a dead "file=undefined" avatar URL.
+    if (String(avatarImg).includes('file=undefined')) avatarImg = mes.is_user ? default_user_avatar : default_avatar;
     const momentDate = timestampToMoment(mes.send_date);
     const timestamp = momentDate.isValid() ? momentDate.format('LL LT') : '';
     const messageHTML = getMessageTextHTML(mes, { messageId });
@@ -14972,6 +14976,8 @@ async function read_avatar_load(input) {
  * @returns {string} The URL for the thumbnail
  */
 export function getThumbnailUrl(type, file, t = false) {
+    // No persona selected yet: show the default avatar instead of requesting "undefined".
+    if (!file || file === 'undefined' || file === 'null') return type === 'persona' ? default_user_avatar : default_avatar;
     return `/thumbnail?type=${type}&file=${encodeURIComponent(file)}${t ? `&t=${Date.now()}` : ''}`;
 }
 

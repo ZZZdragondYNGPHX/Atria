@@ -1,6 +1,7 @@
 import { translateShellText as tl } from './localization.js';
 import { runtimeRequest } from '../native/runtime-client.js';
 import { nativeProductClient } from '../native/product-client.js';
+import { formatAtriaDate } from './components.js';
 
 function clean(value) {
     return String(value || '').trim();
@@ -137,8 +138,10 @@ export function createProductSearchIndex({ registry, host, productClient = nativ
                 run: () => host.openSession(item.sessionId) });
         }
         for (const item of fulfilled(result[7])) {
-            const title = clean(item.displayName || item.kind || item.saveId);
-            add({ id: 'save.' + encodeURIComponent(JSON.stringify([item.sessionId, item.saveId])), title, description: item.sessionTitle, literalDescription: true, group: 'Play', keywords: ['save', 'savepoint', item.saveId, item.sessionId],
+            // Saves read like the History panel: a name (or its kind) plus the story and time.
+            const title = clean(item.displayName || tl({ quick: 'Quick Save', auto: 'Automatic save', manual: 'Save' }[item.kind] || item.kind || item.saveId));
+            const description = [item.sessionTitle, item.createdAt ? formatAtriaDate(item.createdAt) : ''].filter(Boolean).join(' · ');
+            add({ id: 'save.' + encodeURIComponent(JSON.stringify([item.sessionId, item.saveId])), title, description, literalDescription: true, group: 'Play', keywords: ['save', 'savepoint', item.saveId, item.sessionId],
                 run: () => host.openSession(item.sessionId, { revisionId: item.revisionId }) });
         }
         for (const item of fulfilled(result[8])) {
@@ -176,7 +179,7 @@ export function createProductSearchIndex({ registry, host, productClient = nativ
     const childLoaders = {
         SavePoints: async session => {
             const detail = await productClient.getSession(session.sessionId);
-            return (detail.saves || []).map(save => ({ ...save, sessionTitle: session.displayTitle, sessionId: session.sessionId }));
+            return (detail.saves || []).map(save => ({ ...save, sessionTitle: session.displayTitle || detail.snapshot?.manifest?.name, sessionId: session.sessionId }));
         },
         'Knowledge entries': async item => {
             const base = item.knowledgeBase;

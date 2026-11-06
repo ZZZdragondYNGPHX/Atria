@@ -1,4 +1,5 @@
 import { saveApiPreset } from '../native/model-prompt-runtime/api-presets.js';
+import { executionPathFingerprint } from '../native/model-prompt-runtime/execution-evidence.js';
 import { observeAuthoringSample } from '../native/model-prompt-runtime/draft-preview.js';
 import { createHostRouteResolver } from '../native/model-prompt-runtime/prompt-controls.js';
 import multer from 'multer';
@@ -23,6 +24,7 @@ import { PromptPresetStore } from '../native/model-prompt-runtime/presets.js';
 import { PromptCandidateStore } from '../native/model-prompt-runtime/prompt-candidates.js';
 import express from 'express';
 import { NativeRetrievalPersistence } from '../native/retrieval-persistence.js';
+import { testRetrievalProfile, listRetrievalModels } from '../native/retrieval-execution.js';
 import { admitMemoryCorpusWork, prepareRetrievalCompute } from '../native/retrieval-compute.js';
 import { executeProjectSkillWork } from '../native/skill-invocation.js';
 import { fields } from '../../public/shared/native-values.js';
@@ -74,7 +76,7 @@ const toolAuthorities = new WeakMap();
 
 function generationFailure(error, fallback = 'native_generation_failed') {
     const code = error.code === 'native_processing_failed' || ['storage_commit_unknown', 'storage_read_only'].includes(error.code)
-        || /^(native_generation_|native_credential_|native_orchestration_|generation_)[a-z_]{1,100}$/.test(error.code || '') ? error.code : fallback;
+        || /^(native_generation_|native_credential_|native_orchestration_|native_turn_memory_|generation_)[a-z_]{1,100}$/.test(error.code || '') ? error.code : fallback;
     const orchestration = code.startsWith('native_orchestration_');
     const status = code === 'storage_read_only' || (orchestration && code.endsWith('_unavailable')) ? 503
         : code === 'storage_commit_unknown' || code.includes('conflict') || (orchestration && (error.name === 'ConflictError' || code.endsWith('_stale'))) ? 409 : 400;
@@ -129,6 +131,23 @@ function services() {
 
 export async function wakeCollectedExperience(handle, result) {
     return new AgentEvolutionService({ host: services(), chatRepo: getChatRepo() }).wake(handle, result.scope, result.subject);
+}
+
+// Editing a service (address, type, key) changes its execution path. Capabilities
+// the player declared in their API presets still describe their intent, so move
+// those declarations to the new path; measured (verified) evidence is left alone.
+async function rebindDeclaredCapabilities(host, handle, connection) {
+    for (const model of await host.persistence.listModelProfiles(handle)) {
+        if (model.connectionProfileRef.connectionProfileId !== connection.connectionProfileId) continue;
+        const pathFingerprint = executionPathFingerprint({ handle, connection, model });
+        let changed = false;
+        const capabilities = model.capabilities.map(item => {
+            if (item.binding?.assurance !== 'declared' || item.binding.pathFingerprint === pathFingerprint) return item;
+            changed = true;
+            return { ...item, binding: { ...item.binding, pathFingerprint, observedAt: Date.now() } };
+        });
+        if (changed) await host.persistence.saveModelProfile(handle, { ...model, capabilities });
+    }
 }
 
 export function createNativeGenerationRouter(getHost = services, getChats = getChatRepo) {
@@ -775,8 +794,25 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
     for (const method of ['post', 'put']) router[method](method === 'post' ? '/presets' : '/presets/:id', async (req, res) => {
         if (!req.user?.profile?.handle) return res.sendStatus(401);
         try {
-            res.json(await presets(getHost()).save(req.user.profile.handle, req.body.preset, { id: req.params.id || null, expectedRevision: req.body.expectedRevision, importing: req.body.importing === true }));
+            const host = getHost(), handle = req.user.profile.handle;
+            const saved = await presets(host).save(handle, req.body.preset, { id: req.params.id || null, expectedRevision: req.body.expectedRevision, importing: req.body.importing === true });
+            // Editing a preset changes what its API presets send from the next request on.
+            const followedBy = req.params.id ? await host.persistence.followPromptProgram(handle, saved.presetId,
+                { scope: 'library', resourceType: 'core.prompt-program', resourceId: saved.presetId, revision: saved.revision }) : [];
+            res.json({ ...saved, followedBy });
         } catch (error) { res.status(error.code === 'native_prompt_preset_conflict' ? 409 : 400).json({ error: error.code || 'native_prompt_preset_invalid', message: error.message }); }
+    });
+    // "Use this prompt preset" from either side: the API preset gets the preset's current version.
+    router.put('/api-presets/:id/prompt-preset', async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle) return res.sendStatus(401);
+        try {
+            const host = getHost();
+            const preset = (await presets(host).list(handle)).find(item => item.presetId === req.body?.presetId);
+            if (!preset) throw new TypeError('Unknown prompt preset');
+            res.json(await host.persistence.setRoutePrompt(handle, req.params.id,
+                { scope: 'library', resourceType: 'core.prompt-program', resourceId: preset.presetId, revision: preset.revision }));
+        } catch (error) { res.status(400).json({ error: error.code || 'native_prompt_preset_apply_failed', message: error.message }); }
     });
     const resourceReferences = async (host, handle, ref) => {
         const references = [...await host.studio.getResourceReferences(handle, ref, { reverse: true })].filter(item => !(item.node?.scope === 'library' && item.node.resourceType === ref.resourceType && item.node.resourceId === ref.resourceId));
@@ -823,6 +859,24 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
     router.post('/retrieval', async (req, res) => {
         if (!req.user?.profile?.handle) return res.sendStatus(401);
         try { res.json(await new NativeRetrievalPersistence({ engine: getStorageEngine() }).commit(req.user.profile.handle, req.body)); } catch (error) { res.status(error.code === 'native_immutable_conflict' ? 409 : 400).json({ error: error.code === 'storage_read_only' ? error.code : 'native_retrieval_invalid' }); }
+    });
+    router.post('/retrieval/test', async (req, res) => {
+        if (!req.user?.profile?.handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        const controller = new AbortController();
+        res.once('close', () => { if (!res.writableEnded) controller.abort(); });
+        try { res.json(await testRetrievalProfile(req.user.directories, req.body, controller.signal)); } catch (error) { res.status(400).json({ error: 'native_retrieval_invalid', message: error.message }); }
+    });
+    router.post('/retrieval/models', async (req, res) => {
+        if (!req.user?.profile?.handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        const controller = new AbortController();
+        res.once('close', () => { if (!res.writableEnded) controller.abort(); });
+        try { res.json(await listRetrievalModels(req.user.directories, req.body ?? {}, controller.signal)); } catch { res.status(400).json({ error: 'native_retrieval_invalid' }); }
+    });
+    router.delete('/retrieval/:id', async (req, res) => {
+        if (!req.user?.profile?.handle) return res.sendStatus(401);
+        try { res.json(await new NativeRetrievalPersistence({ engine: getStorageEngine() }).delete(req.user.profile.handle, req.params.id, req.body?.mode ?? null)); } catch (error) { res.status(error.code === 'storage_read_only' ? 503 : 400).json({ error: error.code || 'native_retrieval_invalid' }); }
     });
     router.post('/retrieval-work', async (req, res) => {
         const handle = req.user?.profile?.handle;
@@ -1072,12 +1126,16 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
                 };
                 await visit(candidate);
             }
-            if (method) return response.json(await host.persistence[method](handle, request.body, {
-                expectedFingerprint: request.headers['if-match'],
-                validate: async route => {
-                    for (const ref of [route.promptProgramRef, route.generationProfileRef, ...(route.projectPromptBindings || []).map(b => b.promptProgramRef)]) if (ref.scope === 'library') await host.library.getExact(handle, ref);
-                },
-            }));
+            if (method) {
+                const saved = await host.persistence[method](handle, request.body, {
+                    expectedFingerprint: request.headers['if-match'],
+                    validate: async route => {
+                        for (const ref of [route.promptProgramRef, route.generationProfileRef, ...(route.projectPromptBindings || []).map(b => b.promptProgramRef)]) if (ref.scope === 'library') await host.library.getExact(handle, ref);
+                    },
+                });
+                if (request.params.kind === 'connections') await rebindDeclaredCapabilities(host, handle, saved);
+                return response.json(saved);
+            }
             return response.sendStatus(404);
         } catch (error) { response.status(error.code === 'native_generation_configuration_conflict' ? 409 : 400).json({ error: ['native_runtime_fallback_role', 'native_generation_configuration_conflict'].includes(error.code) ? error.code : 'native_generation_configuration_invalid' }); }
     });

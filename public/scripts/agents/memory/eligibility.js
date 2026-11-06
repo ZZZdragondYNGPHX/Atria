@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { informationContext, informationSourceMessageIds } from '../../../shared/native-information-runtime.js';
+import { informationContext, informationDefinition, informationSourceMessageIds } from '../../../shared/native-information-runtime.js';
 import { nativeSessionRuntime } from '../../native/session-runtime.js';
 import { sourceMessageId, createMemorySupportChecker, captureEpisodes } from './source-provenance.js';
 import { freezeMemoryData, memorySourceSnapshotProof } from './source-lifecycle.js';
@@ -37,6 +37,13 @@ export function resolveMemoryEligibility(context, { requester = { kind: 'narrato
             return { identity: { kind: 'conversation', requester: target, at }, ids: context.chat.map(sourceMessageId).filter(Boolean),
                 signature: JSON.stringify(context.chat.map(m => [sourceMessageId(m), m.mes, m.swipe_id])) };
         }
+        // A work without information rules sets no disclosure limits: the narrator
+        // may recall from every message on the current timeline.
+        if (!informationDefinition(snapshot)) {
+            if (target.kind !== 'narrator') throw denied();
+            return { identity: { kind: 'timeline', requester: target, at, anchor: { sessionId: snapshot.session.sessionId, branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId } },
+                ids: snapshot.timeline.map(entry => entry.messageId), signature: JSON.stringify(snapshot.timeline.map(entry => [entry.messageId, entry.activeVariantId])) };
+        }
         const information = informationContext(snapshot, target, informationTaskId);
         if (!information?.memory || !information.projection
             || information.projection.availability?.some(a => !a.available)) throw denied();
@@ -71,7 +78,7 @@ export function eligibleMemorySnapshot(snapshot, eligibility) {
     // Existing Native Timeline is itself a formal source. Rebuild its legal
     // Episode projection in memory even when extraction writes are off; no
     // new source IDs, persistence or cognition changes are performed here.
-    if (eligibility.identity.kind === 'information') {
+    if (['information', 'timeline'].includes(eligibility.identity.kind)) {
         const floors = snapshot.chat.flatMap((message, floor) => message.atri_native?.messageId && ids.has(sourceMessageId(message)) ? [floor] : []);
         captureEpisodes(state, snapshot.chat, floors, state.scopeId);
     }

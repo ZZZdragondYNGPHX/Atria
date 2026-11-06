@@ -43,9 +43,12 @@ export function mountVisualAuthoring({ document: doc, body, host, browseStates =
     const drawSelections = () => {
         selections.replaceChildren();
         const choices = type => resources.filter(item => item.ref.scope === 'library' && item.ref.resourceType === type && !item.archived)
-            .map(item => [JSON.stringify(item.ref), item.resource.displayName + ' · ' + item.ref.revision]);
-        select(doc, selections, tl('Exact image target'), state.target, [['', tl('Choose a saved target')], ...choices('core.image-target')], value => { state.target = value; changed(); });
-        select(doc, selections, tl('Exact image style'), state.rendering, [['', tl('No style')], ...choices('core.image-rendering')], value => { state.rendering = value; changed(); });
+            .map(item => [JSON.stringify(item.ref), item.resource.displayName]);
+        const targets = choices('core.image-target');
+        // With a single image service there is nothing to choose.
+        if (!state.target && targets.length === 1) state.target = targets[0][0];
+        select(doc, selections, tl('Image service'), state.target, [['', tl('Choose an image service')], ...targets], value => { state.target = value; changed(); });
+        select(doc, selections, tl('Style'), state.rendering, [['', tl('No style')], ...choices('core.image-rendering')], value => { state.rendering = value; changed(); });
     };
     field(doc, form, tl('Override style negative prompt'), state.overrideNegative, value => { state.overrideNegative = value; negative.disabled = !value; negative.parentElement.hidden = !value; changed(); }, { type: 'checkbox' });
     const negative = field(doc, form, tl('Negative prompt'), state.negativePrompt, value => { state.negativePrompt = value; changed(); }, { multiline: true }); negative.disabled = !state.overrideNegative; negative.parentElement.hidden = !state.overrideNegative;

@@ -61,6 +61,7 @@
 .atri-runtime-help { margin: 0 0 8px; color: var(--text-2); font-size: var(--fs-sm); line-height: 1.6; }
 .atri-runtime-form .atri-runtime-notice { margin: 0; padding: 6px 0; border: 0; background: none; color: var(--text-3); font-size: var(--fs-xs); }
 .atri-runtime-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 0; border-top: 1px solid var(--line-1); }
+.atri-runtime-actions__secondary { display: flex; gap: 8px; margin-right: auto; }
 /* Contextual primary: the form submit and the toolbar's create action. */
 .atria-app-shell .atri-runtime button[type="submit"] {
     border-color: transparent; background: var(--btn-primary-bg); color: var(--btn-primary-text); font-weight: 600;
@@ -152,6 +153,14 @@
 .atri-runtime-keybox > button { grid-column: auto; }
 .atri-runtime-list__group { margin: 12px 8px 4px; color: var(--text-3); font: 600 var(--fs-xs)/1.2 var(--font-ui); }
 .atri-runtime-list__group:first-child { margin-top: 2px; }
+/* Small state chip under a row's summary, or the action that sets that state. */
+.atri .atri-runtime-badge, .atria-app-shell .atri-runtime-row .atri-runtime-badge { display: inline-flex; align-items: center; min-height: 22px; margin-top: 4px; padding: 0 8px; border: 1px solid transparent; border-radius: 999px; background: color-mix(in srgb, var(--tone-lumen) 14%, transparent); color: var(--text-2); font: 500 var(--fs-xs)/1 var(--font-ui); box-shadow: none; opacity: 1; }
+.atria-app-shell .atri-runtime-row .atri-runtime-badge--action { background: transparent; border-color: var(--line-2); color: var(--text-2); cursor: pointer; }
+.atria-app-shell .atri-runtime-row .atri-runtime-badge--action:hover { border-color: var(--tone-lumen); color: var(--text-1); }
+.atri-runtime-form label.atri-runtime-check { display: flex; flex-direction: row; align-items: center; gap: 8px; margin: 4px 0; color: var(--text-2); }
+.atri-runtime-form label.atri-runtime-check input { width: auto; min-height: 0; }
+.atri-runtime-model-picker { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.atri-runtime-model-picker > label { flex: 1 1 100%; }
 .atri-runtime-detail__empty { gap: 12px; align-content: center; }
 .atri-runtime-detail__empty > p { margin: 0; max-width: 46ch; }
 /* The Fields/Source status line takes no space until it has something to say. */
@@ -179,3 +188,18 @@
 .atri-runtime-modal { position: fixed; inset: 0; width: 100%; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: var(--surface-app); overflow: hidden; }
 .atri-runtime-notice:empty { display: none; }
 .atria-app-shell .atri-runtime .atri-runtime-purpose > button.atria-segmented__item { flex: 0 0 auto; }
+
+/* Diagnostics: setup check rows. */
+.atri-runtime-checks { display: grid; gap: 10px; margin-bottom: 20px; }
+.atri-runtime-checks__head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.atri-runtime-checks .atri-runtime-help { margin: 0; flex: 1 1 280px; }
+.atri-runtime-check-list { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.atri-runtime-check-list > li { display: grid; grid-template-columns: 9.5em minmax(0, 1fr) auto; align-items: start; gap: 4px 12px; padding: 10px 12px; border-radius: var(--r-md); background: var(--surface-raised); }
+.atri-runtime-check-list strong { color: var(--text-1); font-weight: 600; overflow-wrap: anywhere; }
+.atri-runtime-check-list p { margin: 2px 0 0; color: var(--text-2); font-size: var(--fs-sm); line-height: 1.5; overflow-wrap: anywhere; }
+.atri-runtime-check-state { color: var(--text-3); font: 600 var(--fs-xs)/1.8 var(--font-ui); }
+.atri-runtime-check-list > li[data-state='ok'] .atri-runtime-check-state { color: var(--tone-lumen); }
+.atri-runtime-check-list > li[data-state='problem'] { box-shadow: inset 2px 0 0 var(--tone-danger, #b4483c); }
+.atri-runtime-check-list > li[data-state='problem'] .atri-runtime-check-state { color: var(--tone-danger, #b4483c); }
+@media (max-width: 640px) { .atri-runtime-check-list > li { grid-template-columns: minmax(0, 1fr); } }
+.atri-runtime-devtools { margin-top: 8px; }

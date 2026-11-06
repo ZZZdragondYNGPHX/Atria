@@ -13,6 +13,8 @@
 .atri-library-field { display: grid; gap: 6px; min-width: 0; }
 .atri-library-field > input[type="search"] { max-width: 420px; }
 .atri-library-field > input[type="file"] { white-space: normal; }
+/* A checkbox reads as one line: box first, then its label. */
+.atri-library-field:has(> input[type="checkbox"]) { display: flex; flex-direction: row-reverse; justify-content: flex-end; align-items: center; gap: 8px; }
 .atri-library-field[hidden] { display: none; }
 .atri-library-details { min-width: 0; }
 .atria-world-records { display: grid; gap: 12px; min-width: 0; }
@@ -136,6 +138,8 @@
 .atri-library-resource-pane .atri-library-row p { margin: 1px 0 0; }
 .atria-app-shell .atri-library-resource-pane .atri-library-row > button { min-height: 24px; padding: 0 8px; border-color: transparent; background: transparent; box-shadow: none; color: var(--text-3); font-size: var(--fs-xs); opacity: 0; }
 .atria-app-shell .atri-library-resource-pane .atri-library-row:is(:hover, :focus-within) > button { opacity: 1; }
+/* A persona row's name is its open button, not a hover-only action. */
+.atria-app-shell .atri-library-resource-pane .atri-library-row > .atri-persona-name { opacity: 1; flex: 1 1 auto; min-width: 0; justify-content: flex-start; padding: 0; color: var(--text-1); font-size: var(--fs-md); text-align: left; }
 .atri-library-resource-pane > .atri-library-section > h3 { margin: 10px 0 6px; color: var(--text-3); font: 600 10.5px/1 var(--font-ui); letter-spacing: .12em; text-transform: uppercase; }
 .atri-library-resource-pane .atria-state-panel { padding: 18px 8px; }
 .atri-library-resource-main { display: grid; align-content: start; gap: 24px; min-width: 0; min-height: 0; overflow-y: auto; padding: 22px 28px 64px; }
@@ -146,20 +150,20 @@
 .atri-library-resource-pane > .atri-library-pane-heading p { margin: 2px 4px 4px; font-size: var(--fs-xs); }
 .atri-prompt-preset-list { display: grid; gap: 10px; }
 .atri-prompt-preset-list > .atri-prompt-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 6px; }
-.atri-prompt-preset-list > .atri-prompt-resource { display: flex; align-items: center; gap: 10px; margin: 0; padding: 7px 10px; border: 0; border-radius: var(--r-md); background: transparent; }
-.atri-prompt-preset-list > .atri-prompt-resource h3 { flex: 1; min-width: 0; margin: 0; font: 500 var(--fs-md)/1.3 var(--font-ui); }
-.atri-prompt-preset-list > .atri-prompt-resource[aria-current="true"] { position: relative; background: var(--surface-raised); box-shadow: var(--shadow-1), 0 0 0 1px var(--line-2); }
-.atri-prompt-preset-list > .atri-prompt-resource[aria-current="true"]::before { content: ""; position: absolute; left: 0; top: 9px; bottom: 9px; width: 2px; border-radius: 2px; background: var(--tone-lumen); }
-.atri-prompt-preset-list > .atri-prompt-resource > button { display: none; }
-.atri-prompt-preset-list > .atri-prompt-resource:focus-within > button:not(:first-of-type) { display: inline-flex; min-height: 24px; padding: 0 7px; font-size: var(--fs-xs); }
-.atri-prompt-preset-list > .atri-prompt-resource > button:first-of-type { display: inline-flex; position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-.atri-prompt-preset-list > .atri-prompt-resource:focus-within > button:first-of-type { position: static; width: auto; height: auto; clip-path: none; display: inline-flex; }
+.atri-prompt-preset-list .atri-prompt-resource { display: flex; align-items: center; gap: 10px; margin: 0; padding: 7px 10px; border: 0; border-radius: var(--r-md); background: transparent; }
+.atri-prompt-preset-list .atri-prompt-resource h3 { flex: 1; min-width: 0; margin: 0; font: 500 var(--fs-md)/1.3 var(--font-ui); }
+.atri-prompt-preset-list .atri-prompt-resource[aria-current="true"] { position: relative; background: var(--surface-raised); box-shadow: var(--shadow-1), 0 0 0 1px var(--line-2); }
+.atri-prompt-preset-list .atri-prompt-resource[aria-current="true"]::before { content: ""; position: absolute; left: 0; top: 9px; bottom: 9px; width: 2px; border-radius: 2px; background: var(--tone-lumen); }
+.atri-prompt-preset-list .atri-prompt-resource > button { display: none; }
+.atri-prompt-preset-list .atri-prompt-resource:focus-within > button:not(:first-of-type) { display: inline-flex; min-height: 24px; padding: 0 7px; font-size: var(--fs-xs); }
+.atri-prompt-preset-list .atri-prompt-resource > button:first-of-type { display: inline-flex; position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.atri-prompt-preset-list .atri-prompt-resource:focus-within > button:first-of-type { position: static; width: auto; height: auto; clip-path: none; display: inline-flex; }
 @media (hover: hover) and (pointer: fine) {
-    .atri-prompt-preset-list > .atri-prompt-resource:hover > button:not(:first-of-type) { display: inline-flex; min-height: 24px; padding: 0 7px; font-size: var(--fs-xs); }
+    .atri-prompt-preset-list .atri-prompt-resource:hover > button:not(:first-of-type) { display: inline-flex; min-height: 24px; padding: 0 7px; font-size: var(--fs-xs); }
 }
 @media (hover: none), (pointer: coarse) {
-    .atri-prompt-preset-list > .atri-prompt-resource { flex-wrap: wrap; }
-    .atri-prompt-preset-list > .atri-prompt-resource > button:not(:first-of-type) { display: inline-flex; min-height: 44px; padding: 0 7px; font-size: var(--fs-xs); }
+    .atri-prompt-preset-list .atri-prompt-resource { flex-wrap: wrap; }
+    .atri-prompt-preset-list .atri-prompt-resource > button:not(:first-of-type) { display: inline-flex; min-height: 44px; padding: 0 7px; font-size: var(--fs-xs); }
 }
 .atri-library-resource-main > .atri-prompt-preset { position: relative; }
 .atri-library-resource-main > .atri-prompt-preset > .atri-prompt-actions:first-child { justify-content: flex-end; }
@@ -201,7 +205,11 @@
 .atri-library-row h3, .atri-library-row h4 { margin: 0; font: 600 var(--fs-md)/1.35 var(--font-ui); overflow-wrap: anywhere; }
 .atri-library-row p { margin: 4px 0 0; color: var(--text-3); font-size: var(--fs-xs); }
 .atri-library-session > .atri-library-actions { justify-content: flex-end; max-width: 50%; }
-.atri-library-session .atri-library-details[open] { flex-basis: 100%; }
+.atri-library-session { flex-wrap: wrap; }
+.atri-library-session > .atri-library-details { flex-basis: 100%; margin-left: 64px; }
+.atri-library-session > .atri-library-details > :not(summary) { margin-top: 10px; }
+.atri-library-rename { display: flex; align-items: flex-end; gap: 8px; flex-wrap: wrap; }
+.atri-library-rename > .atri-library-field { flex: 1 1 220px; }
 
 /* Work detail: hero over a blurred copy of its cover, then quiet sections. */
 .atri-library-work-hero { position: relative; isolation: isolate; overflow: hidden; display: grid; grid-template-columns: 108px minmax(0, 1fr); gap: 18px; padding: 22px 22px 20px; align-items: start; border-bottom: 1px solid var(--line-2); }
@@ -435,6 +443,25 @@
     border-radius: var(--r-xl); background: var(--surface-panel); box-shadow: none; font: 600 var(--fs-lg)/1.3 var(--font-ui); text-align: start;
 }
 .atria-app-shell .atri-preset-sections > button:hover:not(:disabled) { background: var(--surface-panel); border-color: var(--line-3); transform: translateY(-1px); }
+.atria-app-shell .atri-preset-sections > button { flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 4px; text-align: left; }
+.atri-preset-sections > button small { color: var(--text-3); font: 400 var(--fs-xs)/1.45 var(--font-ui); }
+/* Preset overview: one row per block, switch first, text in the middle, its action last. */
+.atri-preset-intro { max-width: 68ch; color: var(--text-2); }
+.atri-preset-usage { display: grid; gap: 8px; margin: 4px 0 8px; }
+.atri-preset-usage > p { margin: 0; color: var(--text-2); }
+.atri-preset-usage .atri-prompt-actions { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; }
+.atri-preset-usage .atri-library-field { flex: 0 1 320px; margin: 0; }
+.atri-preset-overview { display: grid; gap: 2px; margin: 12px 0 20px; padding: 0; list-style: none; }
+.atri-preset-block { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 2px 12px; padding: 10px 12px; border-radius: var(--r-md); }
+.atri-preset-block:hover { background: var(--surface-hover); }
+.atri-preset-block > label { display: flex; padding-top: 3px; }
+.atri-preset-block > div { display: grid; gap: 2px; min-width: 0; }
+.atri-preset-block strong { color: var(--text-1); font: 600 var(--fs-md)/1.35 var(--font-ui); }
+.atri-preset-block small { color: var(--text-3); font-size: var(--fs-xs); }
+.atri-preset-block p { display: -webkit-box; margin: 4px 0 0; overflow: hidden; color: var(--text-2); font-size: var(--fs-sm); line-height: 1.55; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.atri-preset-block[data-off="true"] > div { opacity: .5; }
+.atri-preset-block[data-off="true"] strong { text-decoration: line-through; text-decoration-color: var(--line-3); }
+.atri-prompt-variables { display: block; margin-top: 6px; color: var(--text-3); font-size: var(--fs-xs); line-height: 1.5; overflow-wrap: anywhere; }
 .atri-preset-category-form label, .atri-prompt-preset > label { display: grid; gap: 6px; min-width: 0; margin-block: 6px; }
 .atri-preset-category-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 10px; align-items: end; }
 .atri-preset-category-form :is(h3, p) { grid-column: 1 / -1; }
@@ -486,9 +513,14 @@
 .atri-persona-picker .atri-library-row { display: block; min-width: 0; padding: 12px; border: 1px solid var(--line-2); border-radius: var(--r-lg); background: var(--surface-raised); }
 .atri-persona-picker .atri-library-row:has([aria-pressed="true"], [aria-checked="true"]) { border-color: color-mix(in srgb, var(--tone-lumen) 55%, transparent); box-shadow: 0 0 0 3px var(--soft-lumen); }
 .atri-persona-picker pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 400 12px/1.6 var(--font-mono); color: var(--text-2); }
+.atri-persona-picker [hidden] { display: none !important; }
+.atri-persona-picker .atri-library-grouped-list + .atri-library-grouped-list { margin-top: 0; }
+.atri-persona-picker__description { margin: 8px 0 0; color: var(--text-3); font-size: var(--fs-sm); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.atri-persona-picker > .atri-library-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .atri-persona-picker :is(button, input):focus-visible { outline: none; box-shadow: var(--focus-ring); }
 @media (max-width: 719px) {
     .atri-persona-picker { width: 100vw; max-width: none; height: 100dvh; max-height: none; margin: 0; border: 0; border-radius: 0; padding: calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom)); }
     .atri-persona-picker .atri-library-grouped-list { grid-template-columns: 1fr; }
     .atri-persona-picker .atri-library-button, .atri-persona-picker .atri-library-field input { min-height: 44px; font-size: 16px; }
 }
+.atri-prompt-preset > .atri-preset-footer { justify-content: space-between; margin-top: 8px; padding-top: 14px; border-top: 1px solid var(--line-1); }

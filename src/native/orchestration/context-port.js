@@ -1,6 +1,6 @@
 import { assertNativeNarratorQuota, assertNativeTurnOutputQuota, captureNativeTurnOutputFinalization } from './native-turn-quota.js';
 import { compileNativeContextPlan } from '../../../public/scripts/native/context-compiler.js';
-import { actorAvailability, informationContext } from '../../../public/shared/native-information-runtime.js';
+import { actorAvailability, audienceInformationContext, informationContext } from '../../../public/shared/native-information-runtime.js';
 import { fields } from '../../../public/shared/native-values.js';
 import { hashNativeDocument, equalNativeDocuments } from '../repositories/common.js';
 import { immutable } from '../model-prompt-runtime/execution-utils.js';
@@ -288,7 +288,7 @@ export class ContextPort {
         const personalTask = subjectTaskContext(taskIdentity?.taskPlan);
         const contextAudience = personalTask?.audience ?? request.audience;
         const informationTaskId = personalTask ? undefined : taskIdentity?.input.taskId;
-        const information = readInformation ? informationContext(snapshot, contextAudience, informationTaskId, this.authorityTurn ? { includeRollups: false } : {}) : null;
+        const information = readInformation ? audienceInformationContext(snapshot, contextAudience, informationTaskId, this.authorityTurn ? { includeRollups: false } : {}) : null;
         // Missing Information must not fall through to compiler's broad raw
         // history path. A declared, available context exposure is mandatory.
         if (readInformation && (!information?.projection || (contextAudience.kind === 'actor' && !actorAvailability(snapshot, contextAudience.id).available)
@@ -585,7 +585,7 @@ export class ContextPort {
         const permission = await this.authorizeContext({ handle, request: captured.request, phase: 'output_committed', finalizationPermit, committed });
         if (permission?.allowed !== true || permission.grantDigest !== captured.request.grantDigest) fail('native_orchestration_context_denied');
         const snapshot = captured.outputSnapshot;
-        if (!snapshot || hashNativeDocument(informationContext(snapshot, captured.request.audience, undefined, this.authorityTurn ? { includeRollups: false } : {}).projection) !== captured.proof.projectionDigest)
+        if (!snapshot || hashNativeDocument(audienceInformationContext(snapshot, captured.request.audience, undefined, this.authorityTurn ? { includeRollups: false } : {}).projection) !== captured.proof.projectionDigest)
             fail('native_orchestration_context_source_stale');
         if (this.authorityTurn) {
             const original = authorityTurnProof(this.sessionCore, handle, this.authorityTurn.base, this.authorityTurn.proof);

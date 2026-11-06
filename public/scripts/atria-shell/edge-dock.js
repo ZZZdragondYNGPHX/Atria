@@ -366,8 +366,10 @@ export function createAtriaEdgeDock({ document: documentRef, window: windowRef, 
                 scheduleHide();
         } else if (g.kind === 'reveal')
             show(g.progress >= (g.beforeVisible ? 0.65 : 0.35), { force: true });
-        else if (g.kind === 'pending' && touch())
+        else if (g.kind === 'pending') {
+            // A plain click or tap on the handle toggles the Dock.
             show(!g.beforeVisible, { force: true });
+        }
         else
             show(g.beforeVisible, { force: true });
     }

@@ -6,6 +6,21 @@ const webllm = new WebLlmVectorProvider();
 export const listBrowserEmbeddingModels = () => webllm.getModels();
 export const listRetrievalProfiles = () => runtimeRequest('/retrieval');
 export const commitRetrievalProfile = profile => runtimeRequest('/retrieval', { method: 'POST', body: profile });
+export const testRetrievalProfile = profile => runtimeRequest('/retrieval/test', { method: 'POST', body: profile });
+export const deleteRetrievalProfile = (id, mode) => runtimeRequest('/retrieval/' + encodeURIComponent(id), { method: 'DELETE', body: { mode } });
+/** One entry per resource and task, carrying its newest version. Older
+ * versions only matter to selections, which `followsResource` resolves. */
+export function currentRetrievalResources(items) {
+    const seen = new Map();
+    for (const item of items) { const key = item.retrievalProfileId + ':' + item.mode; if (!seen.has(key)) seen.set(key, { ...item, versions: [] }); seen.get(key).versions.push(item.revision); }
+    return [...seen.values()];
+}
+export const followsResource = (resource, ref) => Boolean(ref && resource.retrievalProfileId === ref.retrievalProfileId && resource.versions.includes(ref.revision));
+// Memory owns which resources it searches with; Runtime reads and updates that choice through Memory.
+export function memoryRetrievalPorts() {
+    const context = globalThis.Atria?.getContext?.();
+    return context?.getCapabilityApi?.('memory-graph')?.getWorkspacePorts?.(context) ?? null;
+}
 
 async function request(operation, { profile, signal, ...body }) {
     const ref = assertRetrievalRef(profile.nativeRetrievalRef);

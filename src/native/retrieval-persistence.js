@@ -26,6 +26,21 @@ export class NativeRetrievalPersistence {
         if (profile.retrievalProfileId !== ref.retrievalProfileId || profile.revision !== ref.revision) throw new Error('Retrieval identity mismatch');
         return profile;
     }
+    /** Removes every revision of one resource. Callers clear selections that named it. */
+    async delete(handle, retrievalProfileId, mode = null) {
+        assertWritable();
+        if (!/^retr_[a-f0-9]{32}$/.test(retrievalProfileId) || ![null, 'embed', 'rerank'].includes(mode)) throw new TypeError('Invalid retrieval resource');
+        return withRuntimeWrite(handle, () => this.engine.withTransaction(handle, async tx => {
+            assertWritable();
+            let removed = 0;
+            for (const row of await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.retrievalProfile, handle })) {
+                if (row.doc?.retrievalProfileId !== retrievalProfileId || mode && row.doc.mode !== mode) continue;
+                await tx.deleteResource(row.key); removed++;
+            }
+            if (!removed) throw Object.assign(new Error('Retrieval resource unavailable'), { code: 'native_retrieval_unavailable' });
+            return { retrievalProfileId, deleted: true };
+        }));
+    }
     async list(handle) {
         return this.engine.withTransaction(handle, tx => listNativeDocuments(tx, { kind: NATIVE_RESOURCE_KINDS.retrievalProfile, handle, orderBy: 'updatedAt' }));
     }

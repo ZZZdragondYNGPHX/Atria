@@ -139,7 +139,8 @@ body[data-atria-shell-mounted="true"] > #form_sheld {
 .atria-global-bar {
     grid-area: global;
     position: relative;
-    z-index: var(--z-sticky);
+    /* Above floating side panels (e.g. Illustrations, z 45) so the bar's menus open on top of them. */
+    z-index: 60;
     min-width: 0;
     height: var(--topbar-h);
     display: flex;
@@ -594,7 +595,8 @@ body.no-blur :is(.atria-toolbar__tools, .atria-toolbar__global) { -webkit-backdr
 }
 
 .atria-transient-layer {
-    z-index: 30;
+    /* Sheets and popovers cover the navigation bar, as the token scale intends. */
+    z-index: var(--z-sheet, 60);
 }
 
 .atria-host-recovery {

@@ -47,11 +47,11 @@ export function mountAgentsV3({ document: doc, slot, route, shell, navigation, h
         shell.slots.dock.querySelector('.atria-orch-inspector')?.remove();
         body.replaceChildren();
         currentKey = key;
-        // Run · Plan share one tab; the lists switch here, details keep their own back path.
+        // The plan library and its runs share one tab; details keep their own back path.
         if (!parsed.planId && !parsed.runId) {
             const views = el(doc, 'div', 'atria-segmented atria-orch-views', null, body);
-            views.setAttribute('role', 'group'); views.setAttribute('aria-label', tl('Run · Plan'));
-            for (const [id, label] of [['runs', 'Runs'], ['plans', 'Plans']]) {
+            views.setAttribute('role', 'group'); views.setAttribute('aria-label', tl('Orchestration'));
+            for (const [id, label] of [['plans', 'Plan library'], ['runs', 'Runs']]) {
                 const item = el(doc, 'button', 'atria-segmented__item', tl(label), views);
                 item.type = 'button'; item.setAttribute('aria-pressed', String(parsed.section === id));
                 item.addEventListener('click', () => host.openAgentSection(id));
@@ -60,8 +60,8 @@ export function mountAgentsV3({ document: doc, slot, route, shell, navigation, h
         const summary = el(doc, 'section', 'atria-workspace-context-summary');
         summary.dataset.atriaWorkspaceContext = 'true';
         el(doc, 'strong', '', parsed.section === 'plans' ? tl('Plans') : tl('Runs'), summary);
-        el(doc, 'p', '', parsed.section === 'plans' ? tl('Drafts stay on this device until saved. The Native Host validates, publishes and records revisions.')
-            : tl('Runs are read from the Native Host projection. Leaving this page does not cancel a Run.'), summary);
+        el(doc, 'p', '', parsed.section === 'plans' ? tl('Build a plan once, save it to the library, then use it in any story, Studio task or chat.')
+            : tl('Every time a plan runs, it shows up here. Leaving this page does not stop a run.'), summary);
         shell.setContextContent(summary, { title: parsed.section === 'plans' ? tl('Plans') : tl('Runs'), open: false });
         const common = { document: doc, root: body, client: client(), shell, environment: shell.environment };
         if (parsed.section === 'plans' && parsed.planId) current = mountPlanEditor({ ...common, planId: parsed.planId,

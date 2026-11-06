@@ -488,7 +488,7 @@ export const SHELL_TEXT_KEYS = Object.freeze({
     'Gemini gateway: string enums only': 'atria.runtime.toolSchema.2',
     'Use gateway compatibility when your provider rejects boolean or numeric tool enums. The game still validates action inputs.': 'atria.runtime.toolSchema.3',
     'OpenAI-compatible messages use the full /v1/chat/completions endpoint, not /v1/completions.': 'atria.runtime.toolSchema.4',
-    'The generation endpoint returned HTTP 404. For OpenAI-compatible messages, use the full /chat/completions URL.': 'atria.runtime.providerHttp.0',
+    'The service answered HTTP 404 (not found). If this API preset worked before, the service or its upstream is having trouble; send again in a moment. Otherwise check the service address.': 'atria.runtime.providerHttp.0',
     'The provider rejected the request (HTTP 400/422). Check model and tool/output schema compatibility.': 'atria.runtime.providerHttp.1',
     'The model rejected the reasoning setting. Select Default or none in the API preset, or use an endpoint that supports reasoning with tools.': 'atria.runtime.providerHttp.reasoning',
     'The provider rejected the stored Secret (HTTP 401/403). Check the Secret selected by this connection.': 'atria.runtime.providerHttp.2',

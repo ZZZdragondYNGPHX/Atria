@@ -95,6 +95,9 @@ export function createMemoryWorkspace({ getContext }) {
         const status = el('p', '', rail);
         status.className = 'workspace-memory-load-status';
         status.setAttribute('role', 'status');
+        // Memory belongs to a story; without one open there is nothing to load.
+        const openStory = button(rail, i18n('Continue your story'), () => globalThis.Atria?.shell?.getWorkspaceHost?.()?.openPlay?.());
+        openStory.hidden = true;
         const railBody = el('div', undefined, rail);
         railBody.className = 'workspace-memory-rail__body';
 
@@ -158,6 +161,14 @@ export function createMemoryWorkspace({ getContext }) {
                 snapshot = null;
                 computed = null;
                 status.textContent = '';
+                renderAll();
+                return;
+            }
+            openStory.hidden = Boolean(getContext().chatId);
+            if (!openStory.hidden) {
+                snapshot = null;
+                computed = null;
+                status.textContent = i18n('Open a story to see what it remembers.');
                 renderAll();
                 return;
             }
@@ -288,7 +299,7 @@ export function createMemoryWorkspace({ getContext }) {
             const current = settings();
             const state = el('span', current.enabled ? 'Memory is on' : 'Memory is off', railBody);
             state.className = 'workspace-status-chip is-' + (current.enabled ? 'active' : 'disabled');
-            railBody.append(status);
+            railBody.append(status, openStory);
 
             // Everyday: one main switch; the rest only matter while it is on.
             const controls = railSection('Memory behaviour');
@@ -433,6 +444,8 @@ export function createMemoryWorkspace({ getContext }) {
                         ],
                         layout: { name: 'circle', animate: false, fit: true, padding: 24 },
                         wheelSensitivity: 0.2,
+                        // A small graph must not be blown up to fill the canvas.
+                        maxZoom: 1.6,
                         pixelRatio: 1,
                     });
                     graphInstance.on('tap', 'node, edge', event => showRecord(event.target.data('record'), event.target.data('kind')));

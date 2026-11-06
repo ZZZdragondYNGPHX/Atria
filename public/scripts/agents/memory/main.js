@@ -73,7 +73,6 @@ import { openHistoryBuildPopup } from './history-build-ui.js';
 import { getMemoryVectorStore, MEMORY_SOURCE_WRITES_DEFAULT_ENABLED, isHybridMemoryEnabled, isMemorySourceWriteEnabled } from './memory-os.js';
 import { configureSourceLifecycle } from './source-lifecycle.js';
 import { sourceContent } from './source-provenance.js';
-import { evaluateDerivationGate } from '../../native/context-derived.js';
 import { FACT_TOOL_NAME, factExtractionTool, factExtractionContext, readFactToolCalls } from './fact-extraction.js';
 import { temporalExtractionContext, readTemporalToolCalls } from './temporal-extraction.js';
 import {
@@ -380,7 +379,6 @@ const memoryStoreTargets = new Map();
 const memoryLoadTasks = new Map();
 const rollbackHistoryCache = new Map();
 const scheduledExtractionSingleFlightStates = new Map();
-const nativeDerivationJournalSeqBySession = new Map();
 let activeExtractionToast = null;
 let activeRecallToast = null;
 let activePersistentRuntimeNoticeToast = null;
@@ -4082,7 +4080,7 @@ export function getMemoryWorkspacePorts(context) {
         getNativeRetrieval: () => normalizeMemoryRetrieval(getSettings().nativeRetrieval),
         setNativeRetrieval: async input => {
             const value = normalizeMemoryRetrieval(input); const settings = getSettings(); const previous = settings.nativeRetrieval;
-            settings.nativeRetrieval = value;
+            settings.nativeRetrieval = value; settings.rerankEnabled = Boolean(value.rerank);
             try { await saveSettings(); } catch (error) { if (settings.nativeRetrieval === value) settings.nativeRetrieval = previous; throw error; }
         },
         getNativeRoutes: () => normalizeMemoryRoutes(getSettings().nativeRoutes),
@@ -6879,11 +6877,9 @@ function computeExtractionWindow(context, store, startSeq = null, settings = nul
     };
 }
 
-function formatExtractionRangeToast(beginSeq, endSeq, latestSeq) {
-    const begin = Math.max(1, Math.floor(Number(beginSeq || 0)));
-    const end = Math.max(begin, Math.floor(Number(endSeq || begin)));
-    const latest = Math.max(end, Math.floor(Number(latestSeq || end)));
-    return i18nFormat('Memory graph update running... seq ${0}-${1} / latest ${2}', begin, end, latest);
+// Players see what is happening, not internal floor ranges.
+function formatExtractionRangeToast() {
+    return i18n('Updating story memory…');
 }
 
 function truncateStoreFromSeq(store, fromSeq, chatKey = '') {
@@ -7205,7 +7201,7 @@ async function safeInjectMemoryPrompts(context, payload, trigger = 'after_world_
         })
         : null;
     if (shouldShowRuntimeToast) {
-        showRuntimeInfoToast(i18n('Memory recall running...'), {
+        showRuntimeInfoToast(i18n('Recalling story memory…'), {
             kind: 'recall',
             stopLabel: i18n('Stop'),
             onStop: () => {
@@ -7366,59 +7362,6 @@ async function runScheduledExtractionPass(chatKey) {
             refreshUiStats();
             return;
         }
-        if (isNativeMemorySession(runtimeContext)) {
-            const worldState = nativeSessionRuntime.readState('atri_game_world');
-            const journalEvents = Array.isArray(worldState?.journal?.events)
-                ? worldState.journal.events.slice(-32)
-                : [];
-            const sessionId = getNativeMemorySessionId();
-            const previousJournalSeq = sessionId
-                ? Number(nativeDerivationJournalSeqBySession.get(sessionId) || 0)
-                : 0;
-            const newJournalEvents = journalEvents.filter(event =>
-                Number.isInteger(Number(event?.seq)) && Number(event.seq) > previousJournalSeq);
-            const latestJournalSeq = Math.max(
-                previousJournalSeq,
-                ...journalEvents.map(event => Number.isInteger(Number(event?.seq)) ? Number(event.seq) : 0),
-            );
-            if (sessionId) nativeDerivationJournalSeqBySession.set(sessionId, latestJournalSeq);
-            const decision = evaluateDerivationGate({
-                policy: nativeSessionRuntime.currentContextPlan()?.policy || 'balanced',
-                events: newJournalEvents,
-                turnsSinceDigest: preview.gap,
-                memory: {
-                    pendingCount: preview.gap,
-                    conflict: Boolean(store?.lastExtractionDebug?.conflict),
-                    compactionDue: Boolean(store?.lastExtractionDebug?.compactionDue),
-                },
-                hasCommittedEvidence: preview.gap > 0,
-            });
-            if (!decision.runMemoryConsolidation) {
-                store.lastExtractionDebug = {
-                    beginSeq: preview.beginSeq,
-                    latestSeq: preview.latestSeq,
-                    coveredSeqTo: preview.coveredSeqTo,
-                    extracted: false,
-                    reason: 'derivation_gate_deferred',
-                    derivation: {
-                        policy: decision.policy,
-                        cheapMemoryIngest: decision.cheapMemoryIngest,
-                        reasons: [...decision.reasons],
-                    },
-                    at: Date.now(),
-                };
-                updateUiStatus(i18nFormat(
-                    'Extraction ${0}: begin=${1} latest=${2} covered=${3}',
-                    'deferred',
-                    Number(preview.beginSeq || 0),
-                    Number(preview.latestSeq || 0),
-                    Number(preview.coveredSeqTo || 0),
-                ));
-                refreshUiStats();
-                return;
-            }
-        }
-
         const workingStore = normalizeStoreForRuntime(store);
         let committedStore = normalizeStoreForRuntime(store);
         // Publish the pass's scope so `applyMutationInvalidationImpl`
@@ -12790,7 +12733,7 @@ async function openManualCompressionPopup(context, settings) {
     const compressionStats = createCompressionStats();
     const compressionAbortController = new AbortController();
     activeExtractionAbortController = compressionAbortController;
-    showRuntimeInfoToast(i18n('Memory graph update running...'), {
+    showRuntimeInfoToast(i18n('Updating story memory…'), {
         stopLabel: i18n('Stop'),
         onStop: () => {
             if (!compressionAbortController.signal.aborted) {
@@ -12871,15 +12814,15 @@ async function openVectorRecomputePopup(context, settings) {
     const vectorConfig = getVectorConfigFromSettings(settings);
     const validation = validateVectorConfig(vectorConfig);
     if (!validation.valid) {
-        notifyError(i18n('Embedding profile is not configured. Configure it in the settings above first.'));
+        notifyError(i18n('Choose an embedding model under Memory search first.'));
         return;
     }
 
     const content = `
         <div class="flex-container flexFlowColumn" style="gap:6px">
-            <div>${escapeHtml(i18n('Recompute the authorized Hybrid memory index.'))}</div>
-            <div style="opacity:0.85">${escapeHtml(i18n('Fill Missing: index authorized sources whose vectors are missing or stale.'))}</div>
-            <div style="opacity:0.85">${escapeHtml(i18n('Full Rebuild: clear and re-embed the current authorized source domain.'))}</div>
+            <div>${escapeHtml(i18n('Update the search index for this story’s memories.'))}</div>
+            <div style="opacity:0.85">${escapeHtml(i18n('Fill missing: index only entries that are new or changed.'))}</div>
+            <div style="opacity:0.85">${escapeHtml(i18n('Rebuild everything: clear the index and embed every entry again. Use this after changing the embedding model.'))}</div>
         </div>
     `;
     const choice = await context.callGenericPopup(content, context.POPUP_TYPE.TEXT, '', {
@@ -12909,7 +12852,7 @@ async function runVectorRecompute(context, settings, store, chatKey, { mode }) {
         store.vectorIndexState = null;
         await persistMemoryStoreByChatKey(context, chatKey, store, { syncPersistentProjection: false });
         result.assertCurrent();
-        notifySuccess(i18n('Vector index already up to date.'));
+        notifySuccess(i18n('Search index updated.'));
     } catch (error) {
         notifyError(i18nFormat('Vector recompute failed: ${0}', String(error?.message || error)));
     } finally { refreshUiStats(); }
@@ -13983,14 +13926,6 @@ async function refreshNativeMemoryRevisionState() {
     if (!nativeSessionRuntime.active) return;
     latestRecallSnapshot = null;
     const runtimeContext = withNativeMemorySnapshot();
-    const sessionId = getNativeMemorySessionId();
-    const worldState = nativeSessionRuntime.readState('atri_game_world');
-    const journalEvents = Array.isArray(worldState?.journal?.events) ? worldState.journal.events : [];
-    const latestJournalSeq = Math.max(
-        0,
-        ...journalEvents.map(event => Number.isInteger(Number(event?.seq)) ? Number(event.seq) : 0),
-    );
-    if (sessionId) nativeDerivationJournalSeqBySession.set(sessionId, latestJournalSeq);
     const target = buildMemoryTargetFromContext(runtimeContext);
     const chatKey = getChatKey(runtimeContext);
     if (!target || !chatKey || chatKey === 'invalid_target') return;

@@ -30,11 +30,12 @@ export async function recallHybridMemory(context, query, options = {}) {
     const result = await retrieveMemory(snapshot, query, { service: context.retrievalService,
         sceneText: snapshot.chat.filter(message => message.mes).slice(-2).map(message => message.mes).join('\n'),
         profile: profile && validateVectorConfig(profile).valid ? profile : null,
-        rerankProfile: settings.rerankEnabled ? getRerankProfileFromSettings(settings) : null,
+        // Choosing a reranking model is the switch; "Off" clears it.
+        rerankProfile: getRerankProfileFromSettings(settings),
         countTokens: memoryTokenCounter(context), budget: Math.min(memoryTokenBudget(settings), laneCap),
         corePacket: [existing, options.corePacket].filter(Boolean).join('\n'), existingStateText: existing, signal: options.signal, at: options.at,
         rebuildVectors: options.rebuildVectors === true,
-        computeContext: eligibility.identity.kind === 'information' ? {
+        computeContext: ['information', 'timeline'].includes(eligibility.identity.kind) ? {
             kind: 'session', sessionId: eligibility.identity.anchor.sessionId, revisionId: eligibility.identity.anchor.revisionId,
         } : null });
     if (result.coreOverBudget) result.diagnostics.push('existing_state_exceeds_memory_budget');

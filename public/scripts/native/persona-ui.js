@@ -66,13 +66,14 @@ export function mountPersonaWorkspace({ document: doc, body, route, host, browse
                 const encoded = btoa(Array.from(bytes, byte => String.fromCharCode(byte)).join(''));
                 const result = await client.uploadPersonaAvatar({ bytes: encoded, mediaType: file.type });
                 if (!fresh(current) || !form.isConnected) return;
-                avatar = result; preview.hidden = false; preview.src = nativeAssetUrl(avatar.assetId); avatarStatus.textContent = tl('Avatar attached'); form.dataset.atriaDraftDirty = 'true';
+                avatar = result; preview.hidden = false; preview.src = nativeAssetUrl(avatar.assetId); avatarStatus.textContent = tl('Avatar attached'); removeAvatar.hidden = false; form.dataset.atriaDraftDirty = 'true';
             } catch (error) { if (fresh(current)) feedback(doc, form, libraryError(error), true); } finally { uploadPending = false; save.disabled = false; }
         });
         form.addEventListener('input', () => { form.dataset.atriaDraftDirty = 'true'; });
-        action(doc, fields, 'Remove avatar', () => { avatar = null; preview.hidden = true; avatarStatus.textContent = tl('No avatar'); form.dataset.atriaDraftDirty = 'true'; });
+        const removeAvatar = action(doc, fields, 'Remove avatar', () => { avatar = null; preview.hidden = true; avatarStatus.textContent = tl('No avatar'); removeAvatar.hidden = true; form.dataset.atriaDraftDirty = 'true'; });
+        removeAvatar.hidden = !avatar;
         const controls = el(doc, 'div', 'atri-library-actions', undefined, form);
-        const save = action(doc, controls, 'Save new revision', async () => {
+        const save = action(doc, controls, 'Save', async () => {
             if (uploadPending) return;
             fields.disabled = true;
             let committed = false;
@@ -82,7 +83,7 @@ export function mountPersonaWorkspace({ document: doc, body, route, host, browse
                 committed = true; lastReceipt = result.ref;
                 if (!fresh(current)) return;
                 form.dataset.atriaDraftDirty = 'false'; form.dispatchEvent(new doc.defaultView.CustomEvent('atria-draft-committed', { bubbles: true }));
-                disclosure(doc, form, 'Saved revision', result.ref); feedback(doc, form, 'Saved successfully.');
+                feedback(doc, form, 'Saved successfully.');
                 // The receipt is final even if navigating/reading the saved item fails.
                 save.dataset.atriaActionComplete = 'true'; save.disabled = true;
                 action(doc, form, 'Reload Latest', () => host.openLibraryPersona ? host.openLibraryPersona(result.ref, result.revision.name) : show({ child: { id: 'persona:' + result.ref.personaId } }));
@@ -90,19 +91,18 @@ export function mountPersonaWorkspace({ document: doc, body, route, host, browse
         }, { primary: true });
         action(doc, controls, 'Cancel', () => { if (confirmAtriaDraftLeave(doc, form)) { if (host.openLibrarySection) host.openLibrarySection('personas'); else show({ child: { id: 'personas' } }); } });
         if (item && !copy) {
-            disclosure(doc, area, 'Exact revision', item.ref);
             const manage = el(doc, 'div', 'atri-library-actions', undefined, area);
             action(doc, manage, 'Copy', async () => { if (!confirmAtriaDraftLeave(doc, form)) return; area.replaceChildren(); await editor(item, ++token, true); });
-            action(doc, manage, item.area.archived ? 'Restore' : 'Archive', async () => {
+            action(doc, manage, item.root.archived ? 'Restore' : 'Archive', async () => {
                 if (!confirmAtriaDraftLeave(doc, form)) return;
-                const receipt = await client.archivePersona({ personaId: item.ref.personaId, archived: !item.area.archived, expectedFingerprint: item.expectedFingerprint });
-                disclosure(doc, area, 'Saved revision', receipt.ref); await show({ child: { id: 'personas' } });
+                const receipt = await client.archivePersona({ personaId: item.ref.personaId, archived: !item.root.archived, expectedFingerprint: item.expectedFingerprint });
+                void receipt; await show({ child: { id: 'personas' } });
             });
             action(doc, manage, 'Use as default', async () => {
                 const baseline = await client.readPersonaDefault();
                 if (!fresh(current)) return;
                 await client.setPersonaDefault({ selection: item.ref, expectedFingerprint: baseline.expectedFingerprint }); feedback(doc, area, 'Saved successfully.');
-            }, { disabled: item.area.archived });
+            }, { disabled: item.root.archived });
             action(doc, manage, 'Used By', async () => { const result = await client.getPersonaUsedBy(item.ref.personaId); if (fresh(current)) disclosure(doc, area, 'Used By', result.references); });
             action(doc, manage, 'Delete permanently', async () => {
                 if (!confirmAtriaDraftLeave(doc, form)) return;
@@ -110,7 +110,9 @@ export function mountPersonaWorkspace({ document: doc, body, route, host, browse
                 await client.deletePersona({ personaId: item.ref.personaId, expectedFingerprint: item.expectedFingerprint }); await show({ child: { id: 'personas' } });
             }, { danger: true });
             const revisions = await client.getPersonaRevisions(item.ref.personaId);
-            if (fresh(current)) for (const revision of revisions) action(doc, area, revision.revisionId, async () => {
+            // Earlier versions are a quiet list, labelled by number rather than internal IDs.
+            const versions = revisions.length > 1 && fresh(current) ? disclosure(doc, area, 'Earlier versions') : null;
+            if (versions) revisions.forEach((revision, index) => action(doc, versions, tl('Version') + ' ' + (index + 1) + (revision.name ? ' · ' + revision.name : ''), async () => {
                 if (!confirmAtriaDraftLeave(doc, form)) return;
                 const exact = await client.getPersona({ personaId: item.ref.personaId });
                 // Obtain exact content identity from the original revision; current area CAS remains authoritative.
@@ -118,7 +120,7 @@ export function mountPersonaWorkspace({ document: doc, body, route, host, browse
                 const contentIdentity = [...new Uint8Array(hash)].map(byte => byte.toString(16).padStart(2, '0')).join('');
                 const old = await client.getPersona({ ref: { personaId: exact.ref.personaId, revisionId: revision.revisionId, contentIdentity } });
                 if (fresh(current)) { area.replaceChildren(); await editor(old, ++token); }
-            });
+            }));
         }
         name.focus();
     }
@@ -144,8 +146,8 @@ export function mountPersonaWorkspace({ document: doc, body, route, host, browse
                 const row = el(doc, 'article', 'atri-library-row', undefined, rows);
                 if (item.ref.personaId === selectedId) row.setAttribute('aria-current', 'true');
                 if (item.revision.avatar) { const image = el(doc, 'img', 'atri-persona-avatar', undefined, row); image.alt = ''; image.src = nativeAssetUrl(item.revision.avatar.assetId); image.addEventListener('error', () => image.remove(), { once: true }); }
-                action(doc, row, item.revision.name, () => host.openLibraryPersona ? host.openLibraryPersona(item.ref, item.revision.name) : show({ child: { id: 'persona:' + item.ref.personaId } }));
-                if (item.pane.archived) el(doc, 'span', '', tl('Archived'), row);
+                action(doc, row, item.revision.name, () => host.openLibraryPersona ? host.openLibraryPersona(item.ref, item.revision.name) : show({ child: { id: 'persona:' + item.ref.personaId } })).classList.add('atri-persona-name');
+                if (item.root.archived) el(doc, 'span', '', tl('Archived'), row);
             }
             rows.querySelector('[data-persona-more]')?.remove();
             if (cursor) { const more = action(doc, rows, 'Load more', () => load(false)); more.dataset.personaMore = 'true'; }
@@ -173,11 +175,11 @@ export function openPersonaSelector({ document: doc, runtime, client = nativePro
     if (!select && (runtime.snapshot.states?.atri_shared || runtime.snapshot.manifest?.runtime?.experienceContract?.sharedRuntime)) throw new Error(tl('Choose your own seat identity from Shared session controls.'));
     const focus = doc.activeElement, dialog = el(doc, 'dialog', 'atri-persona-picker', undefined, doc.body);
     dialog.setAttribute('aria-label', tl('Choose Persona'));
-    heading(doc, dialog, 'Choose Persona', statusText ?? 'Descriptions apply only when this work explicitly consumes player context.');
+    heading(doc, dialog, 'Choose Persona', statusText ?? 'Who you are in this story.');
     let closed = false, receipt = false;
     const captured = runtime.snapshot.states?.atri_player_persona?.solo;
     if (captured) {
-        disclosure(doc, dialog, 'Current Persona snapshot', { ref: captured.ref, name: captured.snapshot.name });
+        el(doc, 'p', 'atri-library-meta', tl('Playing as') + ' ' + captured.snapshot.name, dialog);
         void client.getPersona({ ref: captured.ref }).then(item => { if (!closed && item.root.archived) feedback(doc, dialog, 'The source is archived. This session retains its captured identity.'); }, () => { if (!closed) feedback(doc, dialog, 'The source is unavailable. This session retains its captured identity.'); });
     }
     const close = () => { closed = true; dialog.close(); dialog.remove(); if (focus?.isConnected) focus.focus(); };
@@ -188,7 +190,6 @@ export function openPersonaSelector({ document: doc, runtime, client = nativePro
         const first = controls[0], last = controls.at(-1);
         if (!first) { event.preventDefault(); dialog.focus(); } else if (event.shiftKey && (doc.activeElement === first || !controls.includes(doc.activeElement))) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && (doc.activeElement === last || !controls.includes(doc.activeElement))) { event.preventDefault(); first.focus(); }
     });
-    action(doc, dialog, 'Cancel', close);
     const results = el(doc, 'div', 'atri-library-grouped-list', undefined, dialog);
     const selectExact = async selection => {
         guard();
@@ -198,7 +199,6 @@ export function openPersonaSelector({ document: doc, runtime, client = nativePro
             receipt = true;
             for (const button of dialog.querySelectorAll('button')) button.dataset.atriaActionComplete = 'true';
             if (closed) return;
-            disclosure(doc, dialog, 'Selected revision', snapshot.revision?.revisionId ?? snapshot);
             if (!select) await runtime.acceptOperationSnapshot(snapshot, { acceptGuard: () => runtime.snapshot.session.sessionId === id && !runtime.history });
             close();
         } catch (error) {
@@ -212,6 +212,7 @@ export function openPersonaSelector({ document: doc, runtime, client = nativePro
     action(doc, results, 'No Persona', () => selectExact(null));
     let queryToken = 0;
     const query = field(doc, dialog, 'Search Personas', '', 'search');
+    results.before(query.closest('label'));
     const matches = el(doc, 'div', 'atri-library-grouped-list', undefined, dialog);
     let cursor = null;
     const load = async (more = false) => {
@@ -222,14 +223,22 @@ export function openPersonaSelector({ document: doc, runtime, client = nativePro
         for (const item of list.items) {
             const row = el(doc, 'article', 'atri-library-row', undefined, matches);
             action(doc, row, item.revision.name, () => selectExact(item.ref));
-            disclosure(doc, row, 'Exact revision', { ref: item.ref, description: item.revision.description });
+            if (item.revision.description) el(doc, 'p', 'atri-persona-picker__description', item.revision.description, row);
         }
         matches.querySelector('[data-persona-more]')?.remove();
         if (cursor) { const button = action(doc, matches, 'Load more', () => load(true)); button.dataset.personaMore = 'true'; }
-        if (!list.items.length && !more) feedback(doc, matches, 'No matching Personas');
+        if (!list.items.length && !more) feedback(doc, matches, query.value ? 'No matching Personas' : 'No personas yet.');
+        // Search only earns its place once the list is long.
+        if (!more && !query.value) {
+            query.closest('label').hidden = !cursor && list.items.length < 8;
+            if (query.closest('label').hidden && doc.activeElement === query) results.querySelector('button')?.focus();
+        }
     };
     query.addEventListener('input', () => load().catch(error => { if (!closed) feedback(doc, matches, libraryError(error), true); }));
     void load().catch(error => { if (!closed) { feedback(doc, matches, libraryError(error), true); action(doc, matches, 'Try again', () => load()); } });
+    const footer = el(doc, 'div', 'atri-library-actions', undefined, dialog);
+    action(doc, footer, 'Manage personas', () => { close(); globalThis.Atria?.shell?.getWorkspaceHost?.()?.openLibrarySection('personas'); });
+    action(doc, footer, 'Cancel', close);
     dialog.showModal(); query.focus();
     return { close, dialog };
 }

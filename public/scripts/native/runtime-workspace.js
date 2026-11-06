@@ -1,6 +1,7 @@
 import { mountProtocolControls } from './protocol-controls.js';
 import { confirmAtriaDraftLeave, observeAtriaDrafts } from '../atria-shell/workspace-leave-guard.js';
-import { renderRetrievalWorkspace } from './retrieval-workspace.js';
+import { renderRetrievalWorkspace, describeRetrievalTest } from './retrieval-workspace.js';
+import { listRetrievalProfiles, testRetrievalProfile, currentRetrievalResources, followsResource, memoryRetrievalPorts } from './retrieval-client.js';
 import { mountResourceSource } from './resource-source-editor.js';
 import { NATIVE_GENERATION_DEFAULTS as generationDefaults } from '../../shared/native-generation-defaults.js';
 import { formatShellText as fmt, translateShellText } from '../atria-shell/localization.js';
@@ -15,7 +16,7 @@ import { nativeStudioClient } from './studio-client.js';
 import { mountRuntimeSetup, normalizeChatEndpoint } from './runtime-setup.js';
 import { mountPromptRuntimeControls } from './prompt-runtime-controls.js';
 import { NOVELAI_IMAGE_ENDPOINT, NOVELAI_IMAGE_ADAPTERS, officialNovelaiCapabilities, novelaiConnectionCapabilities } from '../../shared/novelai-illustration.js';
-import { assertComputeBudget } from '../../shared/native-compute-budget.js';
+import { assertComputeBudget, DEFAULT_COMPUTE_BUDGET } from '../../shared/native-compute-budget.js';
 import { connectionRequiresSecret } from '../../shared/native-connection-auth.js';
 import { INSECURE_HTTP_ADAPTERS } from '../../shared/image-service-catalog.js';
 import { mountApiPresetFields } from './api-preset-fields.js';
@@ -26,7 +27,7 @@ const sectionLabels = { routes: 'API presets', models: 'API presets', connection
 const resourceLabels = { routes: 'API preset', models: 'API preset', connections: 'service' };
 // Services are chosen by what they are for, then by protocol.
 const PURPOSES = [
-    ['chat', 'Chat models', 'chat', [['provider.openai-compatible', 'OpenAI-compatible'], ['provider.anthropic', 'Anthropic Claude'], ['provider.gemini', 'Google Gemini'], ['provider.raw-text', 'Text completion (legacy)']]],
+    ['chat', 'Chat models', 'chat', [['provider.openai-compatible', 'OpenAI-compatible'], ['provider.openai-responses', 'OpenAI Responses API'], ['provider.anthropic', 'Anthropic Claude'], ['provider.gemini', 'Google Gemini'], ['provider.raw-text', 'Text completion (legacy)']]],
     ['image', 'Image generation', 'image', [['provider.novelai-image', 'NovelAI'], ['provider.novelai-image-compatible', 'NovelAI-compatible relay'], ['provider.openai-images', 'OpenAI Images'], ['provider.gemini-image', 'Gemini images'],
         ['provider.comfyui-image', 'ComfyUI workflow'], ['provider.sd-webui-image', 'Stable Diffusion WebUI'], ['provider.forge-image', 'Forge'], ['provider.runninghub-image', 'RunningHub workflow']]],
     ['tools', 'Tools (MCP)', 'terminal', [['provider.mcp', 'MCP server']]],
@@ -38,6 +39,7 @@ const adapterLabel = adapter => PURPOSES.flatMap(entry => entry[3]).find(([id]) 
 const ADDRESS_HINTS = {
     'provider.openai-compatible': 'Paste the base address, such as https://api.example.com/v1. Atria adds /chat/completions.',
     'provider.raw-text': 'Paste the base address, such as http://127.0.0.1:5000/v1. Atria adds /completions.',
+    'provider.openai-responses': 'Paste the base address, such as https://api.openai.com/v1. Atria adds /responses. Use this for OpenAI reasoning models with tools.',
     'provider.anthropic': 'Usually https://api.anthropic.com/v1/messages.',
     'provider.gemini': 'Usually https://generativelanguage.googleapis.com/v1beta.',
     'provider.novelai-image': 'Uses the official NovelAI address.',
@@ -69,7 +71,7 @@ function assertRuntimeEditorShape(value) {
 }
 
 export function mountNativeRuntimeWorkspace({ document: doc, body, section, route, host }) {
-    let disposed = false; let returnToIllustrations = false; let data; let refillList = null; let scopedResources = []; let selectedRoute = route; let activeEditor = null; let restoreShell = () => {};
+    let disposed = false; let returnToIllustrations = false; let data; let refillList = null; let scopedResources = []; let promptPresets = []; let selectedRoute = route; let activeEditor = null; let restoreShell = () => {};
     const controller = new AbortController();
     const root = doc.createElement('section');
     root.className = 'atri-runtime'; root.dataset.atriaRuntimeNative = section;
@@ -254,9 +256,9 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             const loadingPane = environment.get().mode !== 'compact' && root.querySelector('.atri-runtime-detail') || root;
             loadingPane.replaceChildren(createAtriaStatePanel(doc, 'loading', { title: translateShellText('Loading Native Runtime…') }));
             try {
-                const resources = await runtimeRequest('/resources', { signal: controller.signal });
+                const [resources, presets] = await Promise.all([runtimeRequest('/resources', { signal: controller.signal }), runtimeRequest('/presets', { signal: controller.signal })]);
                 if (disposed || editorToken !== editorSequence) return;
-                scopedResources = resources;
+                scopedResources = resources; promptPresets = presets;
             } catch (error) {
                 if (!disposed && editorToken === editorSequence) { renderList(); failure(error, root); }
                 return;
@@ -464,15 +466,22 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         } else {
             readApi = mountApiPresetFields({ doc, form, data, resources: scopedResources, route: value, field, number, group, notice, button, host,
                 signal: controller.signal, isCurrent: () => !disposed && editorToken === editorSequence && form.isConnected });
+            // Prompt presets are chosen by name; the API preset always follows the preset's current version.
+            const promptBox = group(form, 'Prompt');
+            const currentPrompt = value.promptProgramRef;
+            const defaultContext = ref => Boolean(ref) && data.resources.some(item => item.resourceId === ref.resourceId && item.displayName === 'API default context');
+            const presetKey = preset => refKey({ scope: 'library', resourceType: 'core.prompt-program', resourceId: preset.presetId, revision: preset.revision });
+            const ownPreset = currentPrompt && promptPresets.find(preset => preset.presetId === currentPrompt.resourceId);
+            const otherPrompts = resourceOptions('core.prompt-program').slice(1).filter(([key]) => { const ref = JSON.parse(key); return !promptPresets.some(preset => preset.presetId === ref.resourceId) && !defaultContext(ref); })
+                .map(([key, label]) => [key, label.replace(/ · rev_[a-f0-9]+/, ''), true]);
+            const prompt = field(promptBox, 'Prompt preset', !currentPrompt || defaultContext(currentPrompt) ? '' : ownPreset ? presetKey(ownPreset) : refKey(currentPrompt),
+                [['', 'None — basic context only'], ...promptPresets.map(preset => [presetKey(preset), preset.displayName, true]), ...otherPrompts]);
+            notice('Used whenever this API preset runs without a prompt of its own. Works that bring their own prompt keep using theirs.', promptBox);
+            button('Edit prompt presets', () => host.openLibrarySection('prompt-presets'), promptBox).dataset.variant = 'plain';
             const advanced = node('details', undefined, form); advanced.className = 'atri-api-advanced'; node('summary', 'Advanced: fallbacks, limits and use outside stories', advanced);
             let fields = group(advanced, 'Default purpose outside games');
             const role = field(fields, 'Role', value.role || 'role.narrator', roles.map(item => ['role.' + item, roleLabels[item] || item]));
             notice('Games assign purposes when they select an API preset. This default is used by Studio and other tools.', fields);
-            fields = group(advanced, 'Prompt outside games');
-            const prompt = field(fields, 'Prompt Preset', value.promptProgramRef ? refKey(value.promptProgramRef) : '',
-                [['', 'Use default context'], ...resourceOptions('core.prompt-program').slice(1)]);
-            notice('Games use the work’s prompt. This choice only applies outside package tasks.', fields);
-            button('Prompt Presets', () => host.openLibrarySection('prompt-presets'), fields);
             fields = group(advanced, 'Fallback order');
             let fallbackIds = (value.fallbackRouteRefs || []).map(item => item.runtimeRouteId);
             const fallbackList = node('div', undefined, fields);
@@ -513,22 +522,15 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             const attempts = number(fields, 'Maximum fallback attempts', value.policy?.maxFallbackAttempts ?? 0, 0);
             notice('Fallback mode is chosen per request: automatic, confirm or disabled. Game Runtime requests automatic; other callers default to disabled. Zero attempts disables fallback.', fields);
             const requirements = field(fields, 'Required capabilities (comma separated)', value.requirements?.join(', ') || '');
-            fields = group(advanced, 'Shared compute limits', 'Requests in one run or project task share these limits, including retries and reranking. Sent requests retain their estimated usage when cost is unknown.');
-            const enabled = field(fields, 'Enable shared request limits'); enabled.type = 'checkbox'; enabled.checked = Boolean(value.executionPolicy?.computeBudget);
-            const requests = number(fields, 'Maximum request count', value.executionPolicy?.computeBudget?.maxRequests ?? '', 1, 32); requests.step = '1';
-            const tokens = number(fields, 'Token usage limit', value.executionPolicy?.computeBudget?.maxTokens ?? '', 1); tokens.step = '1';
-            const syncBudget = () => { for (const input of [requests, tokens]) { input.disabled = !enabled.checked; input.required = enabled.checked; } };
-            enabled.addEventListener('change', syncBudget); syncBudget();
-            notice('These limits track request counts and estimated tokens. Cost stays unknown when pricing or gateway retries are unreported. Cancelling configuration does not refund usage already incurred by this task.', fields);
-            const localEnabled = field(fields, 'Enable local work budget'); localEnabled.type = 'checkbox'; localEnabled.checked = Boolean(value.executionPolicy?.computeBudget?.localWork);
-            const localJobs = number(fields, 'Local work count', value.executionPolicy?.computeBudget?.localWork?.maxJobs ?? 32, 1, 32);
-            const localItems = number(fields, 'Local work items', value.executionPolicy?.computeBudget?.localWork?.maxItems ?? 10000, 1, 10000);
-            const localBytes = number(fields, 'Local work input bytes', value.executionPolicy?.computeBudget?.localWork?.maxInputBytes ?? 16777216, 1, 16777216);
-            const syncLocalBudget = () => {
-                localEnabled.disabled = !enabled.checked;
-                for (const input of [localJobs, localItems, localBytes]) { input.disabled = !enabled.checked || !localEnabled.checked; input.required = enabled.checked && localEnabled.checked; }
-            };
-            enabled.addEventListener('change', syncLocalBudget); localEnabled.addEventListener('change', syncLocalBudget); syncLocalBudget();
+            // Every preset has limits; the defaults suit most stories, so these stay optional to change.
+            const budget = { ...DEFAULT_COMPUTE_BUDGET, ...value.executionPolicy?.computeBudget, localWork: { ...DEFAULT_COMPUTE_BUDGET.localWork, ...value.executionPolicy?.computeBudget?.localWork } };
+            fields = group(advanced, 'Limits per turn', 'One turn, including its agents, retries and tools, stops at these limits. The defaults suit most stories.');
+            const requests = number(fields, 'Maximum requests', budget.maxRequests, 1, 32); requests.step = '1'; requests.required = true;
+            const tokens = number(fields, 'Maximum tokens', budget.maxTokens, 1); tokens.step = '1'; tokens.required = true;
+            const localJobs = number(fields, 'Local work count', budget.localWork.maxJobs, 1, 32);
+            const localItems = number(fields, 'Local work items', budget.localWork.maxItems, 1, 10000);
+            const localBytes = number(fields, 'Local work input bytes', budget.localWork.maxInputBytes, 1, 16777216);
+            for (const input of [localJobs, localItems, localBytes]) input.required = true;
             const optionalFields = group(advanced, 'Required work reserve');
             const reserveEnabled = field(optionalFields, 'Reserve required work'); reserveEnabled.type = 'checkbox'; reserveEnabled.checked = Boolean(value.executionPolicy?.optionalWork);
             const reserveRequests = number(optionalFields, 'Required work requests', value.executionPolicy?.optionalWork?.requiredCompute?.maxRequests ?? '', 1, 32);
@@ -548,12 +550,14 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             const a2aAuth = field(protocolFields, 'A2A authentication', value.executionPolicy?.a2a?.auth ?? 'none', [['none', 'No key'], ['secret', 'Saved key']]);
             serialize = () => {
                 let executionPolicy = value.executionPolicy ? clone(value.executionPolicy) : undefined;
-                if (enabled.checked || reserveEnabled.checked || mcpConnection.value || a2aConnection.value) executionPolicy ??= { schemaVersion: 1, allowedModelProfileIds: [readApi().model.modelProfileId] };
-                if (enabled.checked) {
-                    executionPolicy ??= { schemaVersion: 1, allowedModelProfileIds: [readApi().model.modelProfileId] };
-                    executionPolicy.computeBudget = assertComputeBudget({ maxRequests: Number(requests.value), maxTokens: Number(tokens.value),
-                        ...(localEnabled.checked ? { localWork: { maxJobs: Number(localJobs.value), maxItems: Number(localItems.value), maxInputBytes: Number(localBytes.value) } } : {}) });
-                } else if (executionPolicy) delete executionPolicy.computeBudget;
+                const limits = assertComputeBudget({ maxRequests: Number(requests.value), maxTokens: Number(tokens.value),
+                    localWork: { maxJobs: Number(localJobs.value), maxItems: Number(localItems.value), maxInputBytes: Number(localBytes.value) } });
+                // Unchanged defaults stay implicit, so a later default change still reaches this preset.
+                const customLimits = JSON.stringify(limits) !== JSON.stringify(DEFAULT_COMPUTE_BUDGET);
+                if (customLimits || reserveEnabled.checked || mcpConnection.value || a2aConnection.value) executionPolicy ??= { schemaVersion: 1, allowedModelProfileIds: [readApi().model.modelProfileId] };
+                if (executionPolicy) {
+                    if (customLimits) executionPolicy.computeBudget = limits; else delete executionPolicy.computeBudget;
+                }
                 if (executionPolicy) {
                     if (reserveEnabled.checked) executionPolicy.optionalWork = { mode: 'preserve_required', roles: optionalRoles.filter(row => row.input.checked).map(row => row.id),
                         ...(reserveRequests.value && reserveTokens.value ? { requiredCompute: { maxRequests: Number(reserveRequests.value), maxTokens: Number(reserveTokens.value) } } : {}) };
@@ -562,14 +566,18 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                     else delete executionPolicy.mcp;
                     if (a2aConnection.value) executionPolicy.a2a = { protocolVersion: '1.0', connectionProfileId: a2aConnection.value, skillIds: split(a2aSkills), auth: a2aAuth.value };
                     else delete executionPolicy.a2a;
+                    // The chosen fallbacks stay usable: their models are allowed too.
+                    executionPolicy.allowedModelProfileIds = [...new Set([...executionPolicy.allowedModelProfileIds,
+                        ...fallbackIds.map(id => data.routes?.find(item => item.runtimeRouteId === id)?.modelProfileRef?.modelProfileId).filter(Boolean)])].slice(0, 16);
                 }
-                return { ...value, ...(executionPolicy ? { executionPolicy } : {}), role: role.value, ...(prompt.value ? { promptProgramRef: JSON.parse(prompt.value) } : { promptProgramRef: undefined }), fallbackRouteRefs: fallbackIds.map(runtimeRouteId => ({ scope: 'player', runtimeRouteId })), policy: { timeoutMs: Number(timeout.value), maxRetries: Number(retries.value), maxFallbackAttempts: Number(attempts.value) }, requirements: requirements.value.split(',').map(item => item.trim()).filter(Boolean) };
+                return { ...value, ...(executionPolicy ? { executionPolicy } : {}), role: role.value, promptProgramRef: prompt.value ? JSON.parse(prompt.value) : defaultContext(currentPrompt) ? currentPrompt : undefined, fallbackRouteRefs: fallbackIds.map(runtimeRouteId => ({ scope: 'player', runtimeRouteId })), policy: { timeoutMs: Number(timeout.value), maxRetries: Number(retries.value), maxFallbackAttempts: Number(attempts.value) }, requirements: requirements.value.split(',').map(item => item.trim()).filter(Boolean) };
             };
         }
         const status = node('div', undefined, form); status.className = 'atri-runtime-status';
         const actions = node('footer', undefined, form); actions.className = 'atri-runtime-actions';
         if (original && !fresh) {
-            const lifecycle = group(form, 'Manage this resource');
+            // Duplicate and Delete live in the footer, away from Save.
+            const lifecycle = node('span', undefined, actions); lifecycle.className = 'atri-runtime-actions__secondary';
             button('Duplicate', () => confirmAtriaDraftLeave(doc, root) && edit({ ...clone(value), [ids[section]]: createStudioNativeId(prefixes[section]), displayName: value.displayName + ' Copy' }, true), lifecycle);
             const remove = button('Delete', async () => {
                 if (remove.disabled) return;
@@ -582,10 +590,16 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                     await load();
                 } catch (error) {
                     if (disposed || editorToken !== editorSequence) return;
-                    status.replaceChildren(); failure(error, status);
+                    status.replaceChildren();
+                    // A model record and its API preset share a name; name each API preset once.
+                    const owners = [...new Map((error.details?.usedBy ?? []).filter(item => item?.displayName).map(item => [item.displayName, item])).values()];
+                    if (error.code === 'native_runtime_referenced' && owners.length) {
+                        notice(fmt('${0} is still used by ${1}. Switch them to something else first, then delete it.', [value.displayName, owners.map(item => item.displayName).join(', ')]), status, true);
+                        for (const item of owners.filter(owner => owner.section === 'routes')) button(fmt('Open ${0}', [item.displayName]), () => host.openRuntimeSection('routes', item.id), status).dataset.variant = 'plain';
+                    } else failure(error, status);
                 } finally { remove.disabled = false; }
             }, lifecycle);
-            remove.className = 'atri-runtime-danger';
+            remove.dataset.tone = 'danger';
         }
         form.append(actions);
         const save = node('button', section === 'routes' ? 'Save API preset' : 'Save', actions); save.type = 'submit';
@@ -644,7 +658,8 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         }
     }
     function diagnostics() {
-        root.replaceChildren(); heading('Diagnostics', 'Inspect the current Native context, preview routes, and use configured external services.');
+        root.replaceChildren(); heading('Diagnostics', 'Check that your models and memory search answer, and see how to fix what does not.');
+        mountSetupCheck();
         if (nativeSessionRuntime.active) mountProtocolControls({ document: doc, container: root, runtime: () => nativeSessionRuntime, signal: controller.signal });
         const latest = getRuntimeEvidence(); if (latest?.snapshot) evidence(latest, node('div'));
         const session = nativeSessionRuntime.snapshot;
@@ -736,6 +751,69 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                 if (!disposed) { result.replaceChildren(); evidence(preview, result); const title = result.querySelector('h3'); title.tabIndex = -1; title.focus(); }
             } catch (error) { if (!disposed) { result.replaceChildren(); failure(error, result); } } finally { submit.disabled = false; submit.removeAttribute('aria-busy'); }
         });
+        const tools = node('details'); tools.className = 'atri-runtime-more atri-runtime-devtools';
+        node('summary', 'Advanced: request preview and runtime evidence', tools);
+        for (const child of [...root.children]) if (!child.matches('.atri-runtime-heading, .atri-runtime-checks, .atri-runtime-devtools')) tools.append(child);
+    }
+    // One pass over what a reply depends on. Listing models sends no message;
+    // each search model memory uses gets one tiny test request.
+    function mountSetupCheck() {
+        const box = node('section'); box.className = 'atri-runtime-checks';
+        const head = node('div', undefined, box); head.className = 'atri-runtime-checks__head';
+        const run = button('Check setup', () => void check(), head); run.dataset.variant = 'primary';
+        node('p', 'Lists each API preset’s models (no message is sent) and sends one short test to the search models memory uses.', head).className = 'atri-runtime-help';
+        const list = node('ul', undefined, box); list.className = 'atri-runtime-check-list';
+        const row = title => {
+            const item = node('li', undefined, list); item.dataset.state = 'pending';
+            const state = node('span', 'Checking…', item); state.className = 'atri-runtime-check-state';
+            const text = node('div', undefined, item); node('strong', undefined, text).textContent = title;
+            const detail = node('p', '', text);
+            return (ok, message, fix) => {
+                if (disposed) return;
+                item.dataset.state = ok === null ? 'skipped' : ok ? 'ok' : 'problem';
+                state.textContent = translateShellText(ok === null ? 'Not checked' : ok ? 'Works' : 'Needs attention'); detail.textContent = message;
+                if (fix) button(fix[0], fix[1], item).dataset.variant = 'plain';
+            };
+        };
+        async function check() {
+            run.disabled = true; run.setAttribute('aria-busy', 'true'); list.replaceChildren();
+            try {
+                for (const route of data.routes) {
+                    const done = row(route.displayName);
+                    const connection = data.connections.find(item => item.connectionProfileId === route.connectionProfileRef.connectionProfileId);
+                    const model = data.models.find(item => item.modelProfileId === route.modelProfileRef.modelProfileId);
+                    const openPreset = ['Open API preset', () => host.openRuntimeSection('routes', route.runtimeRouteId)];
+                    if (!connection) { done(false, translateShellText('Its service no longer exists. Choose another service.'), openPreset); continue; }
+                    try {
+                        const result = await runtimeRequest('/connections/probe', { method: 'POST', body: connection, signal: controller.signal });
+                        const listed = result.models?.some(item => item.remoteModelId === model?.remoteModelId);
+                        if (listed || !result.models?.length) done(true, listed ? fmt('${0} answers and offers ${1}.', [connection.displayName, model.remoteModelId]) : fmt('${0} answers.', [connection.displayName]));
+                        else done(false, fmt('${0} answers, but no longer offers ${1}. Choose one of its models.', [connection.displayName, model?.remoteModelId ?? '?']), openPreset);
+                    } catch (error) {
+                        if (disposed) return;
+                        if (error.code === 'native_provider_probe_unsupported') { done(null, fmt('${0} cannot list its models, so only a real reply can test it.', [connection.displayName])); continue; }
+                        done(false, runtimeRemediation(error.code || error.message)[0], ['Open service', () => host.openRuntimeSection('connections', connection.connectionProfileId)]);
+                    }
+                }
+                const selection = memoryRetrievalPorts()?.getNativeRetrieval?.() ?? {};
+                if (selection.embed || selection.rerank) {
+                    const resources = currentRetrievalResources(await listRetrievalProfiles());
+                    for (const mode of ['embed', 'rerank']) {
+                        if (!selection[mode]) continue;
+                        const resource = resources.find(item => followsResource(item, selection[mode]));
+                        const done = row(fmt(mode === 'embed' ? 'Memory search · ${0}' : 'Memory reranking · ${0}', [resource?.displayName ?? '—']));
+                        const openSearch = ['Open memory search', () => host.openRuntimeSection('retrieval')];
+                        if (!resource) { done(false, translateShellText('Memory uses a search model that was deleted. Choose another.'), openSearch); continue; }
+                        const { versions: _versions, ...profile } = resource;
+                        try {
+                            const result = await testRetrievalProfile(profile);
+                            done(result.ok, describeRetrievalTest(result), result.ok ? null : openSearch);
+                        } catch (error) { done(false, error.message, openSearch); }
+                    }
+                }
+                if (!list.childElementCount) notice('Nothing to check yet. Connect a model first.', list);
+            } catch (error) { if (!disposed) failure(error, box); } finally { run.disabled = false; run.removeAttribute('aria-busy'); }
+        }
     }
     function deepLink(next) {
         const id = next?.child?.id?.split(':').slice(1).join(':');
@@ -756,7 +834,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         root.replaceChildren(createAtriaStatePanel(doc, 'loading', { title: translateShellText('Loading Native Runtime…') }));
         try {
             if (section === 'retrieval') {
-                await renderRetrievalWorkspace({ root, node, field, group, button, notice, bindEditorKeyboard, confirmLeave: () => confirmAtriaDraftLeave(doc, root), signal: controller.signal, enter: () => { activeEditor = 'retrieval'; root.dataset.editor = 'true'; adaptEditor(); }, leave: () => { activeEditor = null; root.onkeydown = null; delete root.dataset.editor; restoreShell(); if (root.parentNode !== body) body.append(root); root.removeAttribute('role'); root.removeAttribute('aria-modal'); root.removeAttribute('aria-label'); } });
+                await renderRetrievalWorkspace({ root, node, field, group, button, notice, bindEditorKeyboard, compact: () => environment.get().mode === 'compact', confirmLeave: () => confirmAtriaDraftLeave(doc, root), signal: controller.signal, enter: () => { activeEditor = 'retrieval'; root.dataset.editor = 'true'; adaptEditor(); }, leave: () => { activeEditor = null; root.onkeydown = null; delete root.dataset.editor; restoreShell(); if (root.parentNode !== body) body.append(root); root.removeAttribute('role'); root.removeAttribute('aria-modal'); root.removeAttribute('aria-label'); } });
                 return;
             }
             const configuration = await runtimeRequest('/configuration', { signal: controller.signal });

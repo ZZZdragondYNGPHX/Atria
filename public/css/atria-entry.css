@@ -847,6 +847,17 @@ html[data-atria-appearance] #toast-container.toast-top-center, html[data-atria-a
     width: min(360px, calc(100dvw - 32px));
     margin-inline: auto;
 }
+/* Side panels (Context, History, Illustrations) open at the top right; long-running
+ * toasts there would cover their headers, so wide screens stack toasts bottom-left. */
+@media (min-width: 720px) {
+    html[data-atria-appearance] #toast-container:is(.toast-top-center, .toast-top-right) {
+        top: auto;
+        right: auto;
+        bottom: max(16px, var(--atri-safe-area-bottom));
+        left: max(16px, var(--atri-safe-area-left));
+        margin-inline: 0;
+    }
+}
 html[data-atria-appearance] .toast-close-button:focus-visible, html[data-atria-appearance] .action-loader-stop:focus-visible {
     outline: none;
     box-shadow: var(--focus-ring);

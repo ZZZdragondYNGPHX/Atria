@@ -189,7 +189,20 @@ export class PlanRepository {
             const next = { ...root, currentPlanRevisionId: planRevisionId, basePlanRevisionId: planRevisionId, draftVersion: root.draftVersion + 1, updatedAt: timestamp };
             assertCounter(next.draftVersion, 'draftVersion');
             await putMutable(tx, resourceKey, next, { expectedIntegrity: record.integrity });
-            return { planRef: { planId: root.planId, planRevisionId, definitionHash: root.definitionHash }, draftVersion: next.draftVersion };
+            const planRef = { planId: root.planId, planRevisionId, definitionHash: root.definitionHash };
+            // Sources that used the previous current revision follow the new one;
+            // a source pinned to an older revision on purpose stays where it is.
+            // Runs keep the exact revision they started with.
+            let movedBindings = 0;
+            if (root.currentPlanRevisionId) for (const row of await tx.listResources({ kind: K.orchestrationBinding, handle })) {
+                const bindingKey = key(K.orchestrationBinding, handle, { bindingId: row.doc.bindingId }), binding = await tx.getResource(bindingKey);
+                if (!binding || binding.doc.planRef.planId !== root.planId || binding.doc.planRef.planRevisionId !== root.currentPlanRevisionId) continue;
+                const moved = { ...binding.doc, planRef, version: binding.doc.version + 1, changedBy: { handle }, changedAt: timestamp };
+                assertCounter(moved.version, 'binding.version');
+                await putMutable(tx, bindingKey, moved, { expectedIntegrity: binding.integrity });
+                movedBindings++;
+            }
+            return { planRef, draftVersion: next.draftVersion, movedBindings };
         });
     }
 

@@ -15,6 +15,15 @@ export function sourceLabel(selector) {
     return tl('Unknown source');
 }
 
+/** Native Sessions with a readable label: the Work's name and when it was last played. */
+export async function listSessionChoices() {
+    const [sessions, works] = await Promise.all([nativeProductClient.listSessions(), nativeProductClient.listWorks().catch(() => [])]);
+    const names = new Map((Array.isArray(works) ? works : []).map(work => [work.package?.packageId, work.package?.displayName]));
+    return sessions.sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0)).map(session => ({ session,
+        label: fmt('${0} · ${1}', [names.get(session.packageId) || shortId(session.sessionId),
+            session.updatedAt ? new Date(session.updatedAt).toLocaleString() : shortId(session.sessionId)]) }));
+}
+
 /** The open legacy chat's exact locator; null when no chat is open. */
 function currentChatLocator() {
     const context = globalThis.Atria?.getContext?.() ?? globalThis.SillyTavern?.getContext?.();
@@ -27,8 +36,8 @@ function currentChatLocator() {
 
 export function createSourcePicker(doc, { client, signal, onChange = () => {}, initial = null }) {
     const element = el(doc, 'div', 'atria-orch-source');
-    const domain = select(doc, [['', tl('Choose a source type')], ['native_session', tl('Native Session')], ['project', tl('Studio Project task')], ['rp_chat', tl('Chat')]], { value: initial?.domain ?? '' });
-    field(doc, tl('Source type'), domain, { parent: element, key: 'source.domain' });
+    const domain = select(doc, [['', tl('Choose…')], ['native_session', tl('A story')], ['project', tl('A Studio task')], ['rp_chat', tl('A chat')]], { value: initial?.domain ?? '' });
+    field(doc, tl('Where'), domain, { parent: element, key: 'source.domain' });
     const detail = el(doc, 'div', 'atria-orch-source__detail', null, element);
     const status = el(doc, 'p', 'atria-field__hint', null, element);
     status.setAttribute('role', 'status');
@@ -37,14 +46,17 @@ export function createSourcePicker(doc, { client, signal, onChange = () => {}, i
 
     async function renderSessions() {
         status.textContent = tl('Reading Sessions…');
-        let sessions = [];
-        try { sessions = await nativeProductClient.listSessions(); status.textContent = ''; } catch (error) { status.textContent = describeError(error); return; }
+        let choices = [];
+        try { choices = await listSessionChoices(); status.textContent = ''; } catch (error) { status.textContent = describeError(error); return; }
+        const sessions = choices.map(item => item.session);
         if (!sessions.length) { status.textContent = tl('No Native Sessions yet. Start one from Library.'); return; }
-        const choose = select(doc, [['', tl('Choose a Session')], ...sessions.map(item => [item.sessionId, fmt('${0} · ${1}', [item.displayTitle || item.title || shortId(item.sessionId), shortId(item.sessionId)])])],
+        const choose = select(doc, [['', tl('Choose a story')], ...choices.map(item => [item.session.sessionId, item.label])],
             { value: initial?.sessionId ?? '' });
-        field(doc, tl('Session'), choose, { parent: detail, key: 'source.session' });
+        field(doc, tl('Story'), choose, { parent: detail, key: 'source.session' });
         const entry = select(doc, [['', tl('Any entry point')]], { value: '' });
-        field(doc, tl('Entry point'), entry, { parent: detail, key: 'source.entry', hint: tl('A Binding for one entry point overrides the Session default.') });
+        field(doc, tl('Entry point'), entry, { parent: detail, key: 'source.entry' });
+        // A story has one entry point; the choice stays available for deep links only.
+        (entry.closest('.atria-field') ?? entry).hidden = true;
         const update = () => {
             const session = sessions.find(item => item.sessionId === choose.value);
             entry.replaceChildren();
@@ -106,7 +118,7 @@ export function createSourcePicker(doc, { client, signal, onChange = () => {}, i
         if (open && !chats.some(item => key(item) === key(open))) chats.unshift(open);
         if (!chats.length) { status.textContent = tl('No chats found. Start a chat first.'); return; }
         const choose = select(doc, [['', tl('Choose a chat')], ...chats.map(item => [key(item), fmt('${0} · ${1}${2}', [item.isGroup ? tl('Group') : item.charDir, item.name, open && key(item) === key(open) ? tl(' (open now)') : ''])])], { value: '' });
-        field(doc, tl('Chat'), choose, { parent: detail, key: 'source.chat', hint: tl('The chat authority resolves the exact source; nothing is guessed from names.') });
+        field(doc, tl('Chat'), choose, { parent: detail, key: 'source.chat', hint: tl('The chat that is open now.') });
         choose.addEventListener('change', async () => {
             if (!choose.value) return emit(null);
             const locator = JSON.parse(choose.value);

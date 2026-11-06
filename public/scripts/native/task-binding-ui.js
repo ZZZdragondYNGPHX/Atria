@@ -43,6 +43,16 @@ export async function ensureTaskBindings({ document: doc, root, manifest, packag
         }); return node;
     }
     let save; let report;
+    async function persist(next) {
+        const previous = getTaskBindings(packageId);
+        for (const slot of next.slots) setTaskBinding(packageId, slot.id, slot.binding);
+        // Frontend actions resolve bindings on the server. Finish the same
+        // settings write before mounting, instead of racing its debounce.
+        try { if (await globalThis.Atria.getContext().saveSettings() === false) throw new Error('Settings were not persisted'); } catch (error) {
+            globalThis.Atria.getContext().capabilitySettings.atri_task_bindings[packageId] = previous;
+            throw error;
+        }
+    }
     const selected = slot => slot.routes.some(route => route.compatible && draft[slot.id]?.scope === 'player' && route.runtimeRouteId === draft[slot.id]?.runtimeRouteId);
     function updateSave() {
         const missing = report.slots.filter(slot => !selected(slot));
@@ -96,14 +106,7 @@ export async function ensureTaskBindings({ document: doc, root, manifest, packag
             // Revalidate against current configuration before writing any settings.
             const next = await check(draft); if (!current()) return;
             if (!next.ready) { draw(next); heading.focus(); return; }
-            const previous = getTaskBindings(packageId);
-            for (const slot of next.slots) setTaskBinding(packageId, slot.id, slot.binding);
-            // Frontend actions resolve bindings on the server. Finish the same
-            // settings write before mounting, instead of racing its debounce.
-            try { if (await globalThis.Atria.getContext().saveSettings() === false) throw new Error('Settings were not persisted'); } catch (error) {
-                globalThis.Atria.getContext().capabilitySettings.atri_task_bindings[packageId] = previous;
-                throw error;
-            }
+            await persist(next);
             status.textContent = t('Starting experience…');
             await onReady();
             if (current()) { controller.abort(); panel.remove(); }
@@ -112,7 +115,19 @@ export async function ensureTaskBindings({ document: doc, root, manifest, packag
         button('Cancel', () => { controller.abort(); panel.remove(); }); updateSave();
     }
     try {
-        const next = await check(draft); if (!current()) return false;
+        let next = await check(draft); if (!current()) return false;
+        if (!next.ready && !force) {
+            // Fill every unset purpose with a sensible preset so a work starts without setup.
+            const auto = { ...draft };
+            for (const slot of next.slots) if (slot.error) {
+                const usable = slot.routes.filter(route => route.compatible);
+                const pick = usable.find(route => route.role === slot.id) || usable.find(route => route.role === 'role.narrator') || usable[0];
+                if (pick) auto[slot.id] = { scope: 'player', runtimeRouteId: pick.runtimeRouteId };
+            }
+            const filled = await check(auto); if (!current()) return false;
+            if (filled.ready) { await persist(filled); if (!current()) return false; }
+            draft = auto; next = filled;
+        }
         if (next.ready && !force) { controller.abort(); panel.remove(); return true; }
         draw(next); heading.focus();
     } catch {

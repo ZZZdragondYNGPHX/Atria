@@ -112,9 +112,9 @@ export function createIllustrationFlow({ sdk, onChange, readSettings, saveConsen
         const before = new Set(sdk.illustrations.snapshot().state.images.map(image => image.imageVersionId));
         let started;
         try { started = await sdk.illustrations.image('start', { prepareId: preview.prepareId, approval }); } catch (error) {
-            // Another illustration changed the story while this one waited for confirmation: prepare again.
-            // The reader's answer still holds when the target and price are unchanged.
-            if (error?.code !== 'native_visual_head_conflict' && error?.status !== 409) throw error;
+            // The story changed, or the preparation expired, while this one waited for confirmation:
+            // prepare again. The reader's answer still holds when the target and price are unchanged.
+            if (!['native_visual_head_conflict', 'native_visual_prepare_expired'].includes(error?.code) && error?.status !== 409) throw error;
             const fresh = await sdk.illustrations.image('prepare', { annotationId, expectedHead: sdk.illustrations.snapshot().head, ...extra });
             const same = fresh.targetFingerprint === preview.targetFingerprint && JSON.stringify(fresh.cost) === JSON.stringify(preview.cost);
             const again = same ? { ...approval, requestHash: fresh.requestHash, externalAssetIds: fresh.externalAssetIds ?? [] } : await decideApproval(annotationId, fresh);

@@ -1,10 +1,10 @@
-// One Agents frame for every section: Memory first (P-03), then Run · Plan
-// (V3 Host projections; Runs and Plans switch inside it) and diagnostics.
+// One Agents frame for every section: Memory first (P-03), then Orchestration
+// (the plan library and the runs it produced) and diagnostics.
 import { translateShellText as tl } from './localization.js';
 
 export const AGENT_TABS = Object.freeze([
     Object.freeze(['memory', 'Memory']),
-    Object.freeze(['runs', 'Run · Plan']),
+    Object.freeze(['plans', 'Orchestration']),
     Object.freeze(['diagnostics', 'Diagnostics & replay']),
 ]);
 
@@ -27,18 +27,13 @@ export function buildAgentsFrame(documentRef, { active, onSelect }) {
         const tab = element('button', 'atria-domain-workspace__tab', tl(label));
         tab.type = 'button';
         tab.dataset.atriaDomainSection = id;
-        if (id === 'runs') {
-            const seal = element('span', 'atria-seal', 'V3');
-            seal.dataset.seal = 'current';
-            tab.append(seal);
-        }
         tab.addEventListener('click', () => onSelect(id));
         nav.append(tab);
     }
     const body = element('div', 'atria-domain-workspace__body');
     root.append(header, nav, body);
     const select = section => {
-        const tabId = section === 'plans' ? 'runs' : section;
+        const tabId = section === 'runs' ? 'plans' : section;
         for (const tab of nav.querySelectorAll('[data-atria-domain-section]')) {
             const selected = tab.dataset.atriaDomainSection === tabId;
             tab.classList.toggle('is-selected', selected);

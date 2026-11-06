@@ -13,7 +13,9 @@ export async function prepareRpSkillContext({ host, handle, locator, work }) {
     const repository = host.skillRepository(handle), context = { characterFile: locator.charDir + '.png' };
     const configuration = await host.extensions.settings(handle);
     const selected = await work('skill_inventory', { scope: 'all', context, settings: configuration.value, path: 'narrative' }, () => selection(repository, configuration.value, context));
-    const entries = await loadAlwaysSkills(await pinSkillEntries(selected, input => work('skill_pin', input, () => repository.pin(input))),
+    const pinned = selected.length ? await work('skill_pin', { skills: selected.map(({ scope, name, installedHash }) => ({ scope, name, expectedHash: installedHash })) },
+        () => pinSkillEntries(selected, input => repository.pin(input))) : [];
+    const entries = await loadAlwaysSkills(pinned,
         input => work('skill_load', input, () => repository.readFile(input)));
     const always = entries.filter(entry => entry.invocationMode === 'always');
     const items = always.length ? [{ kind: 'context.directive', id: 'native-rp-skills', content: [

@@ -1129,6 +1129,12 @@ export async function initRossMods() {
         if (Popup.util.isPopupOpen()) {
             return;
         }
+        // Atria's Play surface owns its keys (Ctrl+Enter sends there). While the legacy
+        // chat is hidden, its send/regenerate/continue/swipe shortcuts must not fire.
+        const legacyChat = document.getElementById('sheld');
+        if (event.key !== 'Escape' && legacyChat?.closest('[aria-hidden="true"]') && !legacyChat.contains(document.activeElement)) {
+            return;
+        }
 
         //Enter to send when send_textarea in focus
         if (document.activeElement == hotkeyTargets.send_textarea) {

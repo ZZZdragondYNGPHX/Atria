@@ -39,6 +39,14 @@ function element(doc, tag, text, parent) {
     parent?.append(node);
     return node;
 }
+// Where a block lands in the request, in words authors and players both read.
+export const PROMPT_TARGET_LABELS = Object.freeze({
+    'system.foundation': 'System · core instructions', 'system.character': 'System · character', 'system.world': 'System · world', 'system.style': 'System · writing style',
+    'system.response': 'System · reply format', 'context.before_history': 'Before chat history', 'context.after_history': 'After chat history',
+    'context.before_input': 'Before the player’s message', 'context.after_input': 'After the player’s message', 'response.prefill': 'Start of the reply (prefill)',
+    'response.post_history': 'After everything else', 'agent.task': 'Agent · task', 'agent.evidence': 'Agent · evidence', 'agent.constraints': 'Agent · constraints',
+});
+const targetOptions = targets => targets.map(value => [value, PROMPT_TARGET_LABELS[value] || value]);
 function action(doc, parent, label, handler) {
     const button = element(doc, 'button', label, parent); button.type = 'button'; button.className = 'atria-studio-action';
     button.addEventListener('click', handler); return button;
@@ -260,7 +268,7 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
         for (const node of root.querySelectorAll('textarea')) textSelections.set(node.getAttribute('aria-label'), [node.selectionStart, node.selectionEnd, node.scrollTop]);
         root.replaceChildren();
         const title = element(doc, 'h3', undefined, root); title.textContent = draft.displayName; title.tabIndex = -1;
-        element(doc, 'p', presetSurface ? 'Save changes to this preset. Other presets and pinned sessions stay unchanged.' : librarySurface ? 'Save a new revision. Existing references keep their exact version.' : 'New exact revision · existing references stay pinned. Review changes before committing in Studio.', root);
+        element(doc, 'p', presetSurface ? 'Saved changes reach every API preset that uses this preset from its next request.' : librarySurface ? 'Save a new revision. Existing references keep their exact version.' : 'New exact revision · existing references stay pinned. Review changes before committing in Studio.', root);
         const toolbar = element(doc, 'div', undefined, root); toolbar.className = 'atri-prompt-actions';
         action(doc, toolbar, 'Back to resources', () => { if (confirmAtriaDraftLeave(doc, root)) return onBack(); });
         const status = element(doc, 'div', undefined, root);
@@ -292,15 +300,22 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
             const name = input(doc, identity, 'Display name', draft.displayName);
             if (librarySurface) name.addEventListener('input', () => { title.textContent = name.value || translateShellText('Untitled'); });
             const revision = input(doc, identity, 'Exact revision', draft.revision);
+            // Presets version themselves on save; the revision is not the author's concern there.
+            revision.parentElement.hidden = presetSurface;
             let fields = element(doc, 'div', undefined, root);
             if (librarySurface) fields.className = 'atri-prompt-fields';
             let specific = () => ({});
             const sections = fields;
             if (entry.ref.resourceType === 'core.prompt-module') {
                 fields = fold(sections, 'module', 'Module settings', () => target.value);
-                const target = select(doc, fields, 'Semantic target', ['system.foundation', 'system.character', 'system.world', 'system.style', 'system.response', 'context.before_history', 'context.after_history', 'context.before_input', 'context.after_input', 'response.prefill', 'response.post_history', 'agent.task', 'agent.evidence', 'agent.constraints'].map(v => [v, v]), draft.target);
+                const target = select(doc, fields, presetSurface ? 'Placement' : 'Semantic target', targetOptions(['system.foundation', 'system.character', 'system.world', 'system.style', 'system.response', 'context.before_history', 'context.after_history', 'context.before_input', 'context.after_input', 'response.prefill', 'response.post_history', 'agent.task', 'agent.evidence', 'agent.constraints']), draft.target);
                 const stages = input(doc, fields, 'Stages (comma separated)', draft.stages.join(', '));
                 const body = input(doc, sections, 'Prompt body', draft.body, true); body.className = 'atri-prompt-body';
+                // Name the variables this text can use, from the programs it is placed in.
+                const programParameters = [...new Set(availableEntries.filter(item => item.ref.resourceType === 'core.prompt-program').flatMap(item => Object.keys(item.resource.parameters || {})))];
+                const variables = [...programParameters.map(name => '{{param.' + name + '}}'), ...Object.keys(draft.parameters || {}).map(name => '{{module.' + name + '}}')];
+                const hint = element(doc, 'small', undefined, body.parentElement); hint.className = 'atri-prompt-variables';
+                hint.textContent = variables.length ? formatShellText('Variables you can use: ${0}', [variables.join('  ')]) : translateShellText('Add typed parameters to use variables like {{param.name}}. Choose Literal text to send braces unchanged.');
                 const originalBody = draft.body.replace(/\r\n?/g, '\n');
                 const textMode = select(doc, fields, 'Text mode', [['template', 'Template variables'], ['literal', 'Literal text']], draft.textMode || 'template');
                 const expression = select(doc, fields, 'Expression scope', [['', 'Unspecified'], ['global', 'Global'], ['scene', 'Scene'], ['narrator', 'Narrator'], ['actor', 'Actor']], draft.expression?.layer || '');
@@ -350,10 +365,10 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                             line.dataset.promptEntry = item.entryId;
                             if (item.kind === 'module') {
                                 const ref = item.moduleRef; const module = availableEntries.find(entry => exactKey(entry.ref) === exactKey(ref));
-                                element(doc, 'span', (module?.resource.displayName || ref.resourceId) + ' · ' + (module?.resource.target || '') + ' · ' + ref.revision, line);
+                                element(doc, 'span', (module?.resource.displayName || ref.resourceId) + ' · ' + translateShellText(PROMPT_TARGET_LABELS[module?.resource.target] || module?.resource.target || '') + (presetSurface ? '' : ' · ' + ref.revision), line);
                             } else {
                                 const settings = fold(line, 'anchor-settings:' + stage.stageId + ':' + item.entryId, 'Context sources', () => item.accepts.join(', '));
-                                const target = select(doc, settings, 'Anchor position', ['system.foundation', 'system.character', 'system.world', 'system.style', 'system.response', 'agent.task', 'agent.evidence', 'agent.constraints', 'context.before_history', 'context.after_history', 'context.before_input', 'context.after_input', 'response.post_history'].map(target => [target, target]), item.target);
+                                const target = select(doc, settings, 'Anchor position', targetOptions(['system.foundation', 'system.character', 'system.world', 'system.style', 'system.response', 'agent.task', 'agent.evidence', 'agent.constraints', 'context.before_history', 'context.after_history', 'context.before_input', 'context.after_input', 'response.post_history']), item.target);
                                 target.addEventListener('change', () => { item.target = target.value; });
                                 const accepts = element(doc, 'fieldset', undefined, settings); element(doc, 'legend', 'Context sources', accepts);
                                 for (const [kind, label] of [['context.fact', 'Facts'], ['context.history', 'History'], ['context.input', 'Input'], ['context.player-persona', 'Player persona'], ['context.directive', 'Host instructions']]) {
@@ -385,7 +400,7 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                             renderStages(index);
                         });
                         const choices = availableEntries.filter(item => item.ref.resourceType === 'core.prompt-module' && (entry.ref.scope !== 'library' || item.ref.scope === 'library') && item.ref.scope !== 'package');
-                        const picker = select(doc, row, formatShellText('Module for stage ${0}', [index + 1], undefined, 'atria.product.stageModuleIndex'), [['', 'Choose exact module…'], ...choices.map(item => [exactKey(item.ref), item.resource.displayName + ' · ' + item.ref.revision + ' · ' + item.ref.scope, true])]);
+                        const picker = select(doc, row, formatShellText('Module for stage ${0}', [index + 1], undefined, 'atria.product.stageModuleIndex'), [['', 'Choose exact module…'], ...choices.map(item => [exactKey(item.ref), presetSurface ? item.resource.displayName : item.resource.displayName + ' · ' + item.ref.revision + ' · ' + item.ref.scope, true])]);
                         picker.dataset.atriStageModulePicker = 'true';
                         action(doc, row, 'Add module', () => {
                             if (!picker.value || promptStageModuleRefs(stage).some(v => exactKey(v) === picker.value)) return;
@@ -454,12 +469,12 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                 draft = clone(resource); jsonBuffer = null; lastEdit = null; future.length = 0;
                 history.push({ draft: clone(draft), jsonBuffer, dependencies: clone(upgradeDependencies) }); render(); root.dataset.atriaDraftDirty = String(isDirty());
             } });
-        const save = action(doc, root, 'Save revision', async () => {
+        const save = action(doc, root, presetSurface ? 'Save' : 'Save revision', async () => {
             if (save.disabled || submitting || submitted || !root.isConnected) return; submitting = true; save.disabled = true; save.setAttribute('aria-busy', 'true'); status.replaceChildren();
             try {
                 rememberFolds(); const value = read(); if (!advanced && jsonBuffer !== null) jsonValue(jsonBuffer);
                 root.inert = true;
-                if (upgradeDependencies.length) await onSave(value, { dependencies: upgradeDependencies }); else await onSave(value); element(doc, 'p', librarySurface ? 'Saved immutable Library revision.' : 'Revision saved.', status); submitted = true; root.dataset.atriaDraftDirty = 'false';
+                if (upgradeDependencies.length) await onSave(value, { dependencies: upgradeDependencies }); else await onSave(value); element(doc, 'p', presetSurface ? 'Saved.' : librarySurface ? 'Saved immutable Library revision.' : 'Revision saved.', status); submitted = true; root.dataset.atriaDraftDirty = 'false';
                 root.dispatchEvent(new doc.defaultView.CustomEvent('atria-draft-committed', { bubbles: true }));
             } catch (e) { if (root.isConnected) error(doc, status, e); } finally { submitting = false; root.inert = false; save.disabled = submitted; save.removeAttribute('aria-busy'); }
         });

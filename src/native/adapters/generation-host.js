@@ -77,9 +77,12 @@ function normalizeHostMemoryEvidence(value, snapshot) {
     if (value === undefined) return [];
     if (!Array.isArray(value) || value.length > 32) fail('native_turn_memory_evidence_invalid');
     const turn = snapshot.manifest.runtime?.experienceContract?.taskRuntime?.turn;
-    const information = informationContext(snapshot, { kind: 'narrator' }, turn?.narratorTaskId);
-    if (value.length && !information?.memory) fail('native_turn_memory_evidence_denied');
-    const messageIds = new Set(informationSourceMessageIds(snapshot, information));
+    // A work without information rules declares no disclosure limits: the
+    // narrator may recall from any message on the current timeline.
+    const declared = Boolean(informationDefinition(snapshot));
+    const information = declared ? informationContext(snapshot, { kind: 'narrator' }, turn?.narratorTaskId) : null;
+    if (value.length && declared && !information?.memory) fail('native_turn_memory_evidence_denied');
+    const messageIds = new Set(declared ? informationSourceMessageIds(snapshot, information) : (snapshot.timeline ?? []).map(entry => entry.messageId));
     return value.map((raw, index) => {
         if (!raw || typeof raw !== 'object' || Array.isArray(raw)
             || Object.keys(raw).some(key => !['memoryId', 'content', 'sourceRefs', 'tokenCount', 'source', 'atomicGroup'].includes(key))) {
@@ -427,9 +430,17 @@ export class NativeGenerationHost {
         transaction = transaction ? immutable(authorityValue(transaction)) : null;
         if (typeof input.invocationId !== 'string' || !/^[a-zA-Z0-9._:-]{1,96}$/.test(input.invocationId)
             || Object.keys(input).some(key => !['sessionId', 'revisionId', 'invocationId', 'requestId', 'userInput', 'stageInputs', 'variants', 'slotBindings', 'routeRef', 'hostMemoryEvidence'].includes(key))) fail('native_turn_request_invalid');
+        const base = await this.sessionCore[controlledReview ? 'observe' : 'load'](handle, input.sessionId);
+        // A bound Plan owns the turn's models and context (its own model and memory
+        // retrieval pins), so the player's purpose picks and host-recalled memory
+        // do not apply to orchestrated turns.
+        if ((input.hostMemoryEvidence !== undefined || input.slotBindings !== undefined)
+            && this.turnOrchestration && await this.turnOrchestration.inspectBinding({ handle, base })) {
+            const { hostMemoryEvidence: _hostMemoryEvidence, slotBindings: _slotBindings, ...orchestrated } = input;
+            input = immutable(orchestrated);
+        }
         const { requestId: _requestId, ...turnRequest } = input;
         const requestHash = hashNativeDocument(transaction ? { ...turnRequest, transaction } : turnRequest);
-        const base = await this.sessionCore[controlledReview ? 'observe' : 'load'](handle, input.sessionId);
         const previous = base.states.atri_task_results?.records.find(item => item.invocationId === input.invocationId)
             ?? base.states.atri_lifecycle?.taskTombstones.find(item => item.invocationId === input.invocationId);
         if (previous) {
@@ -710,7 +721,7 @@ export class NativeGenerationHost {
                         { taskPlan: { task, variant, slot, payload: null }, scheduled: true, preflight: true, preflightPackage: opened });
                     }
                 } catch (cause) { error = cause.code || 'native_task_binding_route_invalid'; }
-                choices.push({ runtimeRouteId: route.runtimeRouteId, displayName: route.displayName, compatible: !error, error,
+                choices.push({ runtimeRouteId: route.runtimeRouteId, displayName: route.displayName, role: route.role, compatible: !error, error,
                     ...(effective ? { modelName: effective.model.remoteModelId, outputTokens: effective.generation.output?.maxTokens ?? effective.model.limits.outputTokens,
                         reasoning: effective.generation.reasoning ?? null } : {}) });
             }
@@ -729,7 +740,7 @@ export class NativeGenerationHost {
             for (const route of routes) {
                 const binding = { scope: 'player', runtimeRouteId: route.runtimeRouteId };
                 const result = (await this.preflightTurnRoutes(handle, opened, undefined, { ...input.slotBindings, [id]: binding }, [turn.role])).find(item => item.role === turn.role);
-                choices.push({ runtimeRouteId: route.runtimeRouteId, displayName: route.displayName, compatible: !result.error, error: result.error });
+                choices.push({ runtimeRouteId: route.runtimeRouteId, displayName: route.displayName, role: route.role, compatible: !result.error, error: result.error });
             }
             const binding = input.slotBindings?.[id];
             const choice = binding?.scope === 'player' && choices.find(item => item.runtimeRouteId === binding.runtimeRouteId);
@@ -1098,6 +1109,7 @@ export class NativeGenerationHost {
             || Object.keys(input.routeRef).some(key => !['scope', 'runtimeRouteId'].includes(key)))) fail('native_generation_route_ref_invalid');
         const role = 'role.' + input.role;
         let snapshot; let sourceAuthoritySnapshot; let project; let source; let runtime; let projectTaskEvidence; let projectConversation; let rpMessages; let projectWorker = null;
+        let hostMemoryEvidence = null;
         if (sample) {
             source = { kind: 'authoring', sampleId: hashNativeDocument(sample) };
         } else if (input.sessionId) {
@@ -1105,6 +1117,11 @@ export class NativeGenerationHost {
                 ?? (preview ? await this.sessionCore.observe(handle, input.sessionId, { revisionId: input.revisionId })
                     : await this.sessionCore[effectPolicy === 'no-background-model' ? 'observe' : 'load'](handle, input.sessionId)));
             if (snapshot.revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
+            // Recalled Memory for a plain narrator reply (the Turn path carries it in its lane plan).
+            if (input.hostMemoryEvidence !== undefined) {
+                if (input.role !== 'narrator' || illustrationPlan || lanePlan?.memoryEvidence?.length) fail('native_turn_memory_evidence_denied');
+                hostMemoryEvidence = normalizeHostMemoryEvidence(input.hostMemoryEvidence, snapshot);
+            }
             if (!preflight && snapshot.externalEffects?.some(effect => effect.status === 'prepared')) fail('native_transfer_pending');
             source = illustrationPlan?.source ?? { kind: 'session', sessionId: input.sessionId, branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId };
             // A prepared Authority Turn may contain provisional World values.
@@ -1267,7 +1284,7 @@ export class NativeGenerationHost {
         const contextPackage = !prediction && snapshot && (snapshot.manifest.runtime?.experienceContract?.contextRuntime || snapshot.manifest.runtime?.experienceContract?.processingRuntime)
             ? (preflightPackage ?? await this.packageInstaller.open(handle, snapshot.session.packageId, snapshot.session.packageVersionId)) : null;
         const nativeContext = !prediction && snapshot && authorityContext?.mode !== 'resolver' ? createNativeSessionContextAdapter({ readSnapshot: async () => ({ source, snapshot }),
-            options: nativeSessionContextOptions({ handle, snapshot, resolver, contextPackage, role, taskPlan, lanePlan, authorityContext, signal }) }) : null;
+            options: nativeSessionContextOptions({ handle, snapshot, resolver, contextPackage, role, taskPlan, lanePlan: { memoryEvidence: lanePlan?.memoryEvidence ?? hostMemoryEvidence ?? [] }, authorityContext, signal }) }) : null;
         const localWorkAttempts = [];
         const localWork = async (kind, request, operation, publicInput, discardResult) => {
             if (preview) return operation();
@@ -1385,7 +1402,9 @@ export class NativeGenerationHost {
                 throw new GenerationError('native_generation_revision_conflict');
             if (sendBank) await sendBank.assertCurrent();
             if (prediction) await assertPredictionCaptureCurrent(prediction.capture);
-            if (source.kind === 'session') {
+            // Illustration prompts read a frozen context packet; later commits
+            // (the next turn, background memory) cannot change their input.
+            if (source.kind === 'session' && !illustrationPlan) {
                 // Observe the original authority, never a cached ContextPlan.
                 const current = await this.sessionCore.observe(handle, input.sessionId);
                 if (current.revision.revisionId !== source.revisionId || current.revision.branchId !== source.branchId)
@@ -1395,6 +1414,7 @@ export class NativeGenerationHost {
                     throw new GenerationError('native_generation_source_stale');
                 if (!illustrationPlan && !prediction) assertInformationActorAvailable(current, lanePlan?.authorityContext ? undefined : taskPlan?.task.id);
                 if (lanePlan?.memoryEvidence?.length) normalizeHostMemoryEvidence(lanePlan.memoryEvidence, current);
+                if (hostMemoryEvidence?.length) normalizeHostMemoryEvidence(hostMemoryEvidence, current);
                 if (preview && phase === 'preview') {
                     await assertPreviewDisclosure(current, { taskId: taskPlan?.task.id ?? input.taskId, contextPlan });
                     // The projection checker itself awaits original readers.
@@ -1498,7 +1518,7 @@ export class NativeGenerationHost {
                     { source, snapshot: nativeContext ? snapshot : null, contextPackage, illustrationPlan,
                         task: taskPlan ? { context: taskPlan.task.context, payload: taskPlan.payload } : null,
                         messages: input.messages ?? [], skillItems: skills?.items ?? [], skillTranscript,
-                        memoryEvidence: lanePlan?.memoryEvidence ?? [], authorityContext });
+                        memoryEvidence: lanePlan?.memoryEvidence ?? hostMemoryEvidence ?? [], authorityContext });
                 promptCompileWork = args => localWork('prompt_compile', args, () => compiler.preparePrompt(args),
                     { contextPlan: args.contextPlan, resources: args.resolved.resources, prompt: args.request.prompt,
                         tools: args.request.tools, outputContract: args.request.outputContract });
@@ -1664,11 +1684,12 @@ export class NativeGenerationHost {
         let result;
         try {
             result = skills?.tools.length && !preview ? await runNarrativeSkillLoop({
-                execute: async () => {
-                    try { return await service.execute(request, { programSelection }); } catch (error) {
+                execute: async roundChunk => {
+                    const round = roundChunk ? { ...request, onChunk: roundChunk } : request;
+                    try { return await service.execute(round, { programSelection }); } catch (error) {
                         if (sessionTaskEvidence && error.code === 'generation_context_budget_exceeded' && taskHistory && !taskHistory.compaction) {
                             await compactTaskHistory();
-                            return service.execute(request, { programSelection });
+                            return service.execute(round, { programSelection });
                         }
                         throw error;
                     }

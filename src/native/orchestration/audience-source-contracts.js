@@ -1,6 +1,6 @@
 import { SessionCore } from '../session-core.js';
 import { assertObject } from '../../../public/shared/native-orchestration-contracts.js';
-import { actorAvailability, informationContext } from '../../../public/shared/native-information-runtime.js';
+import { actorAvailability, audienceInformationContext } from '../../../public/shared/native-information-runtime.js';
 import { equalNativeDocuments, hashNativeDocument as hash } from '../repositories/common.js';
 import { ConflictError } from '../../storage/errors.js';
 import { assertRunAccess } from '../run-control.js';
@@ -23,7 +23,7 @@ export function projectAudienceSource(ref, snapshot) {
     assertAudienceRef(ref);
     if (snapshot.session.sessionId !== ref.sessionId || ref.anchor !== 'run_source'
         && (snapshot.revision.branchId !== ref.branchId || snapshot.revision.revisionId !== ref.revisionId)) fail();
-    const information = informationContext(snapshot, ref.audience);
+    const information = audienceInformationContext(snapshot, ref.audience);
     if (!information?.projection || information.projection.truncated || information.projection.availability.some(item => !item.available)
         || ref.audience.kind === 'actor' && !actorAvailability(snapshot, ref.audience.id).available) fail();
     const actualRef = ref.anchor === 'run_source' ? { kind: ref.kind, sessionId: ref.sessionId,

@@ -38,14 +38,16 @@ export function sessionAgentGraphProfile(plan) {
     for (const node of work) {
         incoming[node.nodeId] = graph.edges.filter(edge => edge.to.nodeId === node.nodeId && !edge.loopBack).sort((a, b) => a.edgeId.localeCompare(b.edgeId));
         if (incoming[node.nodeId].length > node.inputs.length || new Set(incoming[node.nodeId].map(edge => edge.from.nodeId)).size !== incoming[node.nodeId].length
-            || node.inputs.some(port => !['text', 'json', 'task.result'].includes(port.type) || !planners.length && !judges.length && !canCancel && !port.required
+            // An unwired optional input never receives anything, so it is simply unused.
+            || node.inputs.some(port => !['text', 'json', 'task.result'].includes(port.type)
+                || !planners.length && !judges.length && !canCancel && !port.required && graph.edges.some(edge => edge.to.nodeId === node.nodeId && edge.to.port === port.name)
                 || graph.edges.filter(edge => edge.to.nodeId === node.nodeId && edge.to.port === port.name).length !== (port.required ? 1 : graph.edges.some(edge => edge.to.nodeId === node.nodeId && edge.to.port === port.name) ? 1 : 0))) fail();
         if (models.includes(node)) {
             const pins = nodeModelRoutePins(node, plan.dependencyPins), audience = audienceContextPin(node, plan.dependencyPins);
             const children = node.policy.allowedPlanPinIds ?? [];
             if (children.length > 1 || children.length && (node.kind !== 'agent' || node === narrator
                 || children.some(id => !node.dependencyPinIds.includes(id) || !plan.dependencyPins.some(pin => pin.pinId === id && pin.port === 'plan')))) fail();
-            if (!pins.length || !audience || (node.dependencyPinIds.length - nodePromptPinCount(node)) !== pins.length + 1 + children.length || !equal([...node.capabilities].sort(), ['generation.send', ...node.kind === 'planner' || patchDelegates.includes(node) ? ['graph.patch'] : [], ...children.length ? ['agent.delegate'] : []].sort())
+            if (!pins.length || (node.dependencyPinIds.length - nodePromptPinCount(node)) !== pins.length + (audience ? 1 : 0) + children.length || !equal([...node.capabilities].sort(), ['generation.send', ...node.kind === 'planner' || patchDelegates.includes(node) ? ['graph.patch'] : [], ...children.length ? ['agent.delegate'] : []].sort())
                 || node.outputs.length !== 1 || node.outputs[0].type !== (['review', 'planner', 'judge'].includes(node.kind) ? 'json' : 'text')) fail();
         } else if (node.capabilities.length || (node.dependencyPinIds.length - nodePromptPinCount(node)) || node.outputs.length !== 1
             || node.outputs[0].type !== (node.kind === 'fanout' ? 'task.result' : 'text')) fail();
@@ -130,7 +132,15 @@ export function sessionAgentGraphProfile(plan) {
  * the lawful own-output finalization phase. It grants no new Source read. */
 export function sessionGraphAudience(base, node, pins) {
     const pin = audienceContextPin(node, pins);
-    if (!pin) fail();
+    if (!pin) {
+        // A reusable Plan names no Session: by default an agent reads the story it
+        // runs in, as its narrator sees it.
+        if (node?.policy?.audiencePinId !== undefined) fail();
+        const ref = { kind: 'native_information_context', sessionId: base.session.sessionId, branchId: base.revision.branchId,
+            revisionId: base.revision.revisionId, audience: { kind: 'narrator' } };
+        const source = projectAudienceSource(ref, base);
+        return { ...source, pin: Object.freeze({ pinId: 'source.narrator', port: 'context', resourceRef: ref, integrity: hash(source.policyDescriptor) }), audience: ref.audience };
+    }
     const source = projectAudienceSource(pin.resourceRef, base);
     if (hash(source.policyDescriptor) !== pin.integrity) fail();
     return { ...source, pin, audience: pin.resourceRef.audience };

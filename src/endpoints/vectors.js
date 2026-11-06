@@ -432,6 +432,7 @@ async function multiQueryCollection(directories, collectionIds, source, sourceSe
 async function regenerateCorruptedIndexErrorHandler(req, res, error) {
     if (req.nativeRetrieval) {
         const code = [...NATIVE_RETRIEVAL_COMPUTE_ERRORS, ...NATIVE_RETRIEVAL_SCOPE_ERRORS].includes(error.code) ? error.code : 'native_retrieval_execution_failed';
+        if (code === 'native_retrieval_execution_failed') console.warn('[native-retrieval] Vector request failed:', req.path, error?.code ?? '', error?.message ?? error);
         return res.status(['native_generation_budget_exhausted', 'native_generation_required_budget_reserved'].includes(code) ? 429
             : ['native_retrieval_compute_unavailable', 'native_generation_required_budget_unknown'].includes(code) ? 503 : 500).json({ error: code });
     }

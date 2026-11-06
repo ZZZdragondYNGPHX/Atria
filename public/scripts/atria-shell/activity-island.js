@@ -27,7 +27,6 @@ export function mountActivityIsland({ document: doc, window: win, shell, host, c
     const close = el('button', 'atria-icon-button', '', heading); close.type = 'button'; close.setAttribute('aria-label', tl('Close activity')); close.append(createAtriaIcon(doc, 'close', { size: 18 }));
     const status = el('p', 'atria-activity-island__status', '', panel); status.setAttribute('role', 'status');
     const list = el('div', 'atria-activity-island__list', '', panel);
-    const refresh = el('button', 'atria-activity-island__refresh', tl('Refresh activity'), panel); refresh.type = 'button';
     const live = el('span', 'atria-visually-hidden', '', root); live.setAttribute('role', 'status');
     let items = [], timer, loading = false, disposed = false, stale = false, open = false, lastSummary = '', rendered = '';
     const dismissed = new Set();
@@ -76,15 +75,22 @@ export function mountActivityIsland({ document: doc, window: win, shell, host, c
     }
     async function collect(source, title, output) {
         let cursor = null;
+        const runs = [];
         do {
             const page = await client.listRuns(source, cursor, 100, controller.signal); if (disposed) return;
-            for (const run of page.items) if (visibleRun.has(run.status)) output.push({ id: run.runId, kind: 'run', status: run.status, title, updatedAt: run.updatedAt, open: () => host.openRun(run.runId) });
+            runs.push(...page.items);
             cursor = page.cursor;
         } while (cursor);
+        // A failure only matters until a later Run in the same place settles it.
+        const newest = Math.max(0, ...runs.map(run => Number(run.updatedAt) || 0));
+        for (const run of runs) {
+            if (!visibleRun.has(run.status) || run.status === 'failed' && (Number(run.updatedAt) || 0) < newest) continue;
+            output.push({ id: run.runId, kind: 'run', status: run.status, title, updatedAt: run.updatedAt, open: () => host.openRun(run.runId) });
+        }
     }
     async function refreshActivity() {
         if (loading || disposed || doc.hidden) return;
-        loading = true; refresh.disabled = true; clearTimeout(timer);
+        loading = true; clearTimeout(timer);
         const next = [], errors = [];
         try {
             const [sessions, projects] = await Promise.allSettled([product.listSessions(), studio.listProjects({ summary: true })]);
@@ -109,14 +115,14 @@ export function mountActivityIsland({ document: doc, window: win, shell, host, c
             }
             stale = errors.length > 0;
             items = stale ? [...new Map([...items, ...next].map(item => [item.id, item])).values()] : next;
-            status.textContent = stale ? tl('Activity could not refresh. The previous results are retained; retry to read current tasks.') : '';
+            status.textContent = stale ? tl('Activity could not refresh. Showing the last results; trying again shortly.') : '';
             render();
         } finally {
-            loading = false; if (!disposed) { refresh.disabled = false; timer = setTimeout(refreshActivity, 15000); }
+            loading = false; if (!disposed) timer = setTimeout(refreshActivity, 15000);
         }
     }
     listen(summary, 'click', () => { if (open) collapse(); else { open = true; panel.hidden = false; summary.setAttribute('aria-expanded', 'true'); position(); } });
-    listen(close, 'click', () => collapse()); listen(refresh, 'click', refreshActivity);
+    listen(close, 'click', () => collapse());
     listen(doc, 'pointerdown', event => { if (open && !root.contains(event.target)) collapse(false); });
     listen(doc, 'atria-activity-back', event => { if (collapse()) event.preventDefault(); });
     const observer = new win.MutationObserver(position);

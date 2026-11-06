@@ -1,44 +1,53 @@
-import { listRetrievalProfiles, retrievalRef } from './retrieval-client.js';
+import { listRetrievalProfiles, retrievalRef, currentRetrievalResources, followsResource } from './retrieval-client.js';
 import { normalizeMemoryRetrieval } from './retrieval-contracts.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
 
+// Memory's own choice of search models. A choice names a resource; saving it
+// stores that resource's newest version, and Runtime edits move it forward.
 export function mountMemoryRetrieval(parent, service) {
-    const doc = parent.ownerDocument; const draft = normalizeMemoryRetrieval(service.getNativeRetrieval());
+    const doc = parent.ownerDocument;
     const form = doc.createElement('form'); form.className = 'workspace-memory-overview-section'; parent.append(form);
     const title = doc.createElement('h3'); title.textContent = tl('Memory search'); form.append(title);
-    const note = doc.createElement('p'); note.className = 'workspace-hint'; note.textContent = tl('Optional. Lets memory find related entries by meaning. Set up search models in Runtime → Memory search, then choose them here. Changing the embedding model rebuilds the search index.'); form.append(note);
-    const manage = doc.createElement('button'); manage.type = 'button'; manage.textContent = tl('Set up memory search'); manage.dataset.variant = 'plain'; form.append(manage);
-    manage.addEventListener('click', () => globalThis.Atria?.shell?.getWorkspaceHost?.().openRuntimeSection('retrieval'));
+    const note = doc.createElement('p'); note.className = 'workspace-hint'; note.textContent = tl('Optional. Lets memory find related entries by meaning. Changes save right away.'); form.append(note);
     const fields = doc.createElement('fieldset'); fields.className = 'workspace-memory-fields'; form.append(fields);
     const picks = {};
+    let resources = [];
     for (const [mode, caption] of [['embed', 'Embedding model'], ['rerank', 'Reranking model (optional)']]) {
         const label = doc.createElement('label'); label.className = 'workspace-inspector-field'; label.textContent = tl(caption); fields.append(label);
         const select = doc.createElement('select'); select.setAttribute('aria-label', tl(caption)); label.append(select); picks[mode] = select;
-        select.addEventListener('change', () => { if (select.value) draft[mode] = JSON.parse(select.value); else delete draft[mode]; });
+        select.addEventListener('change', () => void choose(mode, select.value));
     }
     const status = doc.createElement('p'); status.className = 'workspace-hint'; status.setAttribute('role', 'status'); form.append(status);
-    const actions = doc.createElement('div'); actions.className = 'workspace-memory-form-actions'; form.append(actions);
-    const refresh = doc.createElement('button'); refresh.type = 'button'; refresh.textContent = tl('Reload list'); actions.append(refresh);
-    const save = doc.createElement('button'); save.type = 'submit'; save.textContent = tl('Save'); save.dataset.variant = 'primary'; actions.append(save);
-    function fill(items) {
+    const manage = doc.createElement('button'); manage.type = 'button'; manage.textContent = tl('Manage search models'); manage.dataset.variant = 'plain'; form.append(manage);
+    manage.addEventListener('click', () => globalThis.Atria?.shell?.getWorkspaceHost?.().openRuntimeSection('retrieval'));
+    const current = () => normalizeMemoryRetrieval(service.getNativeRetrieval());
+    function fill() {
+        const draft = current();
         for (const [mode, select] of Object.entries(picks)) {
-            const selected = draft[mode] ? JSON.stringify(draft[mode]) : ''; select.replaceChildren();
+            select.replaceChildren();
             const option = (value, text) => { const item = doc.createElement('option'); item.value = value; item.textContent = text; select.append(item); };
             option('', tl('Off'));
-            for (const item of items.filter(item => item.mode === mode)) option(JSON.stringify(retrievalRef(item)), item.displayName + ' · ' + item.source + ' · ' + item.revision.slice(-8));
-            if (selected && !Array.from(select.options).some(item => item.value === selected)) option(selected, tl('Unavailable revision — retained') + ' · ' + draft[mode].revision.slice(-8));
-            select.value = selected;
+            for (const item of resources.filter(item => item.mode === mode)) option(item.retrievalProfileId, item.displayName + ' · ' + item.model);
+            const chosen = resources.find(item => item.mode === mode && followsResource(item, draft[mode]));
+            if (draft[mode] && !chosen) option('missing', tl('Deleted model — choose another'));
+            select.value = chosen?.retrievalProfileId ?? (draft[mode] ? 'missing' : '');
         }
     }
-    fill([]);
-    async function load() {
-        fields.disabled = refresh.disabled = save.disabled = true; status.textContent = tl('Loading search models…');
-        try { const items = await listRetrievalProfiles(); if (form.isConnected) { fill(items); status.textContent = tl(items.length ? '' : 'No search models yet. Memory works without them; add one in Runtime → Memory search.'); fields.disabled = save.disabled = false; } } catch { if (form.isConnected) status.textContent = tl('Could not load search models. Your choices are kept; reload the list to try again.'); } finally { refresh.disabled = false; }
+    async function choose(mode, id) {
+        if (id === 'missing') return;
+        const next = current(); const item = resources.find(value => value.mode === mode && value.retrievalProfileId === id);
+        if (item) next[mode] = retrievalRef(item); else delete next[mode];
+        fields.disabled = true; status.textContent = tl('Saving…');
+        try { await service.setNativeRetrieval(normalizeMemoryRetrieval(next)); status.textContent = tl('Saved. The next memory search uses this.'); }
+        catch { status.textContent = tl('Could not save. Try again.'); fill(); } finally { fields.disabled = false; }
     }
-    refresh.addEventListener('click', load);
-    form.addEventListener('submit', async event => {
-        event.preventDefault(); if (save.disabled) return; save.disabled = fields.disabled = refresh.disabled = true;
-        try { await service.setNativeRetrieval(normalizeMemoryRetrieval(draft)); status.textContent = tl('Saved. New memory searches use these models.'); } catch { status.textContent = tl('Could not save. Your choices are kept; try again.'); } finally { save.disabled = fields.disabled = refresh.disabled = false; }
-    });
-    void load();
+    async function load() {
+        fields.disabled = true; status.textContent = tl('Loading search models…');
+        try {
+            resources = currentRetrievalResources(await listRetrievalProfiles());
+            if (!form.isConnected) return;
+            fill(); status.textContent = resources.length ? '' : tl('No search models yet. Memory works without them; add one with Manage search models.');
+        } catch { if (form.isConnected) status.textContent = tl('Could not load search models. Reopen this section to try again.'); } finally { fields.disabled = false; }
+    }
+    fill(); void load();
 }

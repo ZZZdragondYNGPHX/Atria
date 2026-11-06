@@ -15,6 +15,9 @@ export const ILLUSTRATION_EXPERIENCE_CSS = `
 .atri-ill-launcher:hover { background:var(--surface-raised); }
 .atri-ill-launcher:active { transform:scale(.97); }
 .atri-ill-launcher[aria-expanded=true] { background:var(--surface-raised); border-color:var(--line-3); }
+/* Step clear of an open side panel instead of covering it. */
+.atria-app-shell:has(#atria-context-dock[data-atria-open="true"]) .atri-ill-launcher { right:calc(var(--atri-inspector-clear, 368px) + 16px); }
+.atria-app-shell[data-atria-viewport="compact"]:has(#atria-context-dock[data-atria-open="true"]) .atri-ill-launcher { display:none; }
 .atri-ill-launcher .atri-ill-dot { width:7px; height:7px; border-radius:50%; background:var(--tone-lumen); box-shadow:0 0 0 3px var(--soft-lumen); animation:atri-ill-pulse 1.6s var(--ease-settle) infinite; }
 /* Scoped under .atri-ill so the shell rule ".atria-app-shell button { color:inherit }" does not win. */
 .atri-ill .atri-ill-chip { position:fixed; z-index:2102; display:inline-flex; align-items:center; gap:6px; min-height:36px; padding:0 14px 0 11px; border-radius:var(--r-capsule);

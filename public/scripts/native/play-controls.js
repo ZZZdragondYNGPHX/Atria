@@ -187,7 +187,7 @@ export function mountNativePlayControls({
         status.textContent = tl(label) + '…';
         try {
             const result = await operation();
-            status.textContent = label.startsWith('Saving') || label === 'Quick saving' ? tl('Saved') : '';
+            status.textContent = label.startsWith('Saving') || label === 'Quick saving' ? tl('Saved') : label === 'Loading save' ? tl('Save loaded') : '';
             return result;
         } catch (error) {
             status.textContent = error?.message || String(error);
@@ -220,7 +220,9 @@ export function mountNativePlayControls({
         try {
             const base = runtime.snapshot;
             const detail = await nativeProductClient.getSession(base.session.sessionId);
-            if (disposed || request !== drawerRequest || activeRuntime() !== runtime || runtime.snapshot !== base) return;
+            if (disposed || request !== drawerRequest) return;
+            // The Session moved on while loading (e.g. a post-load projection): show the current one.
+            if (activeRuntime() !== runtime || runtime.snapshot !== base) return showTimeline();
             const mutate = (label, operation) => run(label, async () => {
                 if (activeRuntime() !== runtime || runtime.snapshot !== base || !runtime.active || runtime.history || runtime.failed || nativePlayGenerationBusy(runtime)) throw new Error(tl('Historical revisions are read-only.'));
                 return operation();
@@ -230,32 +232,38 @@ export function mountNativePlayControls({
             };
 
             drawerBody.replaceChildren();
-            const mode = documentRef.createElement('p'); mode.setAttribute('role', 'status');
-            mode.textContent = tl(runtime.history ? 'Historical revisions are read-only.' : 'Live'); drawerBody.append(mode);
-
+            if (runtime.history) {
+                const mode = documentRef.createElement('p'); mode.setAttribute('role', 'status');
+                mode.textContent = tl('Historical revisions are read-only.'); drawerBody.append(mode);
+            }
+            // Rarely used settings sit in one collapsed section after saves and history.
+            const options = documentRef.createElement('details'); options.className = 'atria-native-play-options';
+            const optionsSummary = documentRef.createElement('summary'); optionsSummary.textContent = tl('Story options'); options.append(optionsSummary);
+            mountSessionRename({ document: documentRef, root: options, session: detail.snapshot.session });
             const portableActions = documentRef.createElement('div');
             portableActions.className = 'atria-domain-workspace__actions';
-            portableActions.append(actionButton(documentRef, 'Export Session .atriasave', () => run(
+            portableActions.append(actionButton(documentRef, 'Export story', () => run(
                 'Exporting session',
                 async () => downloadBase64(
                     documentRef,
                     await nativeProductClient.exportSession(detail.snapshot.session.sessionId),
                 ),
             )));
-            drawerBody.append(portableActions);
-            mountSessionRename({ document: documentRef, root: drawerBody, session: detail.snapshot.session });
-            const automatic = documentRef.createElement('details'), summary = documentRef.createElement('summary');
+            const automatic = documentRef.createElement('fieldset'), summary = documentRef.createElement('legend');
+            automatic.className = 'atria-native-play-autosave';
             summary.textContent = tl('Automatic saves'); automatic.append(summary);
+            const labelled = (text, input) => { const label = documentRef.createElement('label'); label.append(input, ' ', tl(text)); return label; };
             const policy = base.session.autoSavePolicy ?? { enabled: true, intervalMs: 300000, retain: 12 };
             const interval = documentRef.createElement('input'), retain = documentRef.createElement('input'), enabled = documentRef.createElement('input');
             enabled.type = 'checkbox'; enabled.checked = policy.enabled; enabled.setAttribute('aria-label', tl('Enable automatic saves'));
             interval.type = 'number'; interval.min = '1'; interval.value = String(policy.intervalMs / 60000); interval.setAttribute('aria-label', tl('Save interval in minutes'));
             retain.type = 'number'; retain.min = '1'; retain.max = '1000'; retain.value = String(policy.retain); retain.setAttribute('aria-label', tl('Automatic save count'));
-            automatic.append(enabled, interval, retain, writeButton('Save settings', () => mutate('Saving', async () => {
+            automatic.append(labelled('On', enabled), labelled('Every (minutes)', interval), labelled('Keep (saves)', retain), writeButton('Save settings', () => mutate('Saving', async () => {
                 await runtime.setExperienceMetadata({ autoSavePolicy: { enabled: enabled.checked, intervalMs: Math.round(Number(interval.value) * 60000), retain: Number(retain.value) } });
                 await showTimeline();
-            }))); drawerBody.append(automatic);
-            appendPortableImport(drawerBody);
+            }))); options.append(automatic);
+            appendPortableImport(portableActions);
+            options.append(portableActions);
 
             const savesTitle = documentRef.createElement('h4');
             savesTitle.textContent = tl('Saves');
@@ -270,12 +278,13 @@ export function mountNativePlayControls({
                 row.className = 'atria-native-play-drawer__row';
                 row.dataset.atriaSaveId = save.saveId;
                 const label = documentRef.createElement('span');
-                label.textContent = `${save.displayName || save.kind} · ${formatAtriaDate(save.createdAt)}`;
+                const kindName = { quick: 'Quick Save', auto: 'Automatic save', manual: 'Save' }[save.kind];
+                label.textContent = `${save.displayName || (kindName ? tl(kindName) : save.kind)} · ${formatAtriaDate(save.createdAt)}`;
                 const saveActions = documentRef.createElement('div');
                 saveActions.className = 'atria-native-play-timeline-row__actions';
                 const load = writeButton('Load', () => mutate('Loading save', async () => {
                     await runtime.restoreSavePoint(save.saveId);
-                    await showTimeline();
+                    hideDrawer();
                 }));
                 const exportSave = actionButton(documentRef, 'Export', () => run('Exporting save', async () => (
                     downloadBase64(
@@ -298,9 +307,11 @@ export function mountNativePlayControls({
                 for (const binding of embedded) mountEmbeddedKnowledgePromotion({ document: documentRef, root: drawerBody, detail, binding, host: globalThis.Atria?.shell?.getWorkspaceHost?.() });
             }
 
-            const timelineTitle = documentRef.createElement('h4');
+            // The story itself is on screen; the timeline is a reference list, collapsed by default.
+            const timelineBox = documentRef.createElement('details'); timelineBox.className = 'atria-native-play-options';
+            const timelineTitle = documentRef.createElement('summary');
             timelineTitle.textContent = tl('Story timeline');
-            drawerBody.append(timelineTitle);
+            timelineBox.append(timelineTitle); drawerBody.append(timelineBox);
             const timeline = (base.timeline || []).slice(-50);
             timeline.forEach((entry, index) => {
                 const row = documentRef.createElement('article');
@@ -308,11 +319,12 @@ export function mountNativePlayControls({
                 row.dataset.atriaTimelineMessageId = entry.messageId;
                 const content = documentRef.createElement('div');
                 content.className = 'atria-native-play-timeline-row__content';
-                content.textContent = `${entry.sequence + 1 || index + 1}. ${entry.role}: ${preview(entry.content)}`;
+                const speaker = entry.role === 'user' ? tl('You') : entry.role === 'assistant' ? (entry.name || tl('Narrator')) : entry.role;
+                content.textContent = `${entry.sequence + 1 || index + 1}. ${speaker}: ${preview(entry.content)}`;
                 const rowActions = documentRef.createElement('div');
                 rowActions.className = 'atria-native-play-timeline-row__actions';
                 row.append(content, rowActions);
-                drawerBody.append(row);
+                timelineBox.append(row);
             });
 
             historyPanel = mountSessionHistory({ document: documentRef, root: drawerBody, sessionId: detail.snapshot.session.sessionId,
@@ -326,6 +338,7 @@ export function mountNativePlayControls({
                 onInspect: async revisionId => {
                     await globalThis.Atria.openNativeSession(detail.snapshot.session.sessionId, { revisionId }); hideDrawer();
                 } });
+            drawerBody.append(options);
         } catch (error) {
             if (disposed || request !== drawerRequest) return;
             drawerBody.textContent = error?.message || String(error);
@@ -337,18 +350,37 @@ export function mountNativePlayControls({
         const runtime = activeRuntime();
         openDrawer('Context');
         drawerBody.replaceChildren();
-        const plan = runtime?.currentContextPlan?.();
+        const reply = runtime?.lastReplyContext;
+        const plan = (reply && reply.sessionId === runtime?.snapshot?.session?.sessionId ? reply.plan : null) ?? runtime?.currentContextPlan?.();
+        const included = plan?.included ?? plan?.items ?? [];
+        let breakdown = null;
         const summary = documentRef.createElement('p');
         summary.textContent = plan
-            ? formatProductText('${0} items included · ${1} excluded', [plan.included?.length || 0, plan.rejected?.length || 0])
+            ? formatProductText('${0} items included · ${1} excluded', [included.length, plan.rejected?.length || 0])
             : tl('Send a message to see the context used for a reply.');
+        if (plan) {
+            // A readable breakdown first; the raw plan stays under Details.
+            const labels = { 'context.history': 'Story so far', 'context.fact': 'World and character facts', 'context.input': 'Your latest action', 'context.directive': 'Guidance' };
+            const counts = new Map();
+            for (const item of included) {
+                const key = /^memory:/.test(String(item.contextItemId || item.id || '')) || item.lane === 'memory' ? 'Recalled memories' : labels[item.kind] || item.kind || 'Other';
+                counts.set(key, (counts.get(key) || 0) + 1);
+            }
+            const list = documentRef.createElement('ul');
+            for (const [label, count] of counts) {
+                const row = documentRef.createElement('li');
+                row.textContent = `${tl(label)} · ${count}`;
+                list.append(row);
+            }
+            breakdown = list;
+        }
         const details = documentRef.createElement('details');
         const label = documentRef.createElement('summary'); label.textContent = tl('Details');
         const pre = documentRef.createElement('pre');
         pre.dataset.atriaContextPlan = 'true';
         pre.textContent = plan ? JSON.stringify(plan, null, 2) : tl('No context compiled yet.');
         details.append(label, pre);
-        drawerBody.append(summary, details);
+        drawerBody.append(summary, ...(breakdown ? [breakdown] : []), details);
     }
 
     async function renderLanding() {

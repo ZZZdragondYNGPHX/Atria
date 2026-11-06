@@ -172,6 +172,16 @@ export function queryInformationGraph(snapshot, graphId, startId, { depth, expec
     return { anchor: projection.anchor, nodes: [...visited].map(id => nodes.get(id)), edges: selectedEdges, truncated };
 }
 
+/** Agent audience admission. A work without Information rules declares no
+ * disclosure limits, so its narrator sees an empty structured view and keeps the
+ * ordinary narrator context, exactly like the plain narrator path. */
+export function audienceInformationContext(snapshot, target, taskId, options) {
+    if (!informationDefinition(snapshot) && target?.kind === 'narrator' && !taskId) {
+        return { items: [], knowledge: false, worlds: [], memory: false, projection: { viewId: null, items: [], truncated: false, availability: [] } };
+    }
+    return informationContext(snapshot, target, taskId, options);
+}
+
 export function informationContext(snapshot, target, taskId, { onScan = null, includeRollups = true } = {}) {
     const def = informationDefinition(snapshot);
     if (!def) return null;

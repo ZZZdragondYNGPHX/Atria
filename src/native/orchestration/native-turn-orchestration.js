@@ -820,7 +820,7 @@ export class NativeNarratorOrchestrationAuthority {
         return attemptId;
     }
 
-    async #finishModelFailure(state, error, { settleRejected = true } = {}) {
+    async #finishModelFailure(state, error, { settleRejected = true, reasonCode: givenReason = null, settled = false } = {}) {
         const { handle } = state, { runs, budgetPort, sourcePort } = this.execution;
         const observed = await runs.get(handle, state.runId);
         if (observed.cancelRequested || !['running', 'reconciling'].includes(observed.status) || observed.outputClaims.length) return;
@@ -855,7 +855,8 @@ export class NativeNarratorOrchestrationAuthority {
                     outcome: 'failed', resultRefs: [], effectReceiptRefs, reasonCode: 'generation_provider_rejected' });
             }
             const reasonCode = terminal?.kind === 'rejected' ? 'generation_provider_rejected'
-                : error.code === 'generation_provider_submission_unknown' ? error.code : 'native_orchestration_session_model_unresolved';
+                : error.code === 'generation_provider_submission_unknown' ? error.code
+                : typeof givenReason === 'string' && /^[a-z0-9_]{1,96}$/.test(givenReason) ? givenReason : 'native_orchestration_session_model_unresolved';
             await runs.control(handle, controlCommandId('native.turn.failure', { runId: root.runId, attemptId: state.attemptId }), {
                 ...runGuard(await runs.get(handle, root.runId)), operation: 'graph.execution.fail', detail: { attemptId: state.attemptId, reasonCode } }, async ({ tx, root: current, now }) => {
                 if (current.cancelRequested || !['running', 'reconciling'].includes(current.status) || current.outputClaims.length) fail('native_orchestration_turn_grant_denied');
@@ -872,7 +873,7 @@ export class NativeNarratorOrchestrationAuthority {
                 const costs = effectIds.length ? await budgetPort.observeEffectClosure(handle, { authorityRef: current.budgetAuthorityRef, effectIds }, { tx }) : null;
                 current.pendingEffectRefs = [...new Set([...current.pendingEffectRefs, ...unresolved])];
                 current.status = current.pendingEffectRefs.length || costs && !costs.closed ? 'reconciling'
-                    : terminal?.kind === 'rejected' && statuses.every(status => ['completed', 'partial', 'failed', 'cancelled', 'stale'].includes(status)) ? 'failed' : 'blocked';
+                    : (terminal?.kind === 'rejected' || settled) && statuses.every(status => ['completed', 'partial', 'failed', 'cancelled', 'stale'].includes(status)) ? 'failed' : 'blocked';
                 const receiptId = 'oreceipt_' + hash({ kind: 'native_session_failure', runId: current.runId, attemptId: state.attemptId }).slice(0, 32);
                 await putImmutable(tx, controlRecordKey(handle, current.runId, 'receipt', receiptId), { schemaVersion: 1,
                     receiptKind: 'native_session_failure', receiptId, runId: current.runId, epoch: current.epoch, nodeAttemptId: state.attemptId,
@@ -1819,6 +1820,7 @@ export class NativeNarratorOrchestrationAuthority {
         state.finalizationPermit = finalizationPermit;
         this.#runs.set(runId, state);
         const current = () => state.contextPort.revalidateNativeOutput(handle, { context: state.context, finalizationPermit });
+        let sessionCommitted = false;
         try {
             const published = await runs.control(handle, controlCommandId('session.narrator.settle', { runId, attemptId: state.attemptId }), {
                 ...runGuard(await runs.get(handle, runId)), operation: 'attempt.settle', detail: { reason: 'session_narration_ready' } }, async ({ tx, root, now, deny }) => {
@@ -1899,6 +1901,7 @@ export class NativeNarratorOrchestrationAuthority {
                 state.outputExpected = { sessionId: state.proofExpected.sessionId, branchId: state.proofExpected.anchor.branchId, expectedRevisionId,
                     invocationId: prepared.invocationId, requestHash, envelope: prepared.envelope, provenance: prepared.provenance };
                 committed = await this.#commitSessionOutput(handle, state, prepared, requestHash, expectedRevisionId);
+                sessionCommitted = true;
                 outcome = 'completed';
             } finally {
                 const used = process.cpuUsage(cpu);
@@ -1921,6 +1924,11 @@ export class NativeNarratorOrchestrationAuthority {
             }
             await this.#finishSessionOutput(handle, output, committed.committed);
             return committed.snapshot;
+        } catch (error) {
+            // Nothing reached the Session: close the Run instead of leaving it running.
+            if (!sessionCommitted) await this.#finishModelFailure({ ...state, runId }, error, { settleRejected: false, reasonCode: error.code, settled: true })
+                .catch(failure => console.warn('[orchestration] Could not close the failed Session Run', failure?.code ?? failure));
+            throw error;
         } finally { this.#runs.delete(runId); }
     }
 

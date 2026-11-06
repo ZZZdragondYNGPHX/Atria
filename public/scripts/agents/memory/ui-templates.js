@@ -93,13 +93,13 @@ function buildRecallTabHtml(deps) {
     });
     return `
             <p class="workspace-hint">${escapeHtml(i18n('Hybrid Memory recalls only current, permitted sources.'))}</p>
-            ${deps.nativeRuntime ? `<p class="workspace-hint">${escapeHtml(i18n('Choose exact embedding and rerank revisions in Memory Maintenance.'))}</p>` : `<label>${escapeHtml(i18n('Embedding profile'))}</label>
-            <select id="atria_rpg_memory_embedding_profile" class="text_pole flex1" aria-label="${escapeHtml(i18n('Embedding profile'))}"></select>`}
+            ${deps.nativeRuntime ? '' : `<label>${escapeHtml(i18n('Embedding profile'))}</label>
+            <select id="atria_rpg_memory_embedding_profile" class="text_pole flex1" aria-label="${escapeHtml(i18n('Embedding profile'))}"></select>
             <label class="checkbox_label"><input id="atria_rpg_memory_rerank_enabled" type="checkbox" /> ${escapeHtml(i18n('Enable rerank'))}</label>
             <div id="atria_rpg_memory_rerank_block" hidden>
-                ${deps.nativeRuntime ? '' : `<label>${escapeHtml(i18n('Rerank profile'))}</label>
-                <select id="atria_rpg_memory_rerank_profile" class="text_pole flex1" aria-label="${escapeHtml(i18n('Rerank profile'))}"></select>`}
-            </div>
+                <label>${escapeHtml(i18n('Rerank profile'))}</label>
+                <select id="atria_rpg_memory_rerank_profile" class="text_pole flex1" aria-label="${escapeHtml(i18n('Rerank profile'))}"></select>
+            </div>`}
             <label for="atria_rpg_memory_recall_inject_position">${escapeHtml(i18n('Injection position'))}${fh('About Injection position', 'Injection position help body')}</label>
             <select id="atria_rpg_memory_recall_inject_position" class="text_pole">
                 <option value="${world_info_position.before}">${escapeHtml(i18n('Before Character Definitions'))}</option>

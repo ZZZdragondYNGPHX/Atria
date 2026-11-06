@@ -281,11 +281,10 @@ export function mountIllustrationSetup({ document: doc, parent, packageId = '', 
         const children = [modeSwitch, el(doc, 'p', { className: 'atri-ill-muted', text: known ? f('About ${0} ${1} per image.', [cost.upperBound, cost.currency || budget.currency])
             : t('Atria does not know this service’s price. It counts the amount you set per image and stops at your daily limit. Your provider’s bill is the final word.') }),
         field(doc, f('Daily limit (${0})', [budget.currency]), input(doc, String(budget.moneyDay), guard(value => saveBudget({ moneyDay: Math.max(0, Number(value) || 0) })), { type: 'number' }),
-            budget.moneyDay > 0 ? '' : t('Set a daily limit above 0 to generate paid images.'))];
+            budget.moneyDay > 0 ? '' : t('0 means no daily limit.'))];
         if (!known) children.push(field(doc, f('Count each image as (${0})', [budget.currency]), input(doc, String(reserve), guard(async value => { reserve = Math.max(0, Number(value) || 0); if (consent) await saveConsent(reserve, true); }), { type: 'number' })));
         if (capability?.targetFingerprint) children.push(check(doc, t('Generate without asking each time'), Boolean(consent), guard(enabled => saveConsent(reserve, enabled))));
-        const warn = budget.moneyDay <= 0;
-        return section(doc, t('Spending'), { step: 4, done: !warn, aside: warn ? el(doc, 'span', { className: 'atri-ill-state', text: t('Needed'), attrs: { 'data-kind': 'error' } }) : null }, children);
+        return section(doc, t('Spending'), { step: 4, done: true, aside: null }, children);
     }
     function autoSection(ready) {
         const director = config.settings.director;

@@ -30,15 +30,15 @@ function createLocalizedStatePanel(documentRef, kind, options = {}) {
 
 const AGENT_SECTION_LABELS = Object.freeze({
     home: 'Agents',
-    plans: 'Plans',
+    plans: 'Plan library',
     runs: 'Runs',
     memory: 'Memory',
     diagnostics: 'Diagnostics & replay',
 });
 
 const AGENT_SECTION_DESCRIPTIONS = Object.freeze({
-    plans: 'Author agent graphs, validate them on the Host and publish immutable revisions.',
-    runs: 'Follow Runs recorded by the Native Host: timeline, graph, fees and approvals.',
+    plans: 'Build reusable agent plans once and use them in any story, Studio task or chat.',
+    runs: 'See what each plan did when it ran: steps, models used and costs.',
     memory: 'Browse long-term memory, evidence and knowledge maintenance.',
     diagnostics: 'Inspect agent diagnostics, trace evidence and recovery details.',
 });
@@ -558,7 +558,7 @@ export function createAtriaWorkspaceHost({
         if (section === 'skills') return openUtility('plugins');
         const raw = String(section || 'works').trim().toLowerCase();
         const requested = ['prompt-programs', 'prompt-modules', 'generation-profiles'].includes(raw) ? 'prompt-presets' : raw;
-        const flows = { install: 'Install / Update .atria', 'import-save': 'Import .atriasave' };
+        const flows = { install: 'Add a work', 'import-save': 'Import a save' };
         const child = requested === 'worlds' || requested === 'knowledge' || flows[requested] ? requested : null;
         const item = child
             ? LIBRARY_SECTIONS.find(candidate => candidate.id === (flows[requested] ? 'works' : 'worlds-knowledge'))
@@ -851,8 +851,8 @@ export function createAtriaWorkspaceHost({
         }),
         shell.registry.register({
             id: 'workspace.plans',
-            title: translateShellText('Open Agent Plans'),
-            description: translateShellText('Author agent graphs, validate them on the Host and publish immutable revisions.'),
+            title: translateShellText('Open the Plan library'),
+            description: translateShellText('Build reusable agent plans, save them to the library and use them anywhere.'),
             group: translateShellText('Workspaces'),
             keywords: ['agents', 'plans', 'graph', 'orchestration', 'publish'],
             run: () => openAgentSection('plans'),

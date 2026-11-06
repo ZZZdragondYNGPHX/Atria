@@ -29,8 +29,8 @@
 .atria-preference-status:empty { display: none; }
 .atria-setting-notice { background: var(--atri-surface-1); padding: 24px; border-radius: var(--atri-radius-lg); }
 .atria-setting-notice p { color: var(--atri-text-secondary); }
-.atria-app-shell .atria-settings-back { display: none; margin-bottom: 20px; }
-.atria-app-shell [data-settings-search-active="true"] .atria-settings-back { display: inline-flex; }
+.atria-app-shell .atria-settings-content > .atria-settings-back.atria-settings-back { display: none; margin-bottom: 20px; }
+.atria-app-shell [data-settings-search-active="true"] .atria-settings-content > .atria-settings-back.atria-settings-back { display: inline-flex; }
 .atria-settings-results { display: grid; gap: 12px; }
 .atria-settings-search-result { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-height: 60px; text-align: start; }
 .atria-settings-search-result span { color: var(--atri-text-secondary); font-size: var(--atri-text-caption); }
@@ -75,7 +75,7 @@
     .atria-settings-category-description { display: block; color: var(--atri-text-secondary); font-size: var(--atri-text-footnote); font-weight: 400; }
     [data-settings-page="categories"] .atria-settings-content { display: none; }
     .atria-utility-workspace--settings:not([data-settings-page="categories"]) .atria-settings-sidebar { display: none; }
-    .atria-app-shell .atria-utility-workspace--settings:not([data-settings-page="categories"]) .atria-settings-back { display: inline-flex; }
+    .atria-app-shell .atria-utility-workspace--settings:not([data-settings-page="categories"]) .atria-settings-content > .atria-settings-back.atria-settings-back { display: inline-flex; }
     .atria-settings-panel .atria-preference-row { padding: 16px; }
     .atria-settings-panel .atria-preference-row > label { gap: 12px; }
     .atria-theme-color-fields { grid-template-columns: 1fr; }

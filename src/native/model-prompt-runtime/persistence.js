@@ -1,4 +1,5 @@
 import { NotFoundError, ConflictError } from '../../storage/errors.js';
+import { DEFAULT_COMPUTE_BUDGET } from '../../../public/shared/native-compute-budget.js';
 import { assertWritable } from '../../storage/read-only-mode.js';
 import { assertCapabilityPublication } from './execution-evidence.js';
 import { withRuntimeWrite } from './runtime-write.js';
@@ -381,8 +382,15 @@ export class NativeModelPromptPersistence {
                 if (!target) throw new NotFoundError('fallback route');
                 if (target.role !== route.role) throw new ConflictError('native_runtime_fallback_role');
             }
-            const incoming = (await this.listRuntimeRoutes(handle)).filter(item => item.role !== route.role && item.fallbackRouteRefs.some(ref => ref.runtimeRouteId === route.runtimeRouteId));
+            const listed = await this.listRuntimeRoutes(handle);
+            const incoming = listed.filter(item => item.role !== route.role && item.fallbackRouteRefs.some(ref => ref.runtimeRouteId === route.runtimeRouteId));
             if (incoming.length) throw new ConflictError('native_runtime_fallback_role');
+            // Editors read the route with its default limits applied; accept that view's fingerprint.
+            const shown = listed.find(item => item.runtimeRouteId === route.runtimeRouteId);
+            if (shown && expectedFingerprint === hashNativeDocument(shown)) {
+                const stored = await this._get(handle, NATIVE_RESOURCE_KINDS.runtimeRoute, 'runtimeRouteId', route.runtimeRouteId);
+                expectedFingerprint = hashNativeDocument(stored ?? null);
+            }
             return this._save(
                 handle,
                 NATIVE_RESOURCE_KINDS.runtimeRoute,
@@ -402,6 +410,37 @@ export class NativeModelPromptPersistence {
             const updated = assertRuntimeRoute({ ...route, promptParameters: parameters });
             await this._save(handle, NATIVE_RESOURCE_KINDS.runtimeRoute, 'runtimeRouteId', id, updated);
             return updated;
+        });
+    }
+
+    /** API presets follow their prompt preset: every stored route that names any
+     * revision of `promptProgramId` moves to `ref`. Returns the routes it moved. */
+    async followPromptProgram(handle, promptProgramId, ref) {
+        return withRuntimeWrite(handle, async () => {
+            const moved = [];
+            const follow = value => value?.scope === 'library' && value.resourceId === promptProgramId && value.revision !== ref.revision ? { ...ref } : value;
+            for (const stored of await this._list(handle, NATIVE_RESOURCE_KINDS.runtimeRoute)) {
+                if (stored.scope !== 'player') continue;
+                const next = { ...stored, ...(stored.promptProgramRef ? { promptProgramRef: follow(stored.promptProgramRef) } : {}),
+                    ...(stored.projectPromptBindings ? { projectPromptBindings: stored.projectPromptBindings.map(binding => ({ ...binding, promptProgramRef: follow(binding.promptProgramRef) })) } : {}) };
+                if (hashNativeDocument(next) === hashNativeDocument(stored)) continue;
+                await this._save(handle, NATIVE_RESOURCE_KINDS.runtimeRoute, 'runtimeRouteId', stored.runtimeRouteId, assertRuntimeRoute(next));
+                moved.push({ runtimeRouteId: stored.runtimeRouteId, displayName: stored.displayName });
+            }
+            return moved;
+        });
+    }
+
+    /** Point one API preset at a prompt program without touching anything else. */
+    async setRoutePrompt(handle, runtimeRouteId, ref) {
+        return withRuntimeWrite(handle, async () => {
+            const stored = await this._get(handle, NATIVE_RESOURCE_KINDS.runtimeRoute, 'runtimeRouteId', runtimeRouteId);
+            if (!stored) throw new NotFoundError('Runtime route');
+            // Typed parameter overrides belong to the previous prompt.
+            const { promptParameters, ...rest } = stored;
+            const next = assertRuntimeRoute({ ...rest, promptProgramRef: ref, ...(promptParameters && ref.resourceId === stored.promptProgramRef?.resourceId ? { promptParameters } : {}) });
+            await this._save(handle, NATIVE_RESOURCE_KINDS.runtimeRoute, 'runtimeRouteId', runtimeRouteId, next);
+            return next;
         });
     }
 
@@ -449,11 +488,33 @@ export class NativeModelPromptPersistence {
             'runtimeRouteId',
             runtimeRouteId,
         );
-        return value ? assertRuntimeRoute(value) : null;
+        if (!value) return null;
+        if (value.executionPolicy?.computeBudget) return assertRuntimeRoute(value);
+        return (await this.listRuntimeRoutes(handle)).find(route => route.runtimeRouteId === runtimeRouteId) ?? null;
     }
 
     async listRuntimeRoutes(handle) {
-        return Object.freeze((await this._list(handle, NATIVE_RESOURCE_KINDS.runtimeRoute))
-            .map(assertRuntimeRoute));
+        const stored = (await this._list(handle, NATIVE_RESOURCE_KINDS.runtimeRoute)).map(assertRuntimeRoute);
+        return Object.freeze(stored.map(route => withDefaultComputeBudget(route, stored)));
     }
+}
+
+/** Every API preset can run agents, tools and background work: a preset without
+ * its own limits uses the default ones. A preset without any execution policy
+ * keeps its whole fallback chain allowed, exactly as before. */
+function withDefaultComputeBudget(route, routes) {
+    if (route.executionPolicy?.computeBudget) return route;
+    let policy = route.executionPolicy;
+    if (!policy) {
+        const models = [], seen = new Set(), pending = [route];
+        while (pending.length && models.length < 16) {
+            const next = pending.shift();
+            if (!next || seen.has(next.runtimeRouteId)) continue;
+            seen.add(next.runtimeRouteId);
+            if (!models.includes(next.modelProfileRef.modelProfileId)) models.push(next.modelProfileRef.modelProfileId);
+            pending.push(...next.fallbackRouteRefs.map(ref => routes.find(item => item.runtimeRouteId === ref.runtimeRouteId)));
+        }
+        policy = { schemaVersion: 1, allowedModelProfileIds: models, verifiedRequirements: [], continuity: 'none', reuse: 'disabled' };
+    }
+    return assertRuntimeRoute({ ...route, executionPolicy: { ...policy, computeBudget: DEFAULT_COMPUTE_BUDGET } });
 }

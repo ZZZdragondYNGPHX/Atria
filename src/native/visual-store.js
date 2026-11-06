@@ -105,7 +105,9 @@ export class VisualStore {
                 if (quota.perMinute && used.minute >= quota.perMinute) visualError('request_rate_limited');
             }
             const amount = job.reservation.amount;
-            if (amount > 0 && (budget.currency !== job.reservation.currency || occupied.reduce((sum, item) => sum + item.reservation.amount, 0) + amount > budget.moneyDay
+            // A daily money limit of 0 means "not set": the player already confirmed this manual draw.
+            if (amount > 0 && (budget.moneyDay > 0 && budget.currency !== job.reservation.currency
+                || budget.moneyDay > 0 && occupied.reduce((sum, item) => sum + item.reservation.amount, 0) + amount > budget.moneyDay
                 || job.mode === 'automatic' && automatic.reduce((sum, item) => sum + item.reservation.amount, 0) + amount > budget.autoMoneyDay)) visualError('budget_exceeded');
             await tx.putResourceIfMatch(key, null, nativeRecord(job));
             return job;
