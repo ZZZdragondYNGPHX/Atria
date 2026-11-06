@@ -117,7 +117,7 @@ function validateRuntimeStateChanges(handle, sessionId, statePatch = {}, deleteN
     const values = cloneNativeDocument(statePatch, 'Native runtime state patch');
     if (values?.atri_prompt_context !== undefined) {
         const context = values.atri_prompt_context;
-        if (!context || Object.keys(context).some(key => key !== 'scenario')
+        if (!context || typeof context !== 'object' || Array.isArray(context) || Object.keys(context).some(key => key !== 'scenario')
             || context.scenario !== undefined && (typeof context.scenario !== 'string' || context.scenario.length > 1000000)) throw new TypeError('Invalid Session prompt context');
     }
     if (!values || Array.isArray(values) || typeof values !== 'object') {
