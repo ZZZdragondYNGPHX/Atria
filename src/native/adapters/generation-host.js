@@ -1472,6 +1472,11 @@ export class NativeGenerationHost {
             revisionId: source.revisionId || '', projectId: source.projectId || '', projectRevision: source.revision || '',
             ...(snapshot ? Object.fromEntries(Object.entries(nativePromptIdentity(snapshot, { actorId: taskActorId ?? input.actorId })).filter(([key, value]) => ['user', 'char', 'group'].includes(key) && value !== undefined)) : {}) };
         if (operation === 'impersonate' && !hostView.user) fail('native_generation_persona_required');
+        // Author text naming the player or character still compiles without a chosen Persona or a single
+        // Primary Actor (and in previews), like character-card {{user}}/{{char}} defaults.
+        hostView.user ??= 'User';
+        hostView.char ??= hostView.group || 'Narrator';
+        if (!hostView.group) hostView.group = hostView.char;
         this.promptRandomSamples ??= new Map();
         const randomKey = JSON.stringify([handle, input.requestId]);
         if (!this.promptRandomSamples.has(randomKey)) {

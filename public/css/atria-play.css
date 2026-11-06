@@ -377,3 +377,20 @@ dialog.atria-game-host-surface--transient::backdrop { background: var(--surface-
 }
 .atria-app-shell[data-atria-viewport="compact"] dialog[data-atria-game-host-surface="drawer"] { margin-bottom: max(8px, var(--atri-safe-area-bottom)); }
 .atria-app-shell[data-atria-keyboard="open"] dialog.atria-game-host-surface--transient { inset: max(12px, var(--atri-safe-area-top)) 0 auto; margin: 0 auto; }
+
+/* ── Reply extras (preset supplements): one quiet chip, folded panel ── */
+.atria-play-message__extras { margin-left: auto; min-height: 24px; padding: 3px 10px; border: 1px solid var(--line-1); border-radius: 999px; background: transparent; color: var(--text-2); font: 500 11.5px/1.2 var(--font-ui); letter-spacing: .02em; cursor: pointer; }
+.atria-play-message__extras:hover { color: var(--text-1); border-color: var(--text-3); }
+.atria-play-message__extras[data-problem="true"] { color: var(--tone-vermilion); }
+.atria-preset-content { display: grid; gap: 4px; }
+.atria-preset-content__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.atria-preset-content__note { margin: 0; color: var(--text-2); font-size: var(--fs-sm); line-height: 1.5; }
+.atria-preset-content > details { border-top: 1px solid var(--line-1); }
+.atria-preset-content > details > summary { padding-block: 12px; font-weight: 600; }
+.atria-preset-content > details[open] > summary { padding-bottom: 8px; }
+.atria-preset-content > details > div { padding-bottom: 14px; }
+.atria-preset-content__surface { min-width: 0; }
+.atria-preset-content__raw > summary { font-weight: 400 !important; color: var(--text-2); }
+.atria-play-conversation [data-preset-failed-response] { max-width: 36em; margin: 8px auto 0; color: var(--text-2); font: 400 var(--fs-sm)/1.5 var(--font-ui); }
+.atria-play-conversation [data-preset-failed-response] > summary { cursor: pointer; padding-block: 6px; }
+.atria-play-conversation [data-preset-failed-response] pre { max-height: 40vh; overflow: auto; padding: 12px; border: 1px solid var(--line-1); border-radius: var(--r-md); background: var(--surface-panel); white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }

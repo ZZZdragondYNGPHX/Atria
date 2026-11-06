@@ -52,6 +52,8 @@ function action(doc, parent, label, handler) {
     const button = element(doc, 'button', label, parent); button.type = 'button'; button.className = 'atria-studio-action';
     button.addEventListener('click', handler); return button;
 }
+const stableJson = value => JSON.stringify(value, (_, item) => item && typeof item === 'object' && !Array.isArray(item)
+    ? Object.fromEntries(Object.keys(item).sort().map(key => [key, item[key]])) : item);
 function input(doc, parent, label, value, multiline = false) {
     const wrapper = element(doc, 'label', label, parent);
     const node = element(doc, multiline ? 'textarea' : 'input', undefined, wrapper);
@@ -195,7 +197,8 @@ export function forkPromptClosure(entries, selected, { derive = false, scope = {
 
 export function mountPromptEditor({ document: doc, parent, entry, entries, onSave, onBack, librarySurface = false, presetSurface = false, foldState = new Map() }) {
     let draft = clone(entry.resource); let advanced = false; let submitted = false; let submitting = false;
-    const initialDraft = JSON.stringify(draft);
+    // Key order is not an edit: re-reading the form may list the same fields in another order.
+    const initialDraft = stableJson(draft);
     let renderVersion = 0; let jsonBuffer = null; let readActive = () => draft; let rawActive = () => jsonBuffer; let lastEdit = null;
     let upgradeDependencies = [];
     const history = [{ draft: clone(draft), jsonBuffer, dependencies: [] }]; const future = [];
@@ -212,9 +215,9 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
         return value;
     };
     const isDirty = () => {
-        if (JSON.stringify(draft) !== initialDraft) return true;
+        if (stableJson(draft) !== initialDraft) return true;
         if (jsonBuffer === null) return false;
-        try { return JSON.stringify(jsonValue(jsonBuffer)) !== initialDraft; } catch { return true; }
+        try { return stableJson(jsonValue(jsonBuffer)) !== initialDraft; } catch { return true; }
     };
     const capture = (typingTarget = null) => {
         if (submitted || submitting) return;
@@ -453,15 +456,18 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                 action(doc, treeBox, 'Add stage', () => { let index = stages.length + 1; while (stages.some(stage => stage.stageId === 'stage.step' + index)) index++; stages.push({ stageId: 'stage.step' + index, moduleRefs: [] }); renderStages(stages.length - 1); }); renderStages();
                 const directiveBox = fold(fields, 'response', 'Response Directive', () => directive.value.trim() ? translateShellText('Configured') : translateShellText('Not configured'));
                 const directive = input(doc, directiveBox, 'Response Directive', draft.responseDirective?.body || '', true);
-                const contentBox = fold(fields, 'content', '附属内容与模板');
-                const contentEnabled = input(doc, contentBox, '使用统一 JSON 内容协议', ''); contentEnabled.type = 'checkbox'; contentEnabled.checked = Boolean(draft.content);
-                element(doc, 'p', '正文与附属分开存储；附属默认折叠。模板开关只影响展示，不启用生成模块。', contentBox);
-                const contentTypes = input(doc, contentBox, '内容类型声明（JSON）', JSON.stringify(draft.content?.types ?? [], null, 2), true);
+                const contentBox = fold(fields, 'content', 'Reply extras', () => draft.content ? translateShellText('On') : translateShellText('Off'));
+                element(doc, 'p', 'The model returns the story plus extras such as side stories or relationship records. Extras are kept apart from the story and shown folded under each reply. Templates only change how extras look; whether an extra is written is set by its text block.', contentBox);
+                const contentEnabled = input(doc, contentBox, 'Separate extras from the story', ''); contentEnabled.type = 'checkbox'; contentEnabled.checked = Boolean(draft.content);
                 const presentations = clone(draft.content?.presentations ?? []);
+                const typeName = type => draft.content?.types?.find(item => item.type === type)?.displayName || type;
                 const skinChecks = presentations.map(skin => {
-                    const check = input(doc, contentBox, skin.type + ' · ' + skin.slot + ' · ' + skin.id, ''); check.type = 'checkbox'; check.checked = skin.enabled;
+                    const check = input(doc, contentBox, formatShellText('Template: ${0}', [typeName(skin.type)]), ''); check.type = 'checkbox'; check.checked = skin.enabled;
+                    check.title = skin.type + ' · ' + skin.slot + ' · ' + skin.id;
                     return { skin, check };
                 });
+                const advancedContent = element(doc, 'details', undefined, contentBox); element(doc, 'summary', 'Extra types (advanced JSON)', advancedContent);
+                const contentTypes = input(doc, advancedContent, 'Extra types (JSON)', JSON.stringify(draft.content?.types ?? [], null, 2), true);
                 const syncContent = () => { contentTypes.disabled = !contentEnabled.checked; for (const { check } of skinChecks) check.disabled = !contentEnabled.checked; };
                 contentEnabled.addEventListener('change', syncContent); syncContent();
                 specific = () => {

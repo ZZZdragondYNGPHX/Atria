@@ -1045,8 +1045,12 @@ export class SessionContextCompiler {
         candidates.push(...actorIdentityItems(snapshot, target, information), ...informationCognitionItems(snapshot, information), ...expressionItems(snapshot, information, options.authorityTurn ? onInformationScan : null), ...dynamicItems, ...persona.items.map(normalizeContextItem));
         candidates.push(...worldTextItems(snapshot, knowledgeTarget, information, stateProviders));
         const promptAnchors = options.promptAnchors ?? [];
+        // Profile categories a preset never places still reach the model at the default position;
+        // only an explicitly disabled Anchor removes them.
+        const placedCategories = new Set(promptAnchors.map(entry => entry.selector?.category).filter(Boolean));
         candidates.push(...nativePromptActorItems(snapshot, {
-            categories: promptAnchors.filter(entry => !entry.disabled).map(entry => entry.selector?.category),
+            categories: [...promptAnchors.filter(entry => !entry.disabled).map(entry => entry.selector?.category),
+                ...(options.promptAnchors ? ['actor', 'examples', 'scenario'].filter(category => !placedCategories.has(category)) : [])],
             ...(information ? { actorIds: information.actorId && information.projection?.availability[0]?.available ? [information.actorId] : [] } : {}),
         }).map(normalizeContextItem));
         const rejected = [...preRejected];

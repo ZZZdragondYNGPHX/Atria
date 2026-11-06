@@ -269,7 +269,7 @@ async function renderProjectList(documentRef, root, host) {
     const surface = documentRef.createElement('section'); surface.className = 'atri-studio-project-surface'; root.append(surface);
     // Creating a project is the main action here: a visible name field and button, not a disclosure.
     const creation = documentRef.createElement('form'); creation.className = 'atri-studio-create';
-    const name = textInput(documentRef, '', 'Project name'); name.required = true; name.maxLength = 160;
+    const name = textInput(documentRef, '', 'New project name'); name.required = true; name.maxLength = 160;
     name.addEventListener('input', () => name.setCustomValidity(''));
     const create = button(documentRef, 'Create Project', async () => {
         if (!name.value.trim()) { name.setCustomValidity(t('Enter a project name.')); name.focus(); name.reportValidity(); return; }
@@ -496,8 +496,19 @@ function renderActorsEditor(documentRef, body, state, stageProject) {
             state.actorCollection = true; state.renderEditor();
             workspaceRoot.querySelector('[data-atria-studio-source]')?.focus();
         }, { active: collection, disabled: collection }),
+        button(documentRef, 'Add Actor', async () => {
+            if (!state.confirmEditorLeave()) return;
+            const actorId = 'actor_' + crypto.randomUUID().replaceAll('-', '');
+            const next = patchStudioActors(state.source, null, [...actors, { actorId, displayName: t('New Actor'), profile: {} }], true);
+            // A work with one starting point casts its Actors there; others are linked in EntryPoints.
+            if (next.package.entryPoints?.length === 1) next.package.entryPoints[0].actorIds = [...(next.package.entryPoints[0].actorIds || []), actorId];
+            if (await stageProject(next, formatProductText('Update ${0} collection', ['Actors']))) {
+                state.actorSelection = actorId; state.actorCollection = false; state.renderEditor();
+                workspaceRoot?.querySelector('[name="displayName"]')?.focus();
+            }
+        }, { primary: !actors.length }),
     ));
-    if (!actors.length) body.append(panel(documentRef, 'empty', 'No Actors', 'Use collection Source to define project Actors. An empty collection is valid.'));
+    if (!actors.length) body.append(panel(documentRef, 'empty', 'No Actors', 'Add an Actor to give this work a character.'));
     if (duplicateIds) body.append(panel(documentRef, 'error', 'Duplicate Actor IDs', 'Actor identity is ambiguous. Repair duplicate IDs in collection Source.'));
     const actor = actors.find(item => item.actorId === state.actorSelection);
     if (!collection) {

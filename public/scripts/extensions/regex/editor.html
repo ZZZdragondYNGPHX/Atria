@@ -16,11 +16,11 @@
         </small>
         <hr />
         <fieldset>
-            <legend>Atria 处理区域</legend>
-            <label><input type="checkbox" name="native_region" value="prose" checked />正文</label>
-            <label><input type="checkbox" name="native_region" value="supplement" />附属内容</label>
-            <label>附属类型（可选，用逗号分隔）<input class="text_pole" name="native_block_types" type="text" placeholder="interlude, emotion-progress" /></label>
-            <small>展示规则仅处理视图副本；附属内容展开时执行，不改写原文。</small>
+            <legend data-i18n="ext_regex_native_regions">Applies to</legend>
+            <label class="checkbox_label"><input type="checkbox" name="native_region" value="prose" checked /><span data-i18n="ext_regex_native_prose">Story text</span></label>
+            <label class="checkbox_label"><input type="checkbox" name="native_region" value="supplement" /><span data-i18n="ext_regex_native_supplement">Reply extras</span></label>
+            <label><span data-i18n="ext_regex_native_block_types">Only these extra types (optional, comma-separated)</span><input class="text_pole" name="native_block_types" type="text" placeholder="interlude, emotion-progress" /></label>
+            <small data-i18n="ext_regex_native_note">Display rules change only what is shown; the saved text stays as written. Rules for extras run when an extra is opened.</small>
         </fieldset>
 
         <div id="regex_info_block_wrapper">

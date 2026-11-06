@@ -187,7 +187,10 @@ export function mountNativePlayControls({
         status.textContent = tl(label) + '…';
         try {
             const result = await operation();
-            status.textContent = label.startsWith('Saving') || label === 'Quick saving' ? tl('Saved') : label === 'Loading save' ? tl('Save loaded') : '';
+            const saved = label === 'Saving' || label === 'Quick saving';
+            status.textContent = saved ? tl('Saved') : label === 'Loading save' ? tl('Save loaded') : '';
+            // An open History & saves drawer shows the new save right away.
+            if (saved && !drawer.hidden && drawerTitle.textContent === tl('History & saves')) void showTimeline();
             return result;
         } catch (error) {
             status.textContent = error?.message || String(error);

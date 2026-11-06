@@ -7,7 +7,7 @@ const idFields = { 'core.prompt-module': 'promptModuleId', 'core.prompt-program'
 
 export function mountPromptSamplePreview({ document: doc, parent, entry, entries = [], readDependencies = () => [], readDraft, state }) {
     const el = (tag, text, parent) => { const node = doc.createElement(tag); if (text !== undefined) node.textContent = tl(text); parent?.append(node); return node; };
-    const root = el('details', undefined, parent); root.className = 'atri-prompt-preview'; root.open = state.open ?? false;
+    const root = el('details', undefined, parent); root.className = 'atri-prompt-preview'; root.open = state.open ?? false; root.dataset.atriaDraftIgnore = 'true';
     el('summary', 'Sample preview and trial', root); root.addEventListener('toggle', () => { state.open = root.open; if (root.open && !config) void load(); });
     const controls = el('div', undefined, root); controls.className = 'atri-prompt-sample-fields';
     const field = (label, initial = '', multiline = false) => {

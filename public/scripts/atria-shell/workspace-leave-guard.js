@@ -24,6 +24,8 @@ export function observeAtriaDrafts({ document: doc, root }) {
     }
     function edit(event) {
         const node = event.target, editor = node.closest?.(EDITORS);
+        // Scratch fields (sample inputs, previews) are not part of the saved draft.
+        if (node.closest?.('[data-atria-draft-ignore]')) return;
         if (!editor || !root.contains(editor) || !node.matches('input:not([type="search"]), textarea, select')) return;
         if (!originals.has(node)) originals.set(node, node.type === 'checkbox' ? node.defaultChecked : node.defaultValue ?? '');
         changed.set(node, editor);

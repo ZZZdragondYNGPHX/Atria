@@ -12,7 +12,7 @@ import { getRegexScripts, REGEX_RUNTIME_SCRIPTS_CHANGED_EVENT } from '../extensi
 import { renderSafeProse } from '../../shared/native-safe-prose.js';
 import { nativePlayGenerationBusy } from './play-generation.js';
 import { updateIllustrationSurface, releaseIllustrationSurface } from './illustration-surfaces.js';
-import { translateShellText as tl } from '../atria-shell/localization.js';
+import { translateShellText as tl, formatShellText } from '../atria-shell/localization.js';
 import { publicParticipant } from '../../shared/native-participant.js';
 import {
     NATIVE_SESSION_LIFECYCLE,
@@ -257,7 +257,8 @@ export function mountAtriaPlayProduct({
         };
         const step = time => {
             frame = 0;
-            const elapsed = last ? Math.min(100, time - last) : 16; last = time;
+            // Wall-clock based: a slow or throttled frame catches up instead of slowing the reveal.
+            const elapsed = last ? Math.min(1000, time - last) : 16; last = time;
             const backlog = target.length - shown;
             if (backlog <= 0) return;
             // ~45 chars/s baseline, accelerating with the backlog so the reveal never lags far behind.
@@ -390,6 +391,7 @@ export function mountAtriaPlayProduct({
         }
 
         title.textContent = snapshot.session?.displayTitle || snapshot.manifest?.name || 'Native Session';
+        textarea.placeholder = tl(snapshot.timeline?.at(-1)?.role === 'user' && !generating() ? 'Send to get a reply, or write more…' : 'What do you do?');
         subtitle.textContent = snapshot.manifest?.name || '';
         subtitle.hidden = !subtitle.textContent;
         subtitle.previousElementSibling.hidden = subtitle.hidden;
@@ -431,7 +433,7 @@ export function mountAtriaPlayProduct({
         if (generation.originalResponse) {
             if (!failedResponse) {
                 failedResponse = documentRef.createElement('details'); failedResponse.dataset.presetFailedResponse = 'true';
-                const summary = documentRef.createElement('summary'); summary.textContent = '回复格式有误 · 查看原始回复'; failedResponse.append(summary);
+                const summary = documentRef.createElement('summary'); summary.textContent = tl('The reply was not in the expected format · view original'); failedResponse.append(summary);
                 failedResponse.addEventListener('toggle', () => {
                     failedResponse.querySelector('pre')?.remove();
                     if (failedResponse.open) { const pre = documentRef.createElement('pre'); pre.style.whiteSpace = 'pre-wrap'; pre.textContent = failedResponse.originalResponse; failedResponse.append(pre); }
@@ -481,7 +483,7 @@ export function mountAtriaPlayProduct({
                     }
                     node.querySelector('[data-regex-diagnostic]')?.remove();
                     if (result.diagnostics.length) {
-                        const diagnostic = documentRef.createElement('p'); diagnostic.dataset.regexDiagnostic = 'true'; diagnostic.textContent = '展示规则未完成，已保留原文：' + result.diagnostics.map(item => item.ruleId + ' · ' + item.code).join('；'); node.append(diagnostic);
+                        const diagnostic = documentRef.createElement('p'); diagnostic.dataset.regexDiagnostic = 'true'; diagnostic.textContent = tl('A display rule could not finish; showing the original text.') + ' ' + result.diagnostics.map(item => item.ruleId + ' · ' + item.code).join('；'); node.append(diagnostic);
                     }
                 });
             }
@@ -491,9 +493,10 @@ export function mountAtriaPlayProduct({
             const presetMetadata = variant?.metadata?.runtime?.extra?.preset_content;
             if (presetMetadata) {
                 let button = node.querySelector('[data-preset-content]');
-                if (!button) { button = documentRef.createElement('button'); button.type = 'button'; button.dataset.presetContent = 'true'; node.querySelector('header').append(button); }
+                if (!button) { button = documentRef.createElement('button'); button.type = 'button'; button.className = 'atria-play-message__extras'; button.dataset.presetContent = 'true'; node.querySelector('header').append(button); }
                 const count = variant.projection?.flow.filter(item => item.kind === 'block').length ?? 0;
-                button.textContent = '附属内容 · ' + count + (presetMetadata.status === 'partial' ? ' · 格式问题' : '');
+                button.textContent = formatShellText(presetMetadata.status === 'partial' ? 'Extras · ${0} · format problem' : 'Extras · ${0}', [count]);
+                button.dataset.problem = String(presetMetadata.status === 'partial');
                 button.onclick = () => { void contentPanel.open(committedEntries.get(id), variant, button); };
             } else node.querySelector('[data-preset-content]')?.remove();
             if (!node.querySelector('[data-atria-message-blocks]')) {
@@ -575,7 +578,9 @@ export function mountAtriaPlayProduct({
         const originalDraft = textarea.value;
         const value = originalDraft.trim();
         if (submitting || generating()) throw new Error(tl('Generation is already running.'));
-        if (!value) return null; // Nothing typed: sending is a no-op, not an error.
+        // Nothing typed: answer a message still waiting for a reply (for example after a failed turn); otherwise a no-op.
+        const awaitingReply = !value && runtime?.snapshot?.timeline?.at(-1)?.role === 'user';
+        if (!value && !awaitingReply) return null;
         if (!runtimeWritable(runtime)) throw new Error(tl('This story cannot take a new turn right now.'));
         const generate = globalThis.Atria?.getContext?.()?.generateNative;
         if (typeof generate !== 'function') throw new Error(tl('Native generation entrypoint is unavailable.'));
