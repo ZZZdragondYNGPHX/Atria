@@ -61,7 +61,10 @@ export function compileFrontend({ source, files, mode, namespace = 'package', ex
     const bridge = atSource(index.bridge ? resolve(index.bridge) : source, () => compileBridge(index.bridge ? JSON.parse(readText(resolve(index.bridge))) : undefined, experienceContract, transactions));
     emit('bridge', 'bridge', bridge);
     if (index.bridge) provenance.push({ kind: 'bridge', id: 'bridge', file: resolve(index.bridge), start: 0, end: readText(resolve(index.bridge)).length });
-    for (const asset of index.assets) emit('asset:' + asset.id, 'asset', read(resolve(asset.source), 'asset'), [], asset.mediaType);
+    for (const asset of index.assets) {
+        emit('asset:' + asset.id, 'asset', asset.remote ? { remote: asset.remote } : read(resolve(asset.source), 'asset'), [], asset.mediaType);
+        if (asset.remote) resources.at(-1).remote = asset.remote;
+    }
     if (index.media) {
         const catalog = atSource(resolve(index.media), () => assertMediaCatalog(JSON.parse(readText(resolve(index.media))), new Map(resources.map(ref => [ref.id, ref]))));
         emit('media', 'media', catalog, catalog.entries.map(entry => 'asset:' + entry.fallback));

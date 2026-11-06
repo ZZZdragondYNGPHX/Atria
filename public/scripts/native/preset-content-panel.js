@@ -65,7 +65,6 @@ export function createPresetContentPanel({ document: doc, runtime, composer }) {
                     request = new AbortController(); pending.add(request);
                     const display = await processNativeDisplayRegex(block.data.value, getRegexScripts({ allowedOnly: true }), { region: 'supplement', blockType: block.data.type,
                         depth: Math.max(0, (runtime()?.snapshot?.timeline.at(-1)?.sequence ?? entry.sequence) - entry.sequence) }, { signal: request.signal });
-                    pending.delete(request);
                     if (disposed || token !== generation || current !== version || !details.open) return;
                     const displayValue = validateSchemaValue(display.value, type.schema).ok ? display.value : block.data.value;
                     if (display.diagnostics.length) textView(body, '展示规则未完成，保留原始数据：' + display.diagnostics.map(item => item.ruleId + ' · ' + item.code).join('\n'));
@@ -76,7 +75,7 @@ export function createPresetContentPanel({ document: doc, runtime, composer }) {
                         if (disposed || token !== generation || current !== version || !details.open) return;
                         const bridgeTransport = await createPresetPresentationBridge(bundle, () => !disposed && token === generation && current === version && details.open && selected?.sessionId === runtime()?.snapshot?.session.sessionId);
                         const mounted = await mountNativeFrontend({ document: doc, window: doc.defaultView, mode: 'text', entry: bundle.entry,
-                            bridgeTransport,
+                            bridgeTransport, signal: request.signal, remoteAssetsEnabled: true, fontText: JSON.stringify(displayValue),
                             onDiagnostic: diagnostic => {
                                 if (token === generation && current === version && details.open) {
                                     textView(body, diagnostic.message);
@@ -96,7 +95,8 @@ export function createPresetContentPanel({ document: doc, runtime, composer }) {
                         status.remove();
                         if (disposed || token !== generation || current !== version || !details.open) mounted.dispose(); else { active.push(mounted); mounts.add(mounted); }
                     }
-                } catch { if (disposed || token !== generation || current !== version || !details.open) return; status.textContent = '展示失败，以下是本块原始数据。'; textView(body, JSON.stringify(block.data.value, null, 2)); }
+                    pending.delete(request);
+                } catch { pending.delete(request); if (disposed || token !== generation || current !== version || !details.open) return; status.textContent = '展示失败，以下是本块原始数据。'; textView(body, JSON.stringify(block.data.value, null, 2)); }
             });
         }
         if (metadata?.raw) {

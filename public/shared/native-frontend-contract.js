@@ -1,4 +1,4 @@
-import { ASSET_TYPES } from './native-frontend-media.js';
+import { ASSET_TYPES, remoteImageSource } from './native-frontend-media.js';
 // Native Frontend v3: data-only contracts shared by compiler and consumers.
 export const FRONTEND_VERSION = 3;
 export const FRONTEND_SURFACES = Object.freeze(['app.root', 'chat.header', 'chat.footer', 'composer.before', 'composer.after', 'sidebar.left', 'sidebar.right', 'drawer', 'modal']);
@@ -112,8 +112,12 @@ export function assertFrontendSourceIndex(value) {
     });
     if (!views.some(view => view.id === value.primaryView)) throw new TypeError('Unknown Primary View');
     const resources = (items, style) => list(items ?? [], item => {
-        fields(item, style ? ['id', 'source'] : ['id', 'source', 'mediaType']);
-        identifier(item.id); resourcePath(item.source);
+        fields(item, style ? ['id', 'source'] : ['id', 'source', 'mediaType', 'remote']);
+        identifier(item.id);
+        if (!style && item.remote !== undefined) {
+            if (item.source !== undefined || !/^(image|font)\//.test(item.mediaType)) throw new TypeError('Invalid remote asset');
+            remoteImageSource(item.remote);
+        } else resourcePath(item.source);
         if (style ? !item.source.endsWith('.css') : !ASSET_TYPES.includes(item.mediaType)) throw new TypeError('Unsupported Frontend resource type');
         return { ...item };
     }, item => item.id, style ? FRONTEND_LIMITS.resources : FRONTEND_LIMITS.assets);

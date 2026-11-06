@@ -2,7 +2,7 @@ import { fields, identifier } from './native-frontend-contract.js';
 
 export const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/avif'];
 export const MEDIA_TYPES = [...IMAGE_TYPES, 'audio/mpeg', 'audio/ogg', 'audio/wav', 'audio/mp4', 'video/mp4', 'video/webm'];
-export const ASSET_TYPES = [...MEDIA_TYPES, 'font/woff', 'font/woff2', 'font/ttf', 'font/otf'];
+export const ASSET_TYPES = [...MEDIA_TYPES, 'image/svg+xml', 'font/woff', 'font/woff2', 'font/ttf', 'font/otf'];
 
 export function remoteImageSource(value) {
     fields(value, ['url', 'integrity']);

@@ -1,5 +1,5 @@
 import { parseA2uiComponent } from '../../../public/shared/native-a2ui.js';
-import { ASSET_TYPES, assertMediaCatalog } from '../../../public/shared/native-frontend-media.js';
+import { ASSET_TYPES, assertMediaCatalog, remoteImageSource } from '../../../public/shared/native-frontend-media.js';
 import { validateScriptArtifact } from './script-compiler.js';
 import { assertLocalization } from '../../../public/shared/native-frontend-localization.js';
 import { fields, identifier, list, resourcePath, FRONTEND_LIMITS, frontendResourceBytes, assertFrontendResourceBudget } from '../../../public/shared/native-frontend-contract.js';
@@ -104,7 +104,12 @@ export function validateFrontendGraph({ entry, files, mode, experienceContract =
     const prefix = entry.slice(0, entry.lastIndexOf('/') + 1) + 'resources/';
     assertFrontendResourceBudget(index.resources);
     const resources = list(index.resources, ref => {
-        fields(ref, ['id', 'kind', 'path', 'contentHash', 'size', 'mediaType', 'dependencies']);
+        fields(ref, ['id', 'kind', 'path', 'contentHash', 'size', 'mediaType', 'dependencies', 'remote']);
+        if (ref.remote !== undefined) {
+            if (ref.kind !== 'asset' || !/^(image|font)\//.test(ref.mediaType)) throw new TypeError('Invalid remote asset');
+            remoteImageSource(ref.remote);
+            if (canonicalJson(json(ref.path)) !== canonicalJson({ remote: ref.remote })) throw new TypeError('Remote asset declaration mismatch');
+        }
         if (!['view', 'component', 'bridge', 'style', 'asset', 'provenance', 'media', 'localization', 'diagnostics', 'script'].includes(ref.kind)) throw new TypeError('Invalid Frontend resource kind');
         if (['bridge', 'provenance', 'media', 'localization', 'diagnostics'].includes(ref.kind) ? ref.id !== ref.kind : typeof ref.id !== 'string' || !ref.id.startsWith(ref.kind + ':')) throw new TypeError('Invalid resource identity');
         if (!['bridge', 'provenance', 'media', 'localization', 'diagnostics'].includes(ref.kind)) identifier(ref.id.slice(ref.kind.length + 1));

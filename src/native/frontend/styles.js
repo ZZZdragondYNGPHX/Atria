@@ -78,7 +78,7 @@ export function validateCompiledStyle(value) {
         fields(font, ['family', 'src', 'descriptors']);
         if (!/^__atri_font_[0-9]+__$/.test(font.family) || typeof font.src !== 'string') throw new TypeError('Invalid compiled font');
         fields(font.descriptors, ['style', 'weight', 'stretch', 'display', 'unicodeRange', 'featureSettings', 'variationSettings']);
-        if (Object.values(font.descriptors).some(item => typeof item !== 'string' || !/^[a-zA-Z0-9 .,%+"'_-]{0,256}$/.test(item))) throw new TypeError('Invalid font descriptor');
+        if (Object.entries(font.descriptors).some(([name, item]) => typeof item !== 'string' || item.length > (name === 'unicodeRange' ? 4096 : 256) || !/^[a-zA-Z0-9 .,%+"'_-]*$/.test(item))) throw new TypeError('Invalid font descriptor');
         compileStyle('@font-face{font-family:Compiled;src:' + font.src + '}').resources.forEach(id => refs.add(id));
     }
     const dependencies = [...refs].sort();

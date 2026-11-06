@@ -1,6 +1,7 @@
+import { remoteImageSource } from '../../../shared/native-frontend-media.js';
 import { fields, resourcePath, FRONTEND_LIMITS, frontendResourceBytes, assertFrontendResourceBudget } from '../../../shared/native-frontend-contract.js';
 
-export async function createFrontendResources({ entry, loadBytes, mediaUrl, crypto = globalThis.crypto, window = globalThis.window }) {
+export async function createFrontendResources({ entry, loadBytes, mediaUrl, remoteAssetsEnabled = false, fetchAsset = globalThis.fetch, fontText, onDiagnostic, signal, crypto = globalThis.crypto, window = globalThis.window }) {
     resourcePath(entry);
     const abort = new AbortController();
     let disposed = false;
@@ -16,19 +17,48 @@ export async function createFrontendResources({ entry, loadBytes, mediaUrl, cryp
     for (const ref of index.resources) {
         resourcePath(ref.path);
         if (refs.has(ref.id) || !/^[a-f0-9]{64}$/.test(ref.contentHash) || !Number.isSafeInteger(ref.size) || ref.size < 0 || ref.size > frontendResourceBytes(ref.kind, ref.mediaType)) throw new TypeError('Invalid exact Frontend resource');
+        if (ref.remote !== undefined) { if (ref.kind !== 'asset' || !/^(image|font)\//.test(ref.mediaType)) throw new TypeError('Invalid remote asset'); remoteImageSource(ref.remote); }
         refs.set(ref.id, ref);
     }
     if (refs.get(index.primaryView)?.kind !== 'view') throw new TypeError('Missing Primary View');
     const promises = new Map(), assets = new Map(), pinnedAssets = new Map(), installedFonts = new Set(), stylePromises = new Map();
     let assetBytes = 0;
+    let remoteQueue = Promise.resolve();
+    signal?.addEventListener('abort', dispose, { once: true });
+    if (signal?.aborted) dispose();
     const prefix = 'atri_' + (await digest(indexBytes)).slice(0, 20) + '_';
     function active() { if (disposed) throw new Error('Frontend resources disposed'); }
+    async function remoteBytes(ref) {
+        if (!remoteAssetsEnabled) throw new Error('frontend_remote_asset_disabled');
+        const previous = remoteQueue; let release; remoteQueue = new Promise(resolve => { release = resolve; });
+        await previous;
+        const controller = new AbortController(), cancel = () => controller.abort();
+        abort.signal.addEventListener('abort', cancel, { once: true });
+        const timer = setTimeout(cancel, 15000);
+        try {
+            active();
+            const response = await fetchAsset(ref.remote.url, { signal: controller.signal, credentials: 'omit', referrerPolicy: 'no-referrer', redirect: 'error', mode: 'cors', cache: 'no-store' });
+            if (!response.ok || !response.body?.getReader) throw new Error('response_invalid');
+            const reader = response.body.getReader(), chunks = []; let length = 0;
+            while (true) {
+                const { value, done } = await reader.read(); if (done) break; length += value.byteLength;
+                if (length > FRONTEND_LIMITS.assetBytes || assetBytes + length > FRONTEND_LIMITS.assetCacheBytes) { await reader.cancel(); throw new Error('byte_budget'); } chunks.push(value);
+            }
+            const bytes = new Uint8Array(length); let offset = 0; for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
+            if (ref.remote.integrity && await digest(bytes) !== ref.remote.integrity) throw new Error('integrity_mismatch');
+            active(); return bytes;
+        } catch (cause) {
+            onDiagnostic?.({ reasonCode: 'frontend_remote_asset_failed', message: 'Resource unavailable: ' + ref.remote.url });
+            throw new Error('frontend_remote_asset_failed: ' + ref.id, { cause });
+        } finally { clearTimeout(timer); abort.signal.removeEventListener('abort', cancel); release(); }
+    }
     async function load(id) {
         active();
         const ref = refs.get(id); if (!ref) throw new TypeError('Unknown compiled resource: ' + id);
         const value = new Uint8Array(await loadBytes(ref.path, abort.signal)); active();
         if (value.byteLength !== ref.size || await digest(value) !== ref.contentHash) throw new TypeError('Frontend resource integrity mismatch');
-        active(); return value;
+        if (ref.remote && JSON.stringify(decode(value)) !== JSON.stringify({ remote: ref.remote })) throw new TypeError('Remote asset declaration mismatch');
+        active(); return ref.remote ? remoteBytes(ref) : value;
     }
     async function bytes(id) {
         if (!promises.has(id)) promises.set(id, load(id).catch(error => { promises.delete(id); throw error; }));
@@ -57,10 +87,11 @@ export async function createFrontendResources({ entry, loadBytes, mediaUrl, cryp
                 if (!old.users && old.url) drop(oldId, old);
             }
             if (assetBytes + ref.size > FRONTEND_LIMITS.assetCacheBytes) throw new Error('frontend_asset_cache_budget');
-            record = { size: ref.size, users: 0, url: null, promise: null };
-            assets.set(id, record); assetBytes += ref.size; // Reserve before awaiting a concurrent load.
+            record = { size: ref.remote ? 0 : ref.size, users: 0, url: null, promise: null };
+            assets.set(id, record); assetBytes += record.size; // Reserve before awaiting a concurrent load.
             record.promise = load(id).then(value => {
                 active();
+                if (ref.remote) { if (assetBytes + value.byteLength > FRONTEND_LIMITS.assetCacheBytes) throw new Error('frontend_asset_cache_budget'); record.size = value.byteLength; assetBytes += record.size; }
                 record.url = window.URL.createObjectURL(new window.Blob([value], { type: ref.mediaType }));
                 return record.url; // Do not retain a second encoded-byte copy.
             }).catch(error => { drop(id, record); throw error; });
@@ -69,7 +100,11 @@ export async function createFrontendResources({ entry, loadBytes, mediaUrl, cryp
         try {
             const url = await record.promise; active(); let released = false;
             return { url, release() { if (released) return; released = true; --record.users; touch(id, record); } };
-        } catch (error) { --record.users; throw error; }
+        } catch (error) {
+            --record.users; active();
+            if (remoteAssetsEnabled && media.remote && media.mediaType.startsWith('image/')) return { url: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/%3E', release() {} };
+            throw error;
+        }
     }
     // CSS URLs/fonts live for the entire frontend. Dynamic media uses leases.
     async function asset(id) {
@@ -80,27 +115,52 @@ export async function createFrontendResources({ entry, loadBytes, mediaUrl, cryp
     async function style(id) {
         if (!stylePromises.has(id)) stylePromises.set(id, (async () => {
             const value = await json(id, 'style');
-            const replacements = new Map(await Promise.all(value.resources.map(async resource => ['resource:' + resource, await asset('asset:' + resource)])));
+            let renderedText = fontText;
+            if (typeof renderedText === 'string') {
+                const collect = node => typeof node === 'string' ? node : (node?.children ?? []).map(collect).join('');
+                for (const ref of refs.values()) if (ref.kind === 'component') renderedText += collect((await json(ref.id, 'component')).root);
+            }
+            const codepoints = typeof renderedText === 'string' ? [...new Set([...renderedText].map(char => char.codePointAt(0)))].sort((a, b) => a - b) : [];
+            const fonts = value.fonts.filter(font => {
+                if (typeof renderedText !== 'string' || !font.descriptors.unicodeRange) return true;
+                const ranges = font.descriptors.unicodeRange.split(',').map(part => part.trim().replace(/^U\+/i, '').split('-').map(hex => parseInt(hex, 16)));
+                return ranges.some(([start, end = start]) => {
+                    let low = 0, high = codepoints.length;
+                    while (low < high) { const middle = (low + high) >>> 1; if (codepoints[middle] < start) low = middle + 1; else high = middle; }
+                    return codepoints[low] <= end;
+                });
+            });
+            const used = new Set([...value.css.matchAll(/resource:([a-zA-Z][a-zA-Z0-9._-]*)/g), ...fonts.flatMap(font => [...font.src.matchAll(/resource:([a-zA-Z][a-zA-Z0-9._-]*)/g)])].map(match => match[1]));
+            const replacements = new Map(await Promise.all([...used].map(async resource => {
+                try { return ['resource:' + resource, await asset('asset:' + resource)]; } catch (error) { active(); if (!remoteAssetsEnabled || !refs.get('asset:' + resource)?.remote) throw error; return ['resource:' + resource, null]; }
+            })));
             const replace = css => css.replace(/resource:[a-zA-Z][a-zA-Z0-9._-]*/g, match => {
-                if (!replacements.has(match)) throw new TypeError('Undeclared CSS resource'); return replacements.get(match);
+                if (!replacements.has(match)) throw new TypeError('Undeclared CSS resource'); return replacements.get(match) ?? 'data:,';
             }).replace(/__atri_font_(\d+)__/g, (_, number) => prefix + number);
-            for (const font of value.fonts) {
+            for (const font of fonts) {
                 active();
+                const sources = [...font.src.matchAll(/resource:([a-zA-Z][a-zA-Z0-9._-]*)/g)].map(match => match[1]);
+                if (sources.some(source => !replacements.get('resource:' + source))) continue;
                 const face = new window.FontFace(replace(font.family), replace(font.src), font.descriptors);
-                await face.load();
+                try { await face.load(); } catch (error) {
+                    const remote = sources.map(source => refs.get('asset:' + source)?.remote?.url).filter(Boolean);
+                    if (!remote.length) throw error;
+                    onDiagnostic?.({ reasonCode: 'frontend_remote_font_failed', message: 'Font unavailable; using declared fallback: ' + remote.join(', ') });
+                    continue;
+                }
                 active(); window.document.fonts.add(face); installedFonts.add(face);
             }
             active(); return replace(value.css);
         })().catch(error => { stylePromises.delete(id); throw error; }));
         return stylePromises.get(id);
     }
-    return { index, refs, json, asset, acquireAsset, style,
-        dispose() {
-            if (disposed) return; disposed = true; abort.abort();
-            for (const [id, record] of assets) drop(id, record);
-            pinnedAssets.clear();
-            installedFonts.forEach(face => window.document.fonts.delete(face)); installedFonts.clear();
-            promises.clear(); stylePromises.clear();
-        },
-    };
+    function dispose() {
+        if (disposed) return; disposed = true; abort.abort();
+        signal?.removeEventListener('abort', dispose);
+        for (const [id, record] of assets) drop(id, record);
+        pinnedAssets.clear();
+        installedFonts.forEach(face => window.document.fonts.delete(face)); installedFonts.clear();
+        promises.clear(); stylePromises.clear();
+    }
+    return { index, refs, json, asset, acquireAsset, style, dispose };
 }
