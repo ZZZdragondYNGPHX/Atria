@@ -1,4 +1,5 @@
 import { immutableRecordValue, immutableRecordCollection } from '../record-values.js';
+import { isJsonDeclaration, jsonDeclarationBytes } from '../../../public/shared/native-values.js';
 import { createHash } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
 
@@ -174,6 +175,7 @@ export function hashNativeDocument(value) {
 // JSON byte accounting for admitted trees. Key order does not affect size;
 // immutable record payloads share the same cached bytes used for identity.
 export function nativeDocumentBytes(value) {
+    if (isJsonDeclaration(value)) return jsonDeclarationBytes(value);
     if (typeof value === 'string') return stringBytes(value);
     if (value === null || typeof value !== 'object') return Buffer.byteLength(JSON.stringify(value) ?? 'null');
     // Byte accounting outlives the bounded canonical-text cache. Evicting a
