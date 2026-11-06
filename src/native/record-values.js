@@ -1,11 +1,16 @@
+import { isJsonDeclaration } from '../../public/shared/native-values.js';
+
 // Values decoded from durable state are owned by the host. Freeze once so
 // snapshots and private candidates can share them; writers detach changed paths.
 const values = new WeakSet();
 const collections = new WeakSet();
 export function freezeRecordValue(value) {
     if (!value || typeof value !== 'object' || values.has(value)) return value;
-    for (const child of Object.values(value)) freezeRecordValue(child);
-    Object.freeze(value); values.add(value); return value;
+    if (!isJsonDeclaration(value)) {
+        for (const child of Object.values(value)) freezeRecordValue(child);
+        Object.freeze(value);
+    }
+    values.add(value); return value;
 }
 export const immutableRecordValue = value => value !== null && typeof value === 'object' && values.has(value);
 
@@ -25,7 +30,7 @@ export const immutableRecordCollection = value => Array.isArray(value) && collec
 const frozenTrees = new WeakSet();
 export function frozenJsonTree(value) {
     if (value === null || typeof value !== 'object') return true;
-    if (values.has(value) || collections.has(value) || frozenTrees.has(value)) return true;
+    if (values.has(value) || collections.has(value) || frozenTrees.has(value) || isJsonDeclaration(value)) return true;
     if (!Object.isFrozen(value) || !Object.values(value).every(frozenJsonTree)) return false;
     frozenTrees.add(value); return true;
 }
