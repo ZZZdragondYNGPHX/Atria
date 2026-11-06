@@ -1,4 +1,4 @@
-import { promptStageEntries, promptStageModuleRefs, promptProgramResourceRefs, mapPromptStageRefs } from '../../shared/prompt-module-order.js';
+import { promptStageEntries, promptStageModuleRefs, promptProgramResourceRefs, mapPromptStageRefs, promptModuleRole } from '../../shared/prompt-module-order.js';
 import { confirmAtriaDraftLeave } from '../atria-shell/workspace-leave-guard.js';
 import { translateShellText as tl, formatShellText as formatProductText } from '../atria-shell/localization.js';
 import { runtimeRequest } from './runtime-client.js';
@@ -346,7 +346,7 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
                 const name = module?.resource.displayName || item.moduleRef.resourceId;
                 toggle.setAttribute('aria-label', formatProductText('Send “${0}”', [name]));
                 literal('strong', name, text);
-                literal('small', tl(PROMPT_TARGET_LABELS[module?.resource.target] || module?.resource.target || ''), text);
+                literal('small', module ? tl(PROMPT_TARGET_LABELS[module.resource.target] || module.resource.target) + ' · ' + promptModuleRole(module.resource) : '', text);
                 if (module) literal('p', module.resource.body.replace(/\s+/g, ' ').slice(0, 160) + (module.resource.body.length > 160 ? '…' : ''), text);
                 if (module) button(row, 'Edit text', () => { section = MODULE; edit(module); });
             } else {

@@ -6,6 +6,11 @@ export const PROMPT_TARGETS = Object.freeze([
     'response.post_history', 'response.prefill',
 ]);
 
+export const PROMPT_MODULE_ROLES = Object.freeze(['system', 'user']);
+
+// Authored message identity is independent of placement, except reply prefill.
+export const promptModuleRole = module => module.target === 'response.prefill' ? 'assistant' : module.role ?? 'system';
+
 // moduleRefs is the compact module-only form. A stage stores exactly one form.
 export function promptStageEntries(stage) {
     if (stage.entries) return stage.entries;

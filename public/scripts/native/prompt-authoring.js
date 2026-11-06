@@ -10,7 +10,7 @@ import { formatShellText, translateShellText } from '../atria-shell/localization
 import { createStudioNativeId } from './studio-authoring.js';
 import { runtimeRequest } from './runtime-client.js';
 import { nativeStudioClient } from './studio-client.js';
-import { promptStageEntries, promptStageModuleRefs, promptProgramResourceRefs, mapPromptStageRefs } from '../../shared/prompt-module-order.js';
+import { promptStageEntries, promptStageModuleRefs, promptProgramResourceRefs, mapPromptStageRefs, PROMPT_MODULE_ROLES, promptModuleRole } from '../../shared/prompt-module-order.js';
 import { NATIVE_GENERATION_DEFAULTS as generationDefaults } from '../../shared/native-generation-defaults.js';
 import { mountPromptUpgrade } from './prompt-upgrade.js';
 import { mountPromptSamplePreview } from './prompt-sample-preview.js';
@@ -41,8 +41,8 @@ function element(doc, tag, text, parent) {
 }
 // Where a block lands in the request, in words authors and players both read.
 export const PROMPT_TARGET_LABELS = Object.freeze({
-    'system.foundation': 'System · core instructions', 'system.character': 'System · character', 'system.world': 'System · world', 'system.style': 'System · writing style',
-    'system.response': 'System · reply format', 'context.before_history': 'Before chat history', 'context.after_history': 'After chat history',
+    'system.foundation': 'Opening · core instructions', 'system.character': 'Opening · character', 'system.world': 'Opening · world', 'system.style': 'Opening · writing style',
+    'system.response': 'Opening · reply format', 'context.before_history': 'Before chat history', 'context.after_history': 'After chat history',
     'context.before_input': 'Before the player’s message', 'context.after_input': 'After the player’s message', 'response.prefill': 'Start of the reply (prefill)',
     'response.post_history': 'After everything else', 'agent.task': 'Agent · task', 'agent.evidence': 'Agent · evidence', 'agent.constraints': 'Agent · constraints',
 });
@@ -307,8 +307,26 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
             let specific = () => ({});
             const sections = fields;
             if (entry.ref.resourceType === 'core.prompt-module') {
-                fields = fold(sections, 'module', 'Module settings', () => target.value);
+                fields = fold(sections, 'module', 'Module settings', () => translateShellText(PROMPT_TARGET_LABELS[target.value] || target.value) + ' · ' + promptModuleRole({ target: target.value, role: role.value || undefined }));
                 const target = select(doc, fields, presetSurface ? 'Placement' : 'Semantic target', targetOptions(['system.foundation', 'system.character', 'system.world', 'system.style', 'system.response', 'context.before_history', 'context.after_history', 'context.before_input', 'context.after_input', 'response.prefill', 'response.post_history', 'agent.task', 'agent.evidence', 'agent.constraints']), draft.target);
+                const role = select(doc, fields, 'Message role', [['', 'Default'], ...PROMPT_MODULE_ROLES.map(value => [value, value, true])], draft.role ?? '');
+                const moduleSettings = fields;
+                const roleHint = element(doc, 'small', undefined, fields);
+                roleHint.id = createStudioNativeId('field'); role.setAttribute('aria-describedby', roleHint.id);
+                const roleError = () => translateShellText('Reply prefill uses assistant. Choose the default message role or another placement.');
+                const syncRole = () => {
+                    const prefill = target.value === 'response.prefill';
+                    const conflict = prefill && role.value !== '';
+                    role.options[0].textContent = formatShellText('Default (${0})', [promptModuleRole({ target: target.value })]);
+                    for (const option of role.options) option.disabled = prefill && option.value !== '';
+                    role.disabled = prefill && !conflict;
+                    role.setCustomValidity(conflict ? roleError() : '');
+                    role.setAttribute('aria-invalid', String(conflict));
+                    roleHint.hidden = !prefill;
+                    roleHint.textContent = conflict ? roleError() : translateShellText('Reply prefill is sent as assistant.');
+                    if (conflict) moduleSettings.open = true;
+                };
+                target.addEventListener('change', syncRole); role.addEventListener('change', syncRole); syncRole();
                 const stages = input(doc, fields, 'Stages (comma separated)', draft.stages.join(', '));
                 const body = input(doc, sections, 'Prompt body', draft.body, true); body.className = 'atri-prompt-body';
                 // Name the variables this text can use, from the programs it is placed in.
@@ -322,7 +340,8 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                 const actor = input(doc, fields, 'Expression actor ID', draft.expression?.actorId || '');
                 const showActor = () => { actor.parentElement.hidden = expression.value !== 'actor'; }; expression.addEventListener('change', showActor); showActor();
                 specific = () => {
-                    const result = { target: target.value, stages: stages.value.split(',').map(v => v.trim()).filter(Boolean), body: body.value === originalBody ? draft.body : body.value };
+                    if (target.value === 'response.prefill' && role.value) throw new Error(roleError());
+                    const result = { target: target.value, role: role.value || undefined, stages: stages.value.split(',').map(v => v.trim()).filter(Boolean), body: body.value === originalBody ? draft.body : body.value };
                     if (draft.textMode !== undefined || textMode.value !== 'template') result.textMode = textMode.value;
                     result.expression = expression.value ? { layer: expression.value, ...(expression.value === 'actor' ? { actorId: actor.value } : {}) } : undefined;
                     return result;
@@ -440,6 +459,7 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                     ...(readParameters ? { parameters: readParameters() } : {}), ...(readCondition ? { condition: readCondition() } : {}), ...(readDerive ? readDerive() : {}),
                 };
                 for (const key of ['parameters', 'condition', 'parentRef', 'derive', 'responseDirective']) if (draft[key] === undefined && (value[key] == null || typeof value[key] === 'object' && !Object.keys(value[key]).length)) delete value[key];
+                if (value.role === undefined) delete value.role;
                 return value;
             };
             const provenance = fold(root, 'provenance', 'System provenance (read-only)');

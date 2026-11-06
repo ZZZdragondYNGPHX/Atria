@@ -21,7 +21,7 @@ export function semanticBlocks(ir) {
         if (!slots.has(target) || typeof content !== 'string') promptError('context_slot');
         const author = slot.trust === 'author';
         if (slot.trust !== undefined && !['author', 'evidence'].includes(slot.trust)) promptError('semantic_trust');
-        const message = slot.message ?? { role: author ? 'system' : 'user', content };
+        const message = slot.message ?? { role: author ? slot.role ?? 'system' : 'user', content };
         if (!roles.has(message.role) || message.role === 'system' && !author && slot.kind !== 'host_policy') promptError('semantic_trust');
         slots.get(target).push({ block: make(author ? 'author_instruction' : slot.kind ?? 'evidence', target,
             message, slot.provenance ?? [], slot.evidence ?? null, slot), position: slot.order ?? -1 });
@@ -34,15 +34,18 @@ export function semanticBlocks(ir) {
     const slotBlocks = target => slots.get(target).map(entry => entry.block);
     const leading = ir.directives.map((content, index) => {
         const source = ir.compilation?.directiveSources?.[index];
-        return { block: make(source?.kind ?? 'author_instruction', 'directive', { role: 'system', content }, source?.provenance ?? ir.provenance, null, source),
+        return { block: make(source?.kind ?? 'author_instruction', 'directive', { role: source?.role ?? 'system', content }, source?.provenance ?? ir.provenance, null, source),
             target: source?.target ?? 'system.foundation', position: source?.order ?? index };
     });
     for (const target of PROMPT_TARGETS.filter(target => target.startsWith('system.') || target.startsWith('agent.'))) {
         leading.push(...slots.get(target).map(entry => ({ ...entry, target })));
     }
     leading.sort((a, b) => PROMPT_TARGETS.indexOf(a.target) - PROMPT_TARGETS.indexOf(b.target) || a.position - b.position);
-    const responses = ir.responseDirectives.map((content, index) => ({ block: make('author_instruction', 'response', { role: 'system', content }, ir.compilation?.responseSources?.[index]?.provenance ?? ir.provenance),
-        position: ir.compilation?.responseSources?.[index]?.order ?? -1 }));
+    const responses = ir.responseDirectives.map((content, index) => {
+        const source = ir.compilation?.responseSources?.[index];
+        return { block: make('author_instruction', 'response', { role: source?.role ?? 'system', content }, source?.provenance ?? ir.provenance),
+            position: source?.order ?? -1 };
+    });
     responses.push(...slots.get('response.post_history'));
     responses.sort((a, b) => a.position - b.position);
     const blocks = [

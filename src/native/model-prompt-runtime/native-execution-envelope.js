@@ -34,7 +34,8 @@ export function nativeEnvelopeBinding(resolved, snapshot, protocol) {
         sourceFingerprint: hashNativeDocument({ source: plan.source, provenance: plan.provenance,
             facts: plan.items.filter(item => !['context.history', 'context.input'].includes(item.kind)),
             nativeSelection: plan.nativeSelection ?? null, personaEvidence: plan.personaEvidence ?? null }),
-        prefixFingerprint: hashNativeDocument({ directives: ir.directives, contextSlots: ir.contextSlots }),
+        prefixFingerprint: hashNativeDocument({ directives: ir.directives,
+            directiveRoles: ir.directives.map((_, index) => ir.compilation?.directiveSources?.[index]?.role ?? 'system'), contextSlots: ir.contextSlots }),
         toolsFingerprint: hashNativeDocument(ir.tools), outputFingerprint: hashNativeDocument(ir.outputContract),
         generationFingerprint: hashNativeDocument(resolved.generation),
         ...(['task', 'adaptive'].includes(resolved.effectiveExecutionPolicy?.continuity) ? { continuity: resolved.effectiveExecutionPolicy.continuity, runtimeResourceRefs: {

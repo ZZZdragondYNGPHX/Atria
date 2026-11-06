@@ -27,6 +27,7 @@ export function compiledRequestBinding({ resolved, contextPlan, promptIr, render
         outputFingerprint: hashNativeDocument(promptIr.outputContract),
         historyFingerprint: hashNativeDocument(promptIr.history),
         prefixFingerprint: hashNativeDocument({ directives: promptIr.directives,
+            directiveRoles: promptIr.directives.map((_, index) => promptIr.compilation?.directiveSources?.[index]?.role ?? 'system'),
             contextSlots: promptIr.contextSlots.filter(item => item.target === 'context.before_history'),
             tools: promptIr.tools, outputContract: promptIr.outputContract }),
         contentFingerprint: hashNativeDocument(semantic),

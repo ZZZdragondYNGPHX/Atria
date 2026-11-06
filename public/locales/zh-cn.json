@@ -12184,5 +12184,14 @@
     "Advanced: request preview and runtime evidence": "高级：请求预览与运行记录",
     "The service answered HTTP 404 (not found). If this API preset worked before, the service or its upstream is having trouble; send again in a moment. Otherwise check the service address.": "服务返回 HTTP 404（未找到）。如果这个 API 预设之前能用，多半是服务或其上游暂时出错，稍后再发送一次即可；否则请检查服务地址。",
     "${0} is still used by ${1}. Switch them to something else first, then delete it.": "${0} 仍被 ${1} 使用。请先把它们切换到其他项，再删除。",
-    "Leave a task on Default to use the API preset whose purpose is Memory. Changes save right away.": "任务保持“默认”时，使用用途为“记忆”的 API 预设。修改会立即保存。"
+    "Leave a task on Default to use the API preset whose purpose is Memory. Changes save right away.": "任务保持“默认”时，使用用途为“记忆”的 API 预设。修改会立即保存。",
+    "Message role": "消息角色",
+    "Default (${0})": "默认（${0}）",
+    "Reply prefill uses assistant. Choose the default message role or another placement.": "回复预填充使用 assistant。请选择默认消息角色，或改用其他插入位置。",
+    "Reply prefill is sent as assistant.": "回复预填充以 assistant 发送。",
+    "Opening · core instructions": "开头 · 核心指令",
+    "Opening · character": "开头 · 角色",
+    "Opening · world": "开头 · 世界",
+    "Opening · writing style": "开头 · 文风",
+    "Opening · reply format": "开头 · 回复格式"
 }

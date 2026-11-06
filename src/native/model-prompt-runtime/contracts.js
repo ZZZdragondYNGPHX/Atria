@@ -3,7 +3,7 @@ import { assertNativeId } from '../identity.js';
 import { assertComputeBudget } from '../../../public/shared/native-compute-budget.js';
 import { connectionRequiresSecret } from '../../../public/shared/native-connection-auth.js';
 import { assertSemanticBlocks } from './semantic-blocks.js';
-import { PROMPT_TARGETS } from '../../../public/shared/prompt-module-order.js';
+import { PROMPT_TARGETS, PROMPT_MODULE_ROLES } from '../../../public/shared/prompt-module-order.js';
 
 export const ATRIA_MODEL_PROMPT_SCHEMA_VERSION = 1;
 export const ATRIA_CAPABILITY_STATES = Object.freeze(['supported', 'unsupported', 'unknown']);
@@ -558,6 +558,7 @@ export function assertPromptModule(value) {
         'revision',
         'displayName',
         'target',
+        'role',
         'stages',
         'priority',
         'condition',
@@ -570,10 +571,13 @@ export function assertPromptModule(value) {
     const base = assertRevisionedResourceBase(value, 'PromptModule', 'promptModule', 'promptModuleId');
     const stages = uniqueStrings(value.stages || [], 'PromptModule.stages', { namespacedValues: true });
     if (stages.length === 0) throw new TypeError('PromptModule.stages must contain at least one stage');
+    if (value.role !== undefined && !PROMPT_MODULE_ROLES.includes(value.role)) throw new TypeError('PromptModule.role must be system or user');
+    if (value.target === 'response.prefill' && value.role !== undefined) throw new TypeError('PromptModule.role must be omitted for response.prefill');
     if (value.textMode !== undefined && !['literal', 'template'].includes(value.textMode)) throw new TypeError('PromptModule.textMode must be literal or template');
     return Object.freeze({
         ...base,
         target: namespaced(value.target, 'PromptModule.target'),
+        ...(value.role === undefined ? {} : { role: value.role }),
         stages,
         priority: integer(value.priority ?? 0, 'PromptModule.priority', { min: -100000, max: 100000 }),
         condition: assertCondition(value.condition, 'PromptModule.condition'),

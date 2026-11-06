@@ -1,7 +1,7 @@
 import { assertExactResourceRef, assertPromptIR, assertPromptModule, assertPromptProgram, assertRequestContextPlan } from './contracts.js';
 import { immutable } from './execution-utils.js';
 import { bindValues, evaluateCondition, interpolate, promptError, readVariable, typedValue } from './prompt-values.js';
-import { PROMPT_TARGETS, promptStageEntries } from '../../../public/shared/prompt-module-order.js';
+import { PROMPT_TARGETS, promptStageEntries, promptModuleRole } from '../../../public/shared/prompt-module-order.js';
 import { hashNativeDocument } from '../repositories/common.js';
 import { nativeExecutionScope } from './native-execution-envelope.js';
 import { semanticBlocks } from './semantic-blocks.js';
@@ -251,15 +251,16 @@ export class PromptCompiler {
                     continue;
                 }
                 const content = module.textMode === 'literal' ? module.body : interpolate(module.body, read);
-                blocks.push({ target: module.target, content, provenance: [{ source: 'prompt.module', ref: refKey(entry.ref) }],
+                const role = promptModuleRole(module);
+                blocks.push({ target: module.target, role, content, provenance: [{ source: 'prompt.module', ref: refKey(entry.ref) }],
                     ...(module.expression ? { expression: module.expression } : {}) });
                 const identity = { ...entry.ref }; delete identity.revision;
                 segments.push({ identity: hashNativeDocument({ ref: identity, stageId: stage.stageId, entryId: entry.id, target: module.target }),
-                    kind: 'prompt.module', target: module.target, stageId: stage.stageId, ref: entry.ref,
+                    kind: 'prompt.module', target: module.target, role, stageId: stage.stageId, ref: entry.ref,
                     ...(module.expression ? { expression: module.expression } : {}),
                     contentFingerprint: hashNativeDocument(content), volatility: 'compiled', cacheability: 'candidate' });
                 provenance.push({ source: 'prompt.module', ref: refKey(entry.ref) });
-                diagnostics.push({ stageId: stage.stageId, entryId: entry.id, moduleId: module.promptModuleId, status: 'included', target: module.target });
+                diagnostics.push({ stageId: stage.stageId, entryId: entry.id, moduleId: module.promptModuleId, status: 'included', target: module.target, role });
             }
         }
         const directive = program.responseDirective;
@@ -267,7 +268,7 @@ export class PromptCompiler {
         if (directive.stages !== undefined && (!Array.isArray(directive.stages) || directive.stages.some(id => !stages.includes(id)))) promptError('response_directive');
         if (directive.body !== undefined && (!directive.stages || directive.stages.some(id => selected.includes(id)))) {
             declarations.artifact = {}; declarations.module = {};
-            blocks.push({ target: 'response.post_history', content: interpolate(directive.body, path => readVariable(path, env, declarations)) });
+            blocks.push({ target: 'response.post_history', role: 'system', content: interpolate(directive.body, path => readVariable(path, env, declarations)) });
         }
         for (const target of new Set(['response.prefill', ...program.exclusiveTargets])) {
             if (!PROMPT_TARGETS.includes(target)) promptError('target_unknown');
@@ -324,9 +325,9 @@ export class PromptCompiler {
                     kind: item.kind === 'context.directive' ? 'host_policy' : item.kind === 'context.history' ? message.role === 'tool' ? 'tool_result' : 'dialogue' : 'evidence',
                     provenance: item.provenance, source: plan.source, evidence: { ...(item.evidence ?? {}), kind: item.kind, id: item.id ?? null },
                     anchorId: block.anchorId, stageId: block.stageId, order });
-            } else if (block.target.startsWith('system.') || block.target.startsWith('agent.')) emitDirective(block.content, { kind: 'author_instruction', target: block.target, order, provenance: block.provenance ?? program.provenance,
+            } else if (block.target.startsWith('system.') || block.target.startsWith('agent.')) emitDirective(block.content, { kind: 'author_instruction', target: block.target, role: block.role, order, provenance: block.provenance ?? program.provenance,
                 ...(block.expression ? { expression: block.expression } : {}) });
-            else if (block.target === 'response.post_history') { ir.responseDirectives.push(block.content); responseSources.push({ order, provenance: block.provenance ?? program.provenance }); } else if (block.target === 'response.prefill') ir.prefill = block.content;
+            else if (block.target === 'response.post_history') { ir.responseDirectives.push(block.content); responseSources.push({ role: block.role, order, provenance: block.provenance ?? program.provenance }); } else if (block.target === 'response.prefill') ir.prefill = block.content;
             else ir.contextSlots.push({ ...block, order, trust: 'author' });
         }
         if (plan.source.kind === 'session' && plan.items.some(item => item.kind === 'context.fact'
@@ -368,7 +369,7 @@ export class PromptCompiler {
                 provenance: [{ source: 'native.narrative-use-policy', ref: 'v1' }], contentFingerprint: hashNativeDocument(narrativeUsePolicy),
                 volatility: 'stable', cacheability: 'candidate', consumed: true });
         }
-        ir.compilation = { versions: { compiler: 'native.prompt.v5', canonical: 'native.json.v1', layout: 'native.semantic-blocks.v2' }, segments,
+        ir.compilation = { versions: { compiler: 'native.prompt.v6', canonical: 'native.json.v1', layout: 'native.semantic-blocks.v3' }, segments,
             source: plan.source, directiveSources, historySources, responseSources,
             authoredBehaviorFingerprint: hashNativeDocument({ blocks: blocks.filter(block => !block.item), parameters: env.param, selectedStages: stages.filter(id => selected.includes(id)), programRef: resolved.route.promptProgramRef }),
             ...(plan.personaEvidence ? { personaEvidence: { ...plan.personaEvidence, consumerStages: personaStages,

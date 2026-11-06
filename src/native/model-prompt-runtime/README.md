@@ -14,6 +14,16 @@ values are not recursively interpolated. Candidate validation and Package freezi
 preserve this distinction. Authoring must retain the original resource body even
 when the effective request includes substitutions or scope labels.
 
+Ordinary Prompt Modules may declare `role: "system" | "user"`. Omission uses
+`system`. This message role is independent of placement, including targets named
+`system.*`, and does not change the module's `author_instruction` provenance or
+grant runtime permissions. `response.prefill` remains an `assistant` message and
+requires `role` to be omitted. Host policies, Context material, input and history
+keep their existing roles. The shared editor shows message role separately from
+placement; presets, exact revisions, derivation and Package freezing preserve it.
+Compiler `native.prompt.v6` carries roles through leading, context-position and
+post-history modules into `native.semantic-blocks.v3` and the final wire messages.
+
 An optional Module `expression` is `{ layer: "global" | "scene" | "narrator" |
 "actor", actorId? }`; only `actor` requires/accepts `actorId`. Expression describes
 prose scope and never reorders it. The Provider receives an explicit
