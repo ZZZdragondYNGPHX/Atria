@@ -753,6 +753,12 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
         }
     });
     const presets = host => new PromptPresetStore({ engine: host.library._engine });
+    router.post('/preset-presentation', async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle) return res.sendStatus(401);
+        res.set('Cache-Control', 'private, no-store');
+        try { res.json(await presets(getHost()).presentation(handle, req.body)); } catch { res.status(400).json({ error: 'native_preset_presentation_unavailable' }); }
+    });
     for (const action of ['inspect', 'declare', 'prepare', 'check', 'checkRollback', 'apply', 'rollback', 'discard']) router.post('/presets/:id/prompt-candidates/' + action, async (req, res) => {
         const handle = req.user?.profile?.handle;
         if (!handle) return res.sendStatus(401);

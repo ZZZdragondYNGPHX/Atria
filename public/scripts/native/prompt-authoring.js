@@ -14,6 +14,7 @@ import { promptStageEntries, promptStageModuleRefs, promptProgramResourceRefs, m
 import { NATIVE_GENERATION_DEFAULTS as generationDefaults } from '../../shared/native-generation-defaults.js';
 import { mountPromptUpgrade } from './prompt-upgrade.js';
 import { mountPromptSamplePreview } from './prompt-sample-preview.js';
+import { assertPresetContent } from '../../shared/native-preset-content.js';
 
 export const PROMPT_TYPES = Object.freeze({
     'core.prompt-program': ['Prompt Programs', 'promptProgramId', 'pprog'],
@@ -395,6 +396,14 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                                     check.addEventListener('change', () => { item.accepts = check.checked ? [...item.accepts, kind] : item.accepts.filter(value => value !== kind); });
                                 }
                                 const required = input(doc, settings, 'Require matching context', ''); required.type = 'checkbox'; required.checked = Boolean(item.required);
+                                for (const [key, label] of [['category', 'Source category'], ['actorId', 'Source actor ID'], ['field', 'Source field']]) {
+                                    const field = input(doc, settings, label, item.selector?.[key] ?? '');
+                                    field.addEventListener('input', () => {
+                                        item.selector ??= {};
+                                        if (field.value.trim()) item.selector[key] = field.value.trim(); else delete item.selector[key];
+                                        if (!Object.keys(item.selector).length) delete item.selector;
+                                    });
+                                }
                                 required.addEventListener('change', () => { item.required = required.checked; });
                                 const conditions = fold(settings, 'anchor:' + stage.stageId + ':' + item.entryId, 'Condition');
                                 anchorConditions.set(item, guarded(mountPromptCondition(doc, conditions, item.condition), conditions));
@@ -444,7 +453,24 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                 action(doc, treeBox, 'Add stage', () => { let index = stages.length + 1; while (stages.some(stage => stage.stageId === 'stage.step' + index)) index++; stages.push({ stageId: 'stage.step' + index, moduleRefs: [] }); renderStages(stages.length - 1); }); renderStages();
                 const directiveBox = fold(fields, 'response', 'Response Directive', () => directive.value.trim() ? translateShellText('Configured') : translateShellText('Not configured'));
                 const directive = input(doc, directiveBox, 'Response Directive', draft.responseDirective?.body || '', true);
-                specific = () => { syncConditions(); const responseDirective = { ...draft.responseDirective, body: directive.value }; if (draft.responseDirective?.body === undefined && !directive.value) delete responseDirective.body; return { stages, responseDirective }; };
+                const contentBox = fold(fields, 'content', '附属内容与模板');
+                const contentEnabled = input(doc, contentBox, '使用统一 JSON 内容协议', ''); contentEnabled.type = 'checkbox'; contentEnabled.checked = Boolean(draft.content);
+                element(doc, 'p', '正文与附属分开存储；附属默认折叠。模板开关只影响展示，不启用生成模块。', contentBox);
+                const contentTypes = input(doc, contentBox, '内容类型声明（JSON）', JSON.stringify(draft.content?.types ?? [], null, 2), true);
+                const presentations = clone(draft.content?.presentations ?? []);
+                const skinChecks = presentations.map(skin => {
+                    const check = input(doc, contentBox, skin.type + ' · ' + skin.slot + ' · ' + skin.id, ''); check.type = 'checkbox'; check.checked = skin.enabled;
+                    return { skin, check };
+                });
+                const syncContent = () => { contentTypes.disabled = !contentEnabled.checked; for (const { check } of skinChecks) check.disabled = !contentEnabled.checked; };
+                contentEnabled.addEventListener('change', syncContent); syncContent();
+                specific = () => {
+                    syncConditions(); const responseDirective = { ...draft.responseDirective, body: directive.value };
+                    if (draft.responseDirective?.body === undefined && !directive.value) delete responseDirective.body;
+                    const content = contentEnabled.checked ? assertPresetContent({ schemaVersion: 1, types: JSON.parse(contentTypes.value),
+                        presentations: skinChecks.map(({ skin, check }) => ({ ...skin, enabled: check.checked })) }) : undefined;
+                    return { stages, responseDirective, content };
+                };
             } else specific = generationFields(doc, fields, draft, () => tracking);
             fields = sections;
             const parameterBox = prompt ? fold(fields, 'parameters', 'Typed parameters', () => formatShellText('${0} parameters', [parameterBox.querySelectorAll('.atri-prompt-parameters > fieldset').length])) : null;
@@ -460,6 +486,7 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                 };
                 for (const key of ['parameters', 'condition', 'parentRef', 'derive', 'responseDirective']) if (draft[key] === undefined && (value[key] == null || typeof value[key] === 'object' && !Object.keys(value[key]).length)) delete value[key];
                 if (value.role === undefined) delete value.role;
+                if (value.content === undefined) delete value.content;
                 return value;
             };
             const provenance = fold(root, 'provenance', 'System provenance (read-only)');

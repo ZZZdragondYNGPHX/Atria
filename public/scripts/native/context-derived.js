@@ -55,6 +55,7 @@ export function normalizeContextSourceRef(value) {
     const ref = { kind };
     for (const key of [
         'messageId',
+        'variantId',
         'eventId',
         'knowledgeBindingId',
         'knowledgeBaseId',

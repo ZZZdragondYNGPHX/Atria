@@ -1,4 +1,5 @@
 import { validatePromptParameters } from '../../../public/shared/prompt-parameters.js';
+import { assertPresetContent } from '../../../public/shared/native-preset-content.js';
 import { assertNativeId } from '../identity.js';
 import { assertComputeBudget } from '../../../public/shared/native-compute-budget.js';
 import { connectionRequiresSecret } from '../../../public/shared/native-connection-auth.js';
@@ -620,13 +621,19 @@ export function assertPromptEntry(value, field = 'PromptEntry') {
         return Object.freeze({ entryId, kind: 'module', moduleRef: assertExactResourceRef(value.moduleRef, 'core.prompt-module', field + '.moduleRef') });
     }
     if (value.kind !== 'anchor') throw new TypeError(field + '.kind must be module or anchor');
-    only(value, ['entryId', 'kind', 'target', 'accepts', 'required', 'condition'], field);
+    only(value, ['entryId', 'kind', 'target', 'accepts', 'required', 'condition', 'selector'], field);
+    let selector;
+    if (value.selector !== undefined) {
+        object(value.selector, field + '.selector');
+        only(value.selector, ['category', 'actorId', 'field'], field + '.selector');
+        selector = Object.fromEntries(Object.entries(value.selector).map(([key, item]) => [key, token(item, field + '.selector.' + key)]));
+    }
     if (!PROMPT_TARGETS.includes(value.target) || value.target === 'response.prefill') throw new TypeError(field + '.target is unsupported');
     const accepts = uniqueStrings(value.accepts, field + '.accepts');
     if (!accepts.length || accepts.some(kind => !['context.fact', 'context.history', 'context.input', 'context.player-persona', 'context.directive'].includes(kind))) throw new TypeError(field + '.accepts must declare Context kinds');
     if (value.required !== undefined && typeof value.required !== 'boolean') throw new TypeError(field + '.required must be boolean');
     return Object.freeze({ entryId, kind: 'anchor', target: value.target, accepts, required: value.required ?? false,
-        condition: assertCondition(value.condition, field + '.condition') });
+        condition: assertCondition(value.condition, field + '.condition'), ...(selector ? { selector } : {}) });
 }
 
 function assertProgramStage(value, field) {
@@ -722,6 +729,7 @@ export function assertPromptProgram(value) {
         'locals',
         'artifacts',
         'exclusiveTargets',
+        'content',
     ], 'PromptProgram');
     const base = assertRevisionedResourceBase(value, 'PromptProgram', 'promptProgram', 'promptProgramId');
     if (!Array.isArray(value.stages) || value.stages.length === 0) {
@@ -733,6 +741,7 @@ export function assertPromptProgram(value) {
     return Object.freeze({
         ...base,
         parameters: assertParameterDefinitions(value.parameters, 'PromptProgram.parameters'),
+        ...(value.content === undefined ? {} : { content: assertPresetContent(value.content) }),
         ...(value.locals === undefined ? {} : { locals: assertParameterDefinitions(value.locals, 'PromptProgram.locals') }),
         ...(value.artifacts === undefined ? {} : { artifacts: assertArtifactDefinitions(value.artifacts) }),
         ...(value.exclusiveTargets === undefined ? {} : {

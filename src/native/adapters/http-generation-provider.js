@@ -3,6 +3,7 @@ import { observedGenerationUsage } from './generation-usage.js';
 import { immutable, GenerationError, ProviderFailure, providerHttpFailure, observeProviderHttpUsage } from '../model-prompt-runtime/execution-utils.js';
 import { renderPromptMessages } from '../model-prompt-runtime/prompt-renderers.js';
 import { serializeNativeDocument } from '../repositories/common.js';
+import { presetContentJsonSchema } from '../../../public/shared/native-preset-content.js';
 
 function wireTools(tools, mode) {
     if (mode === 'json-schema') return tools;
@@ -57,7 +58,7 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
         if (!['full', 'shape-only'].includes(outputSchemaMode) || (!messages && outputSchemaMode !== 'full')) throw new GenerationError('generation_adapter_control_unsupported');
         if (!['generation-profile', 'stream'].includes(responseMode)
             || (!messages && responseMode !== 'generation-profile')) throw new GenerationError('generation_adapter_control_unsupported');
-        if (Object.keys(connection.networkPolicy).length || Object.keys(connection.options).some(key => !['toolSchemaMode', 'responseSchemaMode', 'responseMode', 'reasoningSplit'].includes(key))
+        if (Object.keys(connection.networkPolicy).length || Object.keys(connection.options).some(key => !['toolSchemaMode', 'responseSchemaMode', 'responseMode', 'reasoningSplit', 'presetContentSchema'].includes(key))
             || Object.keys(model.messageFormat).length || Object.keys(model.providerHints).length) throw new GenerationError('generation_adapter_control_unsupported');
         const allowed = { sampling: ['temperature', 'topP'], output: ['maxTokens'], stop: ['sequences'], streaming: ['enabled'], toolChoice: ['value'] };
         if (messages) Object.assign(allowed, { reasoning: ['effort'], cache: ['key', 'retention'] });
@@ -115,6 +116,12 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
             body.tool_choice = generation.toolChoice.value ?? 'auto';
         } else if (generation.toolChoice.value !== undefined) throw new GenerationError('generation_adapter_prompt_unsupported');
         if (promptIr.outputContract) body.response_format = { type: 'json_schema', json_schema: wireOutput(promptIr.outputContract, outputSchemaMode) };
+        if (connection.options.presetContentSchema !== undefined && (typeof connection.options.presetContentSchema !== 'boolean' || !messages)) throw new GenerationError('generation_adapter_control_unsupported');
+        if (!promptIr.outputContract && promptIr.compilation?.presetContent && connection.options.presetContentSchema) {
+            if (!resolved.capabilities.some(row => row.capability === 'generation.structured-output' && row.state === 'supported')) throw new GenerationError('generation_adapter_control_unsupported');
+            const content = promptIr.compilation.presetContent;
+            body.response_format = { type: 'json_schema', json_schema: { name: 'atria_content', strict: true, schema: presetContentJsonSchema(content.declaration, content) } };
+        }
         return body;
     };
     const contextTokenizers = new Map();
@@ -212,7 +219,7 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
                 throw new GenerationError('generation_provider_content_blocked');
             }
             if (!choice || (messages && !choice.message)) throw new GenerationError('generation_response_invalid');
-            if (choice.finish_reason && !['stop', 'tool_calls', 'function_call'].includes(choice.finish_reason)) throw new GenerationError('generation_response_invalid');
+            if (choice.finish_reason && !['stop', 'tool_calls', 'function_call', 'length'].includes(choice.finish_reason)) throw new GenerationError('generation_response_invalid');
             const text = messages ? (choice?.message?.content ?? '') : choice?.text;
             if (typeof text !== 'string') throw new GenerationError('generation_response_invalid');
             const toolCalls = (choice?.message?.tool_calls || []).map(call => {
@@ -223,7 +230,7 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
             });
             const usage = observedGenerationUsage(raw.usage, { inputTokens: 'prompt_tokens', outputTokens: 'completion_tokens', totalTokens: 'total_tokens' });
             const cached = raw.usage?.prompt_tokens_details?.cached_tokens;
-            return { text, assistantText: text, toolCalls, ...(usage ? { usage } : {}),
+            return { text, assistantText: text, toolCalls, ...(choice.finish_reason === 'length' ? { truncated: true } : {}), ...(usage ? { usage } : {}),
                 observation: { reportedModel: typeof raw.model === 'string' ? raw.model : null, upstreamIdentity: 'unknown',
                     cachedInputTokens: Number.isSafeInteger(cached) && cached >= 0 ? cached : null, hiddenAttempts: 'unknown' } };
         },

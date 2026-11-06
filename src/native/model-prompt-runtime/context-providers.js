@@ -1,6 +1,7 @@
 import { assertRequestContextPlan } from './contracts.js';
 import { immutable, effectiveOutputReserve } from './execution-utils.js';
 import { promptError } from './prompt-values.js';
+import { nativePromptSource } from '../../../public/shared/native-prompt-context.js';
 
 const sourceDataLanes = new Set(['recent_raw', 'memory', 'narrative_spine']);
 
@@ -43,6 +44,7 @@ export function createNativeSessionContextProvider(readSelectedContext) {
                 // system instructions. Current state continues through its own lane.
                 content: sourceDataLanes.has(item.lane) ? { role: 'user', content: item.content } : item.content,
                 evidence: { lane: item.lane, sourceRefs: item.sourceRefs ?? [], required: item.required === true,
+                    promptSource: nativePromptSource(item),
                     ...(item.atomicGroup === undefined ? {} : { atomicGroup: item.atomicGroup }),
                     ...(item.metadata?.epistemicStatus === undefined ? {} : { epistemicStatus: item.metadata.epistemicStatus }),
                     ...(item.metadata?.coverage === undefined ? {} : { coverage: item.metadata.coverage }),
@@ -67,7 +69,7 @@ export function createNativeSessionContextProvider(readSelectedContext) {
                 maxTokens: plan.budget.promptCeiling - plan.budget.safetyMargin,
                 reservedOutputTokens: plan.budget.responseReserve,
             },
-            provenance: [{ source: 'native.context', ref: source.revisionId }],
+            provenance: [{ source: 'native.context', ref: source.revisionId }, ...(plan.regexDiagnostics ?? []).map(item => ({ source: 'native.regex', ref: JSON.stringify(item) }))],
         };
     });
 }

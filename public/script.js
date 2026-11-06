@@ -7468,26 +7468,30 @@ let nativeGenerationController;
 export async function GenerateNative(type, options) {
     nativeGenerationController ||= createNativeGenerationController({
         runtime: nativeSessionRuntime,
-        host: (requestSignal, assertCurrent, onAccepted) => ({
-            started: async generationType => {
-                await (await import('./scripts/native/regex-scopes.js')).initializeNativeRegexScopes();
-                requestSignal.throwIfAborted(); assertCurrent();
-                generation_started = new Date();
-                deactivateSendButtons();
-                await eventSource.emit(event_types.GENERATION_STARTED, generationType, { signal: requestSignal }, false);
-            },
-            submitUser: text => sendMessageAsUser(text, undefined, null, false, name1, user_avatar, { signal: requestSignal, assertCurrent, onAccepted }),
-            commitAssistant: (generationType, text) => saveReply({ type: generationType, getMessage: text, publication: { signal: requestSignal, assertCurrent } }),
-            impersonate: text => Atria.shell?.getPlayHost?.()?.product?.composerApi?.setDraft(text),
-            gameApi: () => Atria.getContext()?.getCapabilityApi?.('game-runtime'),
-            context: () => Atria.getContext(),
-            onChunk: chunk => document.dispatchEvent(new CustomEvent('atria-native-play-draft', { detail: { text: chunk.text } })),
-            onState: projection => document.dispatchEvent(new CustomEvent('atria-native-play-draft', { detail: projection })),
-            ended: generationType => {
-                document.dispatchEvent(new CustomEvent('atria-native-play-draft', { detail: { text: '' } }));
-                unblockGeneration(generationType);
-            },
-        }),
+        host: (requestSignal, assertCurrent, onAccepted) => {
+            const composer = Atria.shell?.getPlayHost?.()?.product?.composerApi;
+            const capturedDraft = composer?.captureDraft();
+            return ({
+                started: async generationType => {
+                    await (await import('./scripts/native/regex-scopes.js')).initializeNativeRegexScopes();
+                    requestSignal.throwIfAborted(); assertCurrent();
+                    generation_started = new Date();
+                    deactivateSendButtons();
+                    await eventSource.emit(event_types.GENERATION_STARTED, generationType, { signal: requestSignal }, false);
+                },
+                submitUser: text => sendMessageAsUser(text, undefined, null, false, name1, user_avatar, { signal: requestSignal, assertCurrent, onAccepted }),
+                commitAssistant: (generationType, text, presetContent) => saveReply({ type: generationType, getMessage: text, presetContent, publication: { signal: requestSignal, assertCurrent } }),
+                impersonate: text => { assertCurrent(); return composer?.offerDraft(text, capturedDraft); },
+                gameApi: () => Atria.getContext()?.getCapabilityApi?.('game-runtime'),
+                context: () => Atria.getContext(),
+                onChunk: chunk => document.dispatchEvent(new CustomEvent('atria-native-play-draft', { detail: { text: chunk.text } })),
+                onState: projection => document.dispatchEvent(new CustomEvent('atria-native-play-draft', { detail: projection })),
+                ended: generationType => {
+                    document.dispatchEvent(new CustomEvent('atria-native-play-draft', { detail: { text: '' } }));
+                    unblockGeneration(generationType);
+                },
+            });
+        },
     });
     try { return await nativeGenerationController.generate(type, options); } catch (error) { if (error.code === 'generation_cancelled' || error.name === 'AbortError') return; throw error; }
 }
@@ -11086,14 +11090,18 @@ function applyPostGenerationText(text, isImpersonate, isContinue) {
     return out;
 }
 
-export async function saveReply({ type, getMessage, fromStreaming = false, title = '', swipes = [], reasoning = '', imageUrls = [], reasoningSignature = null, reasoningBlocks = null, reasoningDetails = null, suppressEmit = false, publication = {} }) {
+export async function saveReply({ type, getMessage, presetContent, fromStreaming = false, title = '', swipes = [], reasoning = '', imageUrls = [], reasoningSignature = null, reasoningBlocks = null, reasoningDetails = null, suppressEmit = false, publication = {} }) {
     publication.assertCurrent?.();
     if (nativeSessionRuntime.active && ['normal', 'continue', undefined].includes(type)) {
         const message = { name: name2, is_user: false, is_system: false,
-            mes: power_user.trim_spaces ? getMessage.trim() : getMessage,
+            mes: presetContent ? getMessage : power_user.trim_spaces ? getMessage.trim() : getMessage,
             send_date: getMessageTimeStamp(), gen_started: generation_started, gen_finished: new Date(),
             extra: { api: getGeneratingApi(), model: getGeneratingModel(), reasoning: reasoning || '', reasoning_duration: null, reasoning_signature: reasoningSignature } };
         if (reasoningBlocks?.length) message.extra.reasoning_blocks = reasoningBlocks;
+        if (presetContent) {
+            message.atri_native = { projection: presetContent.projection };
+            message.extra.preset_content = { raw: presetContent.raw, programRef: presetContent.programRef, status: presetContent.status, diagnostics: presetContent.diagnostics, contextPolicies: presetContent.contextPolicies };
+        }
         if (reasoningDetails?.length) message.extra.reasoning_details = reasoningDetails;
         await processImageAttachment(message, { imageUrls });
         if (power_user.message_token_count_enabled) message.extra.token_count = await resolveAssistantTokenCount((reasoning || '') + message.mes);

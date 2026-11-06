@@ -15,6 +15,13 @@
             Regex is a tool to find/replace strings using regular expressions. If you want to learn more, click on the ? next to the title.
         </small>
         <hr />
+        <fieldset>
+            <legend>Atria 处理区域</legend>
+            <label><input type="checkbox" name="native_region" value="prose" checked />正文</label>
+            <label><input type="checkbox" name="native_region" value="supplement" />附属内容</label>
+            <label>附属类型（可选，用逗号分隔）<input class="text_pole" name="native_block_types" type="text" placeholder="interlude, emotion-progress" /></label>
+            <small>展示规则仅处理视图副本；附属内容展开时执行，不改写原文。</small>
+        </fieldset>
 
         <div id="regex_info_block_wrapper">
             <div id="regex_info_block" class="info-block"></div>

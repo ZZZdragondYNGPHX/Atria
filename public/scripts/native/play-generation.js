@@ -8,7 +8,7 @@ export function nativePlayGenerationBusy(runtime) {
 }
 
 // Keep publication on NativeSessionRuntime's existing Draft/Revision boundary.
-export async function runNativePlayGeneration({ runtime, type, signal, input = '', quietPrompt = '', host, execute = executeNativeGeneration, executeOperation = executeNativeOperation }) {
+export async function runNativePlayGeneration({ runtime, type, signal, input = '', quietPrompt = '', operation, actorId, host, execute = executeNativeGeneration, executeOperation = executeNativeOperation }) {
     if (signal?.aborted) throw Object.assign(new Error('Native generation cancelled'), { code: 'generation_cancelled' });
     runtime.generationProjection = { state: 'preparing', text: '', error: '' };
     let observing = true;
@@ -19,7 +19,8 @@ export async function runNativePlayGeneration({ runtime, type, signal, input = '
     const originalChunk = host.onChunk;
     host = { ...host, onChunk: chunk => {
         if (!signal?.aborted && ownsProjection()) {
-            runtime.generationProjection = { state: 'streaming', text: String(chunk.text ?? runtime.generationProjection.text).slice(0, 65536), error: '' };
+            runtime.generationProjection = { state: 'streaming', text: String(chunk.text ?? runtime.generationProjection.text), error: '',
+                ...(chunk.originalResponse ? { pendingOriginalResponse: chunk.originalResponse } : {}) };
             originalChunk?.(chunk);
         }
     } };
@@ -85,23 +86,32 @@ export async function runNativePlayGeneration({ runtime, type, signal, input = '
                 console.warn('[native-play] Memory recall skipped for this reply', error);
             }
         }
-        const result = await execute({ role: 'narrator', messages, abortSignal: signal, onChunk: host.onChunk, ...(hostMemoryEvidence ? { hostMemoryEvidence } : {}) });
+        const result = await execute({ role: 'narrator', operation: originalType === 'impersonate' ? 'impersonate' : operation ?? 'narrative',
+            ...(actorId ? { actorId } : {}), messages, abortSignal: signal, onChunk: host.onChunk, ...(hostMemoryEvidence ? { hostMemoryEvidence } : {}) });
         // The Context inspector shows what this reply was actually built from.
         if (result.snapshot?.contextPlan && !['quiet', 'impersonate'].includes(originalType)) {
             runtime.lastReplyContext = { sessionId: runtime.snapshot?.session?.sessionId, plan: result.snapshot.contextPlan };
         }
         if (signal?.aborted) throw Object.assign(new Error('Native generation cancelled'), { code: 'generation_cancelled' });
+        if (result.presetContent?.status === 'invalid') {
+            runtime.generationProjection = { state: 'failed', text: result.presetContent.preview ?? '', error: 'content_format_invalid', originalResponse: result.presetContent.raw };
+            throw Object.assign(new Error('Invalid content format'), { code: 'content_format_invalid', originalResponse: result.presetContent.raw });
+        }
         if (originalType === 'quiet') return result.assistantText;
         if (originalType === 'impersonate') { await host.impersonate?.(result.assistantText); return result.assistantText; }
         if (!result.assistantText?.trim()) throw new Error('Native generation returned empty text');
         runtime.generationProjection.state = 'finalizing'; notifyState();
-        await host.commitAssistant(generationType, result.assistantText);
+        await host.commitAssistant(generationType, result.assistantText, result.presetContent);
         await runtime.persist();
         if (ownsProjection()) rememberEvidenceReceipt(runtime, result);
         return result.assistantText;
     } catch (error) {
         if (ownsProjection()) await runtime.finalizeStoppedGeneration();
-        if (ownsProjection()) runtime.generationProjection = { state: signal?.aborted ? 'cancelling' : 'failed', text: '', error: signal?.aborted ? '' : 'generation_failed' };
+        if (ownsProjection()) {
+            const originalResponse = error.originalResponse ?? runtime.generationProjection.pendingOriginalResponse;
+            runtime.generationProjection = { state: 'failed', text: '', error: signal?.aborted ? 'generation_cancelled' : error.code ?? 'generation_failed',
+                ...(originalResponse ? { originalResponse } : {}) };
+        }
         notifyState();
         throw error;
     } finally {

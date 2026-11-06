@@ -670,7 +670,7 @@ export async function mountNativeFrontend(options) {
         content.textContent = tl('Loading…');
         try {
             content.replaceChildren();
-            view.root = await createInstance(ir.root, view, {}, null, null, content); if (disposed) throw new Error('Stale View load');
+            view.root = await createInstance(ir.root, view, options.rootProps ?? {}, null, null, content); if (disposed) throw new Error('Stale View load');
             content.replaceChildren(view.root.host);
             view.ready = true;
             for (const instance of instances.values()) if (instance.view === view) await activateInstance(instance);

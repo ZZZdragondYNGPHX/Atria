@@ -5,6 +5,8 @@ import { cancellable, checkCancellation, containsSecret as valueContainsSecret, 
 import { prepareExecutionPlan, assertExecutionEvidenceCurrent, continuityRequirements } from './execution-evidence.js';
 import { compiledRequestBinding } from './compiled-binding.js';
 import { hashNativeDocument, equalNativeDocuments } from '../repositories/common.js';
+import { NativeContentStream } from '../../../public/shared/native-content-stream.js';
+import { decodePresetContent } from '../../../public/shared/native-preset-content.js';
 
 // Prompt preparation is an injected port, implemented by PromptCompiler in P3.
 export class GenerationService {
@@ -229,12 +231,18 @@ export class GenerationService {
             let response;
             let streamed = '';
             let published = '';
+            const content = snapshot.promptIr.compilation?.presetContent;
+            const decoder = content ? new NativeContentStream() : null;
             const publish = text => {
                 if (!text.startsWith(published)) throw new GenerationError('generation_response_invalid');
                 if (text.length > published.length) {
                     const delta = text.slice(published.length);
                     published = text;
-                    onChunk(immutable({ text, delta }));
+                    if (decoder) {
+                        const previous = decoder.narrative, decoded = decoder.push(delta);
+                        onChunk(immutable({ text: decoded.narrative, delta: decoded.narrative.slice(previous.length), originalResponse: text,
+                            contentStatus: decoded.error ? 'invalid' : 'streaming' }));
+                    } else onChunk(immutable({ text, delta }));
                 }
             };
             try {
@@ -272,6 +280,7 @@ export class GenerationService {
             if (encoded.includes(secret) || encoded.includes(JSON.stringify(secret).slice(1, -1))) {
                 throw new GenerationError('generation_response_contains_secret');
             }
+            if (response.truncated && (!content || response.toolCalls?.length)) throw new GenerationError('generation_response_invalid');
             // Only the frozen request's tool declarations authorize a response
             // call. A name mentioned in dialogue is not a tool declaration.
             const allowedTools = new Set(snapshot.promptIr.tools.map(tool => tool.function?.name ?? tool.name));
@@ -280,6 +289,14 @@ export class GenerationService {
             checkCancellation(signal);
             if (controller.signal.aborted) throw new GenerationError('generation_provider_timeout');
             if (onChunk && typeof response.text === 'string') publish(response.text);
+            if (content && !response.toolCalls?.length) {
+                const decoded = response.truncated
+                    ? { status: 'invalid', narrative: '', raw: response.text, diagnostics: [{ code: 'content_truncated', message: 'Provider output limit reached; original response retained.' }] }
+                    : decodePresetContent(response.text, content.declaration, { ...content, ...(onChunk ? { stream: decoder } : {}) });
+                response = { ...response, text: decoded.narrative, assistantText: decoded.narrative,
+                    presetContent: { ...decoded, programRef: content.programRef,
+                        contextPolicies: Object.fromEntries(content.declaration.types.map(type => [type.type, type.context])) } };
+            }
             await provider.settleAttempt?.(response.usage);
             checkCancellation(signal);
             if (controller.signal.aborted) throw new GenerationError('generation_provider_timeout');

@@ -96,9 +96,23 @@ export function evaluateCondition(condition, read, depth = 0) {
     }
 }
 
-export function interpolate(body, read) {
+export function interpolate(body, read, sample) {
     if (typeof body !== 'string') promptError('body_invalid');
-    const result = body.replace(/\{\{\s*([^{}]+?)\s*\}\}/g, (_, path) => {
+    const result = body.replace(/\{\{([^{}]+)\}\}/g, (_, path, offset) => {
+        if (path.startsWith('random::')) {
+            if (!sample) promptError('random_scope');
+            const choices = path.slice(8).split('::');
+            return choices[sample(offset, choices.length)];
+        }
+        const dice = /^roll\s+(\d+)d(\d+)$/.exec(path.trim());
+        if (dice) {
+            if (!sample) promptError('random_scope');
+            const count = Number(dice[1]), sides = Number(dice[2]);
+            if (count < 1 || count > 100 || sides < 1 || sides > 1000000) promptError('dice_limit');
+            let total = 0;
+            for (let die = 0; die < count; die++) total += sample(offset + ':' + die, sides) + 1;
+            return String(total);
+        }
         const value = read(path.trim());
         if (value === undefined) promptError('variable_missing');
         return typeof value === 'string' ? value : JSON.stringify(value);

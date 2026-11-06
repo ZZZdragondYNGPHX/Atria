@@ -1,5 +1,6 @@
 import { contextTokenCounter } from './exact-token-count.js';
 import { projectActorDefinition } from '../../shared/native-actor-profile.js';
+import { nativePromptActorItems, nativePromptSource, nativePresetHistoryItems } from '../../shared/native-prompt-context.js';
 import { SUBJECT_NAMESPACE, resolvePerspectiveView } from '../../shared/native-subject-contract.js';
 import { evaluateNativeKnowledge, KNOWLEDGE_RUNTIME_NAMESPACE } from './knowledge-selection.js';
 import { createDeterministicRng } from './experience/logic/rng.js';
@@ -981,6 +982,7 @@ export class SessionContextCompiler {
             ...raw.recent,
         ];
         if (raw.currentUser) candidates.push(raw.currentUser);
+        if (!information) candidates.push(...nativePresetHistoryItems(snapshot, raw.recent, options.supplementalContent).map(normalizeContextItem));
         for (const lane of Array.isArray(options.deferredLanes) ? options.deferredLanes : []) {
             if (!LANE_VALUES.has(lane) || !Number.isFinite(Number(minima[lane])) || Number(minima[lane]) <= 0) continue;
             candidates.push(normalizeContextItem({
@@ -1042,8 +1044,19 @@ export class SessionContextCompiler {
         }
         candidates.push(...actorIdentityItems(snapshot, target, information), ...informationCognitionItems(snapshot, information), ...expressionItems(snapshot, information, options.authorityTurn ? onInformationScan : null), ...dynamicItems, ...persona.items.map(normalizeContextItem));
         candidates.push(...worldTextItems(snapshot, knowledgeTarget, information, stateProviders));
+        const promptAnchors = options.promptAnchors ?? [];
+        candidates.push(...nativePromptActorItems(snapshot, {
+            categories: promptAnchors.filter(entry => !entry.disabled).map(entry => entry.selector?.category),
+            ...(information ? { actorIds: information.actorId && information.projection?.availability[0]?.available ? [information.actorId] : [] } : {}),
+        }).map(normalizeContextItem));
         const rejected = [...preRejected];
         candidates = candidates.filter(item => {
+            const promptSource = nativePromptSource(item);
+            const owners = promptAnchors.filter(entry => entry.selector && Object.entries(entry.selector).every(([key, value]) => promptSource[key] === value));
+            if (!item.required && owners.length && owners.every(entry => entry.disabled)) {
+                rejected.push({ contextItemId: item.contextItemId, lane: item.lane, reason: 'prompt_anchor_disabled', sourceRefs: item.sourceRefs });
+                return false;
+            }
             if (visibleTo(item, target)) return true;
             rejected.push({
                 contextItemId: item.contextItemId,

@@ -33,6 +33,8 @@ import { RuntimeCheckpointStore } from '../model-prompt-runtime/runtime-checkpoi
 import { nativeExecutionScope } from '../model-prompt-runtime/native-execution-envelope.js';
 import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
 import { PromptCompiler } from '../model-prompt-runtime/prompt-compiler.js';
+import { PromptPresetStore } from '../model-prompt-runtime/presets.js';
+import { nativePromptIdentity } from '../../../public/shared/native-prompt-context.js';
 import { createNativeSessionContextAdapter, nativeSessionContextOptions } from './native-session-context.js';
 import { assertInformationActorAvailable, informationDefinition, informationContext, informationSourceMessageIds, memoryEvidenceApplicability } from '../../../public/shared/native-information-runtime.js';
 import { immutable, ProviderFailure, GenerationError, checkCancellation, containsSecret, inspectProviderHttpFailure, effectiveOutputReserve } from '../model-prompt-runtime/execution-utils.js';
@@ -1075,6 +1077,10 @@ export class NativeGenerationHost {
         }
         effectPolicy ??= lanePlan?.effectPolicy ?? null;
         const input = immutable(value);
+        const operation = input.operation ?? 'narrative';
+        if (!['narrative', 'opening', 'group-opening', 'actor-reply', 'impersonate'].includes(operation)) fail('native_generation_operation_invalid');
+        if (operation === 'actor-reply' && !input.actorId) fail('native_generation_actor_required');
+        if (operation === 'impersonate' && input.tools?.length) fail('native_generation_tool_denied');
         if (draftOverrides && !preview && !authoringRun) fail('native_generation_preview_only');
         if (['drafts', 'draftOverrides', 'baselineDrafts', 'programSelection', 'promptProgramRef', 'semanticBlocks', 'sourceBinding', 'audience', 'grant', 'authoringRun', 'previewContext'].some(key => Object.hasOwn(input, key))) fail('native_generation_request_authority_denied');
         if (input.previewRefs && !preview && !authoringRun) fail('native_generation_preview_only');
@@ -1284,7 +1290,13 @@ export class NativeGenerationHost {
         const contextPackage = !prediction && snapshot && (snapshot.manifest.runtime?.experienceContract?.contextRuntime || snapshot.manifest.runtime?.experienceContract?.processingRuntime)
             ? (preflightPackage ?? await this.packageInstaller.open(handle, snapshot.session.packageId, snapshot.session.packageVersionId)) : null;
         const nativeContext = !prediction && snapshot && authorityContext?.mode !== 'resolver' ? createNativeSessionContextAdapter({ readSnapshot: async () => ({ source, snapshot }),
-            options: nativeSessionContextOptions({ handle, snapshot, resolver, contextPackage, role, taskPlan, lanePlan: { memoryEvidence: lanePlan?.memoryEvidence ?? hostMemoryEvidence ?? [] }, authorityContext, signal }) }) : null;
+            readRegex: async resolved => {
+                const global = (await this.extensions.settings(handle)).value.regex ?? [];
+                const preset = await new PromptPresetStore({ engine: this.library._engine }).resolveRegex(handle, resolved.route.promptProgramRef);
+                return [...global, ...(preset?.regexScripts ?? []), ...(snapshot.manifest.processors?.regex ?? [])];
+            },
+            options: nativeSessionContextOptions({ handle, snapshot, resolver, contextPackage, role, taskPlan, lanePlan: { memoryEvidence: lanePlan?.memoryEvidence ?? hostMemoryEvidence ?? [] }, authorityContext,
+                ...(operation === 'actor-reply' ? { actorId: input.actorId } : {}), signal }) }) : null;
         const localWorkAttempts = [];
         const localWork = async (kind, request, operation, publicInput, discardResult) => {
             if (preview) return operation();
@@ -1310,7 +1322,7 @@ export class NativeGenerationHost {
                     : input.sessionId ? this.sessionCore.runs.settleLocalWork(handle, input.sessionId, receipt.operation, attempt.attemptId, usage)
                         : this.agent.settleLocalWork(handle, input.projectId, input.taskId, attempt.attemptId, usage) }, operation);
         };
-        const skills = !sample && !sendBank && !prediction && !authorityContext && this.skillRepository && isNarrativeSkillInvocation(input.role, taskPlan, runtime)
+        const skills = operation !== 'impersonate' && !sample && !sendBank && !prediction && !authorityContext && this.skillRepository && isNarrativeSkillInvocation(input.role, taskPlan, runtime)
             ? await prepareNarrativeSkills({ repository: preview ? createPreviewSkillRepository(this.skillRepository(handle)) : this.skillRepository(handle), settings: (await this.extensions.settings(handle)).value,
                 work: (kind, descriptor, operation) => localWork(kind, { resolved: { effectiveExecutionPolicy: route.executionPolicy,
                     pathFingerprint: hashNativeDocument(route) } }, operation, descriptor),
@@ -1451,9 +1463,25 @@ export class NativeGenerationHost {
         }, assertCurrent: assertSourceCurrent };
         if (previewContext) (previewContext.checks ??= []).push(assertSourceCurrent);
         if (input.prompt?.host !== undefined) fail('native_generation_host_readonly');
-        const hostView = { role, sourceKind: source.kind, sessionId: source.sessionId || '', branchId: source.branchId || '',
-            revisionId: source.revisionId || '', projectId: source.projectId || '', projectRevision: source.revision || '' };
-        const compiler = new PromptCompiler({ hostDefinitions: Object.fromEntries(Object.keys(hostView).map(key => [key, { type: 'string', required: true }])) });
+        if (input.actorId && !snapshot?.entryPoint?.actorIds.includes(input.actorId)) fail('native_generation_actor_invalid');
+        const subjectId = taskPlan?.intent?.simulation?.subject?.id;
+        const taskActorId = subjectId ? snapshot?.states?.atri_subjects?.subjects.find(subject => subject.subjectId === subjectId)?.actorId
+            : snapshot?.manifest?.runtime?.experienceContract?.informationRuntime?.views.find(view => view.audience === 'task' && view.taskId === taskPlan?.task.id)?.actorId;
+        if (taskPlan && input.actorId && input.actorId !== taskActorId) fail('native_generation_actor_invalid');
+        const hostView = { role, operation, contentProtocol: input.outputContract ? 'task' : 'preset', sourceKind: source.kind, sessionId: source.sessionId || '', branchId: source.branchId || '',
+            revisionId: source.revisionId || '', projectId: source.projectId || '', projectRevision: source.revision || '',
+            ...(snapshot ? Object.fromEntries(Object.entries(nativePromptIdentity(snapshot, { actorId: taskActorId ?? input.actorId })).filter(([key, value]) => ['user', 'char', 'group'].includes(key) && value !== undefined)) : {}) };
+        if (operation === 'impersonate' && !hostView.user) fail('native_generation_persona_required');
+        this.promptRandomSamples ??= new Map();
+        const randomKey = JSON.stringify([handle, input.requestId]);
+        if (!this.promptRandomSamples.has(randomKey)) {
+            if (this.promptRandomSamples.size >= 256) this.promptRandomSamples.delete(this.promptRandomSamples.keys().next().value);
+            this.promptRandomSamples.set(randomKey, new Map());
+        }
+        const compiler = new PromptCompiler({ hostDefinitions: {
+            user: { type: 'string' }, char: { type: 'string' }, group: { type: 'string' },
+            ...Object.fromEntries(Object.keys(hostView).map(key => [key, { type: 'string', required: true }])) },
+        randomSamples: previewContext ? previewContext.randomSamples ??= this.promptRandomSamples.get(randomKey) : this.promptRandomSamples.get(randomKey) });
         const attempts = [];
         const computeAttempts = [];
         const modelSendFacts = [];

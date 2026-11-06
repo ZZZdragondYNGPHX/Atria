@@ -4,7 +4,7 @@ import { publicParticipant } from '../../shared/native-participant.js';
 // Runtime ABI only. No storage, filename lookup, latest-pointer resolution or host DOM.
 const copy = value => JSON.parse(JSON.stringify(value));
 const EXTRA_FIELDS = ['bias', 'reasoning', 'reasoning_duration', 'reasoning_type', 'token_count', 'api', 'model',
-    'isSmallSys', 'isLargeSys', 'display_text', 'title', 'type', 'tool_invocations'];
+    'isSmallSys', 'isLargeSys', 'display_text', 'title', 'type', 'tool_invocations', 'preset_content'];
 const MESSAGE_FIELDS = ['send_date', 'gen_started', 'gen_finished', 'gen_id', 'is_name', 'force_avatar'];
 export const nativeAssetUrl = assetId => `/api/native/session/asset/${encodeURIComponent(assetId)}`;
 

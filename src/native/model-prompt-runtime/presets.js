@@ -6,6 +6,8 @@ import { ConflictError, NotFoundError } from '../../storage/errors.js';
 import { assertWritable } from '../../storage/read-only-mode.js';
 import { withRuntimeWrite } from './persistence.js';
 import { assertVersionedModelPromptResource, collectVersionedModelPromptResourceRefs, getVersionedModelPromptResourceDefinition, mapVersionedModelPromptResourceRefs } from './resources.js';
+import { compilePresetPresentation } from '../preset-presentation.js';
+import { assertExactResourceRef } from './contracts.js';
 
 const PROGRAM = 'core.prompt-program';
 const MODULE = 'core.prompt-module';
@@ -21,6 +23,16 @@ const logicalKey = entry => entry.resourceType + ':' + identity(entry);
 // remain ordinary exact Native resources, usable by the existing compiler.
 export class PromptPresetStore {
     constructor({ engine }) { this.engine = engine; }
+
+    async presentation(handle, { programRef, presentationId }) {
+        assertExactResourceRef(programRef, PROGRAM);
+        if (programRef?.scope !== 'library' || programRef.resourceType !== PROGRAM) throw new TypeError('Exact preset Program required');
+        const program = await this.engine.withTransaction(handle, tx => getNativeDocument(tx, key(handle, PROGRAM, programRef.resourceId, programRef.revision)));
+        if (!presentationId) return { types: program?.content?.types ?? [], presentations: (program?.content?.presentations ?? []).map(({ files, source, ...skin }) => skin) };
+        const skin = program?.content?.presentations?.find(item => item.id === presentationId);
+        if (!skin) throw new NotFoundError('Preset presentation');
+        return compilePresetPresentation(skin);
+    }
 
     async separateGeneration(handle) {
         return withRuntimeWrite(handle, () => this.engine.withTransaction(handle, async tx => {
@@ -92,12 +104,14 @@ export class PromptPresetStore {
         await this.separateGeneration(handle);
         if (input.format !== 'atria.prompt-preset' || input.schemaVersion !== 1 || !Array.isArray(input.entries) || !input.entries.length || input.entries.length > 5000) throw new TypeError('Invalid Prompt preset file');
         const regexScripts = normalizeNativeRegexScripts(input.regexScripts);
-        const entries = input.entries.map(e => ({ resourceType: e.resourceType, resource: structuredClone(assertVersionedModelPromptResource(e.resourceType, e.resource)) }));
+        const excludedParameters = importing ? input.entries.filter(e => e.resourceType === GENERATION).map(e => structuredClone(e)) : [];
+        const entries = input.entries.filter(e => !importing || e.resourceType !== GENERATION)
+            .map(e => ({ resourceType: e.resourceType, resource: structuredClone(assertVersionedModelPromptResource(e.resourceType, e.resource)) }));
         const byExact = new Map(entries.map(entry => [entryKey(entry), entry]));
         if (byExact.size !== entries.length) throw new TypeError('Duplicate preset exact resource identity');
         const programs = entries.filter(entry => entry.resourceType === PROGRAM && identity(entry) === input.programId);
         const main = input.programRevision ? programs.find(entry => entry.resource.revision === input.programRevision) : programs.length === 1 ? programs[0] : null;
-        if (main?.resourceType !== PROGRAM || entries.some(e => ![PROGRAM, MODULE, ...(importing ? [GENERATION] : [])].includes(e.resourceType))) throw new TypeError('A Prompt preset contains prompt text and modules only');
+        if (main?.resourceType !== PROGRAM || entries.some(e => ![PROGRAM, MODULE].includes(e.resourceType))) throw new TypeError('A Prompt preset contains prompt text and modules only');
         const categories = structuredClone(input.categories || []);
         if (!Array.isArray(categories) || categories.length > 1000) throw new TypeError('Invalid categories');
         const categoryIds = new Set(categories.map(c => c.id));
@@ -130,6 +144,7 @@ export class PromptPresetStore {
         visit(main);
         if (entries.some(e => e.resourceType === PROGRAM && !visited.has(entryKey(e)))) throw new TypeError('Additional programs must belong to the main program inheritance chain');
         entries.forEach(visit);
+        for (const entry of entries) for (const skin of entry.resource.content?.presentations ?? []) compilePresetPresentation(skin);
         return withRuntimeWrite(handle, () => this.engine.withTransaction(handle, async tx => {
             assertWritable();
             const previous = id ? await getNativeDocument(tx, key(handle, PROGRAM, id)) : null;
@@ -184,7 +199,7 @@ export class PromptPresetStore {
                 const oldRoot = await getNativeDocument(tx, key(handle, r.resourceType, r.resourceId));
                 await putMutable(tx, key(handle, r.resourceType, r.resourceId), { ...oldRoot, archived: true });
             }
-            return { presetId: owner, revision: selected.revision };
+            return { presetId: owner, revision: selected.revision, ...(excludedParameters.length ? { importReport: { excludedParameters } } : {}) };
         }));
     }
 }

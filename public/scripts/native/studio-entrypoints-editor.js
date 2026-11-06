@@ -3,7 +3,7 @@ import { mountStudioValueEditor } from './studio-value-editor.js';
 
 const clone = value => JSON.parse(JSON.stringify(value));
 const plain = value => value !== null && typeof value === 'object' && !Array.isArray(value);
-const keys = new Set(['entryPointId', 'displayName', 'actorIds', 'worldIds', 'knowledgeBindingIds', 'primaryActorId', 'primaryWorldId', 'initialStateOverlay', 'initialTimeline', 'runtime', 'recommendations', 'orchestration', 'memory']);
+const keys = new Set(['entryPointId', 'displayName', 'scenario', 'actorIds', 'worldIds', 'knowledgeBindingIds', 'primaryActorId', 'primaryWorldId', 'initialStateOverlay', 'initialTimeline', 'runtime', 'recommendations', 'orchestration', 'memory']);
 
 // Local loss/identity/reference guards before the original human Workspace review.
 // Source, Build and Session consumers retain their own authoritative validation.
@@ -70,6 +70,14 @@ export function mountStudioEntryPointsEditor({ document: doc, root, value, proje
             label.append(caption, input); parent.append(label);
         }
         textField(identity, 'displayName', 'Name');
+        const scenarioMode = doc.createElement('select'), scenario = doc.createElement('textarea');
+        scenarioMode.setAttribute('aria-label', 'Scenario source'); scenario.setAttribute('aria-label', 'Entry scenario');
+        for (const [value, label] of [['inherit', '继承角色场景'], ['override', '入口场景（可留空）']]) {
+            const option = doc.createElement('option'); option.value = value; option.textContent = label; scenarioMode.append(option);
+        }
+        scenarioMode.value = draft.scenario === undefined ? 'inherit' : 'override'; scenario.value = draft.scenario ?? '';
+        const updateScenario = () => { scenario.disabled = scenarioMode.value === 'inherit'; if (scenario.disabled) delete draft.scenario; else draft.scenario = scenario.value; };
+        scenarioMode.addEventListener('change', updateScenario); scenario.addEventListener('input', updateScenario); updateScenario(); identity.append(scenarioMode, scenario);
         // Setters project individual keys onto the value editor's one original draft.
         function structured(parent, key) {
             if (draft[key] === undefined) { note(parent, 'Not specified. Use Source to add, remove or change types.'); return; }

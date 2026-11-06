@@ -323,6 +323,7 @@ export function assertEntryPoint(value) {
     };
     if (value.subjects !== undefined) result.subjects = subjectDefinitions(value.subjects);
     if (primaryActorId) result.primaryActorId = primaryActorId;
+    if (value.scenario !== undefined) result.scenario = text(value.scenario, 'EntryPoint.scenario', { allowEmpty: true, maxLength: 1000000 });
     if (primaryWorldId) result.primaryWorldId = primaryWorldId;
     for (const key of [
         'initialStateOverlay',

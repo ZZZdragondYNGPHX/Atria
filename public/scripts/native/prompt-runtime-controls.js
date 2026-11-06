@@ -66,6 +66,51 @@ export async function mountPromptRuntimeControls({ document: doc, root, routeId 
 }
 
 export async function mountPlayPromptControls(doc, root) {
+    const runtime = globalThis.Atria?.nativeSessionRuntime;
+    if (runtime?.snapshot) {
+        const operations = el(doc, 'fieldset', '', undefined, root);
+        el(doc, 'legend', '', '生成辅助', operations);
+        const operationStatus = el(doc, 'p', '', '', operations); operationStatus.setAttribute('role', 'status');
+        const run = async (operation, actorId) => {
+            if (operations.disabled) return;
+            operations.disabled = true;
+            try {
+                const composer = globalThis.Atria?.shell?.getPlayHost?.()?.product?.composerApi;
+                if (!composer?.assist) throw new Error('当前没有可用的故事输入框');
+                await composer.assist(operation, actorId);
+                operationStatus.textContent = operation === 'impersonate' ? '玩家候选已准备，请检查草稿或候选提示。' : '角色回应已生成。';
+            } catch (error) { operationStatus.textContent = error.message; } finally { operations.disabled = false; }
+        };
+        action(doc, operations, '代写玩家草稿', () => run('impersonate'));
+        if (!runtime.snapshot.manifest.runtime?.experienceContract?.taskRuntime?.turn) {
+            const actor = el(doc, 'select', '', undefined, operations); actor.setAttribute('aria-label', '回应角色');
+            for (const id of runtime.snapshot.entryPoint?.actorIds ?? []) {
+                const definition = runtime.snapshot.manifest.actors.find(item => item.actorId === id);
+                const option = el(doc, 'option', '', definition?.displayName ?? definition?.name ?? id, actor); option.value = id;
+            }
+            action(doc, operations, '生成指定角色回应', () => run('actor-reply', actor.value)).disabled = !actor.options.length;
+        }
+        let captured = runtime.snapshot;
+        const group = el(doc, 'fieldset', '', undefined, root);
+        el(doc, 'legend', '', '会话场景', group);
+        const mode = el(doc, 'select', '', undefined, group); mode.setAttribute('aria-label', '场景来源');
+        for (const [value, label] of [['inherit', '继承入口／角色场景'], ['override', '会话覆盖（留空表示清空）']]) {
+            const option = el(doc, 'option', '', label, mode); option.value = value;
+        }
+        const scenario = el(doc, 'textarea', '', undefined, group); scenario.setAttribute('aria-label', '会话场景正文');
+        const current = captured.states?.atri_prompt_context?.scenario;
+        mode.value = current === undefined ? 'inherit' : 'override'; scenario.value = current ?? ''; scenario.disabled = mode.value === 'inherit';
+        mode.addEventListener('change', () => { scenario.disabled = mode.value === 'inherit'; });
+        const feedback = el(doc, 'p', '', '', group); feedback.setAttribute('role', 'status');
+        action(doc, group, 'Save', async () => {
+            try {
+                if (runtime.snapshot.session.sessionId !== captured.session.sessionId) throw new Error('Session changed');
+                await runtime.commitStatePatch({ atri_prompt_context: mode.value === 'inherit' ? {} : { scenario: scenario.value } }, { expectedRevisionId: captured.revision.revisionId });
+                captured = runtime.snapshot;
+                feedback.textContent = '已保存；下一次独立生成生效。';
+            } catch { feedback.textContent = '未保存；会话已变化或当前不可编辑，请重新打开。'; }
+        });
+    }
     const status = el(doc, 'p', '', tl('Loading Prompt controls…'), root);
     try {
         const { routes } = await runtimeRequest('/configuration');

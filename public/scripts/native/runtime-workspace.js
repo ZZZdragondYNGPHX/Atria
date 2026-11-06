@@ -342,6 +342,8 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             notice('Use the gateway format only if your service rejects numeric or true/false choices in tools.', compatibility);
             const responseMode = field(compatibility, 'Response mode', value.options?.responseMode || (original ? 'generation-profile' : 'stream'),
                 [['generation-profile', 'Follow the API preset'], ['stream', 'Always stream']]);
+            const contentFormat = field(compatibility, '附属内容格式约束', value.options?.presetContentSchema ? 'schema' : 'prompt',
+                [['prompt', '提示词 JSON（不发送 response_format）'], ['schema', '原生 JSON Schema（要求服务支持）']]);
             compatibility.open = schemaMode.value !== 'json-schema';
             const syncCompatibility = () => {
                 compatibility.hidden = adapter.value !== 'provider.openai-compatible';
@@ -428,7 +430,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             void inventory();
             serialize = () => {
                 if (creating || !secret.value && connectionRequiresSecret(adapter.value)) throw Object.assign(new Error('Select a stored Secret'), { code: 'native_secret_selection_required' });
-                const options = { ...value.options }; for (const key of ['toolSchemaMode', 'responseMode']) delete options[key];
+                const options = { ...value.options }; for (const key of ['toolSchemaMode', 'responseMode', 'presetContentSchema']) delete options[key];
                 delete options.imageCapabilities; delete options.userAgent; delete options.allowInsecureHttp; delete options.imageApi;
                 if (adapter.value === 'provider.openai-images' && imageApi.value === 'chat-completions') options.imageApi = 'chat-completions';
                 if (['provider.openai-images', 'provider.comfyui-image'].includes(adapter.value) && insecure.checked) options.allowInsecureHttp = true;
@@ -441,6 +443,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                 if (adapter.value === 'provider.openai-compatible') {
                     if (schemaMode.value !== 'json-schema') options.toolSchemaMode = schemaMode.value;
                     if (responseMode.value !== 'generation-profile') options.responseMode = responseMode.value;
+                    if (contentFormat.value === 'schema') options.presetContentSchema = true;
                 }
                 const result = { ...value, options, providerAdapter: adapter.value, transport: 'transport.http', endpoint: address() };
                 if (!secret.value && !connectionRequiresSecret(adapter.value)) delete result.secretRef;

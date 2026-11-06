@@ -1137,6 +1137,8 @@ function fillRegexEditorFields(editorHtml, script) {
     editorHtml.find('input[name="only_format_prompt"]').prop('checked', script.promptOnly ?? false);
     editorHtml.find('input[name="only_format_plugin"]').prop('checked', script.pluginOnly ?? false);
     editorHtml.find('input[name="run_on_edit"]').prop('checked', script.runOnEdit ?? false);
+    editorHtml.find('input[name="native_region"]').each(function () { $(this).prop('checked', (script.regions ?? ['prose']).includes(String($(this).val()))); });
+    editorHtml.find('input[name="native_block_types"]').val((script.blockTypes ?? []).join(', '));
     editorHtml.find('select[name="substitute_regex"]').val(script.substituteRegex ?? substitute_find_regex.NONE);
 
     const existingPlacement = Array.isArray(script.placement) ? script.placement : [];
@@ -1323,6 +1325,8 @@ async function onRegexEditorOpenClick(existingId, scriptType, context = null) {
             promptOnly: editorHtml.find('input[name="only_format_prompt"]').prop('checked'),
             pluginOnly: editorHtml.find('input[name="only_format_plugin"]').prop('checked'),
             runOnEdit: editorHtml.find('input[name="run_on_edit"]').prop('checked'),
+            regions: editorHtml.find('input[name="native_region"]:checked').map(function () { return String($(this).val()); }).get(),
+            blockTypes: String(editorHtml.find('input[name="native_block_types"]').val()).split(',').map(value => value.trim()).filter(Boolean),
             substituteRegex: Number(editorHtml.find('select[name="substitute_regex"]').val()),
             minDepth: null,
             maxDepth: null,

@@ -5,6 +5,8 @@ import { PROMPT_TARGETS, promptStageEntries, promptModuleRole } from '../../../p
 import { hashNativeDocument } from '../repositories/common.js';
 import { nativeExecutionScope } from './native-execution-envelope.js';
 import { semanticBlocks } from './semantic-blocks.js';
+import { randomInt } from 'node:crypto';
+import { presetContentInstruction } from '../../../public/shared/native-preset-content.js';
 
 export { PROMPT_TARGETS };
 const refKey = value => JSON.stringify(assertExactResourceRef(value));
@@ -38,6 +40,10 @@ const narrativeUsePolicy = 'Native narrative ownership and expression: default t
     + 'Narrator access is not NPC knowledge or permission to disclose private material to the player. Hypotheses and Narrative Intent are proposals, not committed events. '
     + 'Respect the authorized author\'s complete wording, literary style and mature fictional themes without adding generic moralizing solely because a theme is mature; '
     + 'creative intensity supplies neither missing facts nor consent, tool authority or permission to bypass a Provider restriction.';
+const draftUsePolicy = 'Native player draft operation: the player explicitly requested an uncommitted writing candidate from their accepted Persona viewpoint. '
+    + 'Write only that candidate, not an assistant story turn. Candidate actions, thoughts and dialogue are suggestions for the player to edit; they do not establish decisions, consent or occurred World facts. '
+    + 'Use the accepted Persona and applicable evidence. Do not impersonate NPCs, disclose unavailable private knowledge, call tools to commit actions, or advance the World. '
+    + 'Preserve applicable authored language, literary style and mature fictional themes. Return the prose-only subset of the declared content protocol when present.';
 
 // Reads only the exact closure already validated by RouteResolver, never a Library head.
 export function flattenPromptProgram(resolved, { validateBindings = true } = {}) {
@@ -73,6 +79,7 @@ export function flattenPromptProgram(resolved, { validateBindings = true } = {})
         }
         result.exclusiveTargets = [...new Set([...result.exclusiveTargets, ...(program.exclusiveTargets || [])])];
         if (Object.keys(program.responseDirective).length) result.responseDirective = program.responseDirective;
+        if (program.content) { result.content = program.content; result.contentProgramRef = ref; }
         const materialize = entry => entry.kind === 'anchor' ? { ...entry, id: entry.entryId }
             : { ...entry, id: entry.entryId, moduleId: entry.moduleRef.resourceId, ref: entry.moduleRef, module: read(entry.moduleRef, 'core.prompt-module'), config: {} };
         for (const stage of program.stages) {
@@ -170,8 +177,9 @@ export function flattenPromptProgram(resolved, { validateBindings = true } = {})
 }
 
 export class PromptCompiler {
-    constructor({ hostDefinitions = {} } = {}) {
+    constructor({ hostDefinitions = {}, randomSamples = new Map() } = {}) {
         this.hostDefinitions = immutable(hostDefinitions);
+        this.randomSamples = randomSamples;
     }
 
     preparePrompt = args => this.compile(args).promptIr;
@@ -208,6 +216,9 @@ export class PromptCompiler {
         const personaStages = [];
         const diagnostics = [];
         const provenance = [...plan.provenance, ...program.provenance];
+        const placed = new Set(), excluded = new Set();
+        const matchesAnchor = (entry, item) => entry.accepts.includes(item.kind)
+            && Object.entries(entry.selector ?? {}).every(([key, value]) => item.evidence?.promptSource?.[key] === value);
         for (const [index, stage] of program.stages.entries()) {
             declarations.artifact = {};
             for (const name of stage.consumes) {
@@ -219,6 +230,10 @@ export class PromptCompiler {
             const read = path => readVariable(path, env, declarations);
             declarations.module = {}; env.module = {};
             if (!evaluateCondition(stage.condition, read)) {
+                for (const entry of stage.entries.filter(entry => entry.kind === 'anchor')) {
+                    for (const item of plan.items) if (matchesAnchor(entry, item) && !item.evidence?.required
+                        && !['context.input', 'context.directive'].includes(item.kind)) excluded.add(contributionKey(item));
+                }
                 diagnostics.push({ stageId: stage.stageId, status: 'condition-false' });
                 continue;
             }
@@ -227,13 +242,16 @@ export class PromptCompiler {
             for (const entry of stage.entries) {
                 if (entry.kind === 'anchor') {
                     if (entry.disabled || !evaluateCondition(entry.condition, read)) {
+                        for (const item of plan.items) if (matchesAnchor(entry, item) && !item.evidence?.required
+                            && !['context.input', 'context.directive'].includes(item.kind)) excluded.add(contributionKey(item));
                         diagnostics.push({ stageId: stage.stageId, entryId: entry.id, kind: 'anchor', status: entry.disabled ? 'disabled' : 'condition-false' });
                         continue;
                     }
                     const seen = new Set();
                     const items = plan.items.filter(item => {
-                        if (!entry.accepts.includes(item.kind)) return false;
-                        const key = contributionKey(item); if (seen.has(key)) return false; seen.add(key); return true;
+                        if (!matchesAnchor(entry, item)) return false;
+                        const key = contributionKey(item); if (seen.has(key) || placed.has(key)) return false;
+                        seen.add(key); placed.add(key); return true;
                     });
                     if (!items.length && entry.required) promptError('anchor_required:' + stage.stageId + ':' + entry.id);
                     for (const item of items) blocks.push({ target: entry.target, item, anchorId: entry.id, stageId: stage.stageId });
@@ -250,7 +268,11 @@ export class PromptCompiler {
                     diagnostics.push({ stageId: stage.stageId, entryId: entry.id, moduleId: module.promptModuleId, status: 'condition-false' });
                     continue;
                 }
-                const content = module.textMode === 'literal' ? module.body : interpolate(module.body, read);
+                const content = module.textMode === 'literal' ? module.body : interpolate(module.body, read, (offset, size) => {
+                    const key = JSON.stringify([request.requestId, stage.stageId, entry.id, module.body, offset, size]);
+                    if (!this.randomSamples.has(key)) this.randomSamples.set(key, randomInt(size));
+                    return this.randomSamples.get(key);
+                });
                 const role = promptModuleRole(module);
                 blocks.push({ target: module.target, role, content, provenance: [{ source: 'prompt.module', ref: refKey(entry.ref) }],
                     ...(module.expression ? { expression: module.expression } : {}) });
@@ -264,6 +286,10 @@ export class PromptCompiler {
             }
         }
         const directive = program.responseDirective;
+        const presetContent = program.content && !request.outputContract && resolved.route.role === 'role.narrator'
+            ? { declaration: { schemaVersion: 1, types: program.content.types }, programRef: program.contentProgramRef, proseOnly: env.host.operation === 'impersonate' } : null;
+        if (presetContent) blocks.push({ target: 'response.post_history', role: 'system',
+            content: presetContentInstruction(program.content, presetContent) });
         if (Object.keys(directive).some(key => !['body', 'stages'].includes(key))) promptError('response_directive');
         if (directive.stages !== undefined && (!Array.isArray(directive.stages) || directive.stages.some(id => !stages.includes(id)))) promptError('response_directive');
         if (directive.body !== undefined && (!directive.stages || directive.stages.some(id => selected.includes(id)))) {
@@ -295,8 +321,8 @@ export class PromptCompiler {
             segments.push({ identity: hashNativeDocument({ scope, kind: item.kind, id: item.id ?? null }),
                 kind: item.kind, source: plan.source, provenance: item.provenance,
                 contentFingerprint: hashNativeDocument(item.content), volatility: 'request', cacheability: 'candidate',
-                consumed: consumed.has(item) || item.kind !== 'context.player-persona' || personaStages.length > 0 });
-            if (consumed.has(item)) continue;
+                consumed: consumed.has(item) || !excluded.has(contributionKey(item)) && (item.kind !== 'context.player-persona' || personaStages.length > 0) });
+            if (consumed.has(item) || excluded.has(contributionKey(item))) continue;
             if (item.kind === 'context.history') {
                 ir.history.push(item.content);
                 historySources.push({ source: plan.source, provenance: item.provenance, evidence: item.evidence ?? null, id: item.id ?? null });
@@ -363,13 +389,19 @@ export class PromptCompiler {
                 contentFingerprint: hashNativeDocument(sessionTaskUsePolicy), volatility: 'stable', cacheability: 'candidate', consumed: true });
         }
         if (resolved.route.role === 'role.narrator') {
-            emitDirective(narrativeUsePolicy, { kind: 'host_policy', provenance: [{ source: 'native.narrative-use-policy', ref: 'v1' }] });
-            provenance.push({ source: 'native.narrative-use-policy', ref: 'v1' });
-            segments.push({ identity: 'native.narrative-use-policy.v1', kind: 'context.directive',
-                provenance: [{ source: 'native.narrative-use-policy', ref: 'v1' }], contentFingerprint: hashNativeDocument(narrativeUsePolicy),
+            const isDraft = env.host.operation === 'impersonate';
+            const policy = isDraft ? draftUsePolicy : narrativeUsePolicy + (env.host.operation === 'actor-reply'
+                ? '\nThis operation requests a response focused on the explicitly selected Actor ' + JSON.stringify(env.host.char)
+                    + '. Preserve that Actor\'s own knowledge and voice; do not generate independent ensemble interludes or act for the player.' : '');
+            const source = isDraft ? 'native.player-draft-policy' : 'native.narrative-use-policy';
+            emitDirective(policy, { kind: 'host_policy', provenance: [{ source, ref: 'v1' }] });
+            provenance.push({ source, ref: 'v1' });
+            segments.push({ identity: source + '.v1', kind: 'context.directive',
+                provenance: [{ source, ref: 'v1' }], contentFingerprint: hashNativeDocument(policy),
                 volatility: 'stable', cacheability: 'candidate', consumed: true });
         }
         ir.compilation = { versions: { compiler: 'native.prompt.v6', canonical: 'native.json.v1', layout: 'native.semantic-blocks.v3' }, segments,
+            ...(presetContent ? { presetContent } : {}),
             source: plan.source, directiveSources, historySources, responseSources,
             authoredBehaviorFingerprint: hashNativeDocument({ blocks: blocks.filter(block => !block.item), parameters: env.param, selectedStages: stages.filter(id => selected.includes(id)), programRef: resolved.route.promptProgramRef }),
             ...(plan.personaEvidence ? { personaEvidence: { ...plan.personaEvidence, consumerStages: personaStages,

@@ -25,6 +25,9 @@ import { activityNarrative, publishActivities } from './activity-authority.js';
 import { assertInformationClosure } from '../../public/shared/native-information-contract.js';
 import { assertMessageProjection, assertTurnEnvelope } from '../../public/shared/native-message-contract.js';
 import { normalizeNativeRegexScripts } from '../../public/shared/native-regex.js';
+import { decodePresetContent } from '../../public/shared/native-preset-content.js';
+import { assertExactResourceRef, assertPromptProgram } from './model-prompt-runtime/contracts.js';
+import { getNativeDocument } from './repositories/common.js';
 import { selectedWorlds, initialWorldState } from './session-worlds.js';
 import {
     assertNativeResourceKey, assertSession, assertSessionRevision, assertTimelineEntry, assertVariant,
@@ -112,6 +115,11 @@ function validateWorldState(states, manifest, entryPoint) {
 
 function validateRuntimeStateChanges(handle, sessionId, statePatch = {}, deleteNamespaces = []) {
     const values = cloneNativeDocument(statePatch, 'Native runtime state patch');
+    if (values?.atri_prompt_context !== undefined) {
+        const context = values.atri_prompt_context;
+        if (!context || Object.keys(context).some(key => key !== 'scenario')
+            || context.scenario !== undefined && (typeof context.scenario !== 'string' || context.scenario.length > 1000000)) throw new TypeError('Invalid Session prompt context');
+    }
     if (!values || Array.isArray(values) || typeof values !== 'object') {
         throw new TypeError('Native runtime state patch must be an object');
     }
@@ -168,6 +176,7 @@ export class SessionCore {
         this._continuity = sessionRepo.continuity;
         this.runs = new RunControl(sessionRepo);
         this._lifecycleProof = {};
+        this._validatedPresetVariants = new Set();
     }
 
     async _openPackage(handle, packageId, packageVersionId, entryPointId) {
@@ -411,12 +420,36 @@ export class SessionCore {
     // Compile exact installed source bytes once for this validation batch. No
     // compiled definitions/functions escape into a Session/HTTP snapshot.
     async _validateProjections(handle, base, variants, installed = null) {
-        const projected = variants.filter(variant => variant.projection !== undefined);
+        let projected = variants.filter(variant => variant.projection !== undefined);
         if (!projected.length) return;
         const roles = new Map(base.timeline.map(entry => [entry.messageId, entry.role]));
         for (const variant of projected) {
             if (!['user', 'assistant'].includes(roles.get(variant.messageId))) throw new TypeError('MessageProjection requires a user or assistant message');
         }
+        const programs = new Map();
+        for (const variant of projected) {
+            const metadata = variant.metadata?.runtime?.extra?.preset_content;
+            if (!metadata) continue;
+            const identity = JSON.stringify([handle, variant.variantId]);
+            if (this._validatedPresetVariants.has(identity)) continue;
+            const ref = assertExactResourceRef(metadata.programRef, 'core.prompt-program');
+            if (ref.scope !== 'library') throw new TypeError('Preset content requires a Library Program');
+            const key = JSON.stringify(ref);
+            if (!programs.has(key)) programs.set(key, assertPromptProgram(await this._sessions._engine.withTransaction(handle,
+                tx => getNativeDocument(tx, { kind: NATIVE_RESOURCE_KINDS.versionedJsonResourceRevision, handle,
+                    resourceType: ref.resourceType, resourceId: ref.resourceId, revision: ref.revision }))));
+            const declaration = programs.get(key).content;
+            if (!declaration || typeof metadata.raw !== 'string') throw new TypeError('Missing pinned preset content declaration');
+            const decoded = decodePresetContent(metadata.raw, declaration);
+            if (!equalNativeDocuments(metadata.contextPolicies, Object.fromEntries(declaration.types.map(type => [type.type, type.context])))) throw new TypeError('Preset context policy does not match its declaration');
+            if (decoded.status === 'invalid' || metadata.status !== decoded.status || !equalNativeDocuments(metadata.diagnostics, decoded.diagnostics)
+                || decoded.narrative !== variant.content || !equalNativeDocuments(decoded.projection, variant.projection)) {
+                throw new TypeError('Preset content does not match its original response');
+            }
+            if (this._validatedPresetVariants.size >= 2048) this._validatedPresetVariants.delete(this._validatedPresetVariants.values().next().value);
+            this._validatedPresetVariants.add(identity);
+        }
+        projected = projected.filter(variant => !variant.metadata?.runtime?.extra?.preset_content);
         // Prose-only presentation is valid without Component Model v2.
         if (!projected.some(variant => variant.projection.flow.some(node => node.kind === 'block'))) return;
         const { session } = base;
