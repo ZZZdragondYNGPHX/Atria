@@ -1,16 +1,21 @@
 ---
 name: atri-native-runtime-authoring
-description: 设计 Atria Native Turn、Model Task、Session App、Workflow、Activity 结算和 Scene 呈现；维护事实先提交再叙述、精确资源与取消恢复边界。
+description: 编写 Atria Native 的回合、Model Task、剧情 Workflow、世界推进、Activity 和 Scene，让规则、模型生成与故事呈现各司其职。
 metadata:
   author: Atria Team
-  version: 1.0.0
+  version: 1.1.0
   atria-paths: studio,agents
 ---
 
-# Native Task / 生命周期 / Activity / Scene
+# Native 运行时与剧情编排
 
-根据请求选择需要的契约，不默认引入后台自动化或模型调用。
+从玩家想经历的事情开始：什么由玩家发起，什么由世界规则决定，哪里需要模型，哪些内容只是呈现。沿用作品已有的 Domain、Command、Task 和时钟，把新的情节接进去。
 
-1. 查 catalog `tasks`、`lifecycle`；涉及 Activity/媒体才读 `presentation`，涉及 Turn 正文/Variant 读 `messages`。
-3. Source 只声明语义需求；Model/Connection/Secret/调度/并发/超时/取消由 Host 控制。不要在 Package 中写 provider URL 或执行脚本来补齐能力。
-4. 没有 recorded fixture 或设备证据时明确相应未测。
+- 回合与模型任务：读 catalog `messages`、`tasks`；编写 Prompt 或 Generation Profile 时补读 `prompt-resources`。
+- 事件、等待、分支与人物介入：读 `lifecycle`、`story-workflows`；涉及人物知道什么时再读 `information`。
+- 世界持续推进、开局与生涯：从 `capabilities` 中确认 `simulationRuntime`、`storyStart`、`runPolicy` 等声明与依赖，沿用作品已有的权威事务。
+- Activity、场景和媒体：读 `presentation`。
+
+具体选择见 [运行时设计](references/runtime.md)。catalog 通过 `atri_agent_api_catalog` 查找、`atri_agent_api_read` 读取；长页按 `nextOffset` 续读到所需定义。字段以当前契约为准。
+
+Source 描述作品需要什么；连接、模型配置、凭据和执行调度交给 Host。故事的语言可以灵活，已经发生的支付、移动或结算则以实际提交结果为依据。

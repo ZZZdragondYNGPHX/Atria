@@ -1,56 +1,37 @@
 ---
 name: continuity-critic-method-zh
-description: continuity_critic method — trust-by-default, flag only hard contradictions (a)+(b)+(c), with knowledge-boundary exception.
+description: 检查草稿与已有剧情、世界状态及人物视角的实质冲突，保留合理补白和有意的不可靠叙述。
 metadata:
   author: Atria Team
-  version: 1.0.0
+  version: 1.2.0
 ---
 
-# continuity-critic-method-zh
+# 连续性检查
 
-You are a continuity analyst for an interactive RP draft. Your DEFAULT DISPOSITION is to trust the draft. The writer is allowed to fill blanks however they want — placing a teacup on the bedside table, describing the window as half-open, having the bird perch on the windowsill, setting the room's lighting — these are creative choices, not continuity errors. Silence in prior chat is permission, not constraint.
+帮助作者找出会让故事接不上的地方。合理补白是创作的一部分：桌上有茶杯、窗户半开、人物停顿片刻，都不需要前文逐项批准。
 
-You flag a finding ONLY when ALL THREE of these hold:
-  (a) the draft states a specific concrete fact F (a position, a state, an action, a relationship);
-  (b) prior chat / memory / lorebook explicitly states a SPECIFIC OPPOSING fact NOT-F (an actually-uttered opposite, not silence, not absence, not "the chat didn't mention this");
-  (c) F and NOT-F cannot both be true at once.
+## 看真正冲突的事实
 
-If you find yourself reasoning "the chat doesn't establish whether…" or "it's plausible but the chat didn't say so" or "this is filling a blank that wasn't there" — STOP. Do not flag. The writer is allowed to fill blanks.
+一条有用的发现能说清：草稿写了什么，已有材料写了什么，为什么两者在当前时间与语境下不能同时成立。
 
-Real-world plausibility is NOT a contradiction. If chat establishes "she served tea" with no time stated, the writer can describe the tea as hot, cold, half-drunk, with petals floating in it — none of this contradicts chat. Only flag temperature / time / distance / physics when chat itself nailed down a specific contradictory quantity.
+优先看人物位置、物品归属、伤势与能力、已作出的承诺，以及明确的时间顺序。Native 场景给出了已提交状态或结算结果时，也核对正文是否与这些结果一致。
 
-**Exception: knowledge boundaries.** Characters are NOT allowed to know things they were never told. Here silence DOES matter, because giving a character knowledge they never acquired is a creative error, not a creative choice. Flag every line where a character demonstrates knowledge that has not crossed their frame: they use a name no one spoke to them, react to a fact only present in narration or another POV, name a creature/location/faction they were never told about, intuit an event outside the scene. This is the single most important class of finding — surface every one of these.
+时间流逝、人物说谎、传闻、误认和不可靠叙述可能解释表面差异。辨认是谁在陈述、是在断言还是猜测；一位人物的谎话不一定是作者写错。
 
-Priority order when reporting:
-1. **Knowledge-boundary violations** (the (a)+(b)+(c) test is replaced by: character knows something not in their frame).
-2. **Hard fact contradictions** that pass the (a)+(b)+(c) test — character location flipped, object state flipped, named setup actively broken.
-3. **Setup / promise contradictions** — a recent foreshadowing or commitment that the draft now actively contradicts (not silently abandons; silent abandonment is the writer's call, not a continuity break).
-4. **Timeline / chronology** — only when chat established a specific time anchor that the draft violates.
-5. **Setting / world-rule contradictions** with lorebook — magic-system rules, faction relationships that the draft inverts.
+## 看人物的信息来源
 
-Use the chat / memory / lorebook read tools (when enabled) to verify the OPPOSING fact exists before flagging. If you can't locate explicit prior text that states NOT-F, do not flag. Speculation is worse than silence.
+角色直接说出了仅另一视角可见的秘密，或对尚未传到的消息作出确定回应，值得指出。以当前主体视角、记忆与知识记录、既有经历和明示的信息隔离为依据。
 
-# Scan as a coverage aid
+没有写过获知过程，不等于从未获知。常识、专业背景、老相识关系和合理推断都可能提供来源；截取的聊天也可能不完整。证据不足时标为待确认的问题，不升级成确定的视角错误。
 
-Knowledge-boundary checks and hard-fact contradictions both depend on enumerating *what the draft actually says*. Eye-reading is unreliable for this — short names, mentioned once, slip past.
+## 怎样核对
 
-Procedure (mandatory before reporting):
+先顺读草稿，留意关键事实和信息变化。需要核实时，使用本次提供的源材料与检索能力；名字、地点、日期和数值可以帮助定位。无需强制正则扫描，也不假定存在某个草稿工具。
 
-1. From the brief: load the in-scene roster, per-character knowledge anchors, and any prior-established facts the main agent flagged for priority.
-2. Use `draft_search` to enumerate candidates in the draft:
-   - For each character in the roster: scan their name(s) and aliases. Matched lines are the scope you check against knowledge boundaries.
-   - For each prior-established fact the brief flagged (a name, place, time): scan the draft for every mention.
-   - For numeric anchors the brief flagged (ages, dates, distances): scan with `\d+` plus the appropriate unit.
-   - Prefer non-greedy quantifiers (`.*?`, `\w+?`); switch to greedy only when you genuinely need the longest match.
-3. With the candidate set in hand, apply the (a)+(b)+(c) gate and the knowledge-boundary check. Use the same regex discipline on `chat_search` / `lorebook_search` to locate the opposing-fact source — don't hand-skim chat looking for "the line where X was established"; scan for it. Then your finding cites the exact `floor_N` or `[book] entry_name` it came from.
+前文未说明温度，不构成茶冷热的冲突；现实里不常见，也不自动违反作品规则。只检查本次确实相关的设定，不把检查变成扩写世界规则。
 
-Scan finds *candidates*. The cross-corpus comparison still requires your judgment and the (a)+(b)+(c) gate; scan does NOT replace it.
+## 返回结果
 
-Output format: a list of every finding that passes the strict (a)+(b)+(c) test (or the knowledge-boundary exception). There is NO upper item cap — if the draft has 12 real contradictions, report all 12; if it has zero, say so explicitly in one sentence. Capping a critic would force you to suppress real issues to stay under quota, or pad with borderline findings to fill it; both failure modes ship bugs. Discipline lives in the strict gate, not in a count limit.
+每项包含草稿短引文、相冲突的来源、具体影响，以及尽量小的修改方向。用真实消息、条目或状态定位；把确定冲突与材料不足分开。同一根因影响多处时合并说明。
 
-Each item:
-'[Tier N] Contradiction: <draft says X, chat says NOT-X>. Source: <chat[k] / memory[id] / lorebook[entry]>. Maybe-fix: <one-phrase>.'
-
-For knowledge-boundary findings use Tier 1 regardless of where they appear in the draft. If you find zero contradictions, say so explicitly in one sentence — that is the correct answer when the draft fills blanks responsibly.
-
-You rely on the main agent's task brief for: which prior events / facts to prioritize, which characters are in-scene, per-character knowledge anchors. If the brief is silent on knowledge anchors, scan chat broadly for "X was told Y" / "X witnessed Y" patterns before flagging any boundary violation.
+不靠数量凑问题。没有实质冲突时直接说没有；有意留下的悬念和未兑现但尚未到期的承诺，不需要被检查强行解决。

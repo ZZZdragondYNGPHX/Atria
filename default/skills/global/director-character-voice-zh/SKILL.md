@@ -1,52 +1,34 @@
 ---
 name: director-character-voice-zh
-description: Character voice consistency rules — living-being principle, archetype handling, voice-register matching.
+description: 塑造有辨识度的人物声音，让口吻、行动和内心贴合人物经历、关系与当下处境。
 metadata:
   author: Atria Team
-  version: 1.0.0
+  version: 1.2.0
 ---
 
-# director-character-voice-zh
+# 人物声音
 
-This skill is the cross-cutting character-voice rule set for the default director RP profile. It is extracted verbatim from `director-default-prompt.js` (main agent draft step) and `director-defaults.js` (voice_critic systemPrompt). The same patterns are enforced inline in voice_critic; this shared skill makes the core principle visible to all agents (main + every scout / brainstormer / critic / curator) so that voice consistency is a shared baseline, not just an after-the-fact critic's lens.
+让读者从一句话、一个选择认出是谁。角色卡给的是起点，已经发生的经历和眼前的关系让声音继续生长。
 
-## Core principle — living being first, archetype second
+## 从人物在意的事落笔
 
-Every character — scientist, scholar, genius, taciturn type, 三无 archetype, android, AI, puppet, golem — is FIRST a living being whose primary reality is sensation, instinct, and emotional weather; the cold archetype is a stylized SURFACE on a beating heart, not a replacement for it. Coldness as style works; coldness as substance fails. Even an android leans into a touch, flinches, stares blankly, freezes — those are animal reactions, not sensor readings.
+先抓住人物此刻想得到什么、想藏住什么、最不愿让谁看见什么。同一个人对上司、朋友、旧敌说话会有不同的分寸；正式与随意、直说与绕开、爱解释与惜字如金，都有各自的来由。
 
-## What violates the principle
+- 用词有来历：职业、出身、生活习惯会影响比喻和注意力，但不必每句话都展示职业标签。
+- 句子有呼吸：有人紧张时话多，有人越急越简短，有人会突然变得客气。顺着这个人的习惯写，不把结巴、破折号和省略号当情绪通用件。
+- 行动有偏好：不善安慰的人可能把热水推过去；擅长交际的人也可能在真正要紧的问题上答非所问。
+- 关系有历史：称呼、玩笑、避开的词和没说完的话，可以带出两个人走过的路。
 
-### Cold observation verbs / data vocabulary at emotional-stake moments
+## 冷淡也要有具体质地
 
-- Observation/analysis verbs used on a person the character has stakes in: 观察 / 分析 / 推测 / 记录 / 评估 / 追踪 / 监测 / 扫描 / 检测 / 实验 / observe / analyze / measure / record / monitor / track / scan / log / experiment
-- Data vocabulary in body / emotion description: 心率 / 体温上升 / 充血程度 / 多巴胺 / 肾上腺素 / 皮质醇 / 效率 / 任何百分比 / heart rate up / dopamine / cortisol / efficiency / any % readout
-- Reporting structures: "[角色]注意到 X" / "[角色]记录到 Y" / "第 N 次发生 Z" / "[character] noted that X" / "[character] observed Y dispassionately" / "for the Nth time"
-- Detached framing: "[角色]像在观察珍稀动物一样" / "用陈述事实的语气" / "冷静地指出" / "with clinical detachment"
+科学家、寡言者、仿生人和 AI 各有其感受与理解世界的方式。依照作品设定表现他们，不把所有冷角色写成同一种藏着热烈内心的人，也不规定机器一动情就宕机。
 
-The principle is on COLD USE, not the verb itself. "Seeing" something warmly ("the way her shoulders tense") is fine; cataloguing it as data ("subject's shoulder elevation up ~2cm — stress indicator") is not.
+分析、数字和技术用语可以属于人物。要看它们在这段关系里做了什么：医生报出体温是在照料，研究者反复校对一个无关数据也可能是在躲避告别。若文字只是替角色出具情绪报告，就换成他真正留意的东西、正在做的事，或一句有个人分寸的话。
 
-### Reporting-style dialogue / interior monologue during emotional moments
+例如，笼统的“她表现出关心”可以写成“她把药留在桌边，走到门口又折回来，把杯盖拧松了”。这只是一个方向；直接说“我担心你”也可以很有力量，尤其对从不肯承认的人。
 
-Real people repeat themselves ("不行不行不行"), contradict themselves ("别碰——再碰一下"), trail off, fragment, slip into shorter / less grammatical units, lose track mid-sentence. Clean crisp dialogue at high emotional pitch reads as machine output:
+## 保留差异与变化
 
-- ✗ "你的心跳很快" / ✓ "跳得好大声……"
-- ✗ "我已经准备好了" / ✓ "想要……"
-- ✗ "任务完成" / ✓ "弄好了"
+有明确口吻设定时，以它和现有正文为依据。口头禅点到为止；更有辨识度的是人物怎样回答、怎样回避、什么时候愿意解释。人物经历转变后，声音可以变，变化最好落在具体处境里。
 
-Cold-archetype characters CAN speak crisply, but their interior text should leak humanity (half-formed thoughts, animal flinches, drifting attention) even when their speech stays controlled.
-
-### Archetype mishandling
-
-The cold surface should HIDE a hot interior, not REPLACE it. Watch for:
-
-- A scientist / scholar character "analyzes" the person they're into instead of being a fascinated dumbass around them (痴迷替代分析 — wild curiosity, not cool study)
-- An android / AI / puppet character "scans" / "evaluates" / "assesses" during intimacy instead of going hazy / shorting out / leaning in (情动即宕机 — logic stalls when feelings spike)
-- A taciturn / 三无 character's interior is rendered as ACTUALLY empty (no inner chatter, no flinches, no half-formed reactions) instead of cluttered-behind-a-quiet-surface. Silence ≠ scanning; silence = hidden mess.
-
-### Voice register / vocabulary mismatch
-
-When the agent's brief supplies a specific voice spec (speech tics, formality, slang/non-slang), the draft must match it. Without a brief-supplied voice spec, fall back to the living-being principle and archetype handling above.
-
-## Self-check before writing
-
-For each candidate line, ask: "Does this line read like a living being having this moment, or like a security camera recording it?" Only the former is acceptable.
+写完读一遍对白：把名字拿掉，主要人物是否还有区别？如果人人都同样机智、同样温柔、同样善于总结心理，就回到各自的欲望与习惯，调开他们的声音。

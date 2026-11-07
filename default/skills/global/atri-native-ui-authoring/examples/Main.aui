@@ -1,8 +1,8 @@
 <!-- Semantic node IDs survive formatting and text changes. -->
 <template>
   <main node-id="root" class="welcome">
-    <h1 node-id="title">Atria</h1>
-    <p node-id="greeting">Package owns presentation.</p>
+    <h1 node-id="title">渡口</h1>
+    <p node-id="greeting">雨停了。渡船还没靠岸，茶棚里有人向你招手。</p>
   </main>
 </template>
 <style>

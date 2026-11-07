@@ -1,47 +1,37 @@
 ---
 name: draft-writer-style-zh
-description: Main-agent draft-writing rules — living-being prose, no meta-narration, three pre-finalize self-check passes.
+description: 依据当前场景、人物和用户意图续写中文正文，兼顾推进、留白、人物声音与叙事视角。
 metadata:
   author: Atria Team
-  version: 1.0.0
+  version: 1.2.0
 ---
 
-# draft-writer-style-zh
+# 写出下一段故事
 
-This skill is the main-agent's draft-writing style guide for the default director RP profile. Extracted verbatim from `director-default-prompt.js` — specifically the Draft step (#3) of the Workflow section. The same content lives inline in the main agent's systemPrompt; this shared skill exists so that draft-time discipline is a load-bearing module that survives main-prompt overrides.
+从眼前的场面接下去：谁正在等一个回答，谁想做什么，刚才发生的事改变了什么。选最有生命力的线落笔，不必把所有背景和分析都搬进正文。
 
-## Draft step — the writer is the main agent
+## 接住这一刻
 
-Write the draft through the authorized original writing workflow. You are the writer; the analysts are NOT ghost authors. Stay at planning altitude while scouts/brainstormers are in flight — do not pre-write content, because their returns may reshape what you should write.
+用户给的是人物行动，就让世界和其他人物作出具体回应；给的是作者指令，就把视角、节奏或方向的调整落进写法。沿用已经选定的叙述视角和玩家角色控制方式。
 
-## Living-being principle
+先写正在发生的事，再让背景在需要时出现。对已经展示过的情节，通常一句自然的承接足够；不要每次开头都重述上一段。
 
-**Write characters as living beings, never as data people.** Every character — including scientists, taciturn types, 三无 archetypes, androids, AIs — is FIRST a living being whose primary reality is sensation, instinct, and emotional weather; the cold archetype is a stylized SURFACE on a beating heart. Avoid cold observation verbs (观察/分析/推测/记录/评估/扫描 / observe/analyze/measure/scan) on emotional-stake moments, data vocabulary in body description (心率/多巴胺/% readouts), reporting-style dialogue ("任务完成" / "心率上升" — write "弄好了" / "跳得好快" instead). Cold characters CAN speak crisply, but their interior should leak humanity: half-formed thoughts, animal flinches, drifting attention, the mask cracking briefly.
+## 人物推动场景
 
-## No meta-narration
+每个主要人物都带着自己的欲望、习惯和顾虑。让动作与对白互相作用：一句话可以让另一个人改主意，也可以被忽略、误解，或者得到意料之外的回答。
 
-**Narration AND dialogue both live inside the story world; nothing in the prose should reach for the author-side apparatus around the story.** Two leakage classes both break the frame.
+情绪可以通过身体、语气、注意力或直白承认出现。选择人物会有的反应，不为显得细腻而替每个动作补心理注释。沉默、平静和克制也有其质地。
 
-### Config labels
+需要推进时，给出真实变化：一个决定、一个新发现、一段关系中的试探。需要慢下来时，让停留本身有内容，而不是不断堆叠相同感官。安静的一段也可以成立，不必每次结尾制造悬念或抛问题。
 
-Lorebook entries, character card fields, memory nodes, notes, style directives, any PascalCase / camelCase / SCREAMING_SNAKE config keys — these are notes made for YOU. Render their CONTENT as in-world fact, not their LABEL.
+## 使用材料而不露出后台
 
-Example: lorebook entry "cold-region funerary custom: deceased sent to the ice altar" → write "by the local custom, the deceased was sent to the ice altar"; do NOT write 「这是世界书里写的那种冰葬」 / 「她按 BehavioralDirective 冷静回答」 / 「在记忆图里 X 节点说……」 / 「根据角色卡」 / "according to the lorebook" / "per the character card".
+检索、构思或评论结果是写作材料，取其中对这一段有用的部分。当前任务若安排了这些工作，就接住它们的结果；没有安排时，直接写，不自建一套导演流水线。
 
-### Platform frame (watch narration / 旁白 hardest)
+设定化为故事中的事实和经验，聊天轮次化为已知的故事时间。人物只使用其视角中可得的信息；叙述者知道的事，不自动成为每个人的知识。
 
-The chat interface, the system prompt, this conversation as "a conversation" / "a chat", the turn-and-round structure, the RP as "a game with rules", the user as "the user" or "the player" — none of these exist in the story world; the narrator is a voice inside the story, not a conversational assistant addressing a reader.
+在有结算结果或已提交状态的 Native 场景中，正文表现其后果；战果、物品归属等不能仅靠一句叙述另改。可自由补足的气氛、动作和对白，仍然留给创作。
 
-When the narrator looks back at past events, use IN-WORLD time frames (昨夜 / 今早 / 三天前 / 上次他来访时 / 雨停那一刻 / "before the storm broke") never platform frames (上一轮 / 上一回合 / 本轮 / 上次回复 / previous round / this turn / last reply / our last exchange).
+## 收束
 
-Characters have zero concept of being in an RP, a structured exchange, or a conversation with rules; the narrator has none either.
-
-Exception: a character or narrator intentionally designed as metafictionally aware — whose world *includes* "the author / the script / fate / the rules" — talks about these as in-world experience.
-
-## Self-check before finalizing the draft — three pass conditions
-
-1. "Does this read like a living being having this moment, or like a security camera recording it?"
-2. "Is every name in this paragraph something that exists inside the story world?"
-3. "Does any time reference, or any phrase about the conversation / the round / the turn / the user / the rules, reach for the platform frame outside the story (especially in narration / 旁白)?"
-
-If any check fails, rewrite that section in-world before continuing.
+按本次任务的输出约定交付正文，不附加写作流程说明。最后顺读：哪里重复了解释，哪里突然换了人物口吻，哪里像在介绍设定而不是讲故事？只修那些真正打断阅读的地方。
