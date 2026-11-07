@@ -19,8 +19,11 @@ export function preserveNarrativeContinuation(revision, text, { content = false,
     if (revision?.mode !== 'continue') return text;
     const join = (before, after) => after.startsWith(before) ? after : before + '\n\n' + after;
     if (!content && !envelope) return join(revision.text, text);
+    // Replies are often wrapped in a ```json fence, which the content decoder accepts.
+    // Parsing must accept it too, or the accepted original would be silently dropped.
+    const unfence = value => String(value).trim().replace(/^```[a-z]*\s*/i, '').replace(/\s*```$/, '');
     let next, before;
-    try { next = JSON.parse(text); before = content ? JSON.parse(revision.text) : null; } catch { return text; }
+    try { next = JSON.parse(unfence(text)); before = content ? JSON.parse(unfence(revision.text)) : null; } catch { return text; }
     if (content) {
         if (!Array.isArray(before.flow) || !Array.isArray(next.flow)) return text;
         const original = before.flow.filter(node => node.kind === 'prose').map(node => node.text).join('\n\n');
