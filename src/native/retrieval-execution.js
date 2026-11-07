@@ -96,6 +96,7 @@ const failureReason = status => [404, 405].includes(status) ? 'address' : [401, 
 export function resolveRetrievalSecret(directories, ref) {
     if (!ref) return '';
     for (const key of Object.values(SECRET_KEYS)) {
+        if ([SECRET_KEYS.ATRIA_SAVE_PASSWORD, SECRET_KEYS.ATRIA_SOURCE_PASSWORD].includes(key)) continue;
         const value = readSecret(directories, key, ref.secretId);
         if (value) return value;
     }

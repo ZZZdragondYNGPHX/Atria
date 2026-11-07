@@ -8,6 +8,7 @@ import { color, getConfigValue, uuidv4 } from '../util.js';
 export const SECRETS_FILE = 'secrets.json';
 export const SECRET_KEYS = {
     ATRIA_RUNTIME: 'atri_runtime',
+    ATRIA_SOURCE_PASSWORD: 'atri_source_password',
     ATRIA_SAVE_PASSWORD: 'atri_save_password',
     _MIGRATED: '_migrated',
     HORDE: 'api_key_horde',
@@ -376,7 +377,7 @@ export class SecretManager {
     listReferences(key = null) {
         if (!fs.existsSync(this.filePath)) return [];
         const secrets = this._readSecretsFile();
-        const keys = key === null ? Object.values(SECRET_KEYS).filter(name => name !== SECRET_KEYS.ATRIA_SAVE_PASSWORD)
+        const keys = key === null ? Object.values(SECRET_KEYS).filter(name => ![SECRET_KEYS.ATRIA_SAVE_PASSWORD, SECRET_KEYS.ATRIA_SOURCE_PASSWORD].includes(name))
             : Object.values(SECRET_KEYS).includes(key) ? [key] : [];
         return keys.flatMap(name => Array.isArray(secrets[name])
             ? secrets[name].map(secret => ({ secretId: secret.id, label: secret.label })) : []);

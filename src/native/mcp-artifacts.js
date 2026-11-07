@@ -71,6 +71,20 @@ export class NativeMcpArtifacts {
         if (!exactKeys(input, ['clientInstanceId', 'contentHash', 'totalBytes'])) invalid();
         return this.#metadata(this.#reserve(owner, input.clientInstanceId, input.contentHash, input.totalBytes, input.contentHash, { kind: 'session-archive-upload' }));
     }
+    beginSourcePackage(owner, input) {
+        if (!exactKeys(input, ['clientInstanceId', 'contentHash', 'totalBytes']) || !integer(input.totalBytes, 1, PACKAGE_LIMITS.bufferedArchiveBytes)) invalid();
+        return this.#metadata(this.#reserve(owner, input.clientInstanceId, input.contentHash, input.totalBytes, input.contentHash, { kind: 'source-package-upload' }));
+    }
+    captureSourcePackage(owner, clientInstanceId, projectId, revision, bytes) {
+        if (!identifier(projectId) || !Buffer.isBuffer(bytes)) invalid();
+        const item = this.#reserve(owner, clientInstanceId, digest(bytes), bytes.length, revision, { kind: 'source-package', projectId, revision });
+        return this.#capture(item, bytes);
+    }
+    async withSourcePackage(owner, ref, consumer) {
+        const item = this.#get(owner, ref, true);
+        if (!['source-package', 'source-package-upload'].includes(item.source.kind)) throw new ConflictError('native_artifact_purpose_conflict');
+        return this.withBytes(owner, ref, consumer);
+    }
     beginSource(owner, input, kind, bindingHash) {
         const limits = { 'skill-payload-upload': 128 * MiB, 'extension-source-upload': 4 * MiB };
         if (!Object.hasOwn(limits, kind) || !exactKeys(input, ['clientInstanceId', 'contentHash', 'totalBytes'])

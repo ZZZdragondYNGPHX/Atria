@@ -17,6 +17,7 @@ import { copyText, isTrueBoolean, uuidv4 } from './utils.js';
 import { accountStorage } from './util/AccountStorage.js';
 
 export const SECRET_KEYS = {
+    ATRIA_SOURCE_PASSWORD: 'atri_source_password',
     ATRIA_SAVE_PASSWORD: 'atri_save_password',
     HORDE: 'api_key_horde',
     MANCER: 'api_key_mancer',
@@ -86,6 +87,7 @@ export const SECRET_KEYS = {
 };
 
 const FRIENDLY_NAMES = {
+    [SECRET_KEYS.ATRIA_SOURCE_PASSWORD]: 'Atria Source encryption password',
     [SECRET_KEYS.ATRIA_SAVE_PASSWORD]: 'Atria Save encryption password',
     [SECRET_KEYS.HORDE]: 'AI Horde',
     [SECRET_KEYS.MANCER]: 'Mancer',

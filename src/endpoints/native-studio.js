@@ -19,6 +19,8 @@ import { NativeProjectAgentExecutor } from '../native/project-agent-executor.js'
 import { mountMcpResourceBundles } from '../native/mcp-resource-bundles.js';
 import { assertObject } from '../../public/shared/native-orchestration-contracts.js';
 import { PACKAGE_LIMITS } from '../../public/shared/native-package-limits.js';
+import { fields } from '../../public/shared/native-values.js';
+import { SecretManager, SECRET_KEYS } from './secrets.js';
 
 let studioService = null;
 let projectAgentService = null;
@@ -69,6 +71,16 @@ function decodeProjectFiles(value) {
             : Buffer.from(item.content, 'utf8');
         return [item.path, bytes];
     }));
+}
+
+function sourcePackagePassword(req) {
+    const ref = req.body.passwordSecretRef;
+    if (ref === undefined) return null;
+    fields(ref, ['secretId', 'scope'], 'Source package password reference');
+    if (ref.scope !== 'player' || typeof ref.secretId !== 'string' || !ref.secretId) throw new TypeError('Source package password reference required');
+    const value = new SecretManager(req.user.directories).readSecret(SECRET_KEYS.ATRIA_SOURCE_PASSWORD, ref.secretId);
+    if (!value) throw new TypeError('Source package password unavailable');
+    return value;
 }
 
 function workspaceFromBody(studio, projectId, body = {}) {
@@ -205,6 +217,20 @@ export function createNativeStudioRouter(getServices = services, artifacts = nat
         res.set('Cache-Control', 'private, no-store');
         const password = req.get('X-Atria-Source-Password');
         res.json(await studio.importSourcePackage(handle, req.body, password === undefined ? null : decodeURIComponent(password)));
+    }));
+
+    router.get('/source-packages/password-references', route(async (req, res) => {
+        res.set('Cache-Control', 'private, no-store').json({ passwordSecretRefs: new SecretManager(req.user.directories)
+            .listReferences(SECRET_KEYS.ATRIA_SOURCE_PASSWORD).map(ref => ({ secretId: ref.secretId, scope: 'player', label: ref.label })) });
+    }));
+    router.post('/source-packages/staging', route(async (req, res, _, handle) => {
+        res.json(artifacts.beginSourcePackage(handle, req.body));
+    }));
+    router.post('/source-packages/import', route(async (req, res, { studio }, handle) => {
+        fields(req.body, ['artifactRef', 'passwordSecretRef'], 'Source package import');
+        const imported = await artifacts.withSourcePackage(handle, req.body.artifactRef,
+            archive => studio.importSourcePackage(handle, archive, sourcePackagePassword(req)));
+        res.set('Cache-Control', 'private, no-store').json({ projectId: imported.source.project.projectId, revision: imported.revision });
     }));
 
     router.get('/projects/:projectId', route(async (req, res, { studio }, handle) => {
@@ -444,6 +470,13 @@ export function createNativeStudioRouter(getServices = services, artifacts = nat
         res.set('Cache-Control', 'private, no-store');
         res.set('Content-Disposition', `attachment; filename="${req.params.projectId}.atriasource"`);
         res.type('application/octet-stream').send(result.archive);
+    }));
+    router.post('/projects/:projectId/export-source-artifact', route(async (req, res, { studio }, handle) => {
+        fields(req.body, ['baseRevision', 'clientInstanceId', 'passwordSecretRef'], 'Source package export');
+        const result = await studio.exportSourcePackage(handle, req.params.projectId,
+            { baseRevision: req.body.baseRevision, password: sourcePackagePassword(req) });
+        res.set('Cache-Control', 'private, no-store').json({ encrypted: result.encrypted,
+            artifact: artifacts.captureSourcePackage(handle, req.body.clientInstanceId, req.params.projectId, result.revision.revision, result.archive) });
     }));
 
     router.post('/projects/:projectId/preview', route(async (req, res, { studio }, handle) => {

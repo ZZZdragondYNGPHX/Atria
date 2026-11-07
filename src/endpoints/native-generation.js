@@ -104,7 +104,7 @@ function services() {
         secretPort: createCredentialSecretPort({ resolveSecret: async (ref, { handle }) => {
             // Native refs identify one exact Secret ID. Never resolve the active key.
             for (const key of Object.values(SECRET_KEYS)) {
-                if (key === SECRET_KEYS.ATRIA_SAVE_PASSWORD) continue;
+                if ([SECRET_KEYS.ATRIA_SAVE_PASSWORD, SECRET_KEYS.ATRIA_SOURCE_PASSWORD].includes(key)) continue;
                 const value = readSecret(getUserDirectories(handle), key, ref.secretId);
                 if (value) return value;
             }
