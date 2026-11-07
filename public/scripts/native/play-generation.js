@@ -23,9 +23,11 @@ export async function runNativePlayGeneration({ runtime, type, signal, input = '
     host = { ...host, onChunk: chunk => {
         if (!signal?.aborted && ownsProjection()) {
             // A format retry restarts the stream; keep telling the player until new text arrives.
-            const formatRetry = chunk.formatRetry ?? (chunk.text ? undefined : runtime.generationProjection.formatRetry);
+            const restarted = chunk.formatRetry !== undefined;
+            const formatRetry = restarted ? chunk.formatRetry : chunk.text ? undefined : runtime.generationProjection.formatRetry;
+            const retryReason = restarted ? chunk.retryReason ?? 'format' : formatRetry ? runtime.generationProjection.retryReason : undefined;
             runtime.generationProjection = { state: 'streaming', text: String(chunk.text ?? runtime.generationProjection.text), error: '',
-                ...(formatRetry ? { formatRetry } : {}),
+                ...(formatRetry ? { formatRetry, retryReason } : {}),
                 ...(chunk.originalResponse ? { pendingOriginalResponse: chunk.originalResponse } : {}) };
             originalChunk?.(chunk);
         }

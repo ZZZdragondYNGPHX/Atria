@@ -11,7 +11,7 @@ import { processNativeDisplayRegex } from './regex-display-runtime.js';
 import { getRegexScripts, REGEX_RUNTIME_SCRIPTS_CHANGED_EVENT } from '../extensions/regex/engine.js';
 import { renderSafeProse } from '../../shared/native-safe-prose.js';
 import { nativePlayGenerationBusy } from './play-generation.js';
-import { updateIllustrationSurface, releaseIllustrationSurface } from './illustration-surfaces.js';
+import { updateIllustrationSurface, releaseIllustrationSurface as releaseSurface } from './illustration-surfaces.js';
 import { translateShellText as tl, formatShellText } from '../atria-shell/localization.js';
 import { publicParticipant } from '../../shared/native-participant.js';
 import {
@@ -20,6 +20,19 @@ import {
 } from './session-lifecycle.js';
 import { createAtriaIcon } from '../atria-shell/icons.js';
 import { rememberStartupResume } from '../atria-shell/startup-resume.js';
+// A message's illustration surface is refreshed only when its inputs change.
+// Refreshing every message on every streamed chunk repainted highlights and made
+// selection listeners force layout hundreds of times per reply.
+const surfaceInputs = new WeakMap();
+function releaseIllustrationSurface(body) { surfaceInputs.delete(body); releaseSurface(body); }
+function refreshIllustrationSurface(body, surface) {
+    const previous = surfaceInputs.get(body);
+    if (previous && previous.entry === surface.entry && previous.state === surface.state
+        && previous.branchId === surface.branchId && previous.revisionId === surface.revisionId) return;
+    surfaceInputs.set(body, { entry: surface.entry, state: surface.state, branchId: surface.branchId, revisionId: surface.revisionId });
+    updateIllustrationSurface(body, surface);
+}
+
 
 function text(value) {
     return String(value ?? '');
@@ -332,9 +345,12 @@ export function mountAtriaPlayProduct({
     const displayRequests = new Map();
     const regexChanged = () => { regexVersion++; displayRules = getRegexScripts({ allowedOnly: true }); render(); };
     documentRef.defaultView.addEventListener(REGEX_RUNTIME_SCRIPTS_CHANGED_EVENT, regexChanged);
+    // Streamed chunks arrive faster than frames; render the draft at most once per frame.
+    let draftFrame = 0;
     const updateDraft = event => {
         draftText = String(event.detail?.text || '');
-        render();
+        if (draftFrame) return;
+        draftFrame = requestAnimationFrame(() => { draftFrame = 0; render(); });
     };
     documentRef.addEventListener('atria-native-play-draft', updateDraft);
     const runtimeError = documentRef.createElement('div');
@@ -361,8 +377,27 @@ export function mountAtriaPlayProduct({
     documentRef.addEventListener('atria-native-runtime-error', showRuntimeError);
 
 
+    // Same path as an extension's regenerate: fork at the reply, then generate on the new branch.
+    async function rewriteLatestReply(messageId) {
+        const runtime = activeRuntime();
+        const snapshot = runtime?.snapshot;
+        if (!snapshot || generating() || runtime.history || snapshot.timeline.at(-1)?.messageId !== messageId) return;
+        try {
+            await runtime.forkReply(messageId, snapshot.revision.revisionId, { prepareGeneration: true });
+            const current = runtime.snapshot;
+            await globalThis.Atria.getContext().generateNative('normal', { input: '',
+                scope: { sessionId: current.session.sessionId, branchId: current.revision.branchId, revisionId: current.revision.revisionId } });
+        } catch (error) {
+            if (error?.code !== 'generation_cancelled' && error?.name !== 'AbortError') showRuntimeError({ detail: { message: error?.message || String(error) } });
+        }
+    }
+
     function render() {
         if (disposed) return;
+        // Read the composer position once per pass. Reading it per message after
+        // DOM writes forced a layout for every message on every streamed chunk.
+        let composerTop;
+        const controlsTop = () => composerTop ??= composerComponent.getBoundingClientRect().top;
         const runtime = activeRuntime();
         if (!generating()) draftText = '';
         const snapshot = runtime?.snapshot || null;
@@ -488,7 +523,7 @@ export function mountAtriaPlayProduct({
                 });
             }
             if (body.dataset.regexTransformed || text(displayContent) !== text(committedEntries.get(id)?.content)) releaseIllustrationSurface(body);
-            else updateIllustrationSurface(body, { sessionId, branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId, entry: committedEntries.get(entry.messageId), state: snapshot.illustrations, controlsTop: () => composerComponent.getBoundingClientRect().top });
+            else refreshIllustrationSurface(body, { sessionId, branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId, entry: committedEntries.get(entry.messageId), state: snapshot.illustrations, controlsTop });
             const variant = window.variants.find(item => item.variantId === committedEntries.get(id)?.activeVariantId);
             const presetMetadata = variant?.metadata?.runtime?.extra?.preset_content;
             if (presetMetadata) {
@@ -499,6 +534,16 @@ export function mountAtriaPlayProduct({
                 button.dataset.problem = String(presetMetadata.status === 'partial');
                 button.onclick = () => { void contentPanel.open(committedEntries.get(id), variant, button); };
             } else node.querySelector('[data-preset-content]')?.remove();
+            // The latest reply can be written again; the old one stays in History.
+            const rewritable = entry.role === 'assistant' && id === text(snapshot.timeline?.at(-1)?.messageId) && !runtime.history && !runtime.failed && !generating();
+            let rewrite = node.querySelector('[data-rewrite-reply]');
+            if (rewritable && !rewrite) {
+                rewrite = documentRef.createElement('button'); rewrite.type = 'button'; rewrite.className = 'atria-play-message__extras';
+                rewrite.dataset.rewriteReply = 'true'; rewrite.textContent = tl('Write again');
+                rewrite.title = tl('Write a new version of this reply. The current one stays in History.');
+                node.querySelector('header').append(rewrite);
+            } else if (!rewritable) rewrite?.remove();
+            if (rewrite) rewrite.onclick = () => { void rewriteLatestReply(id); };
             if (!node.querySelector('[data-atria-message-blocks]')) {
                 const blocks = (blocksByMessage.get(entry.messageId) ?? []).filter(block => !['preset.content', 'preset.diagnostic'].includes(block.type));
                 const blockRoot = documentRef.createElement('section'); blockRoot.dataset.atriaMessageBlocks = 'true';
@@ -565,7 +610,8 @@ export function mountAtriaPlayProduct({
                 : generation.state === 'preparing' ? 'Preparing reply…'
                     : generation.state === 'cancelling' ? 'Stopping…'
                         : generation.state === 'finalizing' ? 'Saving reply…'
-                            : generation.formatRetry ? 'The draft broke the story format, so it was discarded. Writing a fresh reply…'
+                            : generation.formatRetry ? (generation.retryReason === 'stream' ? 'The connection dropped mid-reply. Asking for a fresh reply…'
+                                : 'The draft broke the story format, so it was discarded. Writing a fresh reply…')
                                 : generating() ? 'Generating…' : '');
         if (composerStatus.textContent !== statusText) composerStatus.textContent = statusText;
         queueMicrotask(() => {

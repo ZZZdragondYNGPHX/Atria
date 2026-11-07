@@ -11,9 +11,12 @@ import { setTimeout as wait } from 'node:timers/promises';
 import { renderPromptMessages } from './prompt-renderers.js';
 import { preserveNarrativeContinuation } from '../narrative-revision.js';
 
-// A reply whose declared JSON content is malformed gets one fresh attempt in the
-// same reply budget. Nothing is repaired: the failed raw output is kept as evidence.
-const FORMAT_RETRIES = 1;
+// A reply whose declared JSON content is malformed, or whose stream the service
+// dropped mid-reply, gets one fresh attempt in the same reply budget. Nothing is
+// repaired or stitched: the failed raw output is kept as evidence.
+const FRESH_ATTEMPTS = 1;
+const STREAM_DROPS = new Set(['ERR_STREAM_PREMATURE_CLOSE', 'ECONNRESET', 'UND_ERR_SOCKET', 'EPIPE']);
+const streamDropped = error => STREAM_DROPS.has(error?.code) || STREAM_DROPS.has(error?.cause?.code) || error?.message === 'terminated';
 
 // Prompt preparation is an injected port, implemented by PromptCompiler in P3.
 export class GenerationService {
@@ -34,17 +37,24 @@ export class GenerationService {
         const extensions = this.createExtensions?.(input);
         const formatFailures = [];
         for (;;) {
-            const formatRetry = !this.narrativeRevision && formatFailures.length < FORMAT_RETRIES;
+            const formatRetry = !this.narrativeRevision && formatFailures.length < FRESH_ATTEMPTS;
             let result;
             try {
                 result = await this._execute(input, { ...options, extensions, formatRetry });
             } catch (error) {
+                if (formatRetry && error?.code === 'generation_provider_stream_closed') {
+                    formatFailures.push({ raw: error.raw ?? '', diagnostics: [{ code: 'stream_closed', message: 'The service closed the stream before the reply finished.' }], stoppedEarly: true });
+                    console.warn('[native-generation] Stream closed mid-reply; trying once more.');
+                    input.onChunk?.({ text: '', delta: '', replace: true, provisional: true, formatRetry: formatFailures.length, retryReason: 'stream' });
+                    continue;
+                }
                 if (!formatRetry || error?.code !== 'generation_content_format_invalid') throw error;
                 result = { response: { presetContent: { status: 'invalid', raw: error.raw, diagnostics: error.diagnostics }, earlyStop: true } };
             }
             const content = result.response?.presetContent;
             if (formatRetry && content?.status === 'invalid' && !result.response.truncated && !result.response.extensionDecision) {
                 formatFailures.push({ raw: content.raw, diagnostics: content.diagnostics ?? [], stoppedEarly: Boolean(result.response.earlyStop) });
+                console.warn('[native-generation] Reply broke the declared content format; trying once more.', content.diagnostics?.[0]?.code ?? '', String(content.diagnostics?.[0]?.message ?? '').slice(0, 200));
                 input.onChunk?.({ text: '', delta: '', replace: true, provisional: true, formatRetry: formatFailures.length });
                 continue;
             }
@@ -330,6 +340,12 @@ export class GenerationService {
                 response = await cancellable(() => provider.normalizeResponse(parsed), controller.signal);
                 observedUsage = response.usage ?? observedUsage;
             } catch (error) {
+                if (!signal?.aborted && !controller.signal.aborted && error?.code !== 'generation_content_format_invalid') {
+                    console.warn('[native-generation] Provider response could not be read:', error?.code ?? '', String(error?.message ?? error).slice(0, 300));
+                }
+                if (!signal?.aborted && !controller.signal.aborted && streamDropped(error)) {
+                    throw Object.assign(new GenerationError('generation_provider_stream_closed'), { raw: published });
+                }
                 checkCancellation(signal);
                 if (controller.signal.aborted) throw new GenerationError('generation_provider_timeout');
                 if (error instanceof GenerationError && (['generation_provider_content_blocked', 'generation_content_format_invalid'].includes(error.code) || error.code.startsWith('generation_extension_'))) throw error;

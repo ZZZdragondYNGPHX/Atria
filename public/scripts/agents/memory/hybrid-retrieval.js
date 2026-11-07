@@ -451,7 +451,9 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
                     work.hashReused++;
                     return { ...memo.get(profileKey), index: start + offset };
                 }
-                const fingerprint = await digest(JSON.stringify([doc.id, doc.text, doc.status, doc.episodeIds, doc.providerRefs, doc.manualSources]));
+                // An embedding depends only on the text. Status and links come from the
+                // live corpus by id when ranking, so bookkeeping changes never re-embed.
+                const fingerprint = await digest(JSON.stringify([doc.id, doc.text]));
                 work.documentsHashed++;
                 const item = { hash: parseInt(fingerprint.slice(0, 12), 16), text: doc.text, index: start + offset, metadata: { id: doc.id, fingerprint } };
                 if (reused.fingerprints) {

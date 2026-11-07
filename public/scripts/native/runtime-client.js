@@ -101,6 +101,7 @@ export function runtimeRemediation(code) {
         generation_provider_timeout: ['The model service took too long to answer. Your message is saved — send again to continue.', null],
         generation_fallback_exhausted: ['The model service did not answer. Your message is saved — send again to continue.', null],
         generation_response_invalid: ['The model returned an unreadable reply. Your message is saved — send again to continue.', null],
+        generation_provider_stream_closed: ['The model service dropped the connection before the reply finished, twice in a row. Your message is saved — send again to continue.', null],
         generation_provider_authentication_failed: ['The model service rejected the API key. Check the key in Runtime Services.', 'connections'],
         generation_secret_unavailable: ['The exact Secret reference is unavailable. Update the connection reference.', 'connections'],
         generation_context_budget_exceeded: ['The full request exceeds the model budget. Review model limits and selected context.', 'models'],
