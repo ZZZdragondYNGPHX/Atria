@@ -244,6 +244,13 @@ export class GenerationService {
             throw new GenerationError('generation_fallback_exhausted');
         } catch (error) {
             // Never attach an adapter/secret exception, stack, payload, or cause to diagnostics.
+            // Exception: a reply's own streamed text, already screened for the secret while
+            // streaming, stays with its format/stream failure as evidence for the retry.
+            if (error instanceof GenerationError && ['generation_content_format_invalid', 'generation_provider_stream_closed'].includes(error.code)) {
+                throw Object.assign(new GenerationError(error.code), { raw: typeof error.raw === 'string' ? error.raw : '',
+                    originalResponse: typeof error.raw === 'string' ? error.raw : '',
+                    diagnostics: Array.isArray(error.diagnostics) ? error.diagnostics.map(item => ({ code: String(item.code), message: String(item.message ?? '') })) : [] });
+            }
             if (error instanceof GenerationError || COMPUTE_ADMISSION_CODES.includes(error.code)) throw new GenerationError(error.code);
             if (['native_generation_draft_conflict', 'native_generation_resource_owner'].includes(error.code)) throw new GenerationError(error.code);
             if (['prompt_parameter_option', 'prompt_parameter_unknown', 'prompt_parameter_type', 'prompt_parameter_required'].includes(error.code)) throw new GenerationError(error.code);

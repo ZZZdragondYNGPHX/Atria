@@ -316,6 +316,9 @@ export async function collectExtractTransaction(options = {}) {
         return await collectExtractTransactionInternal(options);
     } catch (error) {
         if (options?.signal?.aborted || error?.name === 'AbortError') throw error;
+        // A newer reply superseding this update is expected play, not a failure;
+        // the pending messages are extracted by the next update.
+        if (['native_generation_superseded', 'generation_cancelled'].includes(error?.code)) throw error;
         const protocolFailure = String(error?.code || '') === 'memory_extract_protocol';
         const stage = protocolFailure ? 'extract.transaction.validation' : 'extract.transaction.request';
         memoryExtractLogger.error('extract.failed', '[Memory] extraction transaction failed', {
