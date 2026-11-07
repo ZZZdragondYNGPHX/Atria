@@ -33,15 +33,21 @@ export function assertPresetContent(value) {
 }
 
 export function presetContentInstruction(declaration, { proseOnly = false } = {}) {
+    // Blocks are written flat (fields beside kind/type), so every node closes the same way.
+    // With nested data, models copied a block's closing "}} into the prose before the next
+    // block and broke the JSON. Nested data stays when a block declares its own kind/type.
+    const flat = !proseOnly && declaration.types.every(item => !['kind', 'type'].some(key => Object.hasOwn(item.schema.properties ?? {}, key)));
     return 'Return one JSON object with exactly one field "flow", an ordered array. '
         + 'Narrative nodes are {"kind":"prose","text":"story text"}. '
-        + 'Supplemental nodes are {"kind":"block","type":"declared type","data":{...}}. '
+        + (flat ? 'Supplemental nodes are {"kind":"block","type":"declared type", then the fields of that type directly}. '
+            : 'Supplemental nodes are {"kind":"block","type":"declared type","data":{...}}. ')
         + 'Put kind first for streaming. Preserve prose/block order; never duplicate prose. '
         + 'No markdown fences, wrapper tags, HTML, host IDs, tools or World changes. '
         + (proseOnly ? 'This operation produces only a player draft: use prose nodes only. ' : 'Allowed supplemental data schemas: ' + JSON.stringify(declaration.types) + '. ')
         + (proseOnly || !declaration.types.length ? 'Minimal example: {"flow":[{"kind":"prose","text":"A quiet evening."}]}'
-            // Replies most often broke JSON where prose turns into a block; show that transition.
-            : 'Each prose node closes with exactly one } after its text; a block node closes its data and itself with }}. '
+            : flat ? 'Every node closes with a single }. Syntax example (fields abbreviated): {"flow":[{"kind":"block","type":"' + declaration.types[0].type + '",…},'
+                + '{"kind":"prose","text":"A quiet evening."},{"kind":"block","type":"' + declaration.types.at(-1).type + '",…}]}'
+                : 'Each prose node closes with exactly one } after its text; a block node closes its data and itself with }}. '
                 + 'Syntax example (data abbreviated): {"flow":[{"kind":"block","type":"' + declaration.types[0].type + '","data":{…}},'
                 + '{"kind":"prose","text":"A quiet evening."},{"kind":"block","type":"' + declaration.types.at(-1).type + '","data":{…}}]}');
 }
