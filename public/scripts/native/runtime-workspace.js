@@ -344,7 +344,13 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                 [['generation-profile', 'Follow the API preset'], ['stream', 'Always stream']]);
             const contentFormat = field(compatibility, '附属内容格式约束', value.options?.presetContentSchema ? 'schema' : 'prompt',
                 [['prompt', '提示词 JSON（不发送 response_format）'], ['schema', '原生 JSON Schema（要求服务支持）']]);
-            compatibility.open = schemaMode.value !== 'json-schema';
+            const argonMode = field(compatibility, 'Argon 正文测试', value.options?.argonTest?.mode || 'baseline',
+                [['baseline', '原文基线（不加盐）'], ['light', '轻量（最多 400 字符）'], ['strong', '增强（最多 1200 字符）']]);
+            const argonModel = field(compatibility, 'Argon 额外模型名', value.options?.argonTest?.modelId || '');
+            argonModel.maxLength = 160;
+            notice('仅对本服务中名称含 argon 或与额外模型名完全相同的 narrator 请求添加前缀。采样参数保持原值；工具、结构化输出和其它角色跳过。盐计入上下文预算，不能保证上游模型身份。', compatibility);
+            notice('Atria 自身的回退仍由 API 预设控制；需要固定路由时，将最大回退次数设为 0。', compatibility);
+            compatibility.open = schemaMode.value !== 'json-schema' || argonMode.value !== 'baseline';
             const syncCompatibility = () => {
                 compatibility.hidden = adapter.value !== 'provider.openai-compatible';
                 relay.hidden = adapter.value !== 'provider.novelai-image-compatible';
@@ -431,7 +437,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             void inventory();
             serialize = () => {
                 if (creating || !secret.value && connectionRequiresSecret(adapter.value)) throw Object.assign(new Error('Select a stored Secret'), { code: 'native_secret_selection_required' });
-                const options = { ...value.options }; for (const key of ['toolSchemaMode', 'responseMode', 'presetContentSchema']) delete options[key];
+                const options = { ...value.options }; for (const key of ['toolSchemaMode', 'responseMode', 'presetContentSchema', 'argonTest']) delete options[key];
                 delete options.imageCapabilities; delete options.userAgent; delete options.allowInsecureHttp; delete options.imageApi;
                 if (adapter.value === 'provider.openai-images' && imageApi.value === 'chat-completions') options.imageApi = 'chat-completions';
                 if (['provider.openai-images', 'provider.comfyui-image'].includes(adapter.value) && insecure.checked) options.allowInsecureHttp = true;
@@ -445,6 +451,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                     if (schemaMode.value !== 'json-schema') options.toolSchemaMode = schemaMode.value;
                     if (responseMode.value !== 'generation-profile') options.responseMode = responseMode.value;
                     if (contentFormat.value === 'schema') options.presetContentSchema = true;
+                    if (argonMode.value !== 'baseline') options.argonTest = { mode: argonMode.value, ...(argonModel.value.trim() ? { modelId: argonModel.value.trim() } : {}) };
                 }
                 const result = { ...value, options, providerAdapter: adapter.value, transport: 'transport.http', endpoint: address() };
                 if (!secret.value && !connectionRequiresSecret(adapter.value)) delete result.secretRef;

@@ -4,6 +4,7 @@ import { immutable, GenerationError, ProviderFailure, providerHttpFailure, obser
 import { renderPromptMessages } from '../model-prompt-runtime/prompt-renderers.js';
 import { serializeNativeDocument } from '../repositories/common.js';
 import { presetContentJsonSchema } from '../../../public/shared/native-preset-content.js';
+import { applyArgonRequestTest } from './argon-request.js';
 
 function wireTools(tools, mode) {
     if (mode === 'json-schema') return tools;
@@ -58,7 +59,7 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
         if (!['full', 'shape-only'].includes(outputSchemaMode) || (!messages && outputSchemaMode !== 'full')) throw new GenerationError('generation_adapter_control_unsupported');
         if (!['generation-profile', 'stream'].includes(responseMode)
             || (!messages && responseMode !== 'generation-profile')) throw new GenerationError('generation_adapter_control_unsupported');
-        if (Object.keys(connection.networkPolicy).length || Object.keys(connection.options).some(key => !['toolSchemaMode', 'responseSchemaMode', 'responseMode', 'reasoningSplit', 'presetContentSchema'].includes(key))
+        if (Object.keys(connection.networkPolicy).length || Object.keys(connection.options).some(key => !['toolSchemaMode', 'responseSchemaMode', 'responseMode', 'reasoningSplit', 'presetContentSchema', ...(messages ? ['argonTest'] : [])].includes(key))
             || Object.keys(model.messageFormat).length || Object.keys(model.providerHints).length) throw new GenerationError('generation_adapter_control_unsupported');
         const allowed = { sampling: ['temperature', 'topP'], output: ['maxTokens'], stop: ['sequences'], streaming: ['enabled'], toolChoice: ['value'] };
         if (messages) Object.assign(allowed, { reasoning: ['effort'], cache: ['key', 'retention'] });
@@ -122,7 +123,7 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
             const content = promptIr.compilation.presetContent;
             body.response_format = { type: 'json_schema', json_schema: { name: 'atria_content', strict: true, schema: presetContentJsonSchema(content.declaration, content) } };
         }
-        return body;
+        return applyArgonRequestTest(body, { config: connection.options.argonTest, requestId: promptIr.requestId, role: resolved.route.role });
     };
     const contextTokenizers = new Map();
     return Object.freeze({
