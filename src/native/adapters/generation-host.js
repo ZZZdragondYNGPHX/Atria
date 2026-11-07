@@ -8,7 +8,7 @@ import { observeEvolutionProject, prepareEvolutionProject } from '../agent-intel
 import { createPreviewSkillRepository } from '../model-prompt-runtime/preview-skills.js';
 import { tryAuthoringSample } from '../model-prompt-runtime/draft-preview.js';
 import { captureAuthoringSample, authoringSamplePlan } from '../model-prompt-runtime/authoring-sample.js';
-import { chargeComputeAttempt, settleComputeAttempt, chargeLocalWork, settleLocalWork } from '../../../public/shared/native-compute-budget.js';
+import { chargeComputeAttempt, settleComputeAttempt, voidComputeAttempt, chargeLocalWork, settleLocalWork } from '../../../public/shared/native-compute-budget.js';
 import { previewPromptDraft } from '../model-prompt-runtime/draft-preview.js';
 import { assertPreviewDisclosure } from '../model-prompt-runtime/preview-disclosure.js';
 import { assertExactResourceRef } from '../model-prompt-runtime/contracts.js';
@@ -855,7 +855,7 @@ export class NativeGenerationHost {
                 const task = snapshot.manifest.runtime.experienceContract.taskRuntime.tasks.find(task => task.id === item.taskId);
                 const variant = task?.variants.find(variant => variant.id === item.variantId);
                 const ordinary = task && variant && ordinaryBackgroundIntent(snapshot, item, task, variant, item.input);
-                if ((!ordinary && !variant?.resultBinding) || !['native_generation_budget_exhausted', 'native_generation_background_not_due'].includes(error.code)) throw error;
+                if ((!ordinary && !variant?.resultBinding) || !['native_generation_budget_exhausted', 'native_generation_turn_budget_exhausted', 'native_generation_local_work_exhausted', 'native_generation_background_not_due'].includes(error.code)) throw error;
                 return { snapshot, results, pending: { invocationId: item.invocationId, reason: error.code } };
             }
             snapshot = result.snapshot;
@@ -1417,6 +1417,7 @@ export class NativeGenerationHost {
             // Illustration prompts read a frozen context packet; later commits
             // (the next turn, background memory) cannot change their input.
             if (source.kind === 'session' && !illustrationPlan) {
+                await this.sessionCore.runs.assert(handle, input.sessionId, 'generate');
                 // Observe the original authority, never a cached ContextPlan.
                 const current = await this.sessionCore.observe(handle, input.sessionId);
                 if (current.revision.revisionId !== source.revisionId || current.revision.branchId !== source.branchId)
@@ -1472,6 +1473,14 @@ export class NativeGenerationHost {
             revisionId: source.revisionId || '', projectId: source.projectId || '', projectRevision: source.revision || '',
             ...(snapshot ? Object.fromEntries(Object.entries(nativePromptIdentity(snapshot, { actorId: taskActorId ?? input.actorId })).filter(([key, value]) => ['user', 'char', 'group'].includes(key) && value !== undefined)) : {}) };
         if (operation === 'impersonate' && !hostView.user) fail('native_generation_persona_required');
+        // Author text naming the player or character still compiles without a chosen Persona or a single
+        // Primary Actor (and in previews), like character-card {{user}}/{{char}} defaults.
+        hostView.user ??= 'User';
+        hostView.char ??= hostView.group || 'Narrator';
+        if (!hostView.group) hostView.group = hostView.char;
+        // The message number this reply will take in the story (as shown in History/Extras),
+        // so authored per-reply counters such as a "floor" never have to be guessed.
+        hostView.reply = String((snapshot?.timeline?.length ?? 0) + 1);
         this.promptRandomSamples ??= new Map();
         const randomKey = JSON.stringify([handle, input.requestId]);
         if (!this.promptRandomSamples.has(randomKey)) {
@@ -1538,6 +1547,20 @@ export class NativeGenerationHost {
                         : await this.agent.settleGeneration(handle, input.projectId, input.taskId, attemptId, usage);
                     Object.assign(entry, settled);
                     pendingCharge = null;
+                };
+                // A charge whose request never left the host is withdrawn: a
+                // pre-dispatch check failure is not an API attempt. Orchestration
+                // sends keep their bank rows (their Effects reference them).
+                const voidAttempt = async () => {
+                    if (!pendingCharge) return;
+                    const { receipt, attemptId, entry, quota } = pendingCharge;
+                    pendingCharge = null;
+                    if (authoringRun) voidComputeAttempt(authoringRun, attemptId);
+                    else if (sendBank) await sendBank.void(attemptId);
+                    else if (input.sessionId) await this.sessionCore.runs.voidCompute(handle, input.sessionId, receipt.operation, attemptId, quota);
+                    else await this.agent.voidGeneration(handle, input.projectId, input.taskId, attemptId);
+                    const at = computeAttempts.indexOf(entry);
+                    if (at >= 0) computeAttempts.splice(at, 1);
                 };
                 taskHistoryWork = (request, operation, descriptor) => localWork('task_history', request, operation, descriptor);
                 // GenerationService creates this provider before preparing Context
@@ -1617,6 +1640,7 @@ export class NativeGenerationHost {
                             const capture = lanePlan?.evidenceCapture;
                             const observedAttempt = capture?.nextAttempt(input.requestId) ?? attempts.length;
                             const attemptId = input.requestId + ':' + observedAttempt;
+                            let dispatched = false;
                             try {
                                 if (prediction) await assertPredictionCaptureCurrent(prediction.capture);
                                 if (projectTaskEvidence && (await this.agent.getContext(handle, input.projectId, input.taskId)).task.executionFingerprint !== projectTaskEvidence.ref.slice(-64)) {
@@ -1626,8 +1650,12 @@ export class NativeGenerationHost {
                                 checkCancellation(boundary.signal);
                                 const limits = prepared.snapshot.diagnostics.executionPlan.policy.computeBudget;
                                 if (sendBank) await sendBank.assertCurrent();
+                                // Validate before charging so a stale source is never billed
+                                // as an API attempt; the checks repeat right before send.
+                                if (scopedContext) await scopedContext.port.revalidate(handle, { context: scopedContext.compiled, phase: 'send' });
+                                await assertSourceCurrent();
                                 const computeOptions = optionalComputeOptions(resolved.route.executionPolicy, lanePlan?.budgetContext?.background === true ? 'background' : taskPlan || projectTaskEvidence ? 'model_task' : input.role);
-                                if ('reserve' in computeOptions && !limits) throw new GenerationError('native_generation_budget_unavailable');
+                                if ('reserve' in computeOptions && !limits) { if (resolved.route.executionPolicy?.optionalWork) throw new GenerationError('native_generation_budget_unavailable'); delete computeOptions.reserve; }
                                 const compute = !sendBank && (authoringRun || limits || input.sessionId || input.taskId) ? { limits: limits ?? authoringRun?.compute.limits, options: computeOptions, attempt: { attemptId: randomUUID(), requestId: input.requestId,
                                     targetFingerprint: resolved.pathFingerprint, estimatedTokens: prepared.snapshot.diagnostics.inputTokens + prepared.snapshot.contextPlan.budget.reservedOutputTokens } } : null;
                                 let receipt;
@@ -1642,7 +1670,7 @@ export class NativeGenerationHost {
                                 } else if (budget) {
                                     const context = lanePlan.budgetContext;
                                     try { receipt = await this.sessionCore.runs.charge(handle, context.snapshot, { anchor: context.anchor, role: input.role, background: context.background === true, ...(compute ? { compute } : {}) }, budget); } catch (error) {
-                                        if (['native_generation_budget_exhausted', 'native_generation_background_not_due', 'native_generation_budget_lane_denied'].includes(error.code)) throw new GenerationError(error.code);
+                                        if (['native_generation_budget_exhausted', 'native_generation_turn_budget_exhausted', 'native_generation_local_work_exhausted', 'native_generation_background_not_due', 'native_generation_budget_lane_denied'].includes(error.code)) throw new GenerationError(error.code);
                                         throw error;
                                     }
                                 } else if (compute && input.sessionId) {
@@ -1657,7 +1685,8 @@ export class NativeGenerationHost {
                                     computeLimits = receipt.limits ?? limits;
                                     const entry = { ...receipt.compute };
                                     computeAttempts.push(entry);
-                                    pendingCharge = { receipt, attemptId: sendBank ? receipt.budgetAttemptRef.attemptId : compute.attempt.attemptId, entry };
+                                    pendingCharge = { receipt, attemptId: sendBank ? receipt.budgetAttemptRef.attemptId : compute.attempt.attemptId, entry,
+                                        quota: budget && !authoringRun ? { role: input.role, background: lanePlan.budgetContext.background === true } : null };
                                 }
                                 await capture?.attempt({ type: 'request.attempt.started', eventId: attemptId + '/started',
                                     requestId: input.requestId, attemptId, attempt: observedAttempt, runtimeRouteId: resolved.route.runtimeRouteId,
@@ -1677,7 +1706,7 @@ export class NativeGenerationHost {
                                     modelSendFacts.push(modelSendFact);
                                 }
                                 await assertSourceCurrent();
-                                const response = await provider.send(rendered, boundary);
+                                const response = await provider.send(rendered, { ...boundary, onDispatch: () => { dispatched = true; } });
                                 if (modelSendFact) modelSendFact.outcome = 'response';
                                 if (sendBank) completedSendSnapshot = actualSnapshot;
                                 attempt.status = 'success';
@@ -1692,10 +1721,15 @@ export class NativeGenerationHost {
                                 // no send/reset. Preserve an existing valid checkpoint;
                                 // retries after any attempted send still discard on failure.
                                 retainOnBudgetRejection = COMPUTE_ADMISSION_CODES.includes(error.code) && !sendAdmitted;
-                                await settleAttempt(http?.usage ?? null);
+                                // Dispatched attempts count even when they fail.
+                                if (!dispatched) {
+                                    await voidAttempt();
+                                    if (modelSendFact) modelSendFacts.splice(modelSendFacts.indexOf(modelSendFact), 1);
+                                }
+                                else await settleAttempt(http?.usage ?? null);
                                 attempt.status = 'failed';
                                 capture?.append({ type: 'request.attempt.failed', eventId: attemptId + '/failed', requestId: input.requestId, attemptId });
-                                if (['native_generation_budget_exhausted', 'native_generation_task_stopped', 'native_generation_revision_conflict'].includes(error.code)) throw new GenerationError(error.code);
+                                if (['native_generation_budget_exhausted', 'native_generation_turn_budget_exhausted', 'native_generation_local_work_exhausted', 'native_generation_task_stopped', 'native_generation_revision_conflict'].includes(error.code)) throw new GenerationError(error.code);
                                 // A scoped model may follow its declared policy after an
                                 // explicit provider rejection. A lost transport/timeout
                                 // has no such response: retain that attempt as unknown.
@@ -1733,7 +1767,7 @@ export class NativeGenerationHost {
         } catch (error) {
             // Errors between model rounds (for example a cancelled Skill read)
             // must await the same private cleanup as provider failures.
-            if (!['native_generation_budget_exhausted', 'generation_context_budget_exceeded'].includes(error.code)) await discardSessionTaskExecution?.();
+            if (!['native_generation_budget_exhausted', 'native_generation_turn_budget_exhausted', 'native_generation_local_work_exhausted', 'generation_context_budget_exceeded'].includes(error.code)) await discardSessionTaskExecution?.();
             saveModelTerminalFacts(error, 'rejected');
             throw error;
         }

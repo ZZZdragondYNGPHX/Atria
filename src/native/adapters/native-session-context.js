@@ -6,6 +6,7 @@ import { createPackageContextDerivation } from '../context-computation.js';
 import { processPackageText } from '../processing-runtime.js';
 import { subjectTaskContext } from '../subject-authority.js';
 import { processNativeRegex } from '../regex-runtime.js';
+import { presetDeclaresPersona } from '../model-prompt-runtime/prompt-compiler.js';
 
 export function nativeSessionContextOptions({ handle, snapshot, resolver, contextPackage = null, role, taskPlan = null, lanePlan = null, authorityContext = null, actorId, signal }) {
     const personalTask = subjectTaskContext(taskPlan);
@@ -29,7 +30,8 @@ export function nativeContextCompilationOptions(request, resolved, options = {})
     const { countTokens, tokenizerFor, deriveContext, processContext, providers = [], signal: _signal, ...settings } = options;
     const config = immutable(settings);
     const stages = flattenPromptProgram(resolved).stages;
-    const consumer = stages.some(stage => (stage.contextConsumers?.includes('player_persona') || stage.entries.some(entry => entry.kind === 'anchor' && !entry.disabled && entry.accepts.includes('context.player-persona'))) && (!request.prompt?.stageIds || request.prompt.stageIds.includes(stage.stageId)));
+    // A preset that never mentions the Persona keeps the default: the chosen Persona is sent.
+    const consumer = !presetDeclaresPersona(stages) || stages.some(stage => (stage.contextConsumers?.includes('player_persona') || stage.entries.some(entry => entry.kind === 'anchor' && !entry.disabled && entry.accepts.includes('context.player-persona'))) && (!request.prompt?.stageIds || request.prompt.stageIds.includes(stage.stageId)));
     return { ...config, countTokens: tokenizerFor?.(resolved) ?? countTokens, deriveContext, processContext, providers: [...providers],
         promptAnchors: stages.filter(stage => !request.prompt?.stageIds || request.prompt.stageIds.includes(stage.stageId))
             .flatMap(stage => stage.entries.filter(entry => entry.kind === 'anchor').map(entry => ({ ...entry }))),

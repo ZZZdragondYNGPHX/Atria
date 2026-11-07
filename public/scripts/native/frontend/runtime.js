@@ -569,7 +569,8 @@ export async function mountNativeFrontend(options) {
         const rowDef = { ...definition }; delete rowDef.each; delete rowDef.key; delete rowDef.windowSize; delete rowDef.rowHeight;
         async function update(nextItem = item) {
             if (gone) return; item = nextItem;
-            const values = evaluate(definition.each, context(instance, item)) ?? (definition.each.get?.startsWith('bridge.') ? [] : undefined);
+            // An absent optional list renders nothing; a present non-array is still an error.
+            const values = evaluate(definition.each, context(instance, item)) ?? [];
             if (!Array.isArray(values) || values.length > 10000) throw new TypeError('Bounded array required for keyed list');
             const keys = values.map(value => value?.[definition.key]);
             if (keys.some(key => !['string', 'number'].includes(typeof key)) || new Set(keys).size !== keys.length) throw new TypeError('Unique stable list keys required');

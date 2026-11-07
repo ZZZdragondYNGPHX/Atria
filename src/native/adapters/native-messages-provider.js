@@ -177,7 +177,7 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch, checkp
             await hydrate(request);
             if (lower(request).wire !== request.wire) throw new GenerationError('generation_continuation_unavailable');
         },
-        async send(rendered, { secret, signal }) {
+        async send(rendered, { secret, signal, onDispatch }) {
             const request = consumeNativeRequest(rendered, lower);
             await hydrate(request);
             if (lower(request).wire !== request.wire) throw new GenerationError('generation_continuation_unavailable');
@@ -187,6 +187,8 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch, checkp
             }
             let response;
             try {
+                signal?.throwIfAborted();
+                onDispatch?.();
                 response = await fetchImpl(request.endpoint, { method: 'POST', redirect: 'error', signal,
                     headers: { 'Content-Type': 'application/json', ...(anthropic ? { 'x-api-key': secret, 'anthropic-version': '2023-06-01' } : { 'x-goog-api-key': secret }) }, body: request.wire });
             } catch {

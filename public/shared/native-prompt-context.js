@@ -22,15 +22,16 @@ export function nativePromptSource(item) {
 export function nativePromptActorItems(snapshot, { categories = [], actorIds } = {}) {
     if (!snapshot.entryPoint) return [];
     const result = [], identity = nativePromptIdentity(snapshot);
+    const identityDefinition = identity.actorId ? projectActorDefinition(snapshot, identity.actorId) : null;
     const add = (category, field, text, definition) => {
         if (!categories.includes(category) || typeof text !== 'string' || !text) return;
-        if (definition?.scopedRaw.textMode === 'template') text = text.replace(/\{\{\s*(user|char)\s*\}\}/g, (_, key) => {
-            const value = key === 'char' ? definition.identity.displayName : identity.user;
-            if (value === undefined) throw new TypeError('Missing authored profile identity: ' + key);
-            return value;
-        });
+        // Authored profiles use {{user}}/{{char}} like character cards; textMode 'literal' keeps them verbatim.
+        // Without a chosen Persona the {{user}} token stays as written instead of failing the turn.
+        const owner = definition ?? identityDefinition;
+        if (owner?.scopedRaw.textMode !== 'literal') text = text.replace(/\{\{\s*(user|char)\s*\}\}/gi, (token, key) =>
+            (key.toLowerCase() === 'char' ? owner?.identity.displayName : identity.user) ?? token);
         result.push({ contextItemId: 'authored:' + category + ':' + (definition?.identity.actorId ?? 'entry') + ':' + field,
-            lane: 'current_state', authority: 'actor_definition', authorityRank: 100, priority: 0,
+            lane: 'current_state_event', authority: 'actor_definition', authorityRank: 100, priority: 0,
             content: (definition ? definition.identity.displayName + ' — ' + field + ':\n' : 'Authored scenario (not current World state):\n') + text,
             sourceRefs: [{ kind: 'runtime', providerId: 'native.authored-profile', contentIdentity: JSON.stringify(definition?.source ?? { entryPointId: snapshot.entryPoint.entryPointId }) }],
             metadata: { promptSource: { category, field, ...(definition ? { actorId: definition.identity.actorId } : {}) } } });
@@ -51,6 +52,7 @@ export function nativePresetHistoryItems(snapshot, recent, supplementalContent =
     const eligible = new Set(recent.flatMap(item => item.metadata?.messageIds ?? []));
     if (!eligible.size) return [];
     const variants = new Map(snapshot.variants.map(variant => [variant.variantId, variant]));
+    const latestReplyId = snapshot.timeline.findLast(message => eligible.has(message.messageId) && message.role === 'assistant')?.messageId;
     const result = [];
     for (const [index, message] of snapshot.timeline.entries()) {
         if (!eligible.has(message.messageId)) continue;
@@ -61,8 +63,10 @@ export function nativePresetHistoryItems(snapshot, recent, supplementalContent =
             if (block.type !== 'preset.content' || !['candidate', 'latest'].includes(policies[block.data.type])
                 || policies[block.data.type] === 'latest' && depth !== 0) continue;
             result.push({ contextItemId: 'supplement:' + message.messageId + ':' + block.id, lane: 'recent_raw',
-                authority: 'model_generated', authorityRank: 10, priority: 0,
-                content: 'Supplemental model-authored reference, not an occurred World fact: ' + JSON.stringify({ type: block.data.type, data: supplementalContent[variant.variantId + ':' + block.id] ?? block.data.value }),
+                // Running tallies (emotion progress, status) continue from the latest reply, so its
+                // records outrank older raw turns; older records only fill space left over, newest first.
+                authority: 'model_generated', authorityRank: message.messageId === latestReplyId ? 660 : 10, priority: message.sequence,
+                content: 'Supplemental model-authored reference, not an occurred World fact: ' + JSON.stringify({ type: block.data.type, message: message.sequence + 1, data: supplementalContent[variant.variantId + ':' + block.id] ?? block.data.value }),
                 sourceRefs: [{ kind: 'timeline', messageId: message.messageId, variantId: variant.variantId, revisionId: message.revisionId ?? snapshot.revision.revisionId, sequence: message.sequence, branchId: snapshot.revision.branchId }],
                 metadata: { promptSource: { category: 'history', field: 'supplement' }, messageId: message.messageId, variantId: variant.variantId, blockId: block.id, depth } });
         }

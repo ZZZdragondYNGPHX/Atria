@@ -176,6 +176,9 @@ export function flattenPromptProgram(resolved, { validateBindings = true } = {})
     return immutable(result);
 }
 
+export const presetDeclaresPersona = stages => stages.some(stage => stage.contextConsumers?.includes('player_persona')
+    || stage.entries.some(entry => entry.kind === 'anchor' && entry.accepts.includes('context.player-persona')));
+
 export class PromptCompiler {
     constructor({ hostDefinitions = {}, randomSamples = new Map() } = {}) {
         this.hostDefinitions = immutable(hostDefinitions);
@@ -214,6 +217,7 @@ export class PromptCompiler {
         const blocks = [];
         const segments = [];
         const personaStages = [];
+        const personaDefault = !presetDeclaresPersona(program.stages);
         const diagnostics = [];
         const provenance = [...plan.provenance, ...program.provenance];
         const placed = new Set(), excluded = new Set();
@@ -321,14 +325,14 @@ export class PromptCompiler {
             segments.push({ identity: hashNativeDocument({ scope, kind: item.kind, id: item.id ?? null }),
                 kind: item.kind, source: plan.source, provenance: item.provenance,
                 contentFingerprint: hashNativeDocument(item.content), volatility: 'request', cacheability: 'candidate',
-                consumed: consumed.has(item) || !excluded.has(contributionKey(item)) && (item.kind !== 'context.player-persona' || personaStages.length > 0) });
+                consumed: consumed.has(item) || !excluded.has(contributionKey(item)) && (item.kind !== 'context.player-persona' || personaStages.length > 0 || personaDefault) });
             if (consumed.has(item) || excluded.has(contributionKey(item))) continue;
             if (item.kind === 'context.history') {
                 ir.history.push(item.content);
                 historySources.push({ source: plan.source, provenance: item.provenance, evidence: item.evidence ?? null, id: item.id ?? null });
             } else if (item.kind === 'context.input') input.push(item.content);
             else if (item.kind === 'context.player-persona') {
-                if (personaStages.length) ir.contextSlots.push({ target: 'context.before_history', content: item.content, trust: 'evidence', provenance: item.provenance,
+                if (personaStages.length || personaDefault) ir.contextSlots.push({ target: 'context.before_history', content: item.content, trust: 'evidence', provenance: item.provenance,
                     evidence: { source: plan.source, kind: item.kind, id: item.id ?? null, ...(item.evidence ?? {}) } });
             } else if (item.kind === 'context.directive') emitDirective(item.content, { kind: 'host_policy', source: plan.source, provenance: item.provenance });
             else if (item.kind === 'context.fact') ir.contextSlots.push({ target: 'context.before_history', content: item.content, trust: 'evidence', provenance: item.provenance,
@@ -405,7 +409,7 @@ export class PromptCompiler {
             source: plan.source, directiveSources, historySources, responseSources,
             authoredBehaviorFingerprint: hashNativeDocument({ blocks: blocks.filter(block => !block.item), parameters: env.param, selectedStages: stages.filter(id => selected.includes(id)), programRef: resolved.route.promptProgramRef }),
             ...(plan.personaEvidence ? { personaEvidence: { ...plan.personaEvidence, consumerStages: personaStages,
-                reason: plan.personaEvidence.reason === 'selected' && !personaStages.length ? 'not_consumed' : plan.personaEvidence.reason } } : {}), parameters: env.param, modules: diagnostics, selectedStages: stages.filter(id => selected.includes(id)) };
+                reason: plan.personaEvidence.reason === 'selected' && !personaStages.length && !personaDefault ? 'not_consumed' : plan.personaEvidence.reason } } : {}), parameters: env.param, modules: diagnostics, selectedStages: stages.filter(id => selected.includes(id)) };
         ir.semanticBlocks = semanticBlocks(ir);
         return immutable({ promptIr: assertPromptIR(ir), diagnostics, selectedStages: ir.compilation.selectedStages });
     }

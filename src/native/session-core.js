@@ -230,7 +230,9 @@ export class SessionCore {
         validateHistory({ ...snapshot, manifest: installed.manifest });
         if (installed.packageVersion.packageContentHash !== session.packageContentHash
             || installed.packageVersion.version !== session.packageVersion) throw new Error('Session PackageVersion dependency mismatch');
-        await this._validateProjections(handle, snapshot, snapshot.variants, installed);
+        // Preset replies were checked against their raw response when published.
+        // Loading keeps them readable even after the content parser improves.
+        await this._validateProjections(handle, snapshot, snapshot.variants, installed, { redecodePresetContent: false });
         validateWorldState(snapshot.states, installed.manifest, installed.entryPoint);
         if (snapshot.states[PERSONA_NAMESPACE]) assertPersonaState(snapshot.states[PERSONA_NAMESPACE]);
         const knowledge = validateKnowledgeBindingSet(snapshot.knowledge, installed.manifest, installed.entryPoint);
@@ -419,7 +421,7 @@ export class SessionCore {
 
     // Compile exact installed source bytes once for this validation batch. No
     // compiled definitions/functions escape into a Session/HTTP snapshot.
-    async _validateProjections(handle, base, variants, installed = null) {
+    async _validateProjections(handle, base, variants, installed = null, { redecodePresetContent = true } = {}) {
         let projected = variants.filter(variant => variant.projection !== undefined);
         if (!projected.length) return;
         const roles = new Map(base.timeline.map(entry => [entry.messageId, entry.role]));
@@ -429,7 +431,7 @@ export class SessionCore {
         const programs = new Map();
         for (const variant of projected) {
             const metadata = variant.metadata?.runtime?.extra?.preset_content;
-            if (!metadata) continue;
+            if (!metadata || !redecodePresetContent) continue;
             const identity = JSON.stringify([handle, variant.variantId]);
             if (this._validatedPresetVariants.has(identity)) continue;
             const ref = assertExactResourceRef(metadata.programRef, 'core.prompt-program');

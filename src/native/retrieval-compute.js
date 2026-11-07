@@ -37,7 +37,7 @@ export async function prepareRetrievalCompute({ handle, context, profile, persis
     const limits = route.executionPolicy?.computeBudget;
     // This policy comes only from the selected stored Route. Client context has
     // no allocation fields; the same original writer checks it during charge.
-    const computeOptions = profile.mode === 'rerank' ? optionalComputeOptions(route.executionPolicy, 'rerank') : {};
+    let computeOptions;
     const path = hashNativeDocument({ owner: handle, profile, purpose: profile.mode === 'embed' ? 'retrieval.embedding' : 'retrieval.rerank' });
     let base, task;
     if (context.kind === 'session') {
@@ -49,6 +49,14 @@ export async function prepareRetrievalCompute({ handle, context, profile, persis
         task = (await agent.getContext(handle, context.projectId, context.taskId)).task;
         if (task.baseRevision !== context.revision || (await studio.getProject(handle, context.projectId)).revision.revision !== context.revision) fail('native_generation_revision_conflict');
     }
+    // Retrieval is optional; reserve the declared mandatory stages before it
+    // spends anything. A model's context window bounds a whole required send.
+    const contract = base?.manifest.runtime?.experienceContract;
+    const requiredRequests = 1 + (contract?.taskRuntime?.turn?.stages?.length ?? 0) + (contract?.authorityRuntime ? 1 : 0);
+    const model = await persistence.getModelProfile(handle, route.modelProfileRef.modelProfileId);
+    computeOptions = optionalComputeOptions(route.executionPolicy, 'rerank', {
+        maxRequests: requiredRequests, maxTokens: model.limits.contextTokens * requiredRequests,
+    });
     // Old fixed Embedding routes remain unbounded unless explicitly configured.
     // Context freshness still has to pass before that compatibility decision.
     if (!limits && profile.mode !== 'embed') fail('native_generation_budget_lane_denied');
@@ -108,12 +116,17 @@ export async function prepareRetrievalCompute({ handle, context, profile, persis
             sends.set(ticket, { attemptId, receipt });
             return ticket;
         },
-        async settle(usage, ticket) {
+        async settle(usage, ticket, { dispatched = true } = {}) {
             if (!ticket) return;
             const send = sends.get(ticket);
             if (!send) fail('native_generation_attempt_conflict');
             sends.delete(ticket);
             const { attemptId, receipt } = send;
+            if (!dispatched) {
+                if (base) await core.runs.voidCompute(handle, context.sessionId, receipt.operation, attemptId);
+                else await agent.voidGeneration(handle, context.projectId, context.taskId, attemptId);
+                return;
+            }
             if (base) await core.runs.settleCompute(handle, context.sessionId, receipt.operation, attemptId, usage);
             else await agent.settleGeneration(handle, context.projectId, context.taskId, attemptId, usage);
         },

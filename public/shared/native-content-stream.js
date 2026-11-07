@@ -1,9 +1,14 @@
-// Incremental JSON tokenizer/parser. No repairs, tag fallback or evaluation.
+// Incremental JSON tokenizer/parser. No content repairs, tag fallback or evaluation; one surrounding code fence is accepted.
 // Values are retained once; streaming prose is released only after kind is known.
+/** Paragraph break placed between two prose nodes that do not already break. */
+export function proseSeparator(before, next) {
+    return before && !/\n$/.test(before) && !/^\n/.test(next) ? '\n\n' : '';
+}
+
 export class NativeContentStream {
     constructor({ maxCharacters = 4 * 1024 * 1024, maxDepth = 20, maxNodes = 8192 } = {}) {
         Object.assign(this, { maxCharacters, maxDepth, maxNodes, raw: '', stack: [], token: null,
-            root: undefined, done: false, error: null, nodes: 0, narrative: '', released: new Map() });
+            root: undefined, done: false, error: null, nodes: 0, narrative: '', released: new Map(), fence: null });
     }
 
     fail(code) { throw new TypeError('content_json_' + code); }
@@ -26,6 +31,9 @@ export class NativeContentStream {
         if (typeof text !== 'string') return;
         const count = this.released.get(frame.path[1]) ?? 0;
         const end = /[\uD800-\uDBFF]$/.test(text) && this.token?.string ? text.length - 1 : text.length;
+        if (end <= count) return;
+        // Separate prose nodes are separate paragraphs (same rule as decodePresetContent).
+        if (count === 0) this.narrative += proseSeparator(this.narrative, text);
         this.narrative += text.slice(count, end);
         this.released.set(frame.path[1], end);
     }
@@ -84,6 +92,12 @@ export class NativeContentStream {
                 if (token) {
                     if (!/[ \t\r\n,\]}]/.test(c)) { token.value += c; continue; }
                     this.finishToken(); i--; continue;
+                }
+                // One surrounding Markdown code fence (```json … ```) is an envelope, not content.
+                if (this.fence === 'opening') { if (c === '\n') this.fence = 'open'; else if (c === '{') { this.fence = 'open'; i--; } continue; }
+                if (!this.stack.length && c === '`') {
+                    if (this.root === undefined && !this.fence) { this.fence = 'opening'; continue; }
+                    if (this.done && ['open', 'closing'].includes(this.fence)) { this.fence = 'closing'; continue; }
                 }
                 if (/[ \t\r\n]/.test(c)) continue;
                 const parent = this.stack.at(-1);

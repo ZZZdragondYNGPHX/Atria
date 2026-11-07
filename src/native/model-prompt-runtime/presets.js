@@ -6,7 +6,7 @@ import { ConflictError, NotFoundError } from '../../storage/errors.js';
 import { assertWritable } from '../../storage/read-only-mode.js';
 import { withRuntimeWrite } from './persistence.js';
 import { assertVersionedModelPromptResource, collectVersionedModelPromptResourceRefs, getVersionedModelPromptResourceDefinition, mapVersionedModelPromptResourceRefs } from './resources.js';
-import { compilePresetPresentation } from '../preset-presentation.js';
+import { compilePresetPresentation, presetPresentationProblem } from '../preset-presentation.js';
 import { assertExactResourceRef } from './contracts.js';
 
 const PROGRAM = 'core.prompt-program';
@@ -28,9 +28,14 @@ export class PromptPresetStore {
         assertExactResourceRef(programRef, PROGRAM);
         if (programRef?.scope !== 'library' || programRef.resourceType !== PROGRAM) throw new TypeError('Exact preset Program required');
         const program = await this.engine.withTransaction(handle, tx => getNativeDocument(tx, key(handle, PROGRAM, programRef.resourceId, programRef.revision)));
-        if (!presentationId) return { types: program?.content?.types ?? [], presentations: (program?.content?.presentations ?? []).map(({ files, source, ...skin }) => skin) };
+        if (!presentationId) return { types: program?.content?.types ?? [], presentations: (program?.content?.presentations ?? []).map(({ files, source, ...skin }) => {
+            const problem = presetPresentationProblem({ files, source, ...skin });
+            return problem ? { ...skin, unsupported: problem } : skin;
+        }) };
         const skin = program?.content?.presentations?.find(item => item.id === presentationId);
         if (!skin) throw new NotFoundError('Preset presentation');
+        const problem = presetPresentationProblem(skin);
+        if (problem) throw Object.assign(new TypeError(problem), { code: 'native_preset_presentation_unsupported' });
         return compilePresetPresentation(skin);
     }
 
@@ -144,7 +149,11 @@ export class PromptPresetStore {
         visit(main);
         if (entries.some(e => e.resourceType === PROGRAM && !visited.has(entryKey(e)))) throw new TypeError('Additional programs must belong to the main program inheritance chain');
         entries.forEach(visit);
-        for (const entry of entries) for (const skin of entry.resource.content?.presentations ?? []) compilePresetPresentation(skin);
+        // Prompt content is validated strictly above; templates are optional and reported, not fatal.
+        const unsupportedTemplates = entries.flatMap(entry => (entry.resource.content?.presentations ?? []).flatMap(skin => {
+            const reason = presetPresentationProblem(skin);
+            return reason ? [{ id: skin.id, type: skin.type, enabled: skin.enabled, reason }] : [];
+        }));
         return withRuntimeWrite(handle, () => this.engine.withTransaction(handle, async tx => {
             assertWritable();
             const previous = id ? await getNativeDocument(tx, key(handle, PROGRAM, id)) : null;
@@ -199,7 +208,8 @@ export class PromptPresetStore {
                 const oldRoot = await getNativeDocument(tx, key(handle, r.resourceType, r.resourceId));
                 await putMutable(tx, key(handle, r.resourceType, r.resourceId), { ...oldRoot, archived: true });
             }
-            return { presetId: owner, revision: selected.revision, ...(excludedParameters.length ? { importReport: { excludedParameters } } : {}) };
+            return { presetId: owner, revision: selected.revision, ...(excludedParameters.length ? { importReport: { excludedParameters } } : {}),
+                ...(unsupportedTemplates.length ? { unsupportedTemplates } : {}) };
         }));
     }
 }

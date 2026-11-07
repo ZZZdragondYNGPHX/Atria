@@ -1,6 +1,7 @@
 import { rememberEvidenceReceipt } from './evidence-receipts.js';
-import { executeNativeGeneration, executeNativeOperation } from './generation-client.js';
+import { beginNativeGeneration, executeNativeGeneration, executeNativeOperation } from './generation-client.js';
 import { recallNativePackageTurnMemory } from './experience/llm/memory-bridge.js';
+import { translateShellText as tl } from '../atria-shell/localization.js';
 
 export function nativePlayGenerationBusy(runtime) {
     return Boolean(runtime?.host?.isGenerating?.())
@@ -8,7 +9,7 @@ export function nativePlayGenerationBusy(runtime) {
 }
 
 // Keep publication on NativeSessionRuntime's existing Draft/Revision boundary.
-export async function runNativePlayGeneration({ runtime, type, signal, input = '', quietPrompt = '', operation, actorId, host, execute = executeNativeGeneration, executeOperation = executeNativeOperation }) {
+export async function runNativePlayGeneration({ runtime, type, signal, input = '', quietPrompt = '', operation, actorId, host, execute = executeNativeGeneration, executeOperation = executeNativeOperation, begin = beginNativeGeneration }) {
     if (signal?.aborted) throw Object.assign(new Error('Native generation cancelled'), { code: 'generation_cancelled' });
     runtime.generationProjection = { state: 'preparing', text: '', error: '' };
     let observing = true;
@@ -37,6 +38,13 @@ export async function runNativePlayGeneration({ runtime, type, signal, input = '
         if ([undefined, 'normal'].includes(originalType) && input.trim()) {
             await host.submitUser(input);
             await runtime.persist();
+        }
+        // Recursive work in the same Draft and quiet child calls share its reply.
+        if (originalType !== 'quiet' && !runtime.generation?.replyExecution && runtime.snapshot?.session?.sessionId) {
+            const source = { sessionId: runtime.snapshot.session.sessionId, revisionId: runtime.snapshot.revision.revisionId };
+            const reply = await begin({ ...source, abortSignal: signal });
+            runtime.replyExecution = { ...source, generationId: reply.generationId };
+            if (runtime.generation) runtime.generation.replyExecution = runtime.replyExecution;
         }
         if (signal?.aborted) throw Object.assign(new Error('Native generation cancelled'), { code: 'generation_cancelled' });
         const game = host.gameApi?.();
@@ -95,7 +103,7 @@ export async function runNativePlayGeneration({ runtime, type, signal, input = '
         if (signal?.aborted) throw Object.assign(new Error('Native generation cancelled'), { code: 'generation_cancelled' });
         if (result.presetContent?.status === 'invalid') {
             runtime.generationProjection = { state: 'failed', text: result.presetContent.preview ?? '', error: 'content_format_invalid', originalResponse: result.presetContent.raw };
-            throw Object.assign(new Error('Invalid content format'), { code: 'content_format_invalid', originalResponse: result.presetContent.raw });
+            throw Object.assign(new Error(tl('The reply was not in the expected format, so it was not added. Your message is saved — send again to continue.')), { code: 'content_format_invalid', originalResponse: result.presetContent.raw });
         }
         if (originalType === 'quiet') return result.assistantText;
         if (originalType === 'impersonate') { await host.impersonate?.(result.assistantText); return result.assistantText; }

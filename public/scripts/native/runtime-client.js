@@ -34,8 +34,6 @@ export function runtimeRemediation(code) {
         generation_provider_endpoint_not_found: ['The service answered HTTP 404 (not found). If this API preset worked before, the service or its upstream is having trouble; send again in a moment. Otherwise check the service address.', 'connections'],
         generation_provider_request_rejected: ['The provider rejected the request (HTTP 400/422). Check model and tool/output schema compatibility.', 'connections'],
         generation_provider_reasoning_unsupported: ['The model rejected the reasoning setting. Select Default or none in the API preset, or use an endpoint that supports reasoning with tools.', 'routes'],
-        generation_provider_authentication_failed: ['The provider rejected the stored Secret (HTTP 401/403). Check the Secret selected by this connection.', 'connections'],
-        generation_provider_timeout: ['The provider did not respond within this route’s timeout. Check service availability or increase the route timeout.', 'routes'],
         prompt_parameter_option: ['Saved Prompt choices are invalid. Open Prompt choices and restore defaults or choose valid values.', 'diagnostics'],
         prompt_parameter_unknown: ['Saved Prompt choices are invalid. Open Prompt choices and restore defaults or choose valid values.', 'diagnostics'],
         prompt_parameter_type: ['Saved Prompt choices are invalid. Open Prompt choices and restore defaults or choose valid values.', 'diagnostics'],
@@ -68,13 +66,18 @@ export function runtimeRemediation(code) {
         native_generation_configuration_invalid: ['Save failed. Check required fields, references and revision uniqueness. Your edits are still here.', null],
         native_generation_context_required: ['Open a Native game, or select a Build Project and its exact revision, then preview again.', null],
         native_generation_revision_conflict: ['The context changed. Reopen the current Session or Project and preview again.', null],
-        native_generation_budget_invalid: ['Set a request limit from 1 to 32 and a positive token limit.', 'routes'],
+        native_generation_budget_invalid: ['Set positive whole numbers for request and token limits.', 'routes'],
+        native_generation_superseded: ['A newer reply has started. This earlier reply has stopped.', null],
+        native_generation_turn_budget_exhausted: ['This story has reached its author-set limit for this world turn. Load a save to continue from another point.', null],
+        native_authority_input_conflict: ['This unfinished choice already has a fixed outcome. Open History & saves and load a save to choose a different action.', null],
         native_generation_budget_lane_denied: ['Optional computation needs a current Run or Project Task and an explicit shared request budget. Review the route settings.', 'routes'],
-        native_generation_budget_exhausted: ['The shared budget for this Run or Project Task is exhausted. Previous usage is preserved and optional computation has stopped.', 'diagnostics'],
+        native_generation_budget_exhausted: ['This reply used all of its model requests or tokens. Your message is saved — send again for a fresh allowance, or raise "Limits per reply" in the API preset.', 'routes'],
+        native_generation_local_work_exhausted: ['This reply reached the local processing limit set in its API preset. No model request was refused. Raise or reset "Local processing" in the API preset, then send again.', 'routes'],
+        native_generation_required_budget_reserved: ['Optional work was skipped to keep requests for the reply.', null],
         native_generation_task_stopped: ['The Project Task changed or stopped. Reload it before computing again. The previous continuation is unavailable.', null],
-        native_orchestration_turn_route_mismatch: ["An API preset used by this story's agent plan changed since the plan was saved. Open the plan and choose Save to library. Your message is saved.", 'plans'],
-        native_orchestration_model_authority_unavailable: ["This story's agent plan can't use one of its models right now. Open the plan and choose Save to library to check it. Your message is saved.", 'plans'],
-        native_orchestration_turn_plan_unavailable: ["This story's agent plan can't run here. Open it in Agents → Orchestration and choose Use in… to see why. Your message is saved.", 'plans'],
+        native_orchestration_turn_route_mismatch: ['An API preset used by this story\'s agent plan changed since the plan was saved. Open the plan and choose Save to library. Your message is saved.', 'plans'],
+        native_orchestration_model_authority_unavailable: ['This story\'s agent plan can\'t use one of its models right now. Open the plan and choose Save to library to check it. Your message is saved.', 'plans'],
+        native_orchestration_turn_plan_unavailable: ['This story\'s agent plan can\'t run here. Open it in Agents → Orchestration and choose Use in… to see why. Your message is saved.', 'plans'],
         native_orchestration_limit_exhausted: ['The agent plan reached one of its limits before finishing. Raise the limit in the plan, then send again. Your message is saved.', 'plans'],
         // Transient service failures: nothing to fix in settings; the player's turn is already saved.
         generation_provider_failed: ['The model service did not answer. Your message is saved — send again to continue.', null],
@@ -90,10 +93,12 @@ export function runtimeRemediation(code) {
     return [tl(message), target, Boolean(actions[code])];
 }
 
-export function runtimeGenerationError(code, status) {
+// Only the reply the player is waiting on owns the composer notice. Background
+// lanes (memory, search, illustration…) report through their own surfaces.
+export function runtimeGenerationError(code, status, { notify = true } = {}) {
     const [message, target, known] = runtimeRemediation(code);
     const transient = /^generation_(provider_failed|provider_timeout|fallback_exhausted|response_invalid)$/.test(code);
-    if ((target || transient || known) && globalThis.document && typeof CustomEvent === 'function' && code !== 'generation_continuation_reset_required') {
+    if (notify && (target || transient || known) && globalThis.document && typeof CustomEvent === 'function' && code !== 'generation_continuation_reset_required') {
         document.dispatchEvent(new CustomEvent('atria-native-runtime-error', { detail: { message, target } }));
     }
     return Object.assign(new Error(message), { code, status });

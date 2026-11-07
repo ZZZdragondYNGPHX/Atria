@@ -2,9 +2,10 @@ import { NATIVE_RESOURCE_KINDS as K } from './contracts.js';
 import { RUN_NAMESPACE, assertRunState, assertRunContinuation, assertGenerationBudget } from '../../public/shared/native-run-contract.js';
 import { getNativeDocument, putMutable, hashNativeDocument } from './repositories/common.js';
 import { ConflictError } from '../storage/errors.js';
+import { assertReplyExecution } from './reply-execution.js';
 import { assertWritable, isReadOnly } from '../storage/read-only-mode.js';
 import { chargeComputeAttempt, settleComputeAttempt, chargeLocalWork, settleLocalWork, retireComputeLedger, hasOpenComputeReservations, hasRetainedOrchestrationCompute,
-    reserveComputeChild, releaseComputeChild, admitComputeAttempt } from '../../public/shared/native-compute-budget.js';
+    reserveComputeChild, releaseComputeChild, admitComputeAttempt, voidComputeAttempt, beginComputeGeneration, inspectComputeReservation } from '../../public/shared/native-compute-budget.js';
 import { fields } from '../../public/shared/native-values.js';
 import { assertSessionTaskHistory, sessionTaskHistoryLimits, completeSessionTaskHistory, sessionTaskPublicSummary } from '../../public/shared/native-session-task-history.js';
 
@@ -24,11 +25,44 @@ function selectSessionTaskHistory(control, snapshot, operation, id, identity) {
 }
 function retireOperations(control, keep) {
     control.operations = Object.fromEntries(Object.entries(control.operations).filter(([, op]) => {
-        if (keep(op) || hasRetainedOrchestrationCompute(op.compute) || Object.values(op.externalTasks ?? {}).some(row => row.orchestrationBinding)
+        if (keep(op) || op.generationId && op.generationId === control.replyExecution?.generationId
+            || hasRetainedOrchestrationCompute(op.compute) || Object.values(op.externalTasks ?? {}).some(row => row.orchestrationBinding)
             || hasOpenComputeReservations(op.compute) || op.compute?.attempts.some(row => row.status === 'charged') || op.compute?.localWork?.some(row => row.status === 'charged')) return true;
         if (op.compute) control.retiredCompute = retireComputeLedger(control.retiredCompute, op.compute);
         return false;
     }));
+}
+
+// Publication advances the story revision, but post-reply memory and tools
+// still belong to the reply that caused it. Sum the original operation banks;
+// do not copy their mutable attempts or change world-turn identities.
+export function replyComputeCapacity(control, operation) {
+    const op = control.operations[operation];
+    if (!op?.compute) return null;
+    const peers = op.generationId ? Object.values(control.operations).filter(peer => peer.generationId === op.generationId && peer.compute) : [op];
+    const states = peers.map(peer => inspectComputeReservation(peer));
+    const dimensions = Object.keys(states[0].used);
+    const ceiling = {}, used = {}, delegated = {}, remaining = {};
+    for (const key of dimensions) {
+        ceiling[key] = Math.min(...states.map(state => state.ceiling[key]));
+        used[key] = states.reduce((n, state) => n + state.used[key], 0);
+        delegated[key] = states.reduce((n, state) => n + state.delegated[key], 0);
+        remaining[key] = Math.max(0, ceiling[key] - used[key] - delegated[key]);
+    }
+    const over = dimensions.filter(key => used[key] + delegated[key] > ceiling[key]);
+    return { ceiling, used, delegated, remaining, overrun: states.some(state => state.overrun) || over.length > 0,
+        overrunApi: states.some(state => state.overrunApi) || over.some(key => ['requests', 'tokens'].includes(key)) };
+}
+
+function assertReplyCapacity(control, operation, { reserve } = {}) {
+    const state = replyComputeCapacity(control, operation);
+    if (!state) return;
+    if (state.overrun) throw runFailure(state.overrunApi ? 'native_generation_budget_exhausted' : 'native_generation_local_work_exhausted');
+    if (reserve && (state.remaining.requests < reserve.maxRequests || state.remaining.tokens < reserve.maxTokens)) throw runFailure('native_generation_required_budget_reserved');
+}
+
+function bindReplyOperation(control, op) {
+    if (control.replyExecution && !op.generationId) op.generationId = control.replyExecution.generationId;
 }
 
 function computeOperation(control, snapshot, anchor, limits, { required = false } = {}) {
@@ -45,6 +79,7 @@ function computeOperation(control, snapshot, anchor, limits, { required = false 
         if (Object.keys(control.operations).length >= 128) throw runFailure('native_run_continuation_limit');
         op = control.operations[id] = { lane: 'turn', anchor: structuredClone(anchor), attempts: {}, total: 0 };
     }
+    bindReplyOperation(control, op);
     return { id, op, limits };
 }
 // The original role/turn/background counters are shared by both original
@@ -65,22 +100,23 @@ function chargeGenerationQuota(value, snapshot, request, policy) {
     const lane = request.background ? 'background' : request.role;
     if (!['background', 'narrator', 'intent_resolver'].includes(lane)) throw runFailure('native_generation_budget_lane_denied');
     const max = request.background ? policy.backgroundAttempts : lane === 'narrator' ? policy.narratorAttempts : policy.resolverAttempts;
-    if ((op.attempts[lane] ?? 0) >= max || (!request.background && op.total >= policy.turnAttempts)) throw runFailure('native_generation_budget_exhausted');
+    if ((op.attempts[lane] ?? 0) >= max || (!request.background && op.total >= policy.turnAttempts)) throw runFailure('native_generation_turn_budget_exhausted');
     if (request.background) {
         if (turn < policy.backgroundWindowTurns) throw runFailure('native_generation_background_not_due');
         const window = Math.floor(value.highWaterTurn / policy.backgroundWindowTurns);
         const period = Math.floor(value.highWaterTurn / policy.backgroundPeriodTurns);
         const entry = value.background[window] ?? { operation: id, count: 0, period };
         if (entry.operation !== id || entry.count >= policy.backgroundAttempts
-            || Object.values(value.background).filter(item => item.period === period).reduce((sum, item) => sum + item.count, 0) >= policy.backgroundPeriodAttempts) throw runFailure('native_generation_budget_exhausted');
+            || Object.values(value.background).filter(item => item.period === period).reduce((sum, item) => sum + item.count, 0) >= policy.backgroundPeriodAttempts) throw runFailure('native_generation_turn_budget_exhausted');
         entry.count++; value.background[window] = entry;
         for (const [oldWindow, item] of Object.entries(value.background)) if (item.period < period) delete value.background[oldWindow];
     }
     op.attempts[lane] = (op.attempts[lane] ?? 0) + 1; op.total++;
+    bindReplyOperation(value, op);
     return { id, op };
 }
 
-export function retireRunOperations(control) { retireOperations(control, () => false); return control; }
+export function retireRunOperations(control) { delete control.replyExecution; retireOperations(control, () => false); return control; }
 export function runPublicationProof() { const proof = {}; proofs.add(proof); return proof; }
 export const validRunPublication = proof => Boolean(proof && proofs.has(proof));
 
@@ -92,6 +128,7 @@ export async function readRunControl(tx, handle, sessionId) {
     let control = record?.doc ? structuredClone(record.doc) : null;
     if (control) {
         if (control.schemaVersion !== 1) throw runFailure('native_run_control_integrity');
+        if (control.replyExecution && (typeof control.replyExecution.generationId !== 'string' || typeof control.replyExecution.revisionId !== 'string')) throw runFailure('native_run_control_integrity');
         assertRunContinuation({ operations: control.operations, background: control.background, highWaterTurn: control.highWaterTurn,
             ...(control.retiredCompute === undefined ? {} : { retiredCompute: control.retiredCompute }) });
         if (control.mode && (!['pending', 'ordinary', 'ironman'].includes(control.mode)
@@ -99,7 +136,7 @@ export async function readRunControl(tx, handle, sessionId) {
             || !Number.isSafeInteger(control.sequence) || control.sequence < 0)) throw runFailure('native_run_control_invalid');
     }
     if (control?.status === 'terminal') {
-        retireOperations(control, () => false);
+        retireRunOperations(control);
         controlVersions.set(control, record.integrity); return control;
     }
     const session = await getNativeDocument(tx, { kind: K.session, handle, sessionId });
@@ -141,6 +178,7 @@ export async function readRunControl(tx, handle, sessionId) {
 }
 export async function assertRunAccess(tx, handle, sessionId, action, revisionId = undefined) {
     const control = await readRunControl(tx, handle, sessionId);
+    if (action !== 'status') assertReplyExecution(control, handle, sessionId);
     if (!control) return null;
     if (control.restoreState === 'review_required' && !['status', 'inspect', 'save', 'export', 'import', 'cleanup'].includes(action)) throw runFailure('native_run_restore_review_required');
     if (control.status === 'terminal' && (!control.deathRevisionId || !['inspect', 'export'].includes(action)) && !['status', 'cleanup'].includes(action)) throw runFailure('native_run_terminal');
@@ -299,6 +337,7 @@ export class RunControl {
             const { id, op } = chargeGenerationQuota(value, snapshot, request, policy);
             const limits = request.compute?.limits ?? op.compute?.limits;
             const compute = limits && request.compute ? chargeComputeAttempt(op, limits, request.compute.attempt, request.compute.options) : null;
+            assertReplyCapacity(value, id, request.compute?.options);
             // Persist before send; errors above never publish a partial counter.
             return { operation: id, attempt: op.total, ...(compute ? { compute, limits: structuredClone(op.compute.limits) } : {}) };
         });
@@ -310,6 +349,7 @@ export class RunControl {
             if (!selected) return null;
             const { id, op } = selected;
             const compute = chargeComputeAttempt(op, selected.limits, attempt, options);
+            assertReplyCapacity(value, id, options);
             return { operation: id, compute, limits: structuredClone(op.compute.limits) };
         });
     }
@@ -317,7 +357,9 @@ export class RunControl {
     async reserveComputeChild(handle, snapshot, anchor, limits, input) {
         return this.update(handle, snapshot.session.sessionId, control => {
             const selected = computeOperation(control, snapshot, anchor, limits, { required: true });
-            return { operation: selected.id, ...reserveComputeChild(selected.op, selected.limits, input), limits: structuredClone(selected.op.compute.limits) };
+            const reservation = reserveComputeChild(selected.op, selected.limits, input);
+            assertReplyCapacity(control, selected.id);
+            return { operation: selected.id, ...reservation, limits: structuredClone(selected.op.compute.limits) };
         });
     }
 
@@ -349,6 +391,7 @@ export class RunControl {
             };
             const boundAttempt = { ...attempt, ...(generationQuotaRef === undefined ? {} : { generationQuotaRef }) };
             const admission = admitComputeAttempt(selected.op, selected.limits, boundAttempt, options);
+            assertReplyCapacity(control, selected.id, options);
             // A refused quota throws before the sole durable control write.
             // Observing/replaying a stable admission consumes no second quota.
             if (trustedQuota !== null) {
@@ -391,7 +434,9 @@ export class RunControl {
                 if (Object.keys(value.operations).length >= 128) throw runFailure('native_run_continuation_limit');
                 op = value.operations[id] = { lane: background ? 'background' : 'turn', anchor: structuredClone(anchor), attempts: {}, total: 0 };
             }
+            bindReplyOperation(value, op);
             const localWork = chargeLocalWork(op, limits, attempt, { reservationId });
+            assertReplyCapacity(value, id);
             return { operation: id, localWork };
         }, 'write', value => {
             if (value.headRevisionId !== snapshot.revision.revisionId) throw new ConflictError('native_generation_revision_conflict');
@@ -411,5 +456,48 @@ export class RunControl {
             if (!op) throw runFailure('native_generation_attempt_conflict');
             return settleComputeAttempt(op, attemptId, usage);
         }, 'status');
+    }
+    /** Undo a charge whose request was never dispatched (a pre-send check
+     * failed). quota names the role/background counter that charge() raised. */
+    async voidCompute(handle, sessionId, operation, attemptId, quota = null) {
+        return this.update(handle, sessionId, value => {
+            const op = value.operations[operation];
+            if (!op?.compute) throw runFailure('native_generation_attempt_conflict');
+            const entry = voidComputeAttempt(op, attemptId);
+            const counter = entry.generationQuotaRef ? value.operations[entry.generationQuotaRef.operationId] : op;
+            quota ??= entry.generationQuotaRef;
+            if (quota) {
+                const lane = quota.background ? 'background' : quota.role;
+                if (counter.attempts[lane] > 0) counter.attempts[lane]--;
+                if (counter.total > 0) counter.total--;
+                if (quota.background) {
+                    const window = Object.values(value.background).find(item => item.operation === operation && item.count > 0);
+                    if (window) window.count--;
+                }
+            }
+            return entry;
+        }, 'status');
+    }
+    /** A new user-initiated generation on this revision gets a fresh allowance.
+     * Finished work from earlier generations (for example a failed attempt) is
+     * retired to the cost history; in-flight work keeps its rows but is not
+     * charged to the new generation. Background lanes are unaffected. */
+    async beginGeneration(handle, snapshot, { generationId, expectedGenerationId }) {
+        if (typeof generationId !== 'string' || !/^[A-Za-z0-9._:-]{1,128}$/.test(generationId)
+            || expectedGenerationId !== null && typeof expectedGenerationId !== 'string') throw runFailure('native_generation_begin_invalid');
+        const anchor = { branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId };
+        const id = hashNativeDocument({ lane: 'turn', anchor });
+        return this.update(handle, snapshot.session.sessionId, value => {
+            if (value.headRevisionId !== snapshot.revision.revisionId) throw new ConflictError('native_generation_revision_conflict');
+            const op = value.operations[id] ??= { lane: 'turn', anchor, attempts: {}, total: 0 };
+            if (value.replyExecution?.generationId === generationId) return { operation: id, generationId, reset: false };
+            if ((value.replyExecution?.generationId ?? op.generationId ?? null) !== expectedGenerationId) throw new ConflictError('native_generation_superseded');
+            const result = beginComputeGeneration(op, value.retiredCompute);
+            if (result.retired) value.retiredCompute = result.retired;
+            op.generationId = generationId;
+            value.replyExecution = { generationId, revisionId: snapshot.revision.revisionId };
+            retireOperations(value, row => row.anchor.revisionId === snapshot.revision.revisionId || row.lane === 'background');
+            return { operation: id, generationId, reset: true };
+        }, 'generate');
     }
 }

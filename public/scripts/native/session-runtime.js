@@ -169,8 +169,11 @@ export class NativeSessionRuntime {
     }
 
     _queue(run) {
-        this.queue = this.queue.then(run);
-        return this.queue;
+        const result = this.queue.then(run);
+        this.queue = result.catch(error => {
+            if (!error.nonFatal || error.code !== 'native_generation_revision_conflict') throw error;
+        });
+        return result;
     }
 
     updateState(namespace, updater) {
@@ -178,7 +181,9 @@ export class NativeSessionRuntime {
         const key = normalizeNativeStateNamespace(namespace);
         if (typeof updater !== 'function') throw new TypeError('Native state updater must be a function');
         const sessionId = this.snapshot.session.sessionId;
+        const sourceEpoch = this.projectionEpoch;
         return this._queue(async () => {
+            if (sourceEpoch !== this.projectionEpoch) throw Object.assign(new Error('State write belongs to an earlier story view'), { code: 'native_generation_revision_conflict', nonFatal: true });
             this.assertWritable();
             if (this.snapshot.session.sessionId !== sessionId) {
                 this._failBarrier(committedTimelineMutation('Native Session changed during a queued state write'));
@@ -230,7 +235,9 @@ export class NativeSessionRuntime {
         );
         const deletes = deleteNamespaces.map(normalizeNativeStateNamespace);
         const sessionId = this.snapshot.session.sessionId;
+        const sourceEpoch = this.projectionEpoch;
         return this._queue(async () => {
+            if (sourceEpoch !== this.projectionEpoch) throw Object.assign(new Error('State write belongs to an earlier story view'), { code: 'native_generation_revision_conflict', nonFatal: true });
             this.assertWritable();
             if (this.snapshot.session.sessionId !== sessionId) {
                 this._failBarrier(committedTimelineMutation('Native Session changed during a queued state write'));
@@ -797,17 +804,22 @@ export class NativeSessionRuntime {
     async restoreSavePoint(saveId) {
         this.assertWritable();
         await this.persist();
-        const previous = this.snapshot;
-        const commitEpoch = this.projectionEpoch;
-        const next = await this.request('command', {
-            sessionId: previous.session.sessionId,
-            expectedRevisionId: previous.revision.revisionId,
-            command: { type: 'restore', saveId },
+        const { next, previous } = await this._queue(async () => {
+            this.assertWritable();
+            const previous = this.snapshot, commitEpoch = this.projectionEpoch;
+            const next = await this.request('command', {
+                sessionId: previous.session.sessionId,
+                expectedRevisionId: previous.revision.revisionId,
+                command: { type: 'restore', saveId },
+            });
+            this._acceptCommittedProjection(next, previous, commitEpoch);
+            this.projectionEpoch++;
+            this._clearStagedStates();
+            this.history = false;
+            this.generation = null;
+            this.generationProjection = { state: 'idle', text: '', error: '' };
+            return { next, previous };
         });
-        this._acceptCommittedProjection(next, previous, commitEpoch);
-        this.history = false;
-        this.generation = null;
-        this.generationProjection = { state: 'idle', text: '', error: '' };
         await this.host.install(projectNativeSession(next));
         await this._emit(NATIVE_SESSION_LIFECYCLE.REVISION_RESTORED, next, previous, { saveId });
         await this._emit(NATIVE_SESSION_LIFECYCLE.BRANCH_ACTIVATED, next, previous, { reason: 'restore', saveId });

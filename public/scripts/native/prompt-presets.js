@@ -112,7 +112,18 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
             loading.remove(); throw error;
         }
     };
-    const create = async (value, importing = false) => { const result = await runtimeRequest('/presets', { method: 'POST', body: { preset: value, importing } }); await open(result.presetId); await renderPresetList(); };
+    const create = async (value, importing = false) => {
+        // Importing a file twice must not produce look-alike presets: number the new name.
+        const mains = importing && Array.isArray(value?.entries) ? value.entries.filter(e => e.resourceType === PROGRAM && e.resource?.promptProgramId === value.programId && typeof e.resource.displayName === 'string') : [];
+        if (mains.length) {
+            const taken = new Set((await runtimeRequest('/presets')).map(item => item.displayName));
+            const base = mains.at(-1).resource.displayName; let name = base, n = 2;
+            while (taken.has(name)) name = base + ' (' + n++ + ')';
+            for (const entry of mains) entry.resource.displayName = name;
+        }
+        const result = await runtimeRequest('/presets', { method: 'POST', body: { preset: value, importing } }); await open(result.presetId);
+        if (result.unsupportedTemplates?.length && preset?.presetId === result.presetId) { lastReceipt = { ...result, imported: true }; renderDetail(); }
+        await renderPresetList(); };
     const exportPreset = value => {
         const data = { format: value.format, schemaVersion: 1, programId: value.programId, ...(value.programRevision ? { programRevision: value.programRevision } : {}), categories: value.categories, moduleCategories: value.moduleCategories, entries: value.entries, regexScripts: value.regexScripts || [] };
         const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
@@ -271,6 +282,14 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
             const followed = (lastReceipt.followedBy || []).map(item => item.displayName);
             const receipt = literal('p', followed.length ? formatProductText('Saved. ${0} use this version from the next request.', [followed.join(', ')]) : tl('Saved.'), root);
             receipt.className = 'atri-library-feedback'; receipt.setAttribute('role', 'status');
+            if (lastReceipt.imported) receipt.textContent = tl('Imported. The prompt text is ready to use.');
+            // Optional templates this Atria version cannot run stay in the preset unchanged; say which.
+            if (lastReceipt.unsupportedTemplates?.length) {
+                const box = node('div', undefined, root); box.className = 'atri-library-feedback'; box.setAttribute('role', 'status');
+                literal('p', formatProductText('${0} display templates need features this version of Atria does not have. They are kept in the preset but not used; their items show as plain data.', [lastReceipt.unsupportedTemplates.length]), box);
+                const list = node('ul', undefined, box);
+                for (const item of lastReceipt.unsupportedTemplates) literal('li', item.type + ' · ' + item.reason, list);
+            }
         }
         if (!section) { renderOverview(root); return; }
         if (section === 'regex') {
@@ -334,9 +353,9 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
         const main = preset.entries.find(e => e.resourceType === PROGRAM && idOf(e) === preset.programId && (!preset.programRevision || e.resource.revision === preset.programRevision));
         const modules = preset.entries.filter(e => e.resourceType === MODULE);
         const disabled = new Set((main.resource.derive || []).filter(op => op.op === 'disable' && op.entryId).map(op => op.stageId + '/' + op.entryId));
-        const list = node('ol', undefined, root); list.className = 'atri-preset-overview';
+        const blocks = node('ol', undefined, root); blocks.className = 'atri-preset-overview';
         for (const stage of main.resource.stages) for (const item of promptStageEntries(stage)) {
-            const row = node('li', undefined, list); row.className = 'atri-preset-block';
+            const row = node('li', undefined, blocks); row.className = 'atri-preset-block';
             const off = disabled.has(stage.stageId + '/' + item.entryId);
             row.dataset.off = String(off);
             const toggle = node('input', undefined, node('label', undefined, row)); toggle.type = 'checkbox'; toggle.checked = !off; toggle.className = 'atri-preset-switch';
@@ -363,7 +382,7 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
                 try { await save(next); } catch (error) { toggle.checked = !toggle.checked; toggle.disabled = false; fail(error); }
             });
         }
-        if (!list.childElementCount) node('p', 'This preset sends nothing yet. Open Structure & order to add blocks.', root);
+        if (!blocks.childElementCount) node('p', 'This preset sends nothing yet. Open Structure & order to add blocks.', root);
         const cards = node('div', undefined, root); cards.className = 'atri-preset-sections';
         for (const [id, label, hint] of [[PROGRAM, 'Structure & order', 'Stages, order, conditions and typed parameters'], [MODULE, 'Text blocks', 'Every block’s text, grouped in categories'], ['regex', 'Text replacements', 'Regex rules applied to input and output']]) {
             const card = button(cards, label, () => { section = id; renderDetail(); });

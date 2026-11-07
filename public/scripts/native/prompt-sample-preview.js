@@ -7,7 +7,7 @@ const idFields = { 'core.prompt-module': 'promptModuleId', 'core.prompt-program'
 
 export function mountPromptSamplePreview({ document: doc, parent, entry, entries = [], readDependencies = () => [], readDraft, state }) {
     const el = (tag, text, parent) => { const node = doc.createElement(tag); if (text !== undefined) node.textContent = tl(text); parent?.append(node); return node; };
-    const root = el('details', undefined, parent); root.className = 'atri-prompt-preview'; root.open = state.open ?? false;
+    const root = el('details', undefined, parent); root.className = 'atri-prompt-preview'; root.open = state.open ?? false; root.dataset.atriaDraftIgnore = 'true';
     el('summary', 'Sample preview and trial', root); root.addEventListener('toggle', () => { state.open = root.open; if (root.open && !config) void load(); });
     const controls = el('div', undefined, root); controls.className = 'atri-prompt-sample-fields';
     const field = (label, initial = '', multiline = false) => {
@@ -21,7 +21,7 @@ export function mountPromptSamplePreview({ document: doc, parent, entry, entries
     const persona = field('Sample player persona', state.persona ?? '', true);
     const history = field('Sample history (JSON)', state.history ?? '[]', true);
     const parameters = field('Sample parameters (JSON)', state.parameters ?? '{}', true);
-    const requests = field('Trial request budget', state.maxRequests ?? 1); requests.type = 'number'; requests.min = '1'; requests.max = '32';
+    const requests = field('Trial request budget', state.maxRequests ?? 1); requests.type = 'number'; requests.min = '1';
     const tokens = field('Trial token budget', state.maxTokens ?? ''); tokens.type = 'number'; tokens.min = '1';
     const remember = () => Object.assign(state, { input: input.value, materials: materials.value, persona: persona.value, history: history.value,
         parameters: parameters.value, maxRequests: requests.value, maxTokens: tokens.value, routeId: route.value, baseline: baseline.value, baselineResource: baselineResource.value });

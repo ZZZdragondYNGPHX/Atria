@@ -1,16 +1,19 @@
 import { fields } from './native-values.js';
 import { contentSha256 } from './content-sha256.js';
 
-export const COMPUTE_ADMISSION_CODES = Object.freeze(['native_generation_budget_exhausted', 'native_generation_required_budget_reserved', 'native_generation_required_budget_unknown']);
+export const COMPUTE_ADMISSION_CODES = Object.freeze(['native_generation_budget_exhausted', 'native_generation_turn_budget_exhausted', 'native_generation_local_work_exhausted', 'native_generation_required_budget_reserved', 'native_generation_required_budget_unknown']);
 const integer = value => Number.isSafeInteger(value) && value >= 0;
 const fail = code => { throw Object.assign(new TypeError(code), { code }); };
-// Every local job admits at least one item. The original physical item
-// envelope bounds retained rows; jobs is the owner's declared allowance.
-const MAX_LOCAL_WORK_ITEMS = 10000;
-// Limits an API preset uses until its owner sets its own. Generous enough that
-// agents, tools and background work run without any extra configuration.
+// One job's own input stays bounded; the cumulative allowance is only what an
+// owner chooses. Local work is host CPU, never an API call.
+const MAX_LOCAL_JOB_INPUT_BYTES = 16777216;
+const MAX_LOCAL_WORK_INPUT_BYTES = Number.MAX_SAFE_INTEGER;
+// Limits an API preset uses until its owner sets its own. The request/token
+// allowance is per user-initiated generation. Local work has no default quota;
+// the numeric ceiling is only the integer representation boundary.
 export const DEFAULT_COMPUTE_BUDGET = Object.freeze({ maxRequests: 32, maxTokens: 4000000,
-    localWork: Object.freeze({ maxJobs: 32, maxItems: MAX_LOCAL_WORK_ITEMS, maxInputBytes: 16777216 }) });
+    localWork: Object.freeze({ maxJobs: Number.MAX_SAFE_INTEGER, maxItems: Number.MAX_SAFE_INTEGER, maxInputBytes: MAX_LOCAL_WORK_INPUT_BYTES }) });
+export const LOCAL_WORK_LIMIT_BOUNDS = DEFAULT_COMPUTE_BUDGET.localWork;
 
 // A provenance marker is an immutable original-bank correlation, never a grant
 // or a second ledger. Only the trusted BudgetPort creates these charge inputs.
@@ -38,7 +41,7 @@ export function hasRetainedOrchestrationCompute(ledger) {
 }
 export function assertComputeBudget(value) {
     fields(value, ['maxRequests', 'maxTokens', 'localWork'], 'Compute budget');
-    if (!integer(value.maxRequests) || value.maxRequests < 1 || value.maxRequests > 32
+    if (!integer(value.maxRequests) || value.maxRequests < 1
         || !integer(value.maxTokens) || value.maxTokens < 1) fail('native_generation_budget_invalid');
     return { maxRequests: value.maxRequests, maxTokens: value.maxTokens,
         ...(value.localWork === undefined ? {} : { localWork: assertLocalWorkBudget(value.localWork) }) };
@@ -46,7 +49,7 @@ export function assertComputeBudget(value) {
 function assertLocalWorkBudget(value) {
     fields(value, ['maxJobs', 'maxItems', 'maxInputBytes'], 'Local work budget');
     if (!integer(value.maxJobs) || value.maxJobs < 1) fail('native_generation_budget_invalid');
-    for (const [key, max] of [['maxItems', MAX_LOCAL_WORK_ITEMS], ['maxInputBytes', 16777216]]) {
+    for (const [key, max] of [['maxItems', Number.MAX_SAFE_INTEGER], ['maxInputBytes', MAX_LOCAL_WORK_INPUT_BYTES]]) {
         if (!integer(value[key]) || value[key] < 1 || value[key] > max) fail('native_generation_budget_invalid');
     }
     return { maxJobs: value.maxJobs, maxItems: value.maxItems, maxInputBytes: value.maxInputBytes };
@@ -57,12 +60,19 @@ function tightenLimits(previous, current) {
         ...(local ? { localWork: Object.fromEntries(Object.entries(local).map(([key, value]) => [key, Math.min(value, current.localWork?.[key] ?? value)])) } : {}) };
 }
 export function assertComputeLedger(value) {
-    fields(value, ['schemaVersion', 'limits', 'attempts', 'localWork', 'reservations'], 'Compute ledger');
+    fields(value, ['schemaVersion', 'limits', 'attempts', 'localWork', 'reservations', 'carried'], 'Compute ledger');
     assertComputeBudget(value.limits);
-    if (value.schemaVersion !== 1 || !Array.isArray(value.attempts) || value.attempts.length > 32) fail('native_generation_budget_invalid');
+    if (value.schemaVersion !== 1 || !Array.isArray(value.attempts)) fail('native_generation_budget_invalid');
+    if (value.carried !== undefined) {
+        fields(value.carried, ['attempts', 'localWork', 'reservations'], 'Carried compute');
+        for (const key of ['attempts', 'localWork', 'reservations']) {
+            if (!Array.isArray(value.carried[key]) || value.carried[key].some(id => typeof id !== 'string')) fail('native_generation_budget_invalid');
+        }
+    }
     const ids = new Set();
     for (const entry of value.attempts) {
-        fields(entry, ['attemptId', 'requestId', 'targetFingerprint', 'estimatedTokens', 'status', 'usage', 'reservationId', 'inputFingerprint', 'orchestration', 'generationQuotaRef'], 'Compute attempt');
+        fields(entry, ['attemptId', 'requestId', 'targetFingerprint', 'estimatedTokens', 'status', 'usage', 'reservationId', 'inputFingerprint', 'orchestration', 'generationQuotaRef', 'notSent'], 'Compute attempt');
+        if (entry.notSent !== undefined && (entry.notSent !== true || entry.status !== 'settled' || entry.usage?.totalTokens !== 0)) fail('native_generation_budget_invalid');
         assertOrchestrationProvenance(entry, 'provider_send');
         assertGenerationQuotaRef(entry.generationQuotaRef);
         if (entry.inputFingerprint !== undefined && !/^[a-f0-9]{64}$/.test(entry.inputFingerprint)) fail('native_generation_budget_invalid');
@@ -78,7 +88,7 @@ export function assertComputeLedger(value) {
         if (entry.status === 'settled' && !integer(entry.usage?.totalTokens)) fail('native_generation_budget_invalid');
     }
     if (value.localWork !== undefined) {
-        if (!value.limits.localWork || !Array.isArray(value.localWork) || value.localWork.length > MAX_LOCAL_WORK_ITEMS) fail('native_generation_budget_invalid');
+        if (!value.limits.localWork || !Array.isArray(value.localWork)) fail('native_generation_budget_invalid');
         for (const entry of value.localWork) {
             fields(entry, ['attemptId', 'requestId', 'targetFingerprint', 'kind', 'estimatedItems', 'estimatedInputBytes', 'status', 'usage', 'reservationId', 'orchestration'], 'Local work');
             assertOrchestrationProvenance(entry, 'local_work');
@@ -86,7 +96,7 @@ export function assertComputeLedger(value) {
                 || typeof entry.requestId !== 'string' || !entry.requestId || entry.requestId.length > 128
                 || !/^[a-f0-9]{64}$/.test(entry.targetFingerprint) || !['index_insert', 'index_query', 'index_list', 'index_delete', 'index_purge', 'embedding_local', 'route_resolve', 'context_build', 'prompt_compile', 'skill_inventory', 'skill_pin', 'skill_load', 'memory_corpus', 'memory_hash', 'memory_rank', 'memory_pack', 'goal_validate', 'generation_count', 'generation_render', 'skill_read', 'task_history', 'appraisal_gate', 'appraisal_parse', 'appraisal_adopt', 'task_result_parse', 'task_result_adopt', 'graph_control_parse', 'graph_control_adopt', 'speech_synthesis', 'speech_publish', 'mcp_protocol', 'a2a_protocol', 'rp_output', 'session_output', 'project_tool'].includes(entry.kind)
                 || !integer(entry.estimatedItems) || entry.estimatedItems < 1 || entry.estimatedItems > 10000
-                || !integer(entry.estimatedInputBytes) || entry.estimatedInputBytes < 1 || entry.estimatedInputBytes > 16777216
+                || !integer(entry.estimatedInputBytes) || entry.estimatedInputBytes < 1 || entry.estimatedInputBytes > MAX_LOCAL_JOB_INPUT_BYTES
                 || !['charged', 'settled', 'unknown'].includes(entry.status)) fail('native_generation_budget_invalid');
             ids.add(entry.attemptId);
             if (entry.usage !== null) {
@@ -121,6 +131,7 @@ export function retireComputeLedger(previous, ledger) {
     if (hasRetainedOrchestrationCompute(ledger) || hasOpenComputeReservations(ledger) || ledger.attempts.some(row => row.status === 'charged') || ledger.localWork?.some(row => row.status === 'charged')) fail('native_generation_attempt_conflict');
     const total = { ...(previous ? assertRetiredCompute(previous) : Object.fromEntries(retiredFields.map(key => [key, 0]))) };
     for (const row of ledger.attempts) {
+        if (row.notSent) continue;
         total.modelAttempts++;
         if (row.status === 'settled') total.knownTotalTokens += row.usage.totalTokens;
         else { total.unknownAttempts++; total.unknownUpperTokens += row.estimatedTokens; }
@@ -143,7 +154,9 @@ export function bindComputeBudget(holder, limits) {
     limits = assertComputeBudget(limits);
     const ledger = holder.compute ??= { schemaVersion: 1, limits, attempts: [] };
     assertComputeLedger(ledger);
-    ledger.limits = tightenLimits(ledger.limits, limits);
+    const fresh = ledger.carried && ledger.attempts.every(row => ledger.carried.attempts.includes(row.attemptId))
+        && (ledger.localWork ?? []).every(row => ledger.carried.localWork.includes(row.attemptId));
+    ledger.limits = fresh ? limits : tightenLimits(ledger.limits, limits);
     return ledger;
 }
 // Optional work leaves the configured required allowance in the same parent
@@ -162,7 +175,6 @@ export function chargeComputeAttempt(holder, limits, attempt, { reserve, reserva
     const ledger = bindComputeBudget(candidate, limits);
     assertComputeReservationOpen(ledger, reservationId);
     if (ledger.attempts.some(row => row.attemptId === attempt.attemptId)) fail('native_generation_attempt_conflict');
-    if (ledger.attempts.length >= ledger.limits.maxRequests) fail('native_generation_budget_exhausted');
     const entry = { ...attempt, ...(attempt.orchestration ? { orchestration: structuredClone(attempt.orchestration) } : {}),
         ...(attempt.generationQuotaRef ? { generationQuotaRef: structuredClone(attempt.generationQuotaRef) } : {}),
         ...(reservationId === undefined ? {} : { reservationId }), status: 'charged', usage: null };
@@ -185,10 +197,9 @@ export function chargeLocalWork(holder, limits, attempt, { reservationId } = {})
     const candidate = { compute: holder.compute ? structuredClone(holder.compute) : undefined };
     const ledger = bindComputeBudget(candidate, limits);
     assertComputeReservationOpen(ledger, reservationId);
-    const rows = ledger.localWork ??= [], cap = ledger.limits.localWork;
+    const rows = ledger.localWork ??= [];
     if (rows.some(row => row.attemptId === attempt.attemptId)) fail('native_generation_attempt_conflict');
-    if (rows.length >= cap.maxJobs || rows.reduce((n, row) => n + row.estimatedItems, 0) + attempt.estimatedItems > cap.maxItems
-        || rows.reduce((n, row) => n + row.estimatedInputBytes, 0) + attempt.estimatedInputBytes > cap.maxInputBytes) fail('native_generation_budget_exhausted');
+    // Local work is never an API call: its exhaustion has its own code.
     const entry = { ...attempt, ...(attempt.orchestration ? { orchestration: structuredClone(attempt.orchestration) } : {}), ...(reservationId === undefined ? {} : { reservationId }), status: 'charged', usage: null };
     rows.push(entry); assertComputeLedger(ledger);
     assertComputeCapacity(ledger, reservationId);
@@ -220,13 +231,34 @@ export function settleComputeAttempt(holder, attemptId, usage) {
     return structuredClone(entry);
 }
 
-// Roles come from the stored exact Route; necessary narration is never optional.
-export function optionalComputeOptions(executionPolicy, role) {
+/** A charged attempt whose request never left the host is not an API call.
+ * Removing it keeps pre-dispatch validation failures out of the allowance. */
+export function voidComputeAttempt(holder, attemptId) {
+    const ledger = structuredClone(assertComputeLedger(holder.compute)), index = ledger.attempts.findIndex(row => row.attemptId === attemptId);
+    if (index < 0) fail('native_generation_attempt_conflict');
+    const entry = ledger.attempts[index];
+    if (entry.status !== 'charged' || entry.usage !== null) fail('native_generation_attempt_conflict');
+    // Effect references must remain resolvable even when dispatch never began.
+    if (entry.orchestration) Object.assign(entry, { notSent: true, status: 'settled', usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 } });
+    else ledger.attempts.splice(index, 1);
+    assertComputeLedger(ledger); holder.compute = ledger;
+    return structuredClone(entry);
+}
+
+// Roles come from the stored exact Route; necessary narration is never
+// optional. Optional roles always leave at least one request for the final
+// narrative; an owner may reserve more with an explicit requiredCompute.
+const DEFAULT_REQUIRED_COMPUTE = Object.freeze({ maxRequests: 1, maxTokens: 1 });
+export function optionalComputeOptions(executionPolicy, role, required = DEFAULT_REQUIRED_COMPUTE) {
     const policy = executionPolicy?.optionalWork;
-    return policy && (policy.roles ?? ['rerank']).includes(role) ? { reserve: policy.requiredCompute ?? null } : {};
+    return role === 'rerank' || policy?.roles?.includes(role) ? { reserve: {
+        maxRequests: Math.max(required.maxRequests, policy?.requiredCompute?.maxRequests ?? 0),
+        maxTokens: Math.max(required.maxTokens, policy?.requiredCompute?.maxTokens ?? 0),
+    } } : {};
 }
 
 const dimensions = ['requests', 'tokens', 'jobs', 'items', 'inputBytes'];
+const API_DIMENSIONS = ['requests', 'tokens'];
 const units = limits => ({ requests: limits.maxRequests, tokens: limits.maxTokens, jobs: limits.localWork?.maxJobs ?? 0,
     items: limits.localWork?.maxItems ?? 0, inputBytes: limits.localWork?.maxInputBytes ?? 0 });
 const referenceId = value => typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/.test(value);
@@ -234,7 +266,7 @@ const rowsOf = ledger => [...ledger.attempts, ...(ledger.localWork ?? [])];
 
 function allocationLimits(value) {
     fields(value, ['maxRequests', 'maxTokens', 'localWork'], 'Compute allocation');
-    if (!integer(value.maxRequests) || value.maxRequests > 32 || !integer(value.maxTokens)
+    if (!integer(value.maxRequests) || !integer(value.maxTokens)
         || (value.maxRequests === 0) !== (value.maxTokens === 0) || !value.maxRequests && !value.localWork) fail('native_generation_budget_invalid');
     return { maxRequests: value.maxRequests, maxTokens: value.maxTokens,
         ...(value.localWork === undefined ? {} : { localWork: assertLocalWorkBudget(value.localWork) }) };
@@ -276,27 +308,32 @@ function budgetState(ledger, selected = null) {
     if (selected !== null && !allocation) fail('native_generation_attempt_conflict');
     const ceiling = units(allocation?.limits ?? ledger.limits), used = Object.fromEntries(dimensions.map(key => [key, 0]));
     const add = (key, value) => { used[key] += value; if (!integer(used[key])) fail('native_generation_budget_invalid'); };
-    for (const row of ledger.attempts) if (inSubtree(index, row.reservationId ?? null, selected)) {
+    for (const row of ledger.attempts) if (!row.notSent && !(selected === null && ledger.carried?.attempts.includes(row.attemptId)) && inSubtree(index, row.reservationId ?? null, selected)) {
         add('requests', 1); add('tokens', row.status === 'settled' ? row.usage.totalTokens : row.estimatedTokens);
     }
-    for (const row of ledger.localWork ?? []) if (inSubtree(index, row.reservationId ?? null, selected)) {
+    for (const row of ledger.localWork ?? []) if (!(selected === null && ledger.carried?.localWork.includes(row.attemptId)) && inSubtree(index, row.reservationId ?? null, selected)) {
         add('jobs', 1); add('items', row.estimatedItems); add('inputBytes', row.estimatedInputBytes);
     }
     const delegated = Object.fromEntries(dimensions.map(key => [key, 0]));
-    let descendantOverrun = false;
+    let descendantOverrun = false, descendantOverrunApi = false;
     for (const child of index.values()) if (child.parentReservationId === selected) {
+        if (selected === null && ledger.carried?.reservations.includes(child.reservationId)) continue;
         // Child usage includes descendants; its remaining envelope therefore
         // covers nested allocations without charging ancestors a second time.
         const childState = budgetState(ledger, child.reservationId);
         descendantOverrun ||= childState.overrun;
+        descendantOverrunApi ||= childState.overrunApi;
         if (child.status !== 'held') continue;
         for (const key of dimensions) {
             delegated[key] += Math.max(0, childState.ceiling[key] - childState.used[key]);
             if (!integer(delegated[key])) fail('native_generation_budget_invalid');
         }
     }
+    // Work carried from an earlier generation stays in the ledger for its
+    // owners but is not charged to the current generation's allowance.
+    const over = dimensions.filter(key => used[key] + delegated[key] > ceiling[key]);
     return { ceiling, used, delegated, remaining: Object.fromEntries(dimensions.map(key => [key, Math.max(0, ceiling[key] - used[key] - delegated[key])])),
-        overrun: descendantOverrun || dimensions.some(key => used[key] + delegated[key] > ceiling[key]) };
+        overrun: descendantOverrun || over.length > 0, overrunApi: descendantOverrunApi || over.some(key => API_DIMENSIONS.includes(key)) };
 }
 
 function assertComputeReservationOpen(ledger, reservationId = null) {
@@ -308,7 +345,8 @@ function assertComputeReservationOpen(ledger, reservationId = null) {
 
 function assertComputeCapacity(ledger, reservationId = null, reserve = undefined) {
     assertComputeReservationOpen(ledger, reservationId);
-    if (budgetState(ledger).overrun) fail('native_generation_budget_exhausted');
+    const state = budgetState(ledger);
+    if (state.overrun) fail(state.overrunApi ? 'native_generation_budget_exhausted' : 'native_generation_local_work_exhausted');
     if (reserve) {
         const available = budgetState(ledger, reservationId).remaining;
         if (available.requests < reserve.maxRequests || available.tokens < reserve.maxTokens) fail('native_generation_required_budget_reserved');
@@ -390,4 +428,36 @@ export function admitComputeAttempt(holder, limits, attempt, options = {}) {
         return { attempt: structuredClone(previous), replayed: true };
     }
     return { attempt: chargeComputeAttempt(holder, limits, attempt, options), replayed: false };
+}
+
+/** Start a new user-initiated generation on an existing ledger. Finished work
+ * moves to the cost-only retired projection; in-flight, reservation-held and
+ * orchestration-retained rows stay for their owners but are not charged to the
+ * new generation. A ledger with nothing left is removed so current limits apply. */
+export function beginComputeGeneration(holder, previousRetired) {
+    if (!holder.compute) return { retired: previousRetired, fresh: true };
+    const ledger = assertComputeLedger(holder.compute);
+    const index = new Map((ledger.reservations ?? []).map(row => [row.reservationId, row]));
+    const held = id => {
+        for (let at = id; at !== null && at !== undefined; at = index.get(at)?.parentReservationId ?? null) if (index.get(at)?.status === 'held') return true;
+        return false;
+    };
+    const keep = row => row.orchestration !== undefined || row.status === 'charged' || (row.reservationId != null && held(row.reservationId));
+    const strip = ({ reservationId: _reservationId, ...row }) => row;
+    const done = { attempts: ledger.attempts.filter(row => !keep(row)), localWork: (ledger.localWork ?? []).filter(row => !keep(row)) };
+    const retired = done.attempts.length || done.localWork.length
+        ? retireComputeLedger(previousRetired, { schemaVersion: 1, limits: ledger.limits, attempts: done.attempts.map(strip),
+            ...(ledger.localWork ? { localWork: done.localWork.map(strip) } : {}) })
+        : previousRetired;
+    const attempts = ledger.attempts.filter(keep), localWork = (ledger.localWork ?? []).filter(keep);
+    const needed = new Set();
+    const need = id => { for (let at = id; at !== null && at !== undefined && !needed.has(at); at = index.get(at)?.parentReservationId ?? null) needed.add(at); };
+    for (const row of [...attempts, ...localWork]) need(row.reservationId);
+    for (const row of index.values()) if (row.status === 'held') need(row.reservationId);
+    const reservations = (ledger.reservations ?? []).filter(row => needed.has(row.reservationId));
+    if (!attempts.length && !localWork.length && !reservations.length) { delete holder.compute; return { retired, fresh: true }; }
+    const next = { schemaVersion: 1, limits: ledger.limits, attempts, ...(ledger.localWork ? { localWork } : {}), ...(reservations.length ? { reservations } : {}) };
+    next.carried = { attempts: attempts.map(row => row.attemptId), localWork: localWork.map(row => row.attemptId), reservations: reservations.map(row => row.reservationId) };
+    holder.compute = assertComputeLedger(next);
+    return { retired, fresh: false };
 }

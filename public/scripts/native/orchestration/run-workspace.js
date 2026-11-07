@@ -11,6 +11,7 @@ import { autoLayout } from './plan-draft.js';
 import { chipFor, describeDiagnostic, describeError, describeState, eventLabel, eventTone, formatDuration, formatTime, formatTokens, idText, seal, shortId, stateChip } from './ledger.js';
 import { banner, button, confirmInline, dismissInline, el } from './dom.js';
 import { nativeStudioClient } from '../studio-client.js';
+import { DEFAULT_COMPUTE_BUDGET } from '../../../shared/native-compute-budget.js';
 import { createSourcePicker, sourceLabel } from './source-picker.js';
 
 const WINDOW = 50;
@@ -118,7 +119,7 @@ export function mountRunList({ document: doc, root, client, onOpenRun, initialSo
                     const binding = await client.getBinding(source, controller.signal);
                     if (!binding) throw new Error(tl('Choose a published commit Plan for this task under Plans › Revisions.'));
                     pending = { commandId: newCommandId(), planRef: binding.planRef, expectedSequence: task.sequence, expectedReviewHash: task.reviewHash,
-                        computeBudget: { maxRequests: 1, maxTokens: 1, localWork: { maxJobs: 4, maxItems: 16, maxInputBytes: 16777216 } } };
+                        computeBudget: task.compute?.limits ?? DEFAULT_COMPUTE_BUDGET };
                 }
                 const prepared = await prepareProjectCommit(source, pending);
                 if (!controller.signal.aborted) onOpenRun(prepared.runId, source);

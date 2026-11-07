@@ -15,16 +15,22 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const allowlist = JSON.parse(
-    fs.readFileSync(path.join(__dirname, 'no-raw-fs-allowlist.json'), 'utf8'),
-);
-// Anchor allowlist entries to the repo root (one level above this rule file)
-// so the resolved absolute paths don't depend on ESLint's CWD. Without this,
-// invoking ESLint from a subdirectory would silently make allowlisted files
-// trip the rule.
-const ALLOWED = new Set(
-    allowlist.allowedFiles.map((p) => path.resolve(__dirname, '..', p)),
-);
+// The inspected repository owns its exceptions. A shared ESLint installation
+// or a copied file: plugin can live outside that repository, and a caller may
+// invoke it from a subdirectory; neither location identifies this authority.
+const allowedByRoot = new Map();
+function allowedFiles(root) {
+    if (!allowedByRoot.has(root)) {
+        let entries = [];
+        try {
+            entries = JSON.parse(fs.readFileSync(path.join(root, 'eslint-rules', 'no-raw-fs-allowlist.json'), 'utf8')).allowedFiles;
+        } catch (error) {
+            if (error.code !== 'ENOENT') throw error;
+        }
+        allowedByRoot.set(root, new Set(entries.map(entry => path.resolve(root, entry))));
+    }
+    return allowedByRoot.get(root);
+}
 
 const FS_METHODS = new Set([
     'writeFileSync',
@@ -138,10 +144,11 @@ module.exports = {
         const filename = context.getFilename();
         const resolved = path.resolve(filename);
         // Rule is scoped to src/endpoints/ — no-ops elsewhere.
-        if (!resolved.includes(path.sep + 'src' + path.sep + 'endpoints' + path.sep)) {
+        const boundary = resolved.lastIndexOf(path.sep + 'src' + path.sep + 'endpoints' + path.sep);
+        if (boundary < 0) {
             return {};
         }
-        if (ALLOWED.has(resolved)) return {};
+        if (allowedFiles(resolved.slice(0, boundary)).has(resolved)) return {};
 
         // Walk each function body; flag when the SAME function body contains
         // both an fs.* call and a request.user.directories.* access.

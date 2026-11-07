@@ -21,7 +21,7 @@ import { assertProjectAgentConversation } from '../../public/shared/project-agen
 import { fields as allowedFields } from '../../public/shared/native-values.js';
 import { checkProjectStrategyCandidate, updateProjectStrategy } from './agent-intelligence/project-strategy.js';
 import { bindComputeBudget, chargeComputeAttempt, settleComputeAttempt, chargeLocalWork, settleLocalWork,
-    reserveComputeChild, releaseComputeChild, admitComputeAttempt } from '../../public/shared/native-compute-budget.js';
+    reserveComputeChild, releaseComputeChild, admitComputeAttempt, voidComputeAttempt } from '../../public/shared/native-compute-budget.js';
 
 export const PROJECT_AGENT_MAX_REPAIR_ROUNDS = 3;
 
@@ -803,6 +803,10 @@ export class ProjectAgentService {
     }
     settleGeneration(handle, projectId, id, attemptId, usage) {
         return this._operate(handle, projectId, id, task => settleComputeAttempt(task, attemptId, usage), { effectPolicy: 'no-background-model' });
+    }
+    /** Remove a charge whose request was never dispatched. */
+    voidGeneration(handle, projectId, id, attemptId) {
+        return this._operate(handle, projectId, id, task => voidComputeAttempt(task, attemptId), { effectPolicy: 'no-background-model' });
     }
 
     recordGenerationRequest(handle, projectId, id, attemptId, requestId) {
