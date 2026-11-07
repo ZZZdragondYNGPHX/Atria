@@ -307,7 +307,7 @@ export class GenerationService {
                     if (decoder) {
                         const previous = decoder.narrative, decoded = decoder.push(delta);
                         // A syntax error cannot be recovered by later text; stop paying for it.
-                        if (decoded.error && formatRetry && !extensions && decoded.error !== 'content_json_capacity') {
+                        if (decoded.error && formatRetry && !extensions?.transformsFrames && decoded.error !== 'content_json_capacity') {
                             throw Object.assign(new GenerationError('generation_content_format_invalid'), { raw: text, originalResponse: text,
                                 diagnostics: [{ code: 'content_json_invalid', message: decoded.error }] });
                         }

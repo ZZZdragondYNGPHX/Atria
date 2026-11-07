@@ -5,7 +5,7 @@ import { NATIVE_GENERATION_DEFAULTS as defaults } from '../../shared/native-gene
 import { translateShellText as t } from '../atria-shell/localization.js';
 
 // The API preset form edits the existing authorities together, with one save.
-export function mountApiPresetFields({ doc, form, data, resources, route, field, number, group, notice, button, host, signal, isCurrent }) {
+export function mountApiPresetFields({ doc, form, data, resources, route, field, number, group, notice, button, host, signal, isCurrent, nameInput = null }) {
     let model = structuredClone(data.models.find(item => item.modelProfileId === route.modelProfileRef?.modelProfileId) ?? {
         schemaVersion: 1, scope: 'player', modelProfileId: createStudioNativeId('model'), displayName: '', remoteModelId: '',
         limits: { contextTokens: defaults.contextTokens, outputTokens: defaults.outputTokens }, tokenizer: { encoding: 'cl100k_base', source: 'user' }, capabilities: [],
@@ -18,6 +18,16 @@ export function mountApiPresetFields({ doc, form, data, resources, route, field,
     const connection = field(modelFields, 'Service', model.connectionProfileRef?.connectionProfileId || '',
         [['', 'Choose…'], ...connections.map(item => [item.connectionProfileId, item.displayName, true])]); connection.required = true;
     const remote = field(modelFields, 'Model ID', model.remoteModelId); remote.required = true;
+    // An automatic name ("Service · model") follows the chosen model; a name the user wrote is kept.
+    const presetName = nameInput;
+    const automaticName = () => { const item = data.connections.find(entry => entry.connectionProfileId === connection.value); return item && remote.value.trim() ? item.displayName + ' · ' + remote.value.trim() : ''; };
+    let lastAutomaticName = automaticName();
+    const followModel = () => {
+        const next = automaticName();
+        if (presetName && next && (!presetName.value.trim() || presetName.value === lastAutomaticName)) presetName.value = next;
+        lastAutomaticName = next;
+    };
+    remote.addEventListener('input', followModel); connection.addEventListener('change', followModel);
     const choices = field(modelFields, 'Available models', '', [['', 'Load models to choose…']]); choices.disabled = true;
     choices.parentElement.hidden = true;
     const actions = doc.createElement('div'); actions.className = 'atri-api-model-actions'; modelFields.append(actions);
@@ -43,7 +53,7 @@ export function mountApiPresetFields({ doc, form, data, resources, route, field,
     button('Manage services', () => host.openRuntimeSection('connections'), actions).dataset.variant = 'plain';
     choices.addEventListener('change', () => {
         const item = discoveredModels.find(item => item.remoteModelId === choices.value); if (!item) return;
-        remote.value = item.remoteModelId;
+        remote.value = item.remoteModelId; followModel();
         if (item.limits?.contextTokens) context.value = item.limits.contextTokens;
         if (item.limits?.outputTokens) output.value = item.limits.outputTokens;
         output.dispatchEvent(new doc.defaultView.Event('input'));

@@ -468,7 +468,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             const syncProbe = () => { probe.hidden = !isChat(); };
             adapter.addEventListener('change', syncProbe); syncProbe();
         } else {
-            readApi = mountApiPresetFields({ doc, form, data, resources: scopedResources, route: value, field, number, group, notice, button, host,
+            readApi = mountApiPresetFields({ doc, form, data, resources: scopedResources, route: value, field, number, group, notice, button, host, nameInput: name,
                 signal: controller.signal, isCurrent: () => !disposed && editorToken === editorSequence && form.isConnected });
             // Prompt presets are chosen by name; the API preset always follows the preset's current version.
             const promptBox = group(form, 'Prompt');

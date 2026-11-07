@@ -110,6 +110,10 @@ export class GenerationExtensions {
         this.prepared = immutable(request);
         return immutable({ ...request, plugins: this.entries.filter(entry => entry.active).map(entry => ({ id: entry.record.id, revision: entry.record.revision, settingsRevision: entry.preferences.revision })) });
     }
+    /** True when an active extension rewrites stream frames, so raw text is not final yet. */
+    get transformsFrames() {
+        return (this.entries ?? []).some(entry => entry.active && entry.frames && entry.manifest.generation.capabilities.includes('response.frames'));
+    }
     async frame(frame, format) {
         let value = frame;
         for (const entry of this.entries ?? []) {
