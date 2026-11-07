@@ -1,85 +1,35 @@
 ---
 name: director-zh-style-baseline
-description: Chinese RP language baseline — bilingual signals are Chinese-first; in-world time frames use Chinese phrasings.
+description: 中文叙事与角色扮演的语言基调：自然语序、人物口吻、场景节奏和故事内时间。
 metadata:
   author: Atria Team
-  version: 1.0.0
+  version: 1.2.0
 ---
 
-# director-zh-style-baseline
+# 中文叙事基调
 
-This skill is the Chinese-RP style baseline for the default director RP profile. The default profile targets Chinese-language RP as the primary use case, and many of the pattern lists in the sub-agent prompts (especially `voice_critic`) are bilingual but list the Chinese form first. This skill consolidates the Chinese-specific markers so all agents share the baseline.
+写自然的中文，让语言跟着人物与场景走。以用户选定的文体为准：白描、口语、古风、冷峻或繁复都可以成立，不把所有作品润成同一种腔调。
 
-The baseline is extracted verbatim from `director-default-prompt.js` and `director-defaults.js` (voice_critic + EVENT_SUMMARY_RULES_BODY).
+## 句子与节奏
 
-## Bilingual signal lists — Chinese form is primary
+汉语可以省略已经清楚的主语。连续几句都以角色全名开头，往往会像记录；主语换了、动作容易混淆时，再把人名补回来。
 
-When the original prompts list a pattern to avoid (cold observation verb, data vocabulary, meta-narration leak, etc.), the Chinese form is typically the primary form and the English is the fallback. Examples:
+长短句服务于注意力。紧迫处可以短，犹疑处可以停，景物或回忆也容得下长句。不要每段都按“动作—微表情—心理解释—升华”排列，也不用给每句话安排感官配额。
 
-### Cold observation verbs (Chinese primary)
+对白先读出声。人物会重复、停顿、转移话题，也会把话说得很完整；选择这个人此刻会用的说法。“我准备好了”和“弄好了”都能自然，关键在于谁说、对谁说、正在做什么。
 
-观察 / 分析 / 推测 / 记录 / 评估 / 追踪 / 监测 / 扫描 / 检测 / 实验 / observe / analyze / measure / record / monitor / track / scan / log / experiment
+## 具体而不过量
 
-### Data vocabulary in body / emotion description (Chinese primary)
+挑能改变场面感受的细节。等人的焦灼可能落在反复亮起又暗下去的手机屏幕；不必同时写心跳、呼吸、指尖、喉结和瞳孔。
 
-心率 / 体温上升 / 充血程度 / 多巴胺 / 肾上腺素 / 皮质醇 / 效率 / 任何百分比 / heart rate up / dopamine / cortisol / efficiency / any % readout
+比喻从人物与环境里来，别让每次触碰都是电流、每次对视都是深渊。抽象概括也有用，尤其在过场和拉远镜头时；需要读者贴近的地方，再给出具体经验。
 
-### Reporting structures (Chinese primary)
+“一会儿”“两声”“半步”都是普通中文。数字、量词和连接词是否合适，要看它们有没有说清节奏、空间或事实，不按词形判生硬。
 
-"[角色]注意到 X" / "[角色]记录到 Y" / "第 N 次发生 Z" / "[character] noted that X" / "[character] observed Y dispassionately" / "for the Nth time"
+## 时间与称呼
 
-### Detached framing (Chinese primary)
+用故事里的时间：今早、入冬后、上次分别时。材料只给相对顺序时，保持这个精度。聊天轮次和消息编号可用于分析引用，不进入沉浸式正文。
 
-"[角色]像在观察珍稀动物一样" / "用陈述事实的语气" / "冷静地指出" / "with clinical detachment"
+称呼跟着关系变化；角色名、专名、引号习惯沿用作品。人物说话、信件原文和叙述者转述应当让读者分得清。
 
-### Reporting-style dialogue (Chinese primary)
-
-- ✗ "你的心跳很快" / ✓ "跳得好大声……"
-- ✗ "我已经准备好了" / ✓ "想要……"
-- ✗ "任务完成" / ✓ "弄好了"
-
-## Meta-narration shapes — Chinese-specific examples
-
-### Config-label leakage (Class A)
-
-Author-side config labels in Chinese: 世界书 / 角色卡 / 记忆图 / 笔记 — all of these are author-substrate names that must NOT appear in-prose. Common leakage shapes:
-- 「这是 X 里写的那种 Y」
-- 「这是世界书里写的那种 Y」
-- 「根据 X / 按 X 行事 / 体现 X」
-
-### Platform-frame leakage (Class B)
-
-Turn / round / reply structure used as a time anchor (the most common Chinese-RP failure mode):
-- 「上一轮」 / 「上一回合」 / 「上一次回复」 / 「本轮」 / 「这一轮」 / 「上次互动」
-
-Conversation-as-artifact references:
-- 「我们的对话」 / 「这段对话」
-
-Platform / RP framing:
-- 「系统提示」 / 「你的设定」 / 「这场 RP」 / 「这个游戏」
-
-User-as-referent:
-- 「用户」 / 「玩家」
-
-Interface references:
-- 「聊天界面」 / 「这里」 when "这里" refers to the chat rather than an in-world location
-
-## In-world time frames — Chinese preferred forms
-
-When the narrator looks back at past events, use IN-WORLD time frames:
-
-- 昨夜 / 今早 / 三天前 / 上次他来访时 / 雨停那一刻
-
-Never use platform frames:
-
-- 上一轮 / 上一回合 / 本轮 / 上次回复
-
-Sanity test: would the in-world character have a concept for this time anchor? A noble at her dressing table has 昨夜 / 今早 / 三天前 but not 上一回合. A swordsman has 上次相遇 / 雨停那一刻 but not 上次回复. If the time anchor only makes sense relative to the AI-player conversation, it is platform-frame leakage.
-
-## Quoted dialogue conventions
-
-The event-summary writing rules (see `event-summary-rules-zh`) forbid 「」 / "" quoted dialogue inside summary text. In narrative prose this is allowed, but be aware that all 8 ASCII / CJK quote variants are tracked as dialogue markers when the voice_critic / memory_curator scan looks for paraphrase residue or quoted dialogue leaking into structured fields.
-
-## Diagnostic question for Chinese-RP authoring
-
-When evaluating a candidate phrasing, ask in Chinese: "这句话读起来像一个真实人物在经历这一刻吗,还是像一台保安摄像头在记录?" (Does this line read like a living being having this moment, or like a security camera recording it?) — the data-person failure mode is the most common cliche in Chinese-RP, and this is the single sharpest filter.
+情节摘要重在因果和后果，小说正文还需要声音、停顿和留白。摘要的压缩习惯不要带进整段正文。

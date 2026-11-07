@@ -1,23 +1,48 @@
 # 运行时设计
 
-## Turn 和 Task（P2–P3）
+## 回合与 Model Task
 
-读取 catalog `messages` 和 `tasks`。区分 Turn envelope、canonical message、选定 Variant 与展示 receipt。Task 的输入、结果策略、binding slot、Variant 必须匹配声明；不要把任意模型 JSON 当作通用 state patch。authority-first 与 narrative-outcome 按实际结果契约处理，不能靠 prompt 假装事务成功。
+读 catalog `messages`、`tasks`。Turn envelope、canonical message、选定 Variant 和展示 receipt 各有用途。先选择 Task 的结果去向：给本轮补充上下文、生成展示内容、留下可采纳的建议，或通过固定 Command 写入应用状态，再配 input/output schema、binding slot 和 Variant。
 
-## Session App / Workflow / 时间（P4）
+`authority-first` 先确定行动结果再叙述；`narrative-outcome` 通过已声明的 Interpreter 提取语义结果。两种模式都由运行时落实事实，正文负责把发生的事情写好。不要为了结构化处理，把叙述写成执行日志。
 
-读取 `lifecycle`。Domain、Command、retention、scope、workflow 与逻辑时间属于版本化声明。App 写入走 typed Command 和 expected revision；不要创建第二套 Session state 或独立 scheduler。logical time、World time、真实墙钟与 Host 活跃 elapsed 不是同一个值。恢复只恢复声明和权威状态，不恢复旧 provider stream。
+需要后续复用的模型产物可声明 `resultPolicy.uses`，分别用于 `rule_input`、`operation_proposal` 或 `context`，并选择 revision/branch 范围及一次性或可复用。上下文用途是可复用的只读消费；已写入 Turn、App Command 或直接采纳的结果不再作为未采纳产物重复消费。
 
-Runtime 已决定执行的后台内容生成可声明 `resultPolicy: { resultClass: 'declared_app_command', sink: 'app_command' }`，仅用于 `background` / `fifo` Task。每个 Variant 必须有固定 `resultBinding`：`{ kind: 'app.command', domainId, commandId, recordId? }` 或 `{ kind: 'interaction.schedule', interactionId }`。即时输出 schema 必须与目标 Command args 完全一致；省略固定 `recordId` 时 Host 从 invocation 生成稳定记录 ID。延迟输出复用 interaction 的闭合 `{ recordId, dueTick, args }` schema，`args` 与 Command 完全一致，`dueTick` 受既有 Clock / maxDelay 约束。Trigger 与目标必须同 scope。只消费已提交的 Lifecycle outbox intent；模型不选择 Domain/Command，也不产生 raw patch。结果与 App effect / scheduled intent、receipt 原子提交。
+## 剧情 Workflow
 
-## Activity（P5）
+读 `lifecycle` 和 `story-workflows`。剧情脚本写在 `experienceContract.lifecycleRuntime.workflows`：用 `user_gate` 留下玩家介入点，以 `action` / `projection` 推进片段，确有生成需求时接 `model_task`，最后走向合适的 `terminal`。一段来访、约会或委托可以自然结束，不必强行接上下一场危机。
 
-读取 `presentation` 的 Activity 输入、outcome、settlement 和 Narrator 声明。设计 start/pause/resume/settle/cancel 的合法转换；结算通过一个已声明 App 或 World Command。先原子提交事实和 narrative handoff，再运行指定 Narrator Task/Variant。Observation 绑定真实 Revision/Branch；叙述只生成文字，不能再次结算或修正事实。
+把“是否答应”“是否抵达”等条件接到已有事实；Workflow 发起请求，由对应领域规则决定结果。台词、Scene cue 和等待节点本身不替角色同意、移动或付款。
 
-迟到结果需匹配 run/scope epoch。取消叙述不擦掉已提交 settlement。重试保留原 invocation/receipt，不新建一次结算。恢复后的 resume 显式进行；挂载时长不能充当权威时间。以 catalog 中的硬限制为准，不用无限 retained records。
+- `when` 支持事实比较与 `all` / `any` / `not`；`automatic: true` 由现有 Lifecycle pump 推进。
+- `wait_for` 从节点进入时计相对 ticks；`wait_until` 指向绝对 tick。暂停 scope 后恢复，按实际时间和事实继续。
+- `interrupt: true` 配合 `when`，用于人物离开、条件变化等真正中断；符合条件的中断优先于普通出口。
+- `model_task` 出口可用 `taskStatus` 区分 `draft`、`applied`、`completed`、`rejected`。例如候选被拒绝后重新商量，而不是沿成功分支继续。
 
-## Scene / Host（P5）
+需要“生成近期候选，再决定是否采用”时，把候选放进已有内容 Domain；固定 Command 的 `validators` 可以用当前记录 `world` 与输入 `args` 检查是否仍适用。验证器只读自身记录；跨领域决策使用已有 Authority transaction。离开节点后，未完成的旧任务不再推动新节点，已发生的事件留在历史里。
 
-Scene 是受限 Cue IR，经同一 UI renderer。caption/speech 是文字，不解析为脚本。不要把远程 JS/HTML 嵌入 Package。
+## App 写入与后台生成
 
-明确 required/optional Host 能力和降级：Ready preflight 不通过时不能假装可运行。fullscreen/speech 等遵循用户激活；媒体、计时器、焦点、订阅在 scope 失效/卸载时释放。自动测试不能证明扬声器、声线、摄像头、手柄或多设备实际可用；这些证据独立报告。
+Domain、Command、retention、scope 与逻辑时间属于版本化声明。App 写入使用 typed Command 和 expected revision；logical time、World time、墙钟与 Host 活跃 elapsed 分别表达不同时间。
+
+已确定要执行的后台生成可用 `resultPolicy: { resultClass: 'declared_app_command', sink: 'app_command' }`，对应 `background` Task 和 `fifo` 队列。Variant 固定绑定结果去向：
+
+- `app.command`：声明 `domainId`、`commandId`，可带 `recordId`；输出 schema 与 Command args 一致。普通绑定省略 `recordId` 时，由 Host 生成稳定记录 ID；由 Simulation job 调用的非个人任务则指定固定 `recordId`。
+- `interaction.schedule`：声明 `interactionId`，输出为 `{ recordId, dueTick, args }`；使用该 interaction 的 Clock、maxDelay 和 Command args。
+- `cognition.appraise`：为已暴露事件生成情绪、关系及可选的他人心智判断；绑定事件 view、目标 Domain/Command 和评价 profile，使用契约中的专用输入输出结构。
+
+人物自主思考可用 `app.command` 的 `subjectPerspective`，由 Simulation job 绑定当事人；此时不写固定 `recordId`，Task context 只取 `input` 与个人 `projection`。它同时需要 Simulation 与 generation budget 声明。模型给出当前人物的意图或评价，具体行动仍由相应规则执行。
+
+## 世界推进、开局与生涯
+
+从 `capabilities` 读取当前 ExperienceContract。`world-simulation` 与 `authority-transaction` 一起声明；Simulation 使用 canonical clock，把到期事务或后台 Task 放进已有 jobs，由运行时按 policy 推进。同一时钟上的绝对期限也归这份 job schedule，不再另挂 `world.schedule`、interaction 或 `wait_until`。日历跨度和计算工作量不是一回事，长年跨度不必拆成逐 tick 的模型调用。
+
+开局通过 `storyStart` 指定确定性的事务和叙述字段；生涯终止通过 `runPolicy` 引用实际死亡事务及 outcome。当前 `runPolicy` 不能与 `continuityRuntime` 或 `sharedRuntime` 同时使用。`generationBudget` 对应已声明的回合计数器与生成额度，按作品需要配置，不另造后台调度器或预算账本。
+
+## Activity 与 Scene
+
+读 `presentation` 的 Activity 输入、outcome、settlement 和 Narrator 声明。一次小游戏、仪式或交互用 start/pause/resume/settle/cancel 表达生命周期，结算走已声明的 App 或 World Command；提交事实与 narrative handoff 后，再由指定 Narrator Task/Variant 描写结果。取消叙述不撤销已经完成的结算。
+
+Scene 使用受限 Cue IR 与现有 renderer；caption/speech 是文字。选择作品需要的 Host 能力，required 能力参与 Ready preflight，optional 能力配合适的呈现替代。fullscreen、speech 等沿用 Host 的用户激活和 scope 生命周期。
+
+检查本次实际改动即可：定义和分支可用 Studio Simulation、recorded Task 查看，排版用 Preview。记录结果时区分这些模拟与真实模型、音频或设备上的表现。
