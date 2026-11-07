@@ -5,6 +5,7 @@ import {
 } from '../contracts.js';
 import { ConflictError, NotFoundError } from '../../storage/errors.js';
 import { assertWritable } from '../../storage/read-only-mode.js';
+import { assertRecoveryWrite } from '../recovery-roots.js';
 import {
     cloneNativeDocument,
     getNativeDocument,
@@ -33,6 +34,10 @@ export class PackageRepo {
 
     async get(handle, packageId) {
         return this._engine.withTransaction(handle, tx => getNativeDocument(tx, this._packageKey(handle, packageId)));
+    }
+
+    async assertInstallable(handle, packageId) {
+        return this._engine.withTransaction(handle, tx => assertRecoveryWrite(tx, this._packageKey(handle, packageId)));
     }
 
     async list(handle) {

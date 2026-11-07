@@ -15,6 +15,7 @@ const messages = {
     native_product_invalid_request: 'Check the required fields and file format, then try again.',
     native_product_not_found: 'This item is no longer available. Refresh the list and select an existing item.',
     native_product_conflict: 'This item conflicts with existing data. Refresh and review the current revision before retrying.',
+    native_resource_in_recycle_bin: 'This item is in the recycle bin. Restore it in Settings > Storage Management > Recycle bin, then try again.',
     native_product_failed: 'The operation could not finish. Refresh its current state before trying again.',
     native_session_title_conflict: 'This Session name changed elsewhere. Reload the current name before saving again. Your draft is still here.',
     native_package_update_conflict: 'The installed default changed after review. Select the file again to review the current update impact.',

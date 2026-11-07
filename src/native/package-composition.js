@@ -289,12 +289,13 @@ const archiveCaches = new WeakMap();
 export class PackageInstaller {
     #cache;
 
-    constructor({ packageRepo, assetStore }) {
+    constructor({ packageRepo, assetStore, restorePackage = async (handle, packageId) => (await import('../storage/center-instance.js')).restoreNativePackage(handle, packageId) }) {
         if (!packageRepo || !assetStore) {
             throw new TypeError('PackageInstaller requires PackageRepo and AssetStore');
         }
         this._packageRepo = packageRepo;
         this._assetStore = assetStore;
+        this._restorePackage = restorePackage;
         if (!archiveCaches.has(assetStore)) archiveCaches.set(assetStore, { archives: new Map(), bytes: 0, inspections: new Map() });
         this.#cache = archiveCaches.get(assetStore);
     }
@@ -347,6 +348,14 @@ export class PackageInstaller {
             version: manifest.version,
             packageContentHash,
         });
+
+        // Reimporting a deleted work restores its original identity and stories.
+        // Admit the archive and permissions first; recovery owns the retained
+        // data, dependency checks and atomic publication.
+        try { await this._packageRepo.assertInstallable(handle, manifest.packageId); } catch (error) {
+            if (error.code !== 'native_resource_in_recycle_bin') throw error;
+            await this._restorePackage(handle, manifest.packageId);
+        }
 
         // Blob/content first. If any later metadata operation fails on FS, the
         // only residue is an unreferenced content-addressed blob that GC can

@@ -7671,6 +7671,7 @@
     "Check the required fields and file format, then try again.": "请检查必填字段和文件格式，然后重试。",
     "This item is no longer available. Refresh the list and select an existing item.": "该条目已不可用。请刷新列表并选择现有条目。",
     "This item conflicts with existing data. Refresh and review the current revision before retrying.": "该条目与现有数据冲突。请刷新并检查当前版本后重试。",
+    "This item is in the recycle bin. Restore it in Settings > Storage Management > Recycle bin, then try again.": "此条目仍在回收站中。请先到「设置 → 存储管理 → 回收站」恢复，再重试。",
     "The operation could not finish. Refresh its current state before trying again.": "操作未能完成。请刷新当前状态后重试。",
     "Review the Package permissions and explicitly grant the required permissions before installing.": "安装前请查看作品包所需的权限，并明确授权。",
     "Install the exact Package version required by this save, then import again.": "请先安装此存档要求的作品包版本，再重新导入。",

@@ -17,6 +17,16 @@ export function getResourceCenter() {
     return centers.get(engine);
 }
 
+export async function restoreNativePackage(handle, packageId) {
+    const recovery = getResourceCenter().recovery;
+    const retained = (await recovery.list(handle)).find(item => item.target.type === 'package' && item.target.id === packageId);
+    if (!retained) {
+        const { ConflictError } = await import('./errors.js');
+        throw new ConflictError('native_resource_in_recycle_bin');
+    }
+    return recovery.restore(handle, retained.id, retained.version);
+}
+
 export async function recycleNativeResource(handle, target, expected = {}) {
     const center = getResourceCenter();
     if (target.type === 'package') {
