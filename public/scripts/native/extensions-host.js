@@ -84,6 +84,7 @@ export function initializeNativeExtensions() {
     activeHost = createNativeExtensionsHost();
     const host = activeHost;
     globalThis.Atria.extensions = Object.freeze({ client: nativeExtensionsClient, refresh: host.refresh, getStatus: host.getStatus, subscribe: host.subscribe });
+    window.dispatchEvent(new CustomEvent('atria-extensions-ready'));
     window.addEventListener('pagehide', host.suspend);
     window.addEventListener('pageshow', () => { void host.refresh(); });
     void host.refresh();

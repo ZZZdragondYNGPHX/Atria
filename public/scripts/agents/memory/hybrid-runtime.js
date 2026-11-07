@@ -8,6 +8,9 @@ import { nativeSessionRuntime } from '../../native/session-runtime.js';
 import { resolveMemoryEligibility, eligibleMemorySnapshot } from './eligibility.js';
 import { normalizeHybridMemorySettings } from './settings.js';
 
+// Long enough for a warm index query; short enough that a reply never stalls on embedding.
+const REPLY_VECTOR_DEADLINE_MS = 6000;
+
 export async function recallHybridMemory(context, query, options = {}) {
     const settings = normalizeHybridMemorySettings(options.settings || getEffectiveSettings(context, context.capabilitySettings?.memory_graph || {}));
     if (settings.enabled === false || settings.recallEnabled === false) throw new Error('Memory recall disabled');
@@ -35,6 +38,8 @@ export async function recallHybridMemory(context, query, options = {}) {
         countTokens: memoryTokenCounter(context), budget: Math.min(memoryTokenBudget(settings), laneCap),
         corePacket: [existing, options.corePacket].filter(Boolean).join('\n'), existingStateText: existing, signal: options.signal, at: options.at,
         rebuildVectors: options.rebuildVectors === true,
+        // A reply never waits minutes for embedding new memories; see retrieveMemory.
+        vectorDeadlineMs: options.vectorDeadlineMs ?? (options.readOnly === true && options.rebuildVectors !== true ? REPLY_VECTOR_DEADLINE_MS : null),
         computeContext: ['information', 'timeline'].includes(eligibility.identity.kind) ? {
             kind: 'session', sessionId: eligibility.identity.anchor.sessionId, revisionId: eligibility.identity.anchor.revisionId,
             ...(nativeSessionRuntime.replyExecution?.sessionId === eligibility.identity.anchor.sessionId

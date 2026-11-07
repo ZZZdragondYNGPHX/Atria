@@ -306,7 +306,12 @@ async function digest(text) {
         .map(byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
-export const memoryVectorCollectionId = (key, profile, eligibility = null) => digest(JSON.stringify([key, profile, eligibility]))
+// One index per Session branch, not per Revision: vectors are content-addressed
+// and every hit is re-checked against the current document fingerprint, while
+// documents that left the eligible corpus are deleted before each query.
+const vectorIndexIdentity = eligibility => eligibility?.anchor
+    ? { ...eligibility, anchor: { sessionId: eligibility.anchor.sessionId, branchId: eligibility.anchor.branchId } } : eligibility;
+export const memoryVectorCollectionId = (key, profile, eligibility = null) => digest(JSON.stringify([key, profile, vectorIndexIdentity(eligibility)]))
     .then(value => 'memory_hybrid_v1_' + value);
 export const retiredMemoryVectorCollectionIds = async (key, profile) => [buildCollectionId(key), 'memory_os_' + await digest(JSON.stringify([key, profile]))];
 
@@ -334,7 +339,7 @@ export function applyMemoryCorpusEligibility(snapshot, corpus, querySeeds, at = 
 /** Content-addressed vectors, isolated by chat and embedding configuration. */
 export async function retrieveMemory(snapshot, query, { service, profile, rerankProfile, countTokens,
     budget = RETRIEVAL_DEFAULTS.tokenBudget, corePacket = '', existingStateText = '', signal, at = null, rebuildVectors = false,
-    sceneText = '', packing = 'coverage', computeContext = null, reuseDerived = true } = {}) {
+    sceneText = '', packing = 'coverage', computeContext = null, reuseDerived = true, vectorDeadlineMs = null } = {}) {
     const work = { guardChecks: 0, guardMs: 0, documentsHashed: 0, hashReused: 0, hashMs: 0, serviceRequests: 0,
         requestDataBytes: 0, responseDataBytes: 0, embeddingTextsRequested: 0, rerankRequests: 0, localAdmissions: 0, localMeteredAdmissions: 0 };
     const guard = () => {
@@ -408,77 +413,92 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
             vectorAdmitted = false; diagnostics.push('vector_unavailable');
         }
     }
+    // Index sync embeds new documents remotely and can take minutes. With a
+    // deadline (the reply path), ranking proceeds on the lexical and graph lanes
+    // and the sync keeps running in the background to warm the next recall.
+    const vectorLane = async () => {
+        const collectionId = await memoryVectorCollectionId(snapshot.key, profile, snapshot.eligibility?.identity ?? null);
+        guard();
+        // Only identified derived namespaces are cleared. Source/World/
+        // Timeline storage is outside this retrieval service entirely.
+        if (snapshot.eligibility) {
+            for (const retired of await retiredMemoryVectorCollectionIds(snapshot.key, profile)) {
+                guard();
+                const hashes = await callService('listHashes', { collectionId: retired, profile, signal,
+                    ...(computeContext ? { computeContext } : {}) }); guard();
+                if (hashes.length) {
+                    await callService('deleteByHashes', { collectionId: retired, profile, hashes, signal,
+                        ...(computeContext ? { computeContext } : {}) }); guard();
+                }
+            }
+        }
+        const items = [];
+        const hashStarted = performance.now();
+        const profileKey = JSON.stringify(profile);
+        for (let start = 0; start < corpus.documents.length; start += 64) {
+            const documents = corpus.documents.slice(start, start + 64);
+            const ready = documents.map((doc, offset) => {
+                const item = reused.fingerprints?.get(doc)?.get(profileKey);
+                return item ? { ...item, index: start + offset } : null;
+            });
+            if (ready.every(Boolean)) {
+                work.hashReused += ready.length; items.push(...ready);
+                continue;
+            }
+            const chunk = await Promise.all(documents.map(async (doc, offset) => {
+                const memo = reused.fingerprints?.get(doc);
+                if (memo?.has(profileKey)) {
+                    work.hashReused++;
+                    return { ...memo.get(profileKey), index: start + offset };
+                }
+                const fingerprint = await digest(JSON.stringify([doc.id, doc.text, doc.status, doc.episodeIds, doc.providerRefs, doc.manualSources]));
+                work.documentsHashed++;
+                const item = { hash: parseInt(fingerprint.slice(0, 12), 16), text: doc.text, index: start + offset, metadata: { id: doc.id, fingerprint } };
+                if (reused.fingerprints) {
+                    const next = memo ?? new Map();
+                    if (!next.has(profileKey) && next.size >= 2) next.delete(next.keys().next().value);
+                    next.set(profileKey, Object.freeze({ ...item, metadata: Object.freeze({ ...item.metadata }) })); reused.fingerprints.set(doc, next);
+                }
+                return item;
+            }));
+            guard(); items.push(...chunk);
+            if (start + 64 < corpus.documents.length) { await new Promise(resolve => setTimeout(resolve, 0)); guard(); }
+        }
+        guard();
+        work.hashMs += performance.now() - hashStarted;
+        const desired = new Map(items.map(item => [item.hash, item]));
+        if (desired.size !== items.length) throw new Error('Memory vector hash collision');
+        const remote = new Set((await callService('listHashes', { collectionId, profile, signal,
+            ...(computeContext ? { computeContext } : {}) })).map(Number));
+        guard();
+        const hashes = [...remote].filter(hash => rebuildVectors || !desired.has(hash));
+        if (hashes.length) {
+            await callService('deleteByHashes', { collectionId, profile, hashes, signal,
+                ...(computeContext ? { computeContext } : {}) }); guard();
+        }
+        const missing = items.filter(item => rebuildVectors || !remote.has(item.hash));
+        for (let start = 0; start < missing.length; start += 64) {
+            await callService('insert', { collectionId, profile, items: missing.slice(start, start + 64), signal,
+                ...(computeContext ? { computeContext } : {}) }); guard();
+        }
+        const response = await callService('query', { collectionId, profile, searchText: querySeeds.seedText, topK: RETRIEVAL_DEFAULTS.topK, threshold: 0.2, signal,
+            ...(computeContext ? { computeContext } : {}) });
+        guard();
+        const valid = new Map(items.map(item => [item.metadata.id, item.metadata.fingerprint]));
+        return [...new Set((response?.metadata || []).filter(hit => valid.get(hit.id) === hit.fingerprint && typeof hit.fingerprint === 'string').map(hit => hit.id))];
+    };
     if (vectorAdmitted) {
         try {
-            const collectionId = await memoryVectorCollectionId(snapshot.key, profile, snapshot.eligibility?.identity ?? null);
-            guard();
-            // Only identified derived namespaces are cleared. Source/World/
-            // Timeline storage is outside this retrieval service entirely.
-            if (snapshot.eligibility) {
-                for (const retired of await retiredMemoryVectorCollectionIds(snapshot.key, profile)) {
-                    guard();
-                    const hashes = await callService('listHashes', { collectionId: retired, profile, signal,
-                        ...(computeContext ? { computeContext } : {}) }); guard();
-                    if (hashes.length) {
-                        await callService('deleteByHashes', { collectionId: retired, profile, hashes, signal,
-                            ...(computeContext ? { computeContext } : {}) }); guard();
-                    }
-                }
-            }
-            const items = [];
-            const hashStarted = performance.now();
-            const profileKey = JSON.stringify(profile);
-            for (let start = 0; start < corpus.documents.length; start += 64) {
-                const documents = corpus.documents.slice(start, start + 64);
-                const ready = documents.map((doc, offset) => {
-                    const item = reused.fingerprints?.get(doc)?.get(profileKey);
-                    return item ? { ...item, index: start + offset } : null;
-                });
-                if (ready.every(Boolean)) {
-                    work.hashReused += ready.length; items.push(...ready);
-                    continue;
-                }
-                const chunk = await Promise.all(documents.map(async (doc, offset) => {
-                    const memo = reused.fingerprints?.get(doc);
-                    if (memo?.has(profileKey)) {
-                        work.hashReused++;
-                        return { ...memo.get(profileKey), index: start + offset };
-                    }
-                    const fingerprint = await digest(JSON.stringify([doc.id, doc.text, doc.status, doc.episodeIds, doc.providerRefs, doc.manualSources]));
-                    work.documentsHashed++;
-                    const item = { hash: parseInt(fingerprint.slice(0, 12), 16), text: doc.text, index: start + offset, metadata: { id: doc.id, fingerprint } };
-                    if (reused.fingerprints) {
-                        const next = memo ?? new Map();
-                        if (!next.has(profileKey) && next.size >= 2) next.delete(next.keys().next().value);
-                        next.set(profileKey, Object.freeze({ ...item, metadata: Object.freeze({ ...item.metadata }) })); reused.fingerprints.set(doc, next);
-                    }
-                    return item;
-                }));
-                guard(); items.push(...chunk);
-                if (start + 64 < corpus.documents.length) { await new Promise(resolve => setTimeout(resolve, 0)); guard(); }
-            }
-            guard();
-            work.hashMs += performance.now() - hashStarted;
-            const desired = new Map(items.map(item => [item.hash, item]));
-            if (desired.size !== items.length) throw new Error('Memory vector hash collision');
-            const remote = new Set((await callService('listHashes', { collectionId, profile, signal,
-                ...(computeContext ? { computeContext } : {}) })).map(Number));
-            guard();
-            const hashes = [...remote].filter(hash => rebuildVectors || !desired.has(hash));
-            if (hashes.length) {
-                await callService('deleteByHashes', { collectionId, profile, hashes, signal,
-                    ...(computeContext ? { computeContext } : {}) }); guard();
-            }
-            const missing = items.filter(item => rebuildVectors || !remote.has(item.hash));
-            for (let start = 0; start < missing.length; start += 64) {
-                await callService('insert', { collectionId, profile, items: missing.slice(start, start + 64), signal,
-                    ...(computeContext ? { computeContext } : {}) }); guard();
-            }
-            const response = await callService('query', { collectionId, profile, searchText: querySeeds.seedText, topK: RETRIEVAL_DEFAULTS.topK, threshold: 0.2, signal,
-                ...(computeContext ? { computeContext } : {}) });
-            guard();
-            const valid = new Map(items.map(item => [item.metadata.id, item.metadata.fingerprint]));
-            vectorIds = [...new Set((response?.metadata || []).filter(hit => valid.get(hit.id) === hit.fingerprint && typeof hit.fingerprint === 'string').map(hit => hit.id))];
+            const lane = vectorLane();
+            if (Number.isFinite(vectorDeadlineMs) && vectorDeadlineMs >= 0) {
+                let timer;
+                const deferred = Symbol('deferred');
+                const outcome = await Promise.race([lane, new Promise(resolve => { timer = setTimeout(resolve, vectorDeadlineMs, deferred); })]).finally(() => clearTimeout(timer));
+                if (outcome === deferred) {
+                    lane.catch(() => { /* Background index warm-up; the next recall retries. */ });
+                    guard(); vectorAdmitted = false; diagnostics.push('vector_deferred');
+                } else vectorIds = outcome;
+            } else vectorIds = await lane;
         } catch (error) {
             guard();
             if (error?.name === 'AbortError' || NATIVE_RETRIEVAL_SCOPE_ERRORS.includes(error?.code)) throw error;

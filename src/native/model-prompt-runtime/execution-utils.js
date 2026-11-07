@@ -40,7 +40,7 @@ const ERROR_CODES = new Set([...COMPUTE_ADMISSION_CODES, 'native_generation_budg
     'generation_invalid_token_count', 'generation_context_budget_exceeded', 'generation_fallback_confirmation_required',
     'generation_provider_failed', 'generation_provider_submission_unknown', 'generation_fallback_exhausted', 'generation_secret_unavailable',
     'generation_fallback_route_unpinned', 'generation_fallback_route_stale',
-    'generation_response_invalid', 'generation_response_contains_secret', 'generation_config_contains_secret',
+    'generation_response_invalid', 'generation_content_format_invalid', 'generation_response_contains_secret', 'generation_config_contains_secret',
     'generation_adapter_control_unsupported', 'generation_adapter_prompt_unsupported', 'generation_adapter_output_budget',
     'generation_adapter_sampling_invalid', 'generation_adapter_stop_invalid', 'generation_adapter_stream_invalid',
     'generation_adapter_message_invalid',

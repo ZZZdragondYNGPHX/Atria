@@ -564,7 +564,9 @@ export function mountAtriaPlayProduct({
             : runtime.history ? 'Historical revisions are read-only.'
                 : generation.state === 'preparing' ? 'Preparing reply…'
                     : generation.state === 'cancelling' ? 'Stopping…'
-                        : generation.state === 'finalizing' ? 'Saving reply…' : generating() ? 'Generating…' : '');
+                        : generation.state === 'finalizing' ? 'Saving reply…'
+                            : generation.formatRetry ? 'The draft broke the story format, so it was discarded. Writing a fresh reply…'
+                                : generating() ? 'Generating…' : '');
         if (composerStatus.textContent !== statusText) composerStatus.textContent = statusText;
         queueMicrotask(() => {
             if (!disposed && following) scrollToLatest();

@@ -597,3 +597,10 @@ html[data-atria-appearance] .backupSyncCenter .menu_button_note {
 .atri-extensions .atria_skill_row { flex-wrap: wrap; }
 .atri-extensions .atria_skill_row > details { flex-basis: 100%; width: 100%; }
 .atri-extensions [hidden] { display: none !important; }
+/* Local plugin cards: name + on/off switch on one row, actions below. */
+.atri-extension-switch { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; color: var(--text-2); font-size: var(--fs-sm, 13px); }
+.atria-plugin-card__actions { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 4px; }
+.atria-plugin-card__title-row h3 { margin: 0; overflow-wrap: anywhere; }
+.atri-extension-choice { display: flex; align-items: center; gap: 10px; }
+.atri-extension-choices { display: grid; gap: 8px; }
+.atri-extension-choices[hidden] { display: none; }

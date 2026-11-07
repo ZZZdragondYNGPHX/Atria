@@ -11,6 +11,10 @@ import { setTimeout as wait } from 'node:timers/promises';
 import { renderPromptMessages } from './prompt-renderers.js';
 import { preserveNarrativeContinuation } from '../narrative-revision.js';
 
+// A reply whose declared JSON content is malformed gets one fresh attempt in the
+// same reply budget. Nothing is repaired: the failed raw output is kept as evidence.
+const FORMAT_RETRIES = 1;
+
 // Prompt preparation is an injected port, implemented by PromptCompiler in P3.
 export class GenerationService {
     constructor({ resolver, contextProvider, preparePrompt, secretPort, providerFor, now = Date.now, beforeSend = null, createExtensions = null, additionalMessages = [], narrativeRevision = null }) {
@@ -28,8 +32,25 @@ export class GenerationService {
 
     async execute(input, options = {}) {
         const extensions = this.createExtensions?.(input);
+        const formatFailures = [];
         for (;;) {
-            const result = await this._execute(input, { ...options, extensions });
+            const formatRetry = !this.narrativeRevision && formatFailures.length < FORMAT_RETRIES;
+            let result;
+            try {
+                result = await this._execute(input, { ...options, extensions, formatRetry });
+            } catch (error) {
+                if (!formatRetry || error?.code !== 'generation_content_format_invalid') throw error;
+                result = { response: { presetContent: { status: 'invalid', raw: error.raw, diagnostics: error.diagnostics }, earlyStop: true } };
+            }
+            const content = result.response?.presetContent;
+            if (formatRetry && content?.status === 'invalid' && !result.response.truncated && !result.response.extensionDecision) {
+                formatFailures.push({ raw: content.raw, diagnostics: content.diagnostics ?? [], stoppedEarly: Boolean(result.response.earlyStop) });
+                input.onChunk?.({ text: '', delta: '', replace: true, provisional: true, formatRetry: formatFailures.length });
+                continue;
+            }
+            if (formatFailures.length && result.response) {
+                result = { ...result, response: { ...result.response, observation: { ...result.response.observation, formatRetries: formatFailures } } };
+            }
             if (!result.response?.extensionDecision) return result;
             const decision = result.response.extensionDecision;
             input.onChunk?.({ text: result.response.text, delta: '', replace: true, provisional: true,
@@ -39,7 +60,7 @@ export class GenerationService {
         }
     }
 
-    async _execute({ signal, handle, onChunk, ...value }, { preview = false, programSelection = null, draftOverrides = null, extensions = null } = {}) {
+    async _execute({ signal, handle, onChunk, ...value }, { preview = false, programSelection = null, draftOverrides = null, extensions = null, formatRetry = false } = {}) {
         try {
             if (draftOverrides && (!preview || typeof draftOverrides.resourceOverrides !== 'function')) {
                 throw new GenerationError('generation_draft_preview_only');
@@ -275,6 +296,11 @@ export class GenerationService {
                     published = text;
                     if (decoder) {
                         const previous = decoder.narrative, decoded = decoder.push(delta);
+                        // A syntax error cannot be recovered by later text; stop paying for it.
+                        if (decoded.error && formatRetry && !extensions && decoded.error !== 'content_json_capacity') {
+                            throw Object.assign(new GenerationError('generation_content_format_invalid'), { raw: text, originalResponse: text,
+                                diagnostics: [{ code: 'content_json_invalid', message: decoded.error }] });
+                        }
                         onChunk?.(immutable({ text: decoded.narrative, delta: decoded.narrative.slice(previous.length), originalResponse: text,
                             contentStatus: decoded.error ? 'invalid' : 'streaming' }));
                     } else onChunk?.(immutable({ text, delta }));
@@ -306,7 +332,7 @@ export class GenerationService {
             } catch (error) {
                 checkCancellation(signal);
                 if (controller.signal.aborted) throw new GenerationError('generation_provider_timeout');
-                if (error instanceof GenerationError && (error.code === 'generation_provider_content_blocked' || error.code.startsWith('generation_extension_'))) throw error;
+                if (error instanceof GenerationError && (['generation_provider_content_blocked', 'generation_content_format_invalid'].includes(error.code) || error.code.startsWith('generation_extension_'))) throw error;
                 throw new GenerationError('generation_response_invalid');
             }
             checkCancellation(signal);

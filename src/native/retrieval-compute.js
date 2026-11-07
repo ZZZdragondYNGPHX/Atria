@@ -70,9 +70,11 @@ export async function prepareRetrievalCompute({ handle, context, profile, persis
             return agent.assertLocalIndexCurrent(handle, context.projectId, context.taskId, context.revision, task.executionFingerprint);
         },
         async publishLocalIndex(publish) {
+            // The index is a content-addressed cache validated by fingerprint on
+            // read, so a branch that advanced during embedding may still keep it.
             if (base) return core.runs.repo.withRunLock(handle, context.sessionId, async () => {
                 const current = await core.load(handle, context.sessionId);
-                if (current.revision.revisionId !== context.revisionId) fail('native_generation_revision_conflict');
+                if (current.revision.branchId !== base.revision.branchId) fail('native_generation_revision_conflict');
                 await core.runs.assert(handle, context.sessionId, 'write');
                 return publish();
             });
