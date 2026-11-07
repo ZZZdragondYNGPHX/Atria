@@ -30,12 +30,71 @@ export async function activate(sdk) {
     let suggestions = [], suggestionsLoaded = false;
 
     // ── Floating controls ────────────────────────────────────────────────
-    const launcher = el(doc, 'button', { className: 'atri-ill-launcher', attrs: { type: 'button', 'aria-expanded': 'false', 'aria-haspopup': 'dialog', 'aria-controls': 'atri-ill-panel' },
-        on: { click: () => (open ? close() : show()) } }, [icon(doc, 'image', 17), el(doc, 'span', { text: t('Illustrations') })]);
+    // Compact icon launcher. Drag it to either side; the spot is a per-viewer convenience.
+    const launcher = el(doc, 'button', { className: 'atri-ill-launcher', attrs: { type: 'button', 'aria-expanded': 'false', 'aria-haspopup': 'dialog', 'aria-controls': 'atri-ill-panel',
+        'aria-label': t('Illustrations'), title: t('Illustrations · drag to move'), 'aria-keyshortcuts': 'Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight' },
+        on: { click: event => { if (dragMoved) { event.preventDefault(); dragMoved = false; return; } if (open) close(); else void show(); } } }, [icon(doc, 'image', 19)]);
     const dot = el(doc, 'span', { className: 'atri-ill-dot', attrs: { hidden: true, 'aria-hidden': 'true' } }); launcher.append(dot);
-    const chip = el(doc, 'button', { className: 'atri-ill-chip', attrs: { type: 'button', hidden: true }, on: { mousedown: event => event.preventDefault(), click: () => void illustrateSelection() } },
-        [icon(doc, 'sparkles', 15), el(doc, 'span', { text: t('Illustrate') }), el(doc, 'kbd', { text: 'Alt I', attrs: { 'aria-hidden': 'true' } })]);
+    const chip = el(doc, 'button', { className: 'atri-ill-chip', attrs: { type: 'button', hidden: true, 'aria-label': t('Illustrate'), title: t('Illustrate') + ' (Alt+I)' },
+        on: { mousedown: event => event.preventDefault(), click: () => void illustrateSelection() } }, [icon(doc, 'sparkles', 17)]);
     chip.setAttribute('aria-keyshortcuts', 'Alt+I');
+    const SPOT_KEY = 'atria.illustrations.launcher';
+    let spot = null, dragMoved = false;
+    try { const saved = JSON.parse(win.localStorage.getItem(SPOT_KEY) || 'null'); if (saved && ['left', 'right'].includes(saved.side) && Number.isFinite(saved.bottom)) spot = saved; } catch { /* storage unavailable */ }
+    function applySpot() {
+        launcher.dataset.side = spot?.side ?? 'right';
+        if (spot) launcher.style.setProperty('--atri-ill-launch-bottom', Math.max(16, Math.min(win.innerHeight - 112, spot.bottom)) + 'px');
+        else launcher.style.removeProperty('--atri-ill-launch-bottom');
+        placePanel();
+    }
+    // The right-hand panel ends just above the bottom launcher; a launcher raised beside it would be covered, so the panel opens on the left instead.
+    function placePanel() {
+        const sheet = root.querySelector('.atri-ill-panel');
+        if (!sheet) return;
+        const button = launcher.getBoundingClientRect(), panelBottom = win.innerHeight - (parseFloat(win.getComputedStyle(root).getPropertyValue('--atri-ill-inset')) || 16) - 52;
+        sheet.dataset.side = launcher.dataset.side === 'right' && button.top < panelBottom ? 'left' : 'right';
+    }
+    function saveSpot(next) {
+        spot = next; applySpot();
+        try { if (next) win.localStorage.setItem(SPOT_KEY, JSON.stringify(next)); else win.localStorage.removeItem(SPOT_KEY); } catch { /* storage unavailable */ }
+    }
+    applySpot();
+    launcher.addEventListener('pointerdown', event => {
+        if (event.button !== 0) return;
+        const start = { x: event.clientX, y: event.clientY }, rect = launcher.getBoundingClientRect();
+        const grab = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+        let dragging = false; dragMoved = false;
+        const move = moveEvent => {
+            if (!dragging && Math.hypot(moveEvent.clientX - start.x, moveEvent.clientY - start.y) < 6) return;
+            if (!dragging) { dragging = true; launcher.dataset.dragging = 'true'; doc.documentElement.style.userSelect = 'none'; doc.getSelection()?.removeAllRanges(); }
+            const left = Math.max(8, Math.min(win.innerWidth - rect.width - 8, moveEvent.clientX - grab.x));
+            const top = Math.max(8, Math.min(win.innerHeight - rect.height - 8, moveEvent.clientY - grab.y));
+            Object.assign(launcher.style, { left: left + 'px', top: top + 'px', right: 'auto', bottom: 'auto' });
+        };
+        const end = upEvent => {
+            win.removeEventListener('pointermove', move); win.removeEventListener('pointerup', end); win.removeEventListener('pointercancel', end);
+            if (!dragging) return;
+            // The click that follows this pointerup is the drop, not a press; clear the flag if none arrives.
+            dragMoved = true; win.setTimeout(() => { dragMoved = false; }, 0); delete launcher.dataset.dragging; doc.documentElement.style.removeProperty('user-select');
+            const box = launcher.getBoundingClientRect();
+            for (const key of ['left', 'top', 'right', 'bottom']) launcher.style.removeProperty(key);
+            // Snap to the nearer side; the height is kept.
+            saveSpot({ side: upEvent.clientX < win.innerWidth / 2 ? 'left' : 'right', bottom: Math.round(win.innerHeight - box.bottom) });
+        };
+        // Track on the window: a quick first move can leave the 44px button before any capture.
+        win.addEventListener('pointermove', move); win.addEventListener('pointerup', end); win.addEventListener('pointercancel', end);
+    });
+    // Keyboard: Alt+Arrow moves the launcher, Alt+Home puts it back.
+    launcher.addEventListener('keydown', event => {
+        if (!event.altKey || event.ctrlKey || event.metaKey) return;
+        const current = spot ?? { side: 'right', bottom: Math.round(win.innerHeight - launcher.getBoundingClientRect().bottom) };
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') saveSpot({ ...current, side: event.key === 'ArrowLeft' ? 'left' : 'right' });
+        else if (event.key === 'ArrowUp' || event.key === 'ArrowDown') saveSpot({ ...current, bottom: current.bottom + (event.key === 'ArrowUp' ? 48 : -48) });
+        else if (event.key === 'Home') saveSpot(null);
+        else return;
+        event.preventDefault(); event.stopPropagation();
+    });
+    sdk.events.listen(win, 'resize', applySpot);
     const panel = el(doc, 'aside', { className: 'atri-ill-panel', attrs: { id: 'atri-ill-panel', role: 'dialog', 'aria-modal': 'false', 'aria-labelledby': 'atri-ill-title', hidden: true, 'data-atria-owns-escape': 'true' } });
     root.append(launcher, chip, panel);
     for (const node of [launcher, chip, panel]) node.style.pointerEvents = 'auto';
@@ -163,7 +222,7 @@ export async function activate(sdk) {
 
     // ── Panel lifecycle ──────────────────────────────────────────────────
     async function show(nextTab = null) {
-        if (!open) { open = true; panel.hidden = false; root.style.zIndex = OPEN_LAYER; launcher.setAttribute('aria-expanded', 'true'); }
+        if (!open) { open = true; placePanel(); panel.hidden = false; root.style.zIndex = OPEN_LAYER; launcher.setAttribute('aria-expanded', 'true'); }
         await refreshConfig(); void loadSuggestions();
         if (nextTab) tab = nextTab; else if (!detailId && ready && !ready.service && !annotations().length) tab = 'settings';
         render(); placeChip();

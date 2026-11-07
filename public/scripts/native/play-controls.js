@@ -356,34 +356,66 @@ export function mountNativePlayControls({
         const reply = runtime?.lastReplyContext;
         const plan = (reply && reply.sessionId === runtime?.snapshot?.session?.sessionId ? reply.plan : null) ?? runtime?.currentContextPlan?.();
         const included = plan?.included ?? plan?.items ?? [];
-        let breakdown = null;
-        const summary = documentRef.createElement('p');
-        summary.textContent = plan
-            ? formatProductText('${0} items included · ${1} excluded', [included.length, plan.rejected?.length || 0])
-            : tl('Send a message to see the context used for a reply.');
-        if (plan) {
+        const node = (tag, className, text) => {
+            const element = documentRef.createElement(tag);
+            if (className) element.className = className;
+            if (text !== undefined) element.textContent = text;
+            return element;
+        };
+        const tile = (iconName, tone) => {
+            const box = node('span', 'atria-play-context-tile'); box.dataset.tone = tone; box.setAttribute('aria-hidden', 'true');
+            box.append(createAtriaIcon(documentRef, iconName, { size: 18 })); return box;
+        };
+        const view = node('div', 'atria-play-context');
+        if (!plan) {
+            const empty = node('div', 'atria-play-context-empty');
+            empty.append(tile('context', 'lapis'), node('p', '', tl('Send a message to see the context used for a reply.')));
+            view.append(empty);
+        } else {
             // A readable breakdown first; the raw plan stays under Details.
-            const labels = { 'context.history': 'Story so far', 'context.fact': 'World and character facts', 'context.input': 'Your latest action', 'context.directive': 'Guidance' };
-            const counts = new Map();
+            const kinds = {
+                'context.history': ['Story so far', 'book', 'lapis'],
+                'context.fact': ['World and character facts', 'globe', 'jade'],
+                'context.input': ['Your latest action', 'pencil', 'amber'],
+                'context.directive': ['Guidance', 'route', 'vermilion'],
+            };
+            const groups = new Map();
             for (const item of included) {
-                const key = /^memory:/.test(String(item.contextItemId || item.id || '')) || item.lane === 'memory' ? 'Recalled memories' : labels[item.kind] || item.kind || 'Other';
-                counts.set(key, (counts.get(key) || 0) + 1);
+                const memory = /^memory:/.test(String(item.contextItemId || item.id || '')) || item.lane === 'memory';
+                const [label, iconName, tone] = memory ? ['Recalled memories', 'memory', 'dai'] : kinds[item.kind] || [item.kind || 'Other', 'stack', 'umber'];
+                const group = groups.get(label) ?? { label, iconName, tone, count: 0 };
+                group.count++; groups.set(label, group);
             }
-            const list = documentRef.createElement('ul');
-            for (const [label, count] of counts) {
-                const row = documentRef.createElement('li');
-                row.textContent = `${tl(label)} · ${count}`;
+            const ordered = [...groups.values()].sort((a, b) => b.count - a.count);
+            const total = Math.max(1, included.length);
+            const card = node('section', 'atria-play-context-summary');
+            const heading = node('div', 'atria-play-context-summary__head');
+            heading.append(tile('context', 'lapis'), node('p', '', formatProductText('${0} items included · ${1} excluded', [included.length, plan.rejected?.length || 0])));
+            const bar = node('div', 'atria-play-context-bar'); bar.setAttribute('aria-hidden', 'true');
+            for (const group of ordered) {
+                const segment = node('span'); segment.dataset.tone = group.tone; segment.style.flexGrow = String(group.count); bar.append(segment);
+            }
+            card.append(heading, bar);
+            const list = node('ul', 'atria-play-context-list');
+            for (const group of ordered) {
+                const row = node('li', 'atria-play-context-row');
+                const meter = node('span', 'atria-play-context-row__meter'); meter.setAttribute('aria-hidden', 'true');
+                const fill = node('span'); fill.dataset.tone = group.tone; fill.style.width = `${Math.max(4, Math.round(group.count / total * 100))}%`; meter.append(fill);
+                const text = node('span', 'atria-play-context-row__text');
+                text.append(node('span', 'atria-play-context-row__label', tl(group.label)), meter);
+                row.append(tile(group.iconName, group.tone), text, node('span', 'atria-play-context-row__count', String(group.count)));
                 list.append(row);
             }
-            breakdown = list;
+            view.append(card, list);
         }
-        const details = documentRef.createElement('details');
-        const label = documentRef.createElement('summary'); label.textContent = tl('Details');
-        const pre = documentRef.createElement('pre');
+        const details = node('details', 'atria-play-context-details');
+        const label = node('summary');
+        label.append(createAtriaIcon(documentRef, 'braces', { size: 15 }), node('span', '', tl('Details')), createAtriaIcon(documentRef, 'chevron-down', { size: 14 }));
+        const pre = node('pre', '', plan ? JSON.stringify(plan, null, 2) : tl('No context compiled yet.'));
         pre.dataset.atriaContextPlan = 'true';
-        pre.textContent = plan ? JSON.stringify(plan, null, 2) : tl('No context compiled yet.');
         details.append(label, pre);
-        drawerBody.append(summary, ...(breakdown ? [breakdown] : []), details);
+        view.append(details);
+        drawerBody.append(view);
     }
 
     async function renderLanding() {

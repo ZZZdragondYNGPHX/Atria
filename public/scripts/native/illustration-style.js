@@ -8,23 +8,27 @@ export const ILLUSTRATION_EXPERIENCE_CSS = `
 .atri-ill-visually-hidden { position:absolute !important; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
 
 /* Launcher and selection chip float above the story. */
-.atri-ill-launcher { position:fixed; z-index:2100; right:max(16px,env(safe-area-inset-right)); bottom:max(var(--atri-ill-inset,16px),env(safe-area-inset-bottom));
-  display:inline-flex; align-items:center; gap:8px; min-height:40px; padding:0 14px 0 12px; border-radius:var(--r-capsule); border:1px solid var(--glass-line);
+.atri-ill-launcher { position:fixed; z-index:2100; right:max(16px,env(safe-area-inset-right));
+  bottom:max(var(--atri-ill-launch-bottom,16px),var(--atri-ill-inset,16px),env(safe-area-inset-bottom));
+  display:inline-grid; place-items:center; width:44px; height:44px; padding:0; border-radius:50%; border:1px solid var(--glass-line);
   background:var(--mat-glass-strong); box-shadow:var(--glass-rim), var(--glass-shadow); -webkit-backdrop-filter:blur(20px) saturate(1.5); backdrop-filter:blur(20px) saturate(1.5);
-  cursor:pointer; font:550 var(--fs-sm)/1 var(--font-ui); transition:transform var(--dur-1) var(--ease-snap), background-color var(--dur-1); }
+  cursor:grab; touch-action:none; -webkit-user-select:none; user-select:none;
+  transition:transform var(--dur-1) var(--ease-snap), background-color var(--dur-1), box-shadow var(--dur-1), left var(--dur-2) var(--ease-spring), right var(--dur-2) var(--ease-spring), bottom var(--dur-2) var(--ease-spring); }
+.atri-ill-launcher[data-side=left] { right:auto; left:max(16px,env(safe-area-inset-left)); }
 .atri-ill-launcher:hover { background:var(--surface-raised); }
-.atri-ill-launcher:active { transform:scale(.97); }
-.atri-ill-launcher[aria-expanded=true] { background:var(--surface-raised); border-color:var(--line-3); }
+.atri-ill-launcher:active { transform:scale(.94); }
+.atri-ill-launcher[aria-expanded=true] { background:var(--surface-raised); border-color:var(--line-3); color:var(--tone-lumen); }
+.atri-ill-launcher[data-dragging=true] { cursor:grabbing; transform:scale(1.08); transition:none; box-shadow:var(--glass-rim), var(--shadow-3); }
 /* Step clear of an open side panel instead of covering it. */
-.atria-app-shell:has(#atria-context-dock[data-atria-open="true"]) .atri-ill-launcher { right:calc(var(--atri-inspector-clear, 368px) + 16px); }
+.atria-app-shell:has(#atria-context-dock[data-atria-open="true"]) .atri-ill-launcher:not([data-side=left]) { right:calc(var(--atri-inspector-clear, 368px) + 16px); }
 .atria-app-shell[data-atria-viewport="compact"]:has(#atria-context-dock[data-atria-open="true"]) .atri-ill-launcher { display:none; }
-.atri-ill-launcher .atri-ill-dot { width:7px; height:7px; border-radius:50%; background:var(--tone-lumen); box-shadow:0 0 0 3px var(--soft-lumen); animation:atri-ill-pulse 1.6s var(--ease-settle) infinite; }
+.atri-ill-launcher .atri-ill-dot { position:absolute; top:5px; right:5px; width:8px; height:8px; border-radius:50%; background:var(--tone-lumen); box-shadow:0 0 0 2px var(--surface-raised), 0 0 0 4px var(--soft-lumen); animation:atri-ill-pulse 1.6s var(--ease-settle) infinite; }
 /* Scoped under .atri-ill so the shell rule ".atria-app-shell button { color:inherit }" does not win. */
-.atri-ill .atri-ill-chip { position:fixed; z-index:2102; display:inline-flex; align-items:center; gap:6px; min-height:36px; padding:0 14px 0 11px; border-radius:var(--r-capsule);
+.atri-ill .atri-ill-chip { position:fixed; z-index:2102; display:inline-grid; place-items:center; width:36px; height:36px; padding:0; border-radius:50%;
   border:0; background:var(--btn-primary-bg); color:var(--btn-primary-text); box-shadow:0 0 0 1px var(--btn-primary-ring), var(--shadow-3); cursor:pointer;
-  font:600 var(--fs-sm)/1 var(--font-ui); transform-origin:50% 100%; animation:atri-ill-pop var(--dur-2) var(--ease-spring); }
-.atri-ill .atri-ill-chip kbd { margin-left:4px; padding:1px 5px; border:0; border-radius:5px; color:inherit; background:rgb(255 255 255 / .16); font:500 11px/1.4 var(--font-mono); }
-@media (pointer:coarse) { .atri-ill .atri-ill-chip kbd { display:none; } .atri-ill .atri-ill-chip { min-height:44px; } }
+  transform-origin:50% 100%; animation:atri-ill-pop var(--dur-2) var(--ease-spring); }
+.atri-ill .atri-ill-chip:hover { filter:brightness(1.08); }
+@media (pointer:coarse) { .atri-ill .atri-ill-chip { width:44px; height:44px; } }
 
 /* Panel: right sheet on wide screens, bottom sheet on phones. */
 .atri-ill-panel { position:fixed; z-index:2101; top:max(64px, env(safe-area-inset-top)); right:max(12px,env(safe-area-inset-right)); bottom:calc(max(var(--atri-ill-inset,16px),env(safe-area-inset-bottom)) + 52px); width:min(400px, calc(100vw - 24px));
@@ -44,6 +48,8 @@ export const ILLUSTRATION_EXPERIENCE_CSS = `
 .atri-ill-status:not(:empty) { margin:10px 18px 0; padding:9px 12px; border-radius:var(--r-md); background:var(--soft-lapis); }
 .atri-ill-status[data-kind=error]:not(:empty) { background:var(--soft-vermilion); color:var(--text-1); }
 .atri-ill-status button { margin-left:6px; }
+/* The panel moves to the left when it would otherwise cover a raised launcher. */
+@media (min-width:720px) { .atri-ill-panel[data-side=left] { right:auto; left:max(12px,env(safe-area-inset-left)); } }
 @media (max-width:719px) {
   .atri-ill-panel, .atri-ill-panel[data-wide=true] { top:auto; left:0; right:0; bottom:0; width:100%; max-height:min(88dvh, calc(100dvh - 48px)); border-radius:var(--r-2xl) var(--r-2xl) 0 0; padding-bottom:env(safe-area-inset-bottom); animation-name:atri-ill-in-up; }
   .atri-ill-panel::before { content:''; align-self:center; width:36px; height:4px; margin-top:8px; border-radius:2px; background:var(--line-3); }

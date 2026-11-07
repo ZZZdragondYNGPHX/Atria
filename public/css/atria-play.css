@@ -279,6 +279,36 @@ body.no-blur .atria-play-composer { -webkit-backdrop-filter: none; backdrop-filt
 .atria-native-play-drawer details summary { cursor: pointer; padding-block: 8px; }
 .atria-native-play-host > .atria-native-play-drawer { overflow: auto; max-height: 60%; }
 
+/* Context: summary card, one tinted icon per source, raw plan under Details. */
+.atria-play-context { display: grid; gap: 14px; min-width: 0; }
+.atria-play-context-tile { --tone: var(--tone-lapis); --soft: var(--soft-lapis); flex: none; display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; color: var(--tone); background: var(--soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 18%, transparent); }
+.atria-play-context [data-tone="lapis"] { --tone: var(--tone-lapis); --soft: var(--soft-lapis); }
+.atria-play-context [data-tone="jade"] { --tone: var(--tone-jade); --soft: var(--soft-jade); }
+.atria-play-context [data-tone="amber"] { --tone: var(--tone-amber); --soft: var(--soft-amber); }
+.atria-play-context [data-tone="umber"] { --tone: var(--tone-umber); --soft: var(--soft-umber); }
+.atria-play-context [data-tone="vermilion"] { --tone: var(--tone-vermilion); --soft: var(--soft-vermilion); }
+.atria-play-context [data-tone="dai"] { --tone: var(--tone-dai); --soft: var(--soft-dai); }
+.atria-play-context-summary { display: grid; gap: 12px; padding: 14px; border: 1px solid var(--line-1); border-radius: var(--r-lg, 14px); background: var(--surface-panel); }
+.atria-play-context-summary__head { display: flex; align-items: center; gap: 12px; }
+.atria-native-play-drawer__body .atria-play-context-summary__head p { color: var(--text-1); font-weight: 550; font-variant-numeric: tabular-nums; }
+.atria-play-context-bar { display: flex; gap: 2px; height: 6px; border-radius: 999px; overflow: hidden; background: var(--line-1); }
+.atria-play-context-bar > span { flex: 1 1 0; min-width: 4px; background: var(--tone); }
+.atria-play-context-list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.atria-play-context-row { display: flex; align-items: center; gap: 12px; padding: 8px 6px; border-radius: var(--r-md); }
+.atria-play-context-row:hover { background: var(--surface-hover); }
+.atria-play-context-row__text { display: grid; gap: 6px; flex: 1; min-width: 0; }
+.atria-play-context-row__label { font: 500 var(--fs-sm)/1.3 var(--font-ui); color: var(--text-1); overflow-wrap: anywhere; }
+.atria-play-context-row__meter { display: block; height: 3px; border-radius: 999px; background: var(--line-1); overflow: hidden; }
+.atria-play-context-row__meter > span { display: block; height: 100%; border-radius: inherit; background: var(--tone); }
+.atria-play-context-row__count { min-width: 28px; padding: 2px 8px; border-radius: 999px; text-align: center; font: 600 var(--fs-xs, 12px)/1.5 var(--font-ui); font-variant-numeric: tabular-nums; color: var(--text-2); background: var(--surface-panel); border: 1px solid var(--line-1); }
+.atria-play-context-empty { display: grid; justify-items: center; gap: 10px; padding: 28px 12px; text-align: center; border: 1px dashed var(--line-2, var(--line-1)); border-radius: var(--r-lg, 14px); }
+.atria-play-context-empty .atria-play-context-tile { width: 44px; height: 44px; border-radius: 13px; }
+.atria-native-play-drawer .atria-play-context-details > summary { display: flex; align-items: center; gap: 8px; list-style: none; color: var(--text-2); font: 500 var(--fs-sm)/1 var(--font-ui); }
+.atria-play-context-details > summary::-webkit-details-marker { display: none; }
+.atria-play-context-details > summary > svg:last-child { margin-left: auto; transition: transform var(--dur-1, .15s) var(--ease-snap, ease); }
+.atria-play-context-details[open] > summary > svg:last-child { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) { .atria-play-context-details > summary > svg:last-child { transition: none; } }
+
 .atri-experience-panel { display: grid; gap: 12px; min-width: 0; }
 .atri-experience-panel label { display: grid; gap: 6px; margin-block: 8px; }
 .atri-experience-panel p { overflow-wrap: anywhere; }
