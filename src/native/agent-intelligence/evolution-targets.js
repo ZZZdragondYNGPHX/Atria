@@ -152,7 +152,7 @@ export class EvolutionTargets {
                 const raw = await this.tasks.get(handle, subject, task.taskId);
                 if (raw.status === 'planning' && !raw.attempts.length && !raw.conversation.length) choices.push({ label: 'Task repair limit · ' + task.intent, target: { kind: 'project-strategy', taskId: task.taskId, field: 'maxRepairRounds' }, baseHash: hash(projectStrategyBase(raw)) });
             }
-            for (const route of (await this.host.persistence.listRuntimeRoutes(handle)).filter(r => r.role === 'role.studio' && !r.projectPromptBindings?.some(b => b.projectId === subject))) {
+            for (const route of (await this.host.persistence.listRuntimeRoutes(handle)).filter(r => !r.projectPromptBindings?.some(b => b.projectId === subject))) {
                 for (const item of await this.prompts.presets.list(handle)) {
                     const preset = await this.prompts.presets.get(handle, item.presetId);
                     if (!same(route.promptProgramRef, presetProgramRef(preset))) continue;
@@ -198,7 +198,7 @@ export class EvolutionTargets {
         }
         const preset = await this.prompts.presets.get(handle, target.presetId), metadata = await this.prompts.inspect(handle, target.presetId);
         const route = await this.host.persistence.getRuntimeRoute(handle, target.runtimeRouteId);
-        if (route.role !== 'role.studio' || route.projectPromptBindings?.some(b => b.projectId === subject) || !metadata.declaration?.moduleRefs.some(r => same(r, target.moduleRef))
+        if (!route || route.projectPromptBindings?.some(b => b.projectId === subject) || !metadata.declaration?.moduleRefs.some(r => same(r, target.moduleRef))
             || !same(route.promptProgramRef, presetProgramRef(preset))) conflict();
         const module = preset.entries.find(entry => same(presetEntryRef(entry), target.moduleRef));
         if (!module || module.resource.target !== 'system.style') conflict();
@@ -295,7 +295,7 @@ export class EvolutionTargets {
         for (const ref of [route.promptProgramRef, ...(route.projectPromptBindings || []).map(b => b.promptProgramRef)]) {
             const selected = { ...route, promptProgramRef: ref };
             persistence.getRuntimeRoute = async (_owner, id) => id === route.runtimeRouteId ? selected : this.host.persistence.getRuntimeRoute(handle, id);
-            await createHostRouteResolver({ ...this.host, persistence }).resolve({ handle, routeRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId }, role: route.role });
+            await createHostRouteResolver({ ...this.host, persistence }).resolve({ handle, routeRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId }, role: 'role.studio' });
         }
     }
     async evaluationSettings(handle, scope, subject, target, candidateId = null) {

@@ -117,7 +117,7 @@ export class NativeProjectAgentExecutor {
     }
     async configuration(handle) {
         // Include every fallback and credential target in the approval fence.
-        const routes = (await this.host.persistence.listRuntimeRoutes(handle)).filter(value => value.role === 'role.studio');
+        const routes = await this.host.persistence.listRuntimeRoutes(handle);
         const modelIds = new Set(routes.map(value => value.modelProfileRef.modelProfileId));
         const models = (await this.host.persistence.listModelProfiles(handle)).filter(value => modelIds.has(value.modelProfileId));
         const connectionIds = new Set([...routes.map(value => value.connectionProfileRef.connectionProfileId), ...models.map(value => value.connectionProfileRef.connectionProfileId)]);

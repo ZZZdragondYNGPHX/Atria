@@ -3,7 +3,7 @@ import { publicParticipant } from './native-participant.js';
 export const OFFICIAL_ILLUSTRATION_ID = 'atri_official_illustration';
 export const OFFICIAL_PROMPT_TEMPLATE = '根据选文与历史上下文整理绘图提示词。固定外观由程序保留；只补充场景、构图及每个出场角色的动作、表情和剧情服装。不要加入未出场角色。';
 export const defaultIllustrationPreset = () => ({ style: '', quality: '', negativePrompt: '', parameters: { width: 832, height: 1216 } });
-export const defaultIllustrationSettings = () => ({ schemaVersion: 2, enabled: false, characters: [], works: {}, preset: defaultIllustrationPreset(), imageTargetId: '', imageRenderingId: '', director: { mode: 'manual', density: 'balanced', routeId: '', autoApproval: null }, promptRouteId: '', template: OFFICIAL_PROMPT_TEMPLATE });
+export const defaultIllustrationSettings = () => ({ schemaVersion: 2, enabled: false, characters: [], works: {}, preset: defaultIllustrationPreset(), imageTargetId: '', imageRenderingId: '', director: { mode: 'manual', density: 'balanced', routeId: '', autoApproval: null }, template: OFFICIAL_PROMPT_TEMPLATE });
 function object(value, keys) {
     if (!value || Object.prototype.toString.call(value) !== '[object Object]' || Reflect.ownKeys(value).some(key => !keys.includes(key) || !Object.hasOwn(Object.getOwnPropertyDescriptor(value, key), 'value'))) throw new TypeError('Invalid illustration preferences');
 }
@@ -49,7 +49,7 @@ export function assertIllustrationSettings(value) {
         identity(key); object(work, ['characterIds', 'preset', 'imageTargetId', 'imageRenderingId', 'promptRouteId']);
         if (!Array.isArray(work.characterIds) || work.characterIds.length > 1024 || new Set(work.characterIds).size !== work.characterIds.length || work.characterIds.some(id => !ids.has(id))) throw new TypeError('Unknown drawing character');
         works[key] = { characterIds: [...work.characterIds], ...(work.preset ? { preset: assertIllustrationPreset(work.preset) } : {}),
-            ...(work.imageTargetId === undefined ? {} : { imageTargetId: text(work.imageTargetId, 128) }), ...(work.imageRenderingId === undefined ? {} : { imageRenderingId: text(work.imageRenderingId, 128) }), ...(work.promptRouteId === undefined ? {} : { promptRouteId: text(work.promptRouteId, 128) }) };
+            ...(work.imageTargetId === undefined ? {} : { imageTargetId: text(work.imageTargetId, 128) }), ...(work.imageRenderingId === undefined ? {} : { imageRenderingId: text(work.imageRenderingId, 128) }) };
     }
     object(value.director, ['mode', 'density', 'routeId', 'autoApproval']);
     if (!['manual', 'semi', 'automatic'].includes(value.director.mode) || !['restrained', 'balanced', 'immersive'].includes(value.director.density)) throw new TypeError('Invalid visual director settings');
@@ -67,7 +67,7 @@ export function assertIllustrationSettings(value) {
         if (!/^[a-f0-9]{64}$/.test(consent.targetFingerprint) || !Number.isFinite(consent.maxCost) || consent.maxCost < 0 || typeof consent.currency !== 'string' || consent.currency.length > 8) throw new TypeError('Invalid illustration cost consent');
     }
     if (value.promptMode !== undefined && !['auto', 'manual'].includes(value.promptMode)) throw new TypeError('Invalid illustration prompt mode');
-    const settings = { schemaVersion: 2, enabled: value.enabled, characters, works, preset: assertIllustrationPreset(value.preset), imageTargetId: text(value.imageTargetId, 128), imageRenderingId: text(value.imageRenderingId, 128), director: structuredClone(value.director), promptRouteId: text(value.promptRouteId, 128), template: text(value.template), ...(costConsents.length ? { costConsents: structuredClone(costConsents) } : {}), ...(value.promptMode === 'manual' ? { promptMode: 'manual' } : {}) };
+    const settings = { schemaVersion: 2, enabled: value.enabled, characters, works, preset: assertIllustrationPreset(value.preset), imageTargetId: text(value.imageTargetId, 128), imageRenderingId: text(value.imageRenderingId, 128), director: structuredClone(value.director), template: text(value.template), ...(costConsents.length ? { costConsents: structuredClone(costConsents) } : {}), ...(value.promptMode === 'manual' ? { promptMode: 'manual' } : {}) };
     if (JSON.stringify(settings).length > 4 * 1024 * 1024) throw new TypeError('Illustration settings exceed budget');
     return settings;
 }

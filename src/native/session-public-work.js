@@ -17,7 +17,7 @@ export async function describeSessionProtocols(host, handle, input) {
     const base = await host.sessionCore.load(handle, input.sessionId);
     if (base.revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
     await host.sessionCore.runs.assert(handle, input.sessionId, 'generate', input.revisionId);
-    const route = selectNativeRuntimeRoute(await host.persistence.listRuntimeRoutes(handle), 'role.narrator');
+    const route = selectNativeRuntimeRoute(await host.persistence.listRuntimeRoutes(handle), 'role.narrator', undefined, (await host.persistence.getRoleAssignments(handle)).assignments);
     const services = [];
     for (const protocol of ['mcp', 'a2a']) {
         const policy = route.executionPolicy?.[protocol]; if (!policy) continue;
@@ -72,7 +72,7 @@ export class SessionPublicWork {
         if (projection.truncated || !item || !usablePublicItem(item)) fail('native_' + this.protocol + '_display_denied');
         const text = item.data.text ?? item.data.content;
         if (typeof text !== 'string' || !text.trim() || Buffer.byteLength(text) > 4096) fail('native_' + this.protocol + '_display_denied');
-        const route = selectNativeRuntimeRoute(await this.host.persistence.listRuntimeRoutes(handle), 'role.narrator', input.routeRef);
+        const route = selectNativeRuntimeRoute(await this.host.persistence.listRuntimeRoutes(handle), 'role.narrator', input.routeRef, (await this.host.persistence.getRoleAssignments(handle)).assignments);
         if (route.scope !== 'player') fail('native_' + this.protocol + '_route_invalid');
         const policy = route.executionPolicy?.[this.protocol];
         if (!policy) return { fallback: { status: 'fallback', reason: 'native_' + this.protocol + '_not_configured' } };

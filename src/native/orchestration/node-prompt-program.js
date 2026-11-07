@@ -3,6 +3,7 @@ import { assertExactResourceRef } from '../model-prompt-runtime/contracts.js';
 import { assertVersionedModelPromptResource, getVersionedModelPromptResourceIdentity } from '../model-prompt-runtime/resources.js';
 import { GenerationError } from '../model-prompt-runtime/execution-utils.js';
 import { hashNativeDocument, equalNativeDocuments } from '../repositories/common.js';
+import { presetIdentity } from '../model-prompt-runtime/role-assignments.js';
 
 // Program and Route are separate exact dependencies of the same original Node.
 // The Route still owns models, connections, budgets and fallback policy.
@@ -34,5 +35,6 @@ export function resolveNodeModel({ node, dependencyPins, resolver, ...request })
     return resolver.resolve({ ...request, programSelection: nodeProgramSelection({ ...request, node, dependencyPins, resolver }) });
 }
 
-export const declaredModelRoute = resolved => resolved.declaredPromptProgramRef
-    ? { ...resolved.route, promptProgramRef: resolved.declaredPromptProgramRef } : resolved.route;
+// Pins name the stored preset; the role a node runs as is the runner's choice.
+export const declaredModelRoute = resolved => presetIdentity(resolved.declaredPromptProgramRef
+    ? { ...resolved.route, promptProgramRef: resolved.declaredPromptProgramRef } : resolved.route);

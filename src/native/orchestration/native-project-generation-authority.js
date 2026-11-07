@@ -116,7 +116,7 @@ export async function captureNativeProjectOperation({ executor, host, handle, bo
     state.initialSourceFingerprint = originalTask.executionFingerprint;
     state.currentSourceFingerprint = originalTask.executionFingerprint;
     const route = (await NativeProjectAgentExecutor.prototype.configuration.call(executor, handle)).routes.find(item => item.runtimeRouteId === startInput.runtimeRouteId);
-    if (route?.role !== 'role.studio' || route.scope !== 'player'
+    if (!route || route.scope !== 'player'
         || !NativeProjectAgentExecutor.prototype.assertOriginalPreflight.call(executor, preflight).selection) fail();
     state.repository = host.skillRepository(handle);
     const capture = Object.freeze({}); operations.set(capture, state); return capture;

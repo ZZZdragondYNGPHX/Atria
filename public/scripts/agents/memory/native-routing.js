@@ -1,18 +1,5 @@
-import { normalizeRuntimeRouteRef } from '../../native/runtime-route-ref.js';
-
-export const MEMORY_ROUTE_TASKS = Object.freeze({ extraction: 'Extracting memories', schema: 'Schema assistant' });
-
-export function normalizeMemoryRoutes(input = {}) {
-    if (!input || typeof input !== 'object' || Array.isArray(input)
-        || Object.keys(input).some(key => !Object.hasOwn(MEMORY_ROUTE_TASKS, key))) throw new TypeError('Invalid Memory route settings');
-    return Object.fromEntries(Object.keys(MEMORY_ROUTE_TASKS).flatMap(task => {
-        const ref = normalizeRuntimeRouteRef(input[task]);
-        return ref ? [[task, ref]] : [];
-    }));
-}
-
-export function memoryRouteOptions(settings, task) {
-    if (!Object.hasOwn(MEMORY_ROUTE_TASKS, task)) throw new TypeError('Unknown Memory route task');
-    const nativeRouteRef = normalizeRuntimeRouteRef(settings?.nativeRoutes?.[task]);
-    return { nativeRole: 'memory', ...(nativeRouteRef ? { nativeRouteRef } : {}) };
+// Memory work runs as the Memory job. Its model is the one chosen for that job
+// in Model roles; there is no second, memory-only model setting.
+export function memoryRouteOptions() {
+    return { nativeRole: 'memory' };
 }

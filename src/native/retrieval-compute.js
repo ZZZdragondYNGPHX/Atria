@@ -33,7 +33,7 @@ export async function prepareRetrievalCompute({ handle, context, profile, persis
     if (!['session', 'project'].includes(context.kind)) fail('native_retrieval_compute_invalid');
     const role = context.kind === 'session' ? 'role.narrator' : 'role.studio';
     if (context.routeRef && (context.routeRef.scope !== 'player' || Object.keys(context.routeRef).some(key => !['scope', 'runtimeRouteId'].includes(key)))) fail('native_retrieval_compute_invalid');
-    const route = selectNativeRuntimeRoute(await persistence.listRuntimeRoutes(handle), role, context.routeRef);
+    const route = selectNativeRuntimeRoute(await persistence.listRuntimeRoutes(handle), role, context.routeRef, (await persistence.getRoleAssignments(handle)).assignments);
     const limits = route.executionPolicy?.computeBudget;
     // This policy comes only from the selected stored Route. Client context has
     // no allocation fields; the same original writer checks it during charge.

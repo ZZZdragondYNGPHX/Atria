@@ -11,8 +11,7 @@ export function normalizeHybridMemorySettings(settings) {
     if (settings.rerankEnabled === undefined) settings.rerankEnabled = settings.ragUseRerank === true;
     delete settings.memoryOsEnabled; delete settings.ragUseRerank;
     for (const key of obsolete) delete settings[key];
-    if (settings.nativeRoutes && typeof settings.nativeRoutes === 'object') {
-        delete settings.nativeRoutes.recall; delete settings.nativeRoutes.rewrite;
-    }
+    // Memory models are chosen in Model roles; per-task picks are gone.
+    delete settings.nativeRoutes;
     return settings;
 }

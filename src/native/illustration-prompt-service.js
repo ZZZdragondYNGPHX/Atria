@@ -53,8 +53,8 @@ export class IllustrationPromptService {
         const visualSource = await resolveVisualSource(this.host.sessionCore, handle, sourceRef);
         if (!visualSource.frozen) assertVisualDisclosure(visualSource.view, sourceRef);
         const settings = await this.host.extensions.illustrationSettings(handle);
-        const routeId = settings.value.works[state.session.packageId]?.promptRouteId || settings.value.promptRouteId;
-        const route = selectNativeRuntimeRoute(await this.host.persistence.listRuntimeRoutes(handle), 'role.illustration_prompt', routeId ? { runtimeRouteId: routeId } : undefined);
+        const route = selectNativeRuntimeRoute(await this.host.persistence.listRuntimeRoutes(handle), 'role.illustration_prompt', undefined,
+            (await this.host.persistence.getRoleAssignments(handle)).assignments);
         const draft = immutable(annotation.draft ?? createIllustrationDraft(annotation.anchor.quote, settings.value, state.session.packageId).draft);
         draft.characters.forEach(item => assertDrawingSpeaker(visualSource.entry, item.character));
         const context = immutable(annotation.promptContext ?? await captureIllustrationContext(this.host.sessionCore, handle, sessionId, annotation.anchor));

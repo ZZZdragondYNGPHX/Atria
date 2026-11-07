@@ -478,7 +478,7 @@ export class NativeRpOrchestrationAuthority {
                 ? inspected.resolved : await resolveNodeModel({ node: modelNode, dependencyPins: childPlan.dependencyPins, resolver: this.owner.modelResolver, handle, routeRef: modelPin.resourceRef, role: 'role.narrator',
                     ...(structured ? { requirements: ['generation.structured-output'] } : {}) });
             const childRoute = childResolved.route;
-            if (hash(declaredModelRoute(childResolved)) !== modelPin.integrity || childRoute.role !== 'role.narrator' || childRoute.fallbackRouteRefs.length
+            if (hash(declaredModelRoute(childResolved)) !== modelPin.integrity || childRoute.fallbackRouteRefs.length
             || childRoute.policy.maxRetries !== 0 || childRoute.executionPolicy?.continuity !== 'none' || childRoute.executionPolicy?.reuse !== 'disabled'
             || !controlProfile && childRoute.executionPolicy?.computeBudget?.maxRequests !== 1 || !childRoute.executionPolicy.computeBudget.localWork)
                 fail('native_orchestration_rp_route_mismatch');
@@ -544,7 +544,7 @@ export class NativeRpOrchestrationAuthority {
         const primary = validation.models.get(node.nodeId);
         const resolved = primary?.resolved ?? await resolveNodeModel({ node, dependencyPins: plan.dependencyPins, resolver: this.owner.modelResolver, handle, routeRef: input.routeRef, role: 'role.narrator' });
         const route = resolved.route;
-        if (hash(declaredModelRoute(resolved)) !== pin.integrity || route.role !== 'role.narrator'
+        if (hash(declaredModelRoute(resolved)) !== pin.integrity
             || delegated && (route.fallbackRouteRefs.length || route.policy.maxRetries !== 0
                 || (route.executionPolicy?.continuity ?? 'none') !== 'none' || (route.executionPolicy?.reuse ?? 'disabled') !== 'disabled'))
             fail('native_orchestration_rp_route_mismatch');

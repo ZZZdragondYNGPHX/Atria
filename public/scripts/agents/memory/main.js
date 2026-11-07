@@ -3,7 +3,7 @@ import { releaseMemorySourceScopes } from './source-lifecycle.js';
 import { releaseMemoryCorpus } from './index-reuse.js';
 import { clearNativePresetNames } from '../../native/agent-settings.js';
 import { normalizeMemoryRetrieval } from '../../native/retrieval-contracts.js';
-import { memoryRouteOptions, normalizeMemoryRoutes } from './native-routing.js';
+import { memoryRouteOptions } from './native-routing.js';
 import { legacyPromptNames, nativePromptUiActive, nativeRouteOptions } from '../../native/generation-compat.js';
 import { isNativeGenerationFailure, executeFirstPartyGeneration, firstPartyGenerationAvailable } from '../../native/generation-compat.js';
 import { nativeGenerationActive } from '../../native/generation-client.js';
@@ -2554,7 +2554,7 @@ async function summarizeTextWithLLM(context, settings, instruction, lines, abort
         const result = await runFunctionCallTask(context, settings, {
             systemPrompt: instruction,
             userPrompt: joined,
-            ...memoryRouteOptions(settings, 'extraction'),
+            ...memoryRouteOptions(),
             apiPresetName: settings.extractApiPresetName || '',
             promptPresetName: settings.extractPresetName || '',
             functionName: 'atria_rpg_summary',
@@ -2607,7 +2607,7 @@ async function summarizeRollupFieldsWithLLM(context, settings, spec, instruction
                 'Do not continue story.',
             ].join('\n'),
             userPrompt,
-            ...memoryRouteOptions(settings, 'extraction'),
+            ...memoryRouteOptions(),
             apiPresetName: settings.extractApiPresetName || '',
             promptPresetName: settings.extractPresetName || '',
             functionName: 'atria_rpg_summary_fields',
@@ -4083,13 +4083,6 @@ export function getMemoryWorkspacePorts(context) {
             settings.nativeRetrieval = value; settings.rerankEnabled = Boolean(value.rerank);
             try { await saveSettings(); } catch (error) { if (settings.nativeRetrieval === value) settings.nativeRetrieval = previous; throw error; }
         },
-        getNativeRoutes: () => normalizeMemoryRoutes(getSettings().nativeRoutes),
-        setNativeRoutes: async input => {
-            const settings = getSettings(); const previous = settings.nativeRoutes;
-            const next = normalizeMemoryRoutes(input); settings.nativeRoutes = next;
-            try { await saveSettings(); } catch (error) { if (settings.nativeRoutes === next) settings.nativeRoutes = previous; throw error; }
-            return normalizeMemoryRoutes(next);
-        },
         getStatus: () => getMemoryWorkspaceStatus(),
         setControl: (name, value) => setMemoryWorkspaceControl(name, value),
         load: () => sourceLifecycle.retrievalSnapshot(context),
@@ -4280,7 +4273,7 @@ async function extractNodesWithLLM(context, store, settings, schema, messageBatc
             maxRepairs: Math.max(1, semanticRetries), signal: options.abortSignal,
             send: request => requestToolCallsWithRetry(context, settings, {
                 ...request, extractionControl: true, runtimeWorldInfo: {},
-                ...memoryRouteOptions(settings, 'extraction'),
+                ...memoryRouteOptions(),
                 apiPresetName, llmPresetName: promptPresetName,
                 allowedNames, retriesOverride: 0, abortSignal: options.abortSignal,
             }),
@@ -5072,7 +5065,7 @@ async function buildExtractionCrawlGraph(context, store, settings, schema, messa
         ].filter(Boolean).join('\n\n');
         const calls = await requestToolCallsWithRetry(context, settings, {
             taskMessages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: prompt }],
-            ...memoryRouteOptions(settings, 'extraction'),
+            ...memoryRouteOptions(),
             apiPresetName: settings.extractApiPresetName || '',
             llmPresetName: settings.extractPresetName || '',
             tools,

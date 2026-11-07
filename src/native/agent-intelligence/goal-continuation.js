@@ -16,7 +16,7 @@ export class GoalContinuationService {
         this.goals = new AgentGoalService({ engine: host.persistence._engine, sessionCore: host.sessionCore, studio: host.studio, agent: host.agent, chatRepo });
     }
     async _controlledConfiguration(handle) {
-        const routes = (await this.host.persistence.listRuntimeRoutes(handle)).filter(route => route.role === 'role.studio');
+        const routes = await this.host.persistence.listRuntimeRoutes(handle);
         const modelIds = new Set(routes.map(route => route.modelProfileRef.modelProfileId));
         const connectionIds = new Set(routes.map(route => route.connectionProfileRef.connectionProfileId));
         const models = (await this.host.persistence.listModelProfiles(handle)).filter(model => modelIds.has(model.modelProfileId));

@@ -7,6 +7,7 @@ import { hashNativeDocument } from './repositories/common.js';
 import { immutable, checkCancellation } from './model-prompt-runtime/execution-utils.js';
 import { randomUUID } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
+import { assignedRouteRef, isFunctionalRole } from './model-prompt-runtime/role-assignments.js';
 
 const closed = properties => ({ type: 'object', additionalProperties: false, required: Object.keys(properties), properties });
 const text = maxLength => ({ type: 'string', maxLength });
@@ -56,12 +57,15 @@ export class PredictionService {
             || task.interpretation !== undefined || variant.resultBinding !== undefined || hashNativeDocument(task.context) !== hashNativeDocument(['input'])
             || hashNativeDocument(compileDataSchema(task.inputSchema)) !== hashNativeDocument(compileDataSchema(PREDICTION_INPUT_SCHEMA))
             || hashNativeDocument(compileDataSchema(variant.outputSchema)) !== hashNativeDocument(compileDataSchema(PREDICTION_OUTPUT_SCHEMA))) fail('native_prediction_task_unsupported');
-        const routeRef = request.slotBindings?.[task.bindingSlotId];
+        // Built-in roles follow the player's role assignments, like every other caller.
+        const assigned = isFunctionalRole(task.bindingSlotId) && this.host.persistence
+            ? assignedRouteRef((await this.host.persistence.getRoleAssignments(handle)).assignments, task.bindingSlotId) : undefined;
+        const routeRef = assigned ?? request.slotBindings?.[task.bindingSlotId];
         if (!routeRef || routeRef.scope !== 'player' || typeof routeRef.runtimeRouteId !== 'string'
             || Object.keys(routeRef).some(key => !['scope', 'runtimeRouteId'].includes(key))) fail('native_prediction_binding_invalid');
         const action = assertJsonDeclaration(request.action, 'Prediction action', 8192);
         fields(action, action.kind === 'transaction' ? ['kind', 'transactionId', 'input'] : ['kind', 'commandId', 'ticks'], 'Prediction action');
-        fields(request.slotBindings, [task.bindingSlotId], 'Prediction bindings');
+        if (!assigned) fields(request.slotBindings, [task.bindingSlotId], 'Prediction bindings');
         const route = this.host.persistence ? await this.host.persistence.getRuntimeRoute(handle, routeRef.runtimeRouteId) : null;
         if (this.host.persistence && (!route || route.scope !== 'player')) fail('native_prediction_binding_invalid');
         const installed = await this.host.sessionCore._openPackage(handle, snapshot.session.packageId, snapshot.session.packageVersionId, snapshot.session.entryPointId);

@@ -73,7 +73,7 @@ export class SpeechService {
             || typeof entry.content !== 'string' || !entry.content.trim() || entry.content.length > 2048) {
             return { fallback: { status: 'fallback', reason: 'native_speech_public_text_unavailable' } };
         }
-        const route = selectNativeRuntimeRoute(await this.host.persistence.listRuntimeRoutes(handle), 'role.narrator', input.routeRef);
+        const route = selectNativeRuntimeRoute(await this.host.persistence.listRuntimeRoutes(handle), 'role.narrator', input.routeRef, (await this.host.persistence.getRoleAssignments(handle)).assignments);
         if (route.scope !== 'player') fail('native_speech_route_invalid');
         return { base, text: entry.content, plan, route, fingerprint: hash({ plan, item, route, voiceId: input.voiceId, rate: input.rate, volume: input.volume }),
             items: base.timeline.length + Object.values(base.states.atri_lifecycle?.domains ?? {}).reduce((count, domain) => count + domain.records.length, 0) + 1,

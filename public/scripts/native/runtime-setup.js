@@ -7,6 +7,7 @@ import { createAtriaIcon } from '../atria-shell/icons.js';
 import { generationFields, newPromptResource } from './prompt-authoring.js';
 import { runtimeRequest, runtimeRemediation } from './runtime-client.js';
 import { createStudioNativeId } from './studio-authoring.js';
+import { MODEL_ROLES, modelRoleLabel, rolesOfPreset } from './role-assignments-ui.js';
 
 export const CHAT_ADAPTERS = Object.freeze(['provider.openai-compatible', 'provider.openai-responses', 'provider.anthropic', 'provider.gemini', 'provider.raw-text']);
 
@@ -251,7 +252,7 @@ export function mountRuntimeSetup({ doc, parent, data, host, signal, onCancel, o
             const displayName = name.value.trim().slice(0, 120);
             const draft = { ...newPromptResource('core.generation-profile'), output: {}, streaming: {} };
             const generation = { ...draft, ...generationFields(doc, doc.createElement('div'), draft, () => false, { providerAdapter: connection.providerAdapter, outputLimit: () => outputTokens })() };
-            const route = { schemaVersion: 1, scope: 'player', runtimeRouteId: createStudioNativeId('route'), displayName, role: 'role.narrator', fallbackRouteRefs: [],
+            const route = { schemaVersion: 1, scope: 'player', runtimeRouteId: createStudioNativeId('route'), displayName, fallbackRouteRefs: [],
                 policy: { timeoutMs: defaults.timeoutMs, maxRetries: 0, maxFallbackAttempts: 0 }, requirements: [] };
             const modelProfile = { schemaVersion: 1, scope: 'player', modelProfileId: createStudioNativeId('model'), displayName, remoteModelId,
                 connectionProfileRef: { scope: 'player', connectionProfileId: connection.connectionProfileId },
@@ -273,9 +274,17 @@ export function mountRuntimeSetup({ doc, parent, data, host, signal, onCancel, o
         const done = el('div', 'atri-setup__done', undefined, root);
         const mark = el('span', 'atri-setup__done-mark', undefined, done); mark.append(createAtriaIcon(doc, 'check', { size: 22 }));
         const heading = el('h2', '', undefined, done); heading.textContent = fmt('${0} is ready', [displayName]); heading.tabIndex = -1;
-        el('p', '', 'Stories can now use this model. Choose it when a story asks for an API preset. You can fine-tune temperature and length at any time.', done);
+        // Say which jobs the new preset took, so the next step is obvious.
+        const jobs = el('p', '', '', done); jobs.dataset.atriaSetupJobs = 'true';
+        void runtimeRequest('/configuration', { signal }).then(config => {
+            const mine = rolesOfPreset(config.roleAssignments?.assignments, route.runtimeRouteId);
+            jobs.textContent = mine.length === MODEL_ROLES.length ? tl('It does every job: story narration, memory, image descriptions and the rest. You can split jobs between presets in Model roles.')
+                : mine.length ? fmt('It took the jobs that had no model: ${0}. Other jobs keep their models.', [mine.map(modelRoleLabel).join(', ')])
+                    : tl('Your jobs keep their current models. To use this one, choose it in Model roles.');
+        }).catch(() => { jobs.textContent = tl('Stories can now use this model.'); });
         const row = el('div', 'atria-button-row', undefined, done);
         btn('Find a story', row, () => host.openLibrarySection('works'), 'primary');
+        btn('Model roles', row, () => host.openRuntimeSection('routes'));
         btn('Adjust parameters', row, () => host.openRuntimeSection('routes', route.runtimeRouteId));
         btn('Connect another model', row, () => host.openRuntimeSection('routes', 'new'), 'plain');
         heading.focus();

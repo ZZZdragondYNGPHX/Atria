@@ -62,6 +62,7 @@ import { assertPredictionCapture, assertPredictionCaptureCurrent } from '../pred
 import { projectRuntimeRoute } from './project-runtime-route.js';
 import { taskRuntimeRoute } from './task-runtime-route.js';
 import { selectNativeTaskContext } from './task-context-items.js';
+import { FUNCTIONAL_ROLES, assignedRouteRef } from '../model-prompt-runtime/role-assignments.js';
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const predictionLanes = new WeakSet();
@@ -126,18 +127,28 @@ function normalizeHostMemoryEvidence(value, snapshot) {
             ...(Number.isFinite(tokenCount) && tokenCount >= 0 && tokenCount <= 32768 ? { tokenCount: Math.floor(tokenCount) } : {}) };
     });
 }
-const ROLES = new Set(['narrator', 'intent_resolver', 'event_interpreter', 'orchestrator', 'studio', 'memory', 'search', 'illustration_prompt']);
+const ROLES = new Set(FUNCTIONAL_ROLES.map(role => role.slice(5)));
+// Work-declared tasks write story content, so they run as the narrator does.
+const PACKAGE_TASK_ROLE = 'narrator';
 
-export function selectNativeRuntimeRoute(routeList, role, routeRef) {
-    if (routeRef) {
-        const route = routeList.find(item => item.runtimeRouteId === routeRef.runtimeRouteId && item.role === role);
-        if (!route) fail('native_generation_route_missing');
-        return route;
+/** An explicit preset choice wins; otherwise the role's one assigned preset. */
+export function selectNativeRuntimeRoute(routeList, role, routeRef, assignments) {
+    const id = routeRef ? routeRef.runtimeRouteId : assignments?.[role];
+    if (!id) throw Object.assign(new Error('native_generation_role_unassigned'), { code: 'native_generation_role_unassigned', role });
+    const route = routeList.find(item => item.runtimeRouteId === id);
+    if (!route) throw Object.assign(new Error('native_generation_route_missing'), { code: 'native_generation_route_missing', role });
+    return route;
+}
+
+/** Built-in roles always follow the player's role assignments, including in
+ * works; only a work's own custom slots keep per-work choices. */
+export function withRoleAssignments(slotBindings, assignments) {
+    const next = { ...slotBindings };
+    for (const role of FUNCTIONAL_ROLES) {
+        const ref = assignedRouteRef(assignments, role);
+        if (ref) next[role] = ref; else delete next[role];
     }
-    const fallbacks = new Set(routeList.flatMap(item => item.fallbackRouteRefs.map(ref => ref.runtimeRouteId)));
-    const matches = routeList.filter(item => item.role === role && !fallbacks.has(item.runtimeRouteId));
-    if (matches.length !== 1) fail(matches.length ? 'native_generation_route_ambiguous' : 'native_generation_route_missing');
-    return matches[0];
+    return next;
 }
 
 
@@ -257,7 +268,6 @@ export class NativeGenerationHost {
         const routes = await this.persistence.listRuntimeRoutes(handle);
         const route = routes.find(value => value.runtimeRouteId === input.routeRef?.runtimeRouteId && value.scope === 'player');
         if (!route || input.routeRef?.scope !== 'player') fail('native_task_binding_missing');
-        if (!['role.narrator', 'role.intent_resolver'].includes(route.role)) fail('native_prediction_route_unsupported');
         const { task, variant, slot } = captured;
         const payload = captured.payload;
         const fingerprint = hashNativeDocument({ task, variant, payload, anchor: captured.baseAnchor, routeRef: input.routeRef });
@@ -272,7 +282,7 @@ export class NativeGenerationHost {
             timeoutMs: executionTimeout(lanePlan),
             fresh: async () => { await assertPredictionCaptureCurrent(capture); return true; },
             run: boundary => this.execute(handle, { sessionId: input.sessionId, revisionId: input.revisionId, requestId: input.requestId,
-                role: route.role.replace(/^role\./, ''), routeRef: input.routeRef,
+                role: 'narrator', routeRef: input.routeRef,
                 outputContract: { name: 'atria_prediction', schema: variant.outputSchema } }, boundary.signal, undefined,
             { taskPlan, scheduled: true, lanePlan, preview }),
             finalize: async generated => {
@@ -293,6 +303,8 @@ export class NativeGenerationHost {
 
     async executionResources(handle, route, sessionId, capture = {}) {
         capture.routes ??= {}; capture.connections ??= {}; capture.models ??= {};
+        // The scheduled run selects from the same role assignments it queued with.
+        capture.assignments ??= (await this.persistence.getRoleAssignments(handle)).assignments;
         const routes = await this.persistence.listRuntimeRoutes(handle);
         const lanes = new Map();
         const collect = lane => {
@@ -315,7 +327,12 @@ export class NativeGenerationHost {
         return resources;
     }
 
+    async roleBindings(handle, slotBindings, assignments) {
+        return withRoleAssignments(slotBindings, assignments ?? (await this.persistence.getRoleAssignments(handle)).assignments);
+    }
+
     async _turnLanes(handle, base, input, transaction = null) {
+        input = { ...input, slotBindings: await this.roleBindings(handle, input.slotBindings) };
         const runtime = base.manifest.runtime?.experienceContract?.taskRuntime;
         if (!runtime?.turn) fail('native_turn_contract_required');
         const routes = await this.persistence.listRuntimeRoutes(handle), lanes = [], authority = hasAuthorityTransactions(base);
@@ -395,8 +412,9 @@ export class NativeGenerationHost {
         if (!input || Object.keys(input).some(key => !['sessionId', 'revisionId', 'role', 'routeRef'].includes(key)) || input.role !== 'orchestrator') fail('native_generation_role_invalid');
         const base = await this.sessionCore.observe(handle, input.sessionId);
         if (base.revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
-        const configuration = { routes: await this.persistence.listRuntimeRoutes(handle), models: await this.persistence.listModelProfiles(handle), connections: await this.persistence.listConnectionProfiles(handle) };
-        const route = selectNativeRuntimeRoute(configuration.routes, 'role.orchestrator', input.routeRef);
+        const configuration = { routes: await this.persistence.listRuntimeRoutes(handle), models: await this.persistence.listModelProfiles(handle), connections: await this.persistence.listConnectionProfiles(handle),
+            assignments: (await this.persistence.getRoleAssignments(handle)).assignments };
+        const route = selectNativeRuntimeRoute(configuration.routes, 'role.orchestrator', input.routeRef, configuration.assignments);
         if (!route.executionPolicy?.computeBudget) fail('native_generation_budget_unavailable');
         const model = configuration.models.find(value => value.modelProfileId === route.modelProfileRef.modelProfileId);
         const connection = configuration.connections.find(value => value.connectionProfileId === route.connectionProfileRef.connectionProfileId);
@@ -454,6 +472,7 @@ export class NativeGenerationHost {
             input = immutable(orchestrated);
         }
         const { requestId: _requestId, ...turnRequest } = input;
+        if (!await this.turnOrchestration?.inspectBinding({ handle, base })) input = immutable({ ...input, slotBindings: await this.roleBindings(handle, input.slotBindings) });
         const requestHash = hashNativeDocument(transaction ? { ...turnRequest, transaction } : turnRequest);
         const previous = base.states.atri_task_results?.records.find(item => item.invocationId === input.invocationId)
             ?? base.states.atri_lifecycle?.taskTombstones.find(item => item.invocationId === input.invocationId);
@@ -707,6 +726,7 @@ export class NativeGenerationHost {
     }
 
     async preflightTurnRoutes(handle, opened, snapshot, slotBindings = {}, roles, onResolved) {
+        slotBindings = await this.roleBindings(handle, slotBindings);
         const checks = [];
         const exact = opened.sourceFiles ? opened : snapshot ? await this.packageInstaller.open(handle, snapshot.session.packageId, snapshot.session.packageVersionId) : opened;
         for (const role of roles ?? requiredTurnRoles(opened.manifest, snapshot?.entryPoint, exact?.sourceFiles)) {
@@ -733,6 +753,7 @@ export class NativeGenerationHost {
             || Object.keys(input).some(key => !['packageId', 'packageVersionId', 'slotBindings'].includes(key))
             || (input.slotBindings !== undefined && (!input.slotBindings || typeof input.slotBindings !== 'object' || Array.isArray(input.slotBindings)))) fail('native_task_binding_request_invalid');
         const opened = await this.packageInstaller.open(handle, input.packageId, input.packageVersionId);
+        input = { ...input, slotBindings: await this.roleBindings(handle, input.slotBindings) };
         if (!opened) fail('native_task_binding_package_missing');
         const contract = opened.manifest.runtime?.experienceContract;
         const tasks = contract?.taskRuntime?.tasks ?? [];
@@ -750,13 +771,13 @@ export class NativeGenerationHost {
                 try {
                     for (const task of uses) for (const variantId of selected.get(task.id)) {
                         const variant = task.variants.find(item => item.id === variantId);
-                        effective = await this.execute(handle, { requestId: 'preflight:' + task.id, role: route.role.replace(/^role\./, ''),
+                        effective = await this.execute(handle, { requestId: 'preflight:' + task.id, role: PACKAGE_TASK_ROLE,
                             routeRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId },
                             outputContract: { name: 'atria_task', schema: variant.outputSchema } }, undefined, undefined,
                         { taskPlan: { task, variant, slot, payload: null }, scheduled: true, preflight: true, preflightPackage: opened });
                     }
                 } catch (cause) { error = cause.code || 'native_task_binding_route_invalid'; }
-                choices.push({ runtimeRouteId: route.runtimeRouteId, displayName: route.displayName, role: route.role, compatible: !error, error,
+                choices.push({ runtimeRouteId: route.runtimeRouteId, displayName: route.displayName, compatible: !error, error,
                     ...(effective ? { modelName: effective.model.remoteModelId, outputTokens: effective.generation.output?.maxTokens ?? effective.model.limits.outputTokens,
                         reasoning: effective.generation.reasoning ?? null } : {}) });
             }
@@ -775,7 +796,7 @@ export class NativeGenerationHost {
             for (const route of routes) {
                 const binding = { scope: 'player', runtimeRouteId: route.runtimeRouteId };
                 const result = (await this.preflightTurnRoutes(handle, opened, undefined, { ...input.slotBindings, [id]: binding }, [turn.role])).find(item => item.role === turn.role);
-                choices.push({ runtimeRouteId: route.runtimeRouteId, displayName: route.displayName, role: route.role, compatible: !result.error, error: result.error });
+                choices.push({ runtimeRouteId: route.runtimeRouteId, displayName: route.displayName, compatible: !result.error, error: result.error });
             }
             const binding = input.slotBindings?.[id];
             const choice = binding?.scope === 'player' && choices.find(item => item.runtimeRouteId === binding.runtimeRouteId);
@@ -832,7 +853,7 @@ export class NativeGenerationHost {
         const selected = startupTaskVariants(contract);
         const bindings = [];
         for (const task of tasks) {
-            const routeRef = input.slotBindings?.[task.bindingSlotId];
+            const routeRef = (await this.roleBindings(handle, input.slotBindings))[task.bindingSlotId];
             if (routeRef?.scope !== 'player') fail('native_task_binding_missing');
             const route = await this.persistence.getRuntimeRoute(handle, routeRef.runtimeRouteId);
             if (!route) fail('native_task_binding_missing');
@@ -840,7 +861,7 @@ export class NativeGenerationHost {
             for (const id of selected.get(task.id)) {
                 const variant = task.variants.find(item => item.id === id);
                 const resolved = await this.execute(handle, { sessionId: input.sessionId, revisionId: input.revisionId,
-                    requestId: 'preflight:' + task.id, role: route.role.replace(/^role\./, ''), routeRef,
+                    requestId: 'preflight:' + task.id, role: PACKAGE_TASK_ROLE, routeRef,
                     outputContract: { name: 'atria_task', schema: variant.outputSchema } }, undefined, undefined,
                 { taskPlan: { task, variant, slot, payload: null }, scheduled: true, preflight: true,
                     preflightPackage: { manifest: base.manifest }, preflightSnapshot: base });
@@ -939,7 +960,7 @@ export class NativeGenerationHost {
         if (!variant) fail('native_task_variant_missing');
         if (task.resultPolicy.sink === 'app_command' && (!lifecycleInvocation || transient || scheduled)) fail('native_task_lifecycle_intent_required');
         const payload = assertTaskValue(input.input, task.inputSchema);
-        const routeRef = input.slotBindings?.[task.bindingSlotId];
+        const routeRef = (await this.roleBindings(handle, input.slotBindings, lanePlan?.assignments))[task.bindingSlotId];
         if (!routeRef || routeRef.scope !== 'player') fail('native_task_binding_missing');
         const route = lanePlan ? lanePlan.routes[routeRef.runtimeRouteId] : await this.persistence.getRuntimeRoute(handle, routeRef.runtimeRouteId);
         if (!route) fail('native_task_binding_missing');
@@ -1037,7 +1058,7 @@ export class NativeGenerationHost {
             fresh: async () => (await this.sessionCore.load(handle, input.sessionId)).revision.revisionId === input.revisionId,
             run: boundary => {
                 taskWorker = this.execute(handle, { sessionId: input.sessionId, revisionId: input.revisionId,
-                    requestId: input.invocationId, role: route.role.replace(/^role\./, ''), routeRef,
+                    requestId: input.invocationId, role: PACKAGE_TASK_ROLE, routeRef,
                     fallbackMode: input.fallbackMode ?? 'disabled',
                     outputContract: { name: 'atria_task', schema: variant.outputSchema } }, boundary.signal, boundary.onChunk, { taskPlan, scheduled: true, lanePlan: captured });
                 return taskWorker;
@@ -1213,9 +1234,11 @@ export class NativeGenerationHost {
         const packageIdentity = snapshot?.session ?? preflightPackage?.manifest;
         const routeList = previewContext?.routes ?? (lanePlan ? Object.values(lanePlan.routes) : await this.persistence.listRuntimeRoutes(handle));
         if (previewContext) previewContext.routes ??= immutable(routeList);
+        const assignments = previewContext?.assignments ?? lanePlan?.assignments ?? (await this.persistence.getRoleAssignments(handle)).assignments;
+        if (previewContext) previewContext.assignments ??= assignments;
         const packageRole = !taskPlan && packageIdentity && input.routeRef
             ? runtime?.modelPrompt?.roles.find(item => item.role === role) ?? (['role.narrator', 'role.intent_resolver'].includes(role) ? { role } : null) : null;
-        let route = packageRole ? selectPackageTurnRoute(routeList, input.routeRef) : selectNativeRuntimeRoute(routeList, role, input.routeRef);
+        let route = packageRole ? selectPackageTurnRoute(routeList, input.routeRef) : selectNativeRuntimeRoute(routeList, role, input.routeRef, assignments);
         if (programSelection) {
             const validate = programSelection.assertCurrent;
             programSelection = Object.freeze({ promptProgramRef: programSelection.promptProgramRef,

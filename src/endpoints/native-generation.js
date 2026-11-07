@@ -805,13 +805,13 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
         try {
             if (req.query.routeId !== undefined && typeof req.query.routeId !== 'string') throw new TypeError('Invalid route');
             const host = getHost();
-            const route = selectNativeRuntimeRoute(await host.persistence.listRuntimeRoutes(handle), 'role.narrator', req.query.routeId ? { runtimeRouteId: req.query.routeId } : undefined);
+            const route = selectNativeRuntimeRoute(await host.persistence.listRuntimeRoutes(handle), 'role.narrator', req.query.routeId ? { runtimeRouteId: req.query.routeId } : undefined,
+                (await host.persistence.getRoleAssignments(handle)).assignments);
             const preset = await presets(host).resolveRegex(handle, route.promptProgramRef);
             res.json({ preset: req.path === '/prompt-scope' && preset ? { presetId: preset.presetId, revision: preset.revision } : preset });
         } catch (error) {
             // Reading the optional plugin scope must not require a unique generation route.
-            if (!req.query.routeId && (error.code === 'native_generation_route_missing'
-                || req.path === '/prompt-scope' && error.code === 'native_generation_route_ambiguous')) return res.json({ preset: null });
+            if (!req.query.routeId && ['native_generation_route_missing', 'native_generation_role_unassigned'].includes(error.code)) return res.json({ preset: null });
             res.status(400).json({ error: error.code || 'native_regex_scopes_unavailable' });
         }
     });
@@ -1063,18 +1063,31 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             response.json(await getHost().library.commit(handle, resourceType, resource, { expectedCurrentRevision }));
         } catch (error) { response.status(error?.name === 'ConflictError' ? 409 : 400).json({ error: 'native_resource_revision_conflict' }); }
     });
+    // One role → one API preset. A preset may serve several roles.
+    router.put('/role-assignments', async (request, response) => {
+        const handle = request.user?.profile?.handle;
+        if (!handle) return response.sendStatus(401);
+        try {
+            const body = request.body ?? {};
+            if (!body.assignments || typeof body.assignments !== 'object' || Array.isArray(body.assignments)) throw new TypeError('Role assignments required');
+            response.json(await getHost().persistence.saveRoleAssignments(handle, body.assignments, { expectedFingerprint: body.expectedFingerprint }));
+        } catch (error) {
+            response.status(error.code === 'native_generation_configuration_conflict' ? 409 : error.name === 'NotFoundError' ? 404 : 400)
+                .json({ error: error.code || 'native_role_assignments_invalid', message: error.message });
+        }
+    });
     router.get('/configuration', async (request, response) => {
         const handle = request.user?.profile?.handle;
         if (!handle) return response.sendStatus(401);
         try {
             const host = getHost();
-            const [connections, models, routes, resources] = await Promise.all([
+            const [connections, models, routes, resources, roleAssignments] = await Promise.all([
                 host.persistence.listConnectionProfiles(handle), host.persistence.listModelProfiles(handle),
-                host.persistence.listRuntimeRoutes(handle), host.library.listWithRevisions(handle),
+                host.persistence.listRuntimeRoutes(handle), host.library.listWithRevisions(handle), host.persistence.getRoleAssignments(handle),
             ]);
             const profiles = await Promise.all(resources.filter(item => item.resourceType === 'core.generation-profile')
                 .map(item => host.library.getCurrent(handle, item.resourceType, item.resourceId)));
-            response.json({ connections, models, routes, resources, profiles: profiles.map(item => item.snapshot),
+            response.json({ connections, models, routes, resources, profiles: profiles.map(item => item.snapshot), roleAssignments,
                 connectionFingerprints: Object.fromEntries(connections.map(connection => [connection.connectionProfileId, hashNativeDocument(connection)])),
                 emptyFingerprint: hashNativeDocument(null), modelFingerprints: Object.fromEntries(models.map(model => [model.modelProfileId, hashNativeDocument(model)])),
                 routeFingerprints: Object.fromEntries(routes.map(route => [route.runtimeRouteId, hashNativeDocument(route)])) });
@@ -1147,7 +1160,7 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
                 const resolver = new RouteResolver({ persistence, library: host.library, providers: host.providers });
                 // Project/Package refs require their host context at preview/execute time.
                 if (candidate.generationProfileRef?.scope === 'library' && candidate.promptProgramRef?.scope === 'library') {
-                    await resolver.resolve({ handle, routeRef: { scope: 'player', runtimeRouteId: candidate.runtimeRouteId }, role: candidate.role });
+                    await resolver.resolve({ handle, routeRef: { scope: 'player', runtimeRouteId: candidate.runtimeRouteId }, role: 'role.narrator' });
                 }
                 const visited = new Set();
                 const visit = async (route, active = new Set()) => {
@@ -1158,7 +1171,7 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
                     const next = new Set(active).add(route.runtimeRouteId);
                     for (const ref of route.fallbackRouteRefs || []) {
                         const fallback = await persistence.getRuntimeRoute(handle, ref.runtimeRouteId);
-                        if (!fallback || fallback.role !== candidate.role) throw new Error('Fallback role mismatch');
+                        if (!fallback) throw new Error('Fallback missing');
                         await visit(fallback, next);
                     }
                 };

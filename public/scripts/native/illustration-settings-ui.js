@@ -67,7 +67,8 @@ function mountAdvancedIllustrationSettings({ document: doc = globalThis.document
         node(doc, content, 'p', translateShellText('Character and default changes apply to new annotations. Existing prompts are preserved.'));
         select(doc, content, translateShellText('Image generation mode'), value.director.mode, [['manual', translateShellText('Manual')], ['semi', translateShellText('Review candidates before generating')], ['automatic', translateShellText('Automatic within approval and budget')]], mode => value.director.mode = mode);
         select(doc, content, translateShellText('Automatic image frequency'), value.director.density, [['restrained', translateShellText('Restrained')], ['balanced', translateShellText('Balanced')], ['immersive', translateShellText('Immersive')]], density => value.director.density = density);
-        select(doc, content, translateShellText('Optional candidate analysis route'), value.director.routeId, [['', translateShellText('Use rules without a model request')], ...(configurationData.routes ?? []).filter(r => r.role === 'role.illustration_prompt').map(r => [r.runtimeRouteId, r.displayName])], route => value.director.routeId = route);
+        // Analysis runs on the Image descriptions model from Model roles; this only turns it on.
+        select(doc, content, translateShellText('Candidate analysis'), value.director.routeId ? 'role.illustration_prompt' : '', [['', translateShellText('Use rules without a model request')], ['role.illustration_prompt', translateShellText('Ask the Image descriptions model')]], choice => value.director.routeId = choice);
         let autoLimit = String(value.director.autoApproval?.maxCost ?? 0), autoCurrency = value.director.autoApproval?.currency ?? 'USD';
         field(doc, content, translateShellText('Automatic cost limit per task'), autoLimit, text => autoLimit = text, { type: 'number' });
         field(doc, content, translateShellText('Automatic budget currency'), autoCurrency, text => autoCurrency = text);
@@ -123,10 +124,9 @@ function mountAdvancedIllustrationSettings({ document: doc = globalThis.document
         const targetChoices = [['', work ? translateShellText('Use the global target') : translateShellText('Not selected')], ...(configurationData.targets ?? []).map(item => [item.imageTargetId, item.displayName + ' · ' + item.model])];
         const renderingChoices = [['', work ? translateShellText('Use the global style') : translateShellText('Use the annotation style')], ...(configurationData.renderings ?? []).map(item => [item.imageRenderingId, item.displayName])];
         node(doc, scope, 'p', translateShellText('Manage connections in Runtime. Image targets select a model or workflow; styles are separate from provider parameters.'));
-        const routeChoices = [['', work ? translateShellText('Use the global prompt route') : translateShellText('Not selected')], ...(configurationData.routes ?? []).filter(item => item.role === 'role.illustration_prompt').map(item => [item.runtimeRouteId, item.displayName || item.runtimeRouteId])];
         select(doc, scope, translateShellText('Default image target'), work?.imageTargetId ?? (work ? '' : value.imageTargetId), targetChoices, id => (ownWork() ?? value).imageTargetId = id);
         select(doc, scope, translateShellText('Default image style'), work?.imageRenderingId ?? (work ? '' : value.imageRenderingId), renderingChoices, id => (ownWork() ?? value).imageRenderingId = id);
-        select(doc, scope, translateShellText('Prompt model route'), work?.promptRouteId ?? (work ? '' : value.promptRouteId), routeChoices, id => (ownWork() ?? value).promptRouteId = id);
+        node(doc, scope, 'p', translateShellText('Image descriptions are written by the model chosen for that job in Model roles.'));
         const template = node(doc, content, 'details'); template.dataset.section = 'template'; template.open = templateOpen; node(doc, template, 'summary', translateShellText('Prompt formatting template'));
         field(doc, template, translateShellText('Formatting template'), value.template, text => value.template = text, { multiline: true });
         button(doc, template, translateShellText('Restore the official template'), run(() => { readPreset(); value.template = OFFICIAL_PROMPT_TEMPLATE; render(); }));

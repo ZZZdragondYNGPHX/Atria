@@ -767,7 +767,7 @@ export async function mountStudioPromptTools({ document: doc, body, state, stage
             compile.disabled = true; result.replaceChildren();
             try {
                 const route = config.routes.find(item => item.runtimeRouteId === routes.value); if (!route) throw new Error('Choose a configured route.');
-                const output = await runtimeRequest('/preview', { method: 'POST', body: { requestId: createStudioNativeId('preview'), role: route.role.slice(5), projectId: state.projectId, revision: state.revision.revision,
+                const output = await runtimeRequest('/preview', { method: 'POST', body: { requestId: createStudioNativeId('preview'), role: 'studio', projectId: state.projectId, revision: state.revision.revision,
                     routeRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId }, ...(prompt.value ? { previewRefs: { promptProgramRef: JSON.parse(prompt.value) } } : {}) } });
                 element(doc, 'p', 'Compiled — no request sent', result); element(doc, 'pre', JSON.stringify(output, null, 2), result);
             } catch (e) { error(doc, result, e); } finally { compile.disabled = false; }

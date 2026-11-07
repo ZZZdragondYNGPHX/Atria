@@ -117,7 +117,7 @@ export function mountAgentEvolution({ slot, scope, sourceKind, sourceId, request
         if (state.catalog) {
             const catalog = state.catalog;
             const target = select('Target', catalog.choices.map((c, i) => [String(i), c.label]), configure);
-            const route = select('Evaluation model route', catalog.routes.map(r => [r.routeId, r.role + ' · ' + r.routeId]), configure);
+            const route = select('Evaluation model route', catalog.routes.map(r => [r.routeId, r.displayName || r.routeId]), configure);
             const mode = select('Policy', [['review', 'Review'], ['auto', 'Local automatic']], configure);
             const source = input('Price source', 'text', configure), currency = input('Currency', 'text', configure, 'USD');
             const inPrice = input('Input price / million tokens', 'number', configure), outPrice = input('Output price / million tokens', 'number', configure);

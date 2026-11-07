@@ -6,8 +6,8 @@ const TERMINAL = new Set(['completed', 'failed', 'cancelled', 'stale', 'uncertai
 const POLL_MS = 900;
 
 const ERRORS = {
-    native_generation_route_missing: 'Choose a model to write image descriptions in Illustration settings.',
-    native_generation_route_ambiguous: 'Choose which model writes image descriptions in Illustration settings.',
+    native_generation_route_missing: 'Choose a model for Image descriptions in Model roles.',
+    native_generation_role_unassigned: 'Choose a model for Image descriptions in Model roles.',
     generation_secret_unavailable: 'The model’s API key is unavailable. Check the service in Runtime.',
     native_illustration_source_unavailable: 'This older save lacks the surrounding story. Write the description yourself.',
     generation_context_budget_exceeded: 'The passage is too long for the description model. Select a shorter passage or choose a larger model.',
@@ -60,7 +60,7 @@ export function illustrationErrorText(error) {
     if (typeof code === 'string' && /^native_visual_.*(unreachable|timeout|network)/.test(code)) return t(ERRORS.native_visual_unreachable);
     return t('Something went wrong. Try again, or check the image service in Runtime.');
 }
-export const isSettingsError = code => /route_missing|route_ambiguous|target_missing|rendering_missing|budget_exceeded|quota_exceeded|model_|negative_prompt|parameters_unsupported|geometry/.test(code ?? '');
+export const isSettingsError = code => /route_missing|role_unassigned|target_missing|rendering_missing|budget_exceeded|quota_exceeded|model_|negative_prompt|parameters_unsupported|geometry/.test(code ?? '');
 
 /**
  * Task phases per annotation: writing → drawing → done | failed | cancelled, plus `confirm`

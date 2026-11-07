@@ -1745,7 +1745,7 @@ export async function openSchemaIterationStudio(deps) {
             {
                 taskMessages,
                 runtimeWorldInfo: null,
-                ...memoryRouteOptions(settings, 'schema'),
+                ...memoryRouteOptions(),
                 apiPresetName,
                 llmPresetName,
                 tools: buildCatalogForScope(turnSnapshot),

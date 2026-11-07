@@ -70,7 +70,7 @@ export class CandidateComparisonService {
             if (routeRef.scope !== 'player' || typeof routeRef.runtimeRouteId !== 'string') fail('native_comparison_route_invalid');
         }
         if (this.host.persistence?.listRuntimeRoutes) {
-            try { route = selectNativeRuntimeRoute(await this.host.persistence.listRuntimeRoutes(handle), 'role.narrator', routeRef); } catch (error) { if (expectedRouteHash !== undefined) fail('native_comparison_source_stale'); throw error; }
+            try { route = selectNativeRuntimeRoute(await this.host.persistence.listRuntimeRoutes(handle), 'role.narrator', routeRef, (await this.host.persistence.getRoleAssignments(handle)).assignments); } catch (error) { if (expectedRouteHash !== undefined) fail('native_comparison_source_stale'); throw error; }
         } else if (routeRef !== undefined) route = await this.host.persistence?.getRuntimeRoute(handle, routeRef.runtimeRouteId);
         if ((routeRef !== undefined || this.host.persistence?.listRuntimeRoutes) && (!route || route.scope !== 'player')) fail(expectedRouteHash === undefined ? 'native_comparison_route_invalid' : 'native_comparison_source_stale');
         const routeHash = route ? hash(route) : null;

@@ -203,3 +203,27 @@
 .atri-runtime-check-list > li[data-state='problem'] .atri-runtime-check-state { color: var(--tone-danger, #b4483c); }
 @media (max-width: 640px) { .atri-runtime-check-list > li { grid-template-columns: minmax(0, 1fr); } }
 .atri-runtime-devtools { margin-top: 8px; }
+
+/* Model roles: who does which job. One row per job, one preset per row. */
+.atri-model-roles { max-width: 720px; margin: 0 0 12px; padding: 10px 14px 8px; border: 1px solid var(--line-2); border-radius: var(--r-pane); background: var(--surface-panel); }
+.atri-model-roles__head h3 { margin: 0 0 2px; }
+.atri-model-roles__head .atri-runtime-help { margin: 0 0 4px; color: var(--text-2); font-size: var(--fs-sm); }
+.atri-model-roles__list { display: grid; gap: 0; }
+.atri-model-roles__row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(160px, 240px); align-items: center; gap: 2px 12px; padding: 4px 0; border-top: 1px solid var(--line-1, var(--line-2)); }
+.atri-model-roles__row:first-child { border-top: 0; }
+.atri-model-roles__text { display: grid; gap: 0; min-width: 0; }
+.atri-runtime .atri-model-roles__text label { display: block; color: var(--text-1); font: 600 var(--fs-sm)/1.35 var(--font-ui); }
+.atri-model-roles__text small { color: var(--text-3); font-size: var(--fs-xs, 12px); line-height: 1.4; }
+.atri-model-roles__row select { width: 100%; min-height: 30px; padding-block: 2px; }
+.atri-model-roles__row[data-missing] .atri-model-roles__warning { color: var(--warning); font-weight: 600; }
+.atri-model-roles__all { margin-top: 4px; }
+.atri-model-roles__all:empty { display: none; }
+.atri-runtime .atri-model-roles__all label { display: grid; grid-template-columns: minmax(0, 1fr) minmax(160px, 240px); align-items: center; gap: 12px; }
+.atri-runtime .atri-model-roles__all select { min-height: 30px; width: 100%; }
+.atri-model-roles__status { margin: 4px 0 0; min-height: 0; color: var(--text-2); font-size: var(--fs-sm); }
+.atri-model-roles__status[data-kind="error"] { color: var(--warning); }
+.atri-model-roles[aria-busy="true"] { opacity: .75; }
+@media (max-width: 640px) { .atri-model-roles__row { grid-template-columns: minmax(0, 1fr); } }
+.atri-runtime[data-atria-viewport="compact"][data-editor="split"] > .atri-model-roles { display: none; }
+[data-atria-preset-jobs] label { display: flex; align-items: center; gap: 8px; }
+[data-atria-preset-jobs] label small { color: var(--text-3); font-weight: 400; }

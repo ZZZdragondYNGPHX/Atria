@@ -35,9 +35,11 @@ export class RouteResolver {
         const raw = input.routeRef.scope === 'player'
             ? await this.persistence.getRuntimeRoute(handle, input.routeRef.runtimeRouteId)
             : await this.getSessionRoute?.(handle, input.routeRef);
-        let route = assertRuntimeRoute(raw);
+        if (!raw) throw new GenerationError('generation_route_mismatch');
+        // A preset is "how to call a model"; the request says which job it does.
+        let route = assertRuntimeRoute({ ...raw, role: input.role });
         if (route.runtimeRouteId !== input.routeRef.runtimeRouteId || route.scope !== input.routeRef.scope
-            || route.sessionId !== input.routeRef.sessionId || route.role !== input.role) {
+            || route.sessionId !== input.routeRef.sessionId) {
             throw new GenerationError('generation_route_mismatch');
         }
         let declaredPromptProgramRef;

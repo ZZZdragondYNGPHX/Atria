@@ -52,14 +52,16 @@ const RUNTIME_PRINCIPALS = Object.freeze({
 });
 
 /** Pure mechanism evidence. Publication is never a Session/Actor send grant. */
-export async function validateModelCapability({ handle, definition, dependencyPins, resolver }) {
-    const { evidence, issues } = await inspectModelCapabilities({ handle, definition, dependencyPins, resolver });
+export async function validateModelCapability({ handle, definition, dependencyPins, resolver, nodeRole }) {
+    const { evidence, issues } = await inspectModelCapabilities({ handle, definition, dependencyPins, resolver, nodeRole });
     return { evidence, issues };
 }
 
 /** Internal same-invocation resolver facts, never a send/Source/bank grant.
  * Publication continues to expose only the original mechanism evidence. */
-export async function inspectModelCapabilities({ handle, definition, dependencyPins, resolver }) {
+// nodeRole(node) names the job each model node does for the runner using the
+// Plan: Chat and turn narration, a turn's action resolver, or Studio work.
+export async function inspectModelCapabilities({ handle, definition, dependencyPins, resolver, nodeRole = () => 'role.narrator' }) {
     const evidence = [], issues = [], fieldPath = 'capabilityCeiling.generation.send';
     const models = new Map();
     const unavailable = () => issues.push({ code: 'native_orchestration_capability_authority_unavailable', severity: 'unknown', fieldPath });
@@ -79,7 +81,8 @@ export async function inspectModelCapabilities({ handle, definition, dependencyP
             return { evidence, issues, models };
         }
         try {
-            const route = await resolver.persistence.getRuntimeRoute(handle, pin.resourceRef.runtimeRouteId);
+            const stored = await resolver.persistence.getRuntimeRoute(handle, pin.resourceRef.runtimeRouteId);
+            const route = stored && { ...stored, role: nodeRole(node) };
             if (!Object.hasOwn(RUNTIME_PRINCIPALS, route?.role)) { unavailable(); return { evidence, issues, models }; }
             // The private pure Project stages cannot call the original Task
             // tools. Only that graph's real tool owner needs their mechanism;

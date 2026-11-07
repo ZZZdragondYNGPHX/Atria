@@ -3,16 +3,21 @@ import { getTaskBindings, setTaskBinding } from './task-bindings.js';
 import { mountRuntimeRoutePicker } from './runtime-route-picker.js';
 import { el } from './library-ui.js';
 import { translateShellText as t, formatShellText as fmt } from '../atria-shell/localization.js';
+import { MODEL_ROLES, modelRoleLabel } from './role-assignments-ui.js';
+
+// Built-in jobs follow the player's Model roles everywhere; only a work's own
+// custom purposes are chosen per work.
+const isModelRole = id => MODEL_ROLES.some(role => role.id === id);
 
 const setups = new WeakMap();
-const slotLabel = slot => slot.displayName || (slot.id === 'role.intent_resolver' ? t('Intent resolver') : slot.id === 'role.narrator' ? t('Narrator') : t(label(slot.id)));
+const slotLabel = slot => slot.displayName || (isModelRole(slot.id) ? modelRoleLabel(slot.id) : t(label(slot.id)));
 const label = id => id.replace(/[._-]+/g, ' ').replace(/\b[a-z]/g, value => value.toUpperCase());
-export const isTaskBindingFailure = errors => (errors ?? []).some(error => /native_task_binding_missing|generation_capability_(unsupported|unknown)|native_generation_route_(missing|ambiguous)/.test(error));
+export const isTaskBindingFailure = errors => (errors ?? []).some(error => /native_task_binding_missing|generation_capability_(unsupported|unknown)|native_generation_route_missing|native_generation_role_unassigned/.test(error));
 export function taskBindingMessage(code) {
     if (code === 'generation_capability_unsupported') return t('This route does not support the capabilities required by this purpose.');
     if (code === 'generation_capability_unknown') return t('This route has no verified support for the capabilities required by this purpose.');
-    if (code === 'native_generation_route_ambiguous') return t('Several primary routes match this role. Assign distinct roles or link alternatives as fallbacks.');
-    if (code === 'native_generation_route_missing') return t('No route is configured for this role. Create a route with an exact Model, Generation and Prompt.');
+    if (code === 'native_generation_role_unassigned') return t('No model is assigned to this job yet. Choose one in Model roles.');
+    if (code === 'native_generation_route_missing') return t('The API preset chosen for this job no longer exists. Choose another in Model roles.');
     if (code === 'native_task_binding_missing') return t('Select an available API preset for this purpose.');
     return t('This API preset is unavailable. Check its connection, model and parameters in Runtime.');
 }
@@ -45,7 +50,7 @@ export async function ensureTaskBindings({ document: doc, root, manifest, packag
     let save; let report;
     async function persist(next) {
         const previous = getTaskBindings(packageId);
-        for (const slot of next.slots) setTaskBinding(packageId, slot.id, slot.binding);
+        for (const slot of next.slots) setTaskBinding(packageId, slot.id, isModelRole(slot.id) ? undefined : slot.binding);
         // Frontend actions resolve bindings on the server. Finish the same
         // settings write before mounting, instead of racing its debounce.
         try { if (await globalThis.Atria.getContext().saveSettings() === false) throw new Error('Settings were not persisted'); } catch (error) {
@@ -53,7 +58,7 @@ export async function ensureTaskBindings({ document: doc, root, manifest, packag
             throw error;
         }
     }
-    const selected = slot => slot.routes.some(route => route.compatible && draft[slot.id]?.scope === 'player' && route.runtimeRouteId === draft[slot.id]?.runtimeRouteId);
+    const selected = slot => isModelRole(slot.id) ? !slot.error : slot.routes.some(route => route.compatible && draft[slot.id]?.scope === 'player' && route.runtimeRouteId === draft[slot.id]?.runtimeRouteId);
     function updateSave() {
         const missing = report.slots.filter(slot => !selected(slot));
         if (save) save.disabled = busy || Boolean(missing.length);
@@ -74,6 +79,13 @@ export async function ensureTaskBindings({ document: doc, root, manifest, packag
             if (slot.description) el(doc, 'p', 'workspace-hint', slot.description, group);
             el(doc, 'p', 'workspace-hint', fmt('Used by: ${0}', [slot.tasks.join(', ')]), group);
             if (slot.requiredCapabilities.length) el(doc, 'p', 'workspace-hint', fmt('Required capabilities: ${0}', [slot.requiredCapabilities.join(', ')]), group);
+            if (isModelRole(slot.id)) {
+                // Shown, not chosen here: the same Model roles answer applies to every work.
+                const route = slot.routes.find(item => item.runtimeRouteId === slot.binding?.runtimeRouteId);
+                el(doc, 'p', 'workspace-hint', route ? fmt('${0} uses ${1}.', [slotLabel(slot), route.displayName]) : t('No model is assigned to this job yet.'), group);
+                if (slot.error) el(doc, 'p', 'workspace-hint', taskBindingMessage(slot.error), group);
+                continue;
+            }
             // Invalid/stale/foreign refs are never handed to the picker as a selection.
             if (!selected(slot)) delete draft[slot.id];
             const picker = mountRuntimeRoutePicker({ parent: group, label: slotLabel(slot), literalLabel: true, explicit: true,
@@ -93,12 +105,13 @@ export async function ensureTaskBindings({ document: doc, root, manifest, packag
             describe();
             for (const route of slot.routes.filter(route => !route.compatible)) el(doc, 'p', 'workspace-hint', route.displayName + ': ' + taskBindingMessage(route.error), group);
         }
-        const common = report.slots[0]?.routes.filter(route => route.compatible && report.slots.every(slot => slot.routes.some(other => other.compatible && other.runtimeRouteId === route.runtimeRouteId))) ?? [];
-        if (report.slots.length > 1 && common.length) mountRuntimeRoutePicker({ parent: content, label: 'Use one API preset for all purposes', explicit: true, routes: common,
-            change: value => { if (!value) return; for (const slot of report.slots) { draft[slot.id] = value; const picker = pickers.get(slot.id); picker.setValue(value); picker.select.dispatchEvent(new doc.defaultView.Event('change')); } updateSave(); } });
+        const custom = report.slots.filter(slot => !isModelRole(slot.id));
+        const common = custom[0]?.routes.filter(route => route.compatible && custom.every(slot => slot.routes.some(other => other.compatible && other.runtimeRouteId === route.runtimeRouteId))) ?? [];
+        if (custom.length > 1 && common.length) mountRuntimeRoutePicker({ parent: content, label: 'Use one API preset for all purposes', explicit: true, routes: common,
+            change: value => { if (!value) return; for (const slot of custom) { draft[slot.id] = value; const picker = pickers.get(slot.id); picker.setValue(value); picker.select.dispatchEvent(new doc.defaultView.Event('change')); } updateSave(); } });
         if (report.slots.some(slot => !slot.routes.some(route => route.compatible))) el(doc, 'p', '', t('No compatible API preset is available. Create or configure one in Runtime, then return here.'), content);
         controls = el(doc, 'div', 'atri-library-actions', undefined, content);
-        button('Configure API presets', () => host?.openRuntimeRepair
+        button('Open Model roles and API presets', () => host?.openRuntimeRepair
             ? host.openRuntimeRepair('routes', async () => { if (!current()) return; const next = await check(draft); if (current()) { draw(next); heading.focus(); } })
             : host?.openRuntimeSection('routes'));
         button('Refresh API presets', async () => { const next = await check(draft); if (current()) draw(next); });
@@ -119,9 +132,10 @@ export async function ensureTaskBindings({ document: doc, root, manifest, packag
         if (!next.ready && !force) {
             // Fill every unset purpose with a sensible preset so a work starts without setup.
             const auto = { ...draft };
-            for (const slot of next.slots) if (slot.error) {
+            const narrator = (await runtimeRequest('/configuration', { signal: controller.signal })).roleAssignments?.assignments?.['role.narrator'];
+            for (const slot of next.slots) if (slot.error && !isModelRole(slot.id)) {
                 const usable = slot.routes.filter(route => route.compatible);
-                const pick = usable.find(route => route.role === slot.id) || usable.find(route => route.role === 'role.narrator') || usable[0];
+                const pick = usable.find(route => route.runtimeRouteId === narrator) || usable[0];
                 if (pick) auto[slot.id] = { scope: 'player', runtimeRouteId: pick.runtimeRouteId };
             }
             const filled = await check(auto); if (!current()) return false;

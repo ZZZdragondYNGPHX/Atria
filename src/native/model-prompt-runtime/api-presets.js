@@ -72,7 +72,7 @@ export async function saveApiPreset(host, handle, input) {
         persistence.getRuntimeRoute = async (owner, id) => id === route.runtimeRouteId ? route : host.persistence.getRuntimeRoute(owner, id);
         const visited = new Set();
         async function visit(candidate, active = new Set()) {
-            if (!candidate || active.has(candidate.runtimeRouteId) || candidate.role !== route.role || visited.size >= 128) throw new TypeError('Invalid fallback graph');
+            if (!candidate || active.has(candidate.runtimeRouteId) || visited.size >= 128) throw new TypeError('Invalid fallback graph');
             if (visited.has(candidate.runtimeRouteId)) return;
             visited.add(candidate.runtimeRouteId);
             for (const ref of candidate.fallbackRouteRefs ?? []) await visit(await persistence.getRuntimeRoute(handle, ref.runtimeRouteId), new Set(active).add(candidate.runtimeRouteId));
@@ -80,7 +80,7 @@ export async function saveApiPreset(host, handle, input) {
         await visit(route);
         return host.persistence.saveRuntimeRoute(handle, route, { expectedFingerprint: input.expected.route, validate: async value => {
             if (value.promptProgramRef.scope === 'library') await new RouteResolver({ persistence, library: host.library, providers: host.providers })
-                .resolve({ handle, routeRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId }, role: route.role });
+                .resolve({ handle, routeRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId }, role: 'role.narrator' });
         } });
     }));
 }

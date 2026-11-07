@@ -113,15 +113,15 @@ export async function mountPlayPromptControls(doc, root) {
     }
     const status = el(doc, 'p', '', tl('Loading Prompt controls…'), root);
     try {
-        const { routes } = await runtimeRequest('/configuration');
+        const { routes, roleAssignments: { assignments } = {} } = await runtimeRequest('/configuration');
         if (!status.isConnected) return;
         status.textContent = tl('Adjust the prompt options of an API preset.');
         const label = el(doc, 'label', '', tl('API preset'), root);
         const select = el(doc, 'select', '', undefined, label); select.setAttribute('aria-label', tl('API preset'));
         for (const route of routes) { const option = el(doc, 'option', '', route.displayName, select); option.value = route.runtimeRouteId; }
-        const fallbackIds = new Set(routes.flatMap(route => route.fallbackRouteRefs.map(ref => ref.runtimeRouteId)));
-        const primary = routes.filter(route => route.role === 'role.narrator' && !fallbackIds.has(route.runtimeRouteId));
-        if (primary.length === 1) select.value = primary[0].runtimeRouteId;
+        // Start on the preset that narrates stories today.
+        const narrator = assignments?.['role.narrator'];
+        if (routes.some(route => route.runtimeRouteId === narrator)) select.value = narrator;
         const content = el(doc, 'div', '', undefined, root);
         const render = () => { content.replaceChildren(); if (select.value) void mountPromptRuntimeControls({ document: doc, root: content, routeId: select.value }); };
         select.addEventListener('change', render); render();

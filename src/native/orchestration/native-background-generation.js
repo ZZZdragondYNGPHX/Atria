@@ -123,7 +123,7 @@ export class NativeBackgroundOrchestrationAuthority {
             fail('native_orchestration_background_route_mismatch');
         if (!snapshot.manifest.runtime.experienceContract.generationBudget || !route.executionPolicy?.computeBudget?.localWork)
             fail('native_orchestration_background_budget_unavailable');
-        const role = route.role, persistence = Object.create(host.persistence);
+        const role = 'role.narrator', persistence = Object.create(host.persistence);
         persistence.getRuntimeRoute = async (owner, id) => taskRuntimeRoute(await host.persistence.getRuntimeRoute(owner, id), role, taskPlan, snapshot.session);
         const resolver = new RouteResolver({ persistence, library: host.library, providers: host.providers, getScopedResource: async (owner, ref) => {
             if (ref.scope !== 'package' || ref.packageId !== snapshot.session.packageId || ref.packageVersionId !== snapshot.session.packageVersionId)

@@ -2,7 +2,7 @@ import { runtimeRequest } from './runtime-client.js';
 import { normalizeRuntimeRouteRef } from './runtime-route-ref.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
 
-export function mountRuntimeRoutePicker({ parent, role, value, change, label = 'API preset', routes: suppliedRoutes, explicit = false, literalLabel = false }) {
+export function mountRuntimeRoutePicker({ parent, value, change, label = 'API preset', routes: suppliedRoutes, explicit = false, literalLabel = false }) {
     const doc = parent.ownerDocument;
     const labelText = literalLabel ? label : tl(label);
     const wrap = doc.createElement('label'); wrap.className = 'workspace-inspector-field'; wrap.textContent = labelText;
@@ -30,7 +30,7 @@ export function mountRuntimeRoutePicker({ parent, role, value, change, label = '
             const config = await runtimeRequest('/configuration');
             if (!parent.isConnected) return;
             status.textContent = tl('Choose an API preset. Edit its model and parameters in Runtime.');
-            const routes = config.routes.filter(route => route.role === 'role.' + role);
+            const routes = config.routes;
             compatibleIds = new Set(routes.map(route => route.runtimeRouteId));
             fill(routes); select.disabled = false;
         } catch {

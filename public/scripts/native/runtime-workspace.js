@@ -20,6 +20,7 @@ import { assertComputeBudget, DEFAULT_COMPUTE_BUDGET, LOCAL_WORK_LIMIT_BOUNDS } 
 import { connectionRequiresSecret } from '../../shared/native-connection-auth.js';
 import { INSECURE_HTTP_ADAPTERS } from '../../shared/image-service-catalog.js';
 import { mountApiPresetFields } from './api-preset-fields.js';
+import { MODEL_ROLES, assignModelRoles, modelRoleLabel, mountModelRoles, rolesOfPreset } from './role-assignments-ui.js';
 // Sent only when the reader opts in for a relay that rejects non-browser clients.
 const BROWSER_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
 
@@ -53,10 +54,8 @@ const ADDRESS_HINTS = {
     'provider.mcp': 'The MCP server’s HTTP address.',
     'provider.a2a': 'The agent’s A2A address.',
 };
-const roleLabels = { illustration_prompt: 'Illustration prompt', intent_resolver: 'Intent resolver', event_interpreter: 'Event interpreter', orchestrator: 'Orchestrator', studio: 'Studio', memory: 'Memory', search: 'Search', narrator: 'Narrator', actor: 'Actor', summarizer: 'Summarizer', planner: 'Planner', critic: 'Critic', embedding: 'Embedding', reranker: 'Reranker', director: 'Director', authoring: 'Authoring' };
 const ids = { connections: 'connectionProfileId', models: 'modelProfileId', routes: 'runtimeRouteId' };
 const prefixes = { connections: 'conn', models: 'model', routes: 'route' };
-const roles = ['narrator', 'intent_resolver', 'event_interpreter', 'orchestrator', 'studio', 'memory', 'search', 'illustration_prompt'];
 const clone = value => JSON.parse(JSON.stringify(value));
 const exact = item => ({ scope: 'library', resourceType: item.resourceType, resourceId: item.resourceId, revision: item.currentRevision });
 const refKey = value => JSON.stringify(value, Object.keys(value).sort());
@@ -71,7 +70,7 @@ function assertRuntimeEditorShape(value) {
 }
 
 export function mountNativeRuntimeWorkspace({ document: doc, body, section, route, host }) {
-    let disposed = false; let returnToIllustrations = false; let data; let refillList = null; let scopedResources = []; let promptPresets = []; let selectedRoute = route; let activeEditor = null; let restoreShell = () => {};
+    let disposed = false; let returnToIllustrations = false; let data; let refillList = null; let scopedResources = []; let promptPresets = []; let selectedRoute = route; let activeEditor = null; let refreshRoles = null; let restoreShell = () => {};
     const controller = new AbortController();
     const root = doc.createElement('section');
     root.className = 'atri-runtime'; root.dataset.atriaRuntimeNative = section;
@@ -163,7 +162,9 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         const model = data.models.find(value => value.modelProfileId === item.modelProfileRef.modelProfileId);
         const connection = data.connections.find(value => value.connectionProfileId === item.connectionProfileRef.connectionProfileId);
         // Default names already read "Service · model"; repeat only what the name omits.
-        return [connection?.displayName, model?.remoteModelId].filter(part => part && !item.displayName.includes(part)).join(' · ');
+        const jobs = rolesOfPreset(data.roleAssignments?.assignments, item.runtimeRouteId);
+        return [connection?.displayName, model?.remoteModelId].filter(part => part && !item.displayName.includes(part))
+            .concat(jobs.length === MODEL_ROLES.length ? translateShellText('Every job') : jobs.length ? jobs.map(modelRoleLabel).join(', ') : translateShellText('No jobs')).join(' · ');
     }
     function resetCanvas() {
         editorSequence += 1; refillList = null;
@@ -199,9 +200,12 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         resetCanvas();
         if (section === 'routes' && !data.routes.length) { openSetup({ inline: true }); return; }
         heading(translateShellText(sectionLabels[section]), {
-            routes: 'An API preset is a service, a model and its parameters. Stories choose one when they need a model.',
+            routes: 'An API preset is a service, a model and its parameters. Model roles decide which preset does each job.',
             connections: 'Services your models, image tools, MCP tools and A2A agents connect to. Keys stay on this server.',
         }[section]);
+        if (section === 'routes') refreshRoles = mountModelRoles({ document: doc, parent: canvas, data, signal: controller.signal,
+            onChanged: () => refillList?.(),
+            onReload: async () => { data = await runtimeRequest('/configuration', { signal: controller.signal }); renderList(); } }).refresh;
         // List-detail: the list stays put; the editor opens in the pane beside it.
         const split = node('div'); split.className = 'atri-runtime-split';
         const listPane = node('aside', undefined, split); listPane.className = 'atri-runtime-listpane';
@@ -482,11 +486,35 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                 [['', 'None — basic context only'], ...promptPresets.map(preset => [presetKey(preset), preset.displayName, true]), ...otherPrompts]);
             notice('Used whenever this API preset runs without a prompt of its own. Works that bring their own prompt keep using theirs.', promptBox);
             button('Edit prompt presets', () => host.openLibrarySection('prompt-presets'), promptBox).dataset.variant = 'plain';
-            const advanced = node('details', undefined, form); advanced.className = 'atri-api-advanced'; node('summary', 'Advanced: fallbacks, limits and use outside stories', advanced);
-            let fields = group(advanced, 'Default purpose outside games');
-            const role = field(fields, 'Role', value.role || 'role.narrator', roles.map(item => ['role.' + item, roleLabels[item] || item]));
-            notice('Games assign purposes when they select an API preset. This default is used by Studio and other tools.', fields);
-            fields = group(advanced, 'Fallback order');
+            const jobs = group(form, 'Jobs', 'Jobs this preset does. A job moves here from its current preset as soon as you tick it.');
+            jobs.dataset.atriaPresetJobs = 'true';
+            const jobStatus = node('p', undefined, jobs); jobStatus.className = 'atri-runtime-help'; jobStatus.setAttribute('role', 'status');
+            const isSaved = () => data.routes.some(item => item.runtimeRouteId === value.runtimeRouteId);
+            function drawJobs() {
+                for (const old of jobs.querySelectorAll('label')) old.remove();
+                const mine = rolesOfPreset(data.roleAssignments?.assignments, value.runtimeRouteId);
+                for (const role of MODEL_ROLES) {
+                    const box = field(jobs, role.label); box.type = 'checkbox'; box.checked = mine.includes(role.id);
+                    box.parentElement.title = translateShellText(role.description);
+                    const elsewhere = data.roleAssignments?.assignments?.[role.id];
+                    // A job always has a model: move it by ticking it on another preset.
+                    box.disabled = !isSaved() || box.checked;
+                    if (!box.checked && elsewhere) node('small', fmt('Now: ${0}', [data.routes.find(item => item.runtimeRouteId === elsewhere)?.displayName ?? '']), box.parentElement);
+                    box.addEventListener('change', async () => {
+                        box.disabled = true;
+                        try {
+                            await assignModelRoles(data, { [role.id]: value.runtimeRouteId }, controller.signal);
+                            jobStatus.textContent = fmt('${0} now uses ${1}.', [translateShellText(role.label), name.value || value.displayName]);
+                            refillList?.(); refreshRoles?.();
+                        } catch { jobStatus.textContent = translateShellText('Could not save the role. Nothing changed.'); }
+                        drawJobs();
+                    });
+                }
+                if (!isSaved()) jobStatus.textContent = translateShellText('Save this preset first. A new preset takes every job that has no model yet.');
+            }
+            drawJobs();
+            const advanced = node('details', undefined, form); advanced.className = 'atri-api-advanced'; node('summary', 'Advanced: fallbacks and limits', advanced);
+            let fields = group(advanced, 'Fallback order');
             let fallbackIds = (value.fallbackRouteRefs || []).map(item => item.runtimeRouteId);
             const fallbackList = node('div', undefined, fields);
             function showFallbacks() {
@@ -499,7 +527,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                 });
                 refreshChoices();
             }
-            const eligible = () => data.routes.filter(item => item.runtimeRouteId !== value.runtimeRouteId && item.role === role.value);
+            const eligible = () => data.routes.filter(item => item.runtimeRouteId !== value.runtimeRouteId);
             const fallback = field(fields, 'Add fallback route', '', [['', 'Choose…']]);
             const addFallback = button('Add fallback', () => { if (eligible().some(item => item.runtimeRouteId === fallback.value) && !fallbackIds.includes(fallback.value)) { fallbackIds.push(fallback.value); showFallbacks(); fallback.focus(); } }, fields);
             function refreshChoices() {
@@ -511,14 +539,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             }
             fallback.addEventListener('change', () => { addFallback.disabled = !fallback.value; });
             const fallbackStatus = node('div', undefined, fields);
-            role.addEventListener('change', () => {
-                const allowed = new Set(eligible().map(item => item.runtimeRouteId));
-                const previous = fallbackIds.length; fallbackIds = fallbackIds.filter(id => allowed.has(id));
-                fallbackStatus.replaceChildren();
-                if (previous !== fallbackIds.length) notice('Incompatible fallbacks were removed from this draft after the role changed.', fallbackStatus);
-                showFallbacks();
-            });
-            notice('Fallback routes must use the same role. They are tried in the order shown.', fields);
+            notice('If this preset fails, these presets are tried in the order shown, for the same job.', fields);
             showFallbacks();
             fields = group(advanced, 'Request policy');
             const timeout = number(fields, 'Timeout milliseconds', value.policy?.timeoutMs || generationDefaults.timeoutMs, 1);
@@ -578,7 +599,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                     executionPolicy.allowedModelProfileIds = [...new Set([...executionPolicy.allowedModelProfileIds,
                         ...fallbackIds.map(id => data.routes?.find(item => item.runtimeRouteId === id)?.modelProfileRef?.modelProfileId).filter(Boolean)])].slice(0, 16);
                 }
-                return { ...value, ...(executionPolicy ? { executionPolicy } : {}), role: role.value, promptProgramRef: prompt.value ? JSON.parse(prompt.value) : defaultContext(currentPrompt) ? currentPrompt : undefined, fallbackRouteRefs: fallbackIds.map(runtimeRouteId => ({ scope: 'player', runtimeRouteId })), policy: { timeoutMs: Number(timeout.value), maxRetries: Number(retries.value), maxFallbackAttempts: Number(attempts.value) }, requirements: requirements.value.split(',').map(item => item.trim()).filter(Boolean) };
+                return { ...value, ...(executionPolicy ? { executionPolicy } : {}), promptProgramRef: prompt.value ? JSON.parse(prompt.value) : defaultContext(currentPrompt) ? currentPrompt : undefined, fallbackRouteRefs: fallbackIds.map(runtimeRouteId => ({ scope: 'player', runtimeRouteId })), policy: { timeoutMs: Number(timeout.value), maxRetries: Number(retries.value), maxFallbackAttempts: Number(attempts.value) }, requirements: requirements.value.split(',').map(item => item.trim()).filter(Boolean) };
             };
         }
         const status = node('div', undefined, form); status.className = 'atri-runtime-status';
@@ -755,7 +776,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                 const source = nativeSessionRuntime.active ? { sessionId: snapshot.session.sessionId, revisionId: snapshot.revision.revisionId } : project.value ? { projectId: project.value, revision: revision.value } : {};
                 if (!nativeSessionRuntime.active && (!source.projectId || !source.revision || project.disabled || revision.disabled)) throw Object.assign(new Error('Select a Project context'), { code: 'native_generation_context_required' });
                 const selected = data.routes.find(item => item.runtimeRouteId === routeSelect.value);
-                const preview = await runtimeRequest('/preview', { method: 'POST', signal: controller.signal, body: { ...source, requestId: createStudioNativeId('preview'), role: selected.role.slice(5), routeRef: { scope: 'player', runtimeRouteId: selected.runtimeRouteId }, messages: [{ role: 'user', content: message.value }] } });
+                const preview = await runtimeRequest('/preview', { method: 'POST', signal: controller.signal, body: { ...source, requestId: createStudioNativeId('preview'), role: 'narrator', routeRef: { scope: 'player', runtimeRouteId: selected.runtimeRouteId }, messages: [{ role: 'user', content: message.value }] } });
                 if (!disposed) { result.replaceChildren(); evidence(preview, result); const title = result.querySelector('h3'); title.tabIndex = -1; title.focus(); }
             } catch (error) { if (!disposed) { result.replaceChildren(); failure(error, result); } } finally { submit.disabled = false; submit.removeAttribute('aria-busy'); }
         });

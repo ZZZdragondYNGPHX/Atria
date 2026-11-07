@@ -100,8 +100,8 @@ export async function runNativeStudioAgentTask({
     // resolves the exact route/path and revalidates stored Task state at send.
     const configuration = await request('/configuration').catch(() => null);
     const routes = configuration?.routes || [];
-    const fallbackIds = new Set(routes.flatMap(route => (route.fallbackRouteRefs || []).map(ref => ref.runtimeRouteId)));
-    const primary = routes.filter(route => route.scope === 'player' && route.role === 'role.studio' && !fallbackIds.has(route.runtimeRouteId));
+    // Studio work runs on the preset assigned to the Studio job.
+    const primary = routes.filter(route => route.runtimeRouteId === configuration?.roleAssignments?.assignments?.['role.studio']);
     const adaptive = primary.length === 1 && primary[0].executionPolicy?.continuity === 'adaptive';
     const taskContinuity = primary.length === 1 && ['task', 'adaptive'].includes(primary[0].executionPolicy?.continuity);
     let resetPerformed = false;

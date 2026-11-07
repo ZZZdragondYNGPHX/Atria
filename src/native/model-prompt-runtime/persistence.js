@@ -27,6 +27,9 @@ import {
     collectVersionedModelPromptResourceRefs,
     getVersionedModelPromptResourceIdentity,
 } from './resources.js';
+import { assertRoleAssignments, effectiveRoleAssignments, FUNCTIONAL_ROLES } from './role-assignments.js';
+
+const withoutRole = ({ role: _role, ...route }) => route;
 
 function exactRef(identity, contentIdentity) {
     return Object.freeze({
@@ -275,6 +278,12 @@ export class NativeModelPromptPersistence {
 
     async _save(handle, kind, idField, id, value, expectedFingerprint = undefined) {
         assertWritable();
+        if (kind === NATIVE_RESOURCE_KINDS.runtimeRoute) {
+            value = withoutRole(value);
+            // Presets saved before roles were separated carry the old role.
+            // Keep their effective assignments before the first rewrite.
+            await this.materializeRoleAssignments(handle);
+        }
         return this._engine.withTransaction(handle, async tx => {
             const key = playerKey(kind, handle, idField, id);
             const existing = await tx.getResource(key);
@@ -362,7 +371,7 @@ export class NativeModelPromptPersistence {
 
     async saveRuntimeRoute(handle, value, { validate = async () => {}, expectedFingerprint } = {}) {
         return withRuntimeWrite(handle, async () => {
-            const route = assertRuntimeRoute(value);
+            const route = assertRuntimeRoute(withoutRole(value));
             await validate(route);
             if (route.scope !== 'player') throw new TypeError('P1 persistence accepts player Runtime Routes only');
             const [model, connection] = await Promise.all([
@@ -378,13 +387,12 @@ export class NativeModelPromptPersistence {
                 });
             }
             for (const ref of route.fallbackRouteRefs) {
-                const target = await this.getRuntimeRoute(handle, ref.runtimeRouteId);
-                if (!target) throw new NotFoundError('fallback route');
-                if (target.role !== route.role) throw new ConflictError('native_runtime_fallback_role');
+                if (!await this.getRuntimeRoute(handle, ref.runtimeRouteId)) throw new NotFoundError('fallback route');
             }
             const listed = await this.listRuntimeRoutes(handle);
-            const incoming = listed.filter(item => item.role !== route.role && item.fallbackRouteRefs.some(ref => ref.runtimeRouteId === route.runtimeRouteId));
-            if (incoming.length) throw new ConflictError('native_runtime_fallback_role');
+            // A new preset takes every role that has no model yet, so the first
+            // connected model runs everything and later ones never steal roles.
+            if (!listed.some(item => item.runtimeRouteId === route.runtimeRouteId)) await this.assignOpenRoles(handle, route.runtimeRouteId);
             // Editors read the route with its default limits applied; accept that view's fingerprint.
             const shown = listed.find(item => item.runtimeRouteId === route.runtimeRouteId);
             if (shown && expectedFingerprint === hashNativeDocument(shown)) {
@@ -447,6 +455,7 @@ export class NativeModelPromptPersistence {
     async deleteProfile(handle, kind, id, { expectedFingerprint } = {}) {
         const definitions = { connections: [NATIVE_RESOURCE_KINDS.connectionProfile, 'connectionProfileId'], models: [NATIVE_RESOURCE_KINDS.modelProfile, 'modelProfileId'], routes: [NATIVE_RESOURCE_KINDS.runtimeRoute, 'runtimeRouteId'] };
         if (!definitions[kind]) throw new TypeError('Unsupported Runtime resource');
+        if (kind === 'routes') await this.materializeRoleAssignments(handle);
         return withRuntimeWrite(handle, () => this._engine.withTransaction(handle, async tx => {
             assertWritable();
             const [resourceKind, idField] = definitions[kind]; const key = playerKey(resourceKind, handle, idField, id);
@@ -489,13 +498,62 @@ export class NativeModelPromptPersistence {
             runtimeRouteId,
         );
         if (!value) return null;
-        if (value.executionPolicy?.computeBudget) return assertRuntimeRoute(value);
+        if (value.executionPolicy?.computeBudget) return assertRuntimeRoute(withoutRole(value));
         return (await this.listRuntimeRoutes(handle)).find(route => route.runtimeRouteId === runtimeRouteId) ?? null;
     }
 
     async listRuntimeRoutes(handle) {
-        const stored = (await this._list(handle, NATIVE_RESOURCE_KINDS.runtimeRoute)).map(assertRuntimeRoute);
+        const stored = (await this._list(handle, NATIVE_RESOURCE_KINDS.runtimeRoute)).map(value => assertRuntimeRoute(withoutRole(value)));
         return Object.freeze(stored.map(route => withDefaultComputeBudget(route, stored)));
+    }
+
+    /** Effective role → preset map plus the fingerprint of the stored document. */
+    async getRoleAssignments(handle) {
+        const raw = await this._list(handle, NATIVE_RESOURCE_KINDS.runtimeRoute);
+        const doc = await this._engine.withTransaction(handle, tx => getNativeDocument(tx, { kind: NATIVE_RESOURCE_KINDS.runtimeRoleAssignments, handle }));
+        const stored = doc ? assertRoleAssignments(doc) : null;
+        const fallbacks = new Set(raw.flatMap(route => route.fallbackRouteRefs ?? []).map(ref => ref.runtimeRouteId));
+        const legacy = new Map(raw.filter(route => route.role && !fallbacks.has(route.runtimeRouteId)).map(route => [route.runtimeRouteId, route.role]));
+        return Object.freeze({ assignments: effectiveRoleAssignments(stored, raw, legacy), fingerprint: hashNativeDocument(doc ?? null) });
+    }
+
+    async saveRoleAssignments(handle, assignments, { expectedFingerprint } = {}) {
+        return withRuntimeWrite(handle, async () => {
+            const value = assertRoleAssignments({ schemaVersion: 1, assignments });
+            const routes = await this.listRuntimeRoutes(handle);
+            for (const id of Object.values(value.assignments)) if (!routes.some(route => route.runtimeRouteId === id)) throw new NotFoundError('API preset', { runtimeRouteId: id });
+            assertWritable();
+            await this._engine.withTransaction(handle, async tx => {
+                const key = { kind: NATIVE_RESOURCE_KINDS.runtimeRoleAssignments, handle };
+                const existing = await tx.getResource(key);
+                if (expectedFingerprint !== undefined && hashNativeDocument(existing?.doc ?? null) !== expectedFingerprint) throw new ConflictError('native_generation_configuration_conflict');
+                await tx.putResource(key, nativeRecord(value, { existing, updatedAt: Math.max(Date.now(), (existing?.updatedAt || 0) + 1) }));
+            });
+            return this.getRoleAssignments(handle);
+        });
+    }
+
+    async materializeRoleAssignments(handle) {
+        const key = { kind: NATIVE_RESOURCE_KINDS.runtimeRoleAssignments, handle };
+        if (await this._engine.withTransaction(handle, tx => tx.getResource(key))) return;
+        const { assignments } = await this.getRoleAssignments(handle);
+        await this._engine.withTransaction(handle, async tx => {
+            if (await tx.getResource(key)) return;
+            await tx.putResource(key, nativeRecord(assertRoleAssignments({ schemaVersion: 1, assignments }), { updatedAt: Date.now() }));
+        });
+    }
+
+    async assignOpenRoles(handle, runtimeRouteId) {
+        const { assignments } = await this.getRoleAssignments(handle);
+        const next = { ...assignments };
+        for (const role of FUNCTIONAL_ROLES) next[role] ??= runtimeRouteId;
+        // Materialize the effective map so later presets cannot change it.
+        await this._engine.withTransaction(handle, async tx => {
+            const key = { kind: NATIVE_RESOURCE_KINDS.runtimeRoleAssignments, handle };
+            const existing = await tx.getResource(key);
+            const value = assertRoleAssignments({ schemaVersion: 1, assignments: next });
+            await tx.putResource(key, nativeRecord(value, { existing, updatedAt: Math.max(Date.now(), (existing?.updatedAt || 0) + 1) }));
+        });
     }
 }
 

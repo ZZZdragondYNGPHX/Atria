@@ -542,7 +542,7 @@ export function createMemoryWorkspace({ getContext }) {
             runAction(actions, 'Compress now', service.manualCompress);
             runAction(actions, 'Rebuild search index', service.rebuildVectors);
 
-            if (nativePromptUiActive() && service.getNativeRoutes) {
+            if (nativePromptUiActive()) {
                 try { mountMemoryRouting(body, service); } catch (error) { status.textContent = error.message; }
             }
 

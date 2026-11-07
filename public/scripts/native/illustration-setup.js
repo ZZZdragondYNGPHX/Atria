@@ -5,6 +5,7 @@ import { assertIllustrationSettings } from '../../shared/illustration-plugin-con
 import { isImageAdapter, imageModelChoices, defaultImageModel, needsWorkflow, supportsNegativePrompt, imageAspectParameters, imageAspectOf, imageSizeRule,
     imageSizeProblem, imageSizeOf, imageSizeParameters, imageOrientation, imageModelTiers, imageQuotaModelFor } from '../../shared/image-service-catalog.js';
 import { el, icon, action, field, input, select, segmented, check, section } from './illustration-kit.js';
+import { assignModelRoles } from './role-assignments-ui.js';
 
 const hex = doc => doc.defaultView.crypto.randomUUID().replaceAll('-', '');
 const ADAPTER_LABELS = { 'provider.novelai-image': 'NovelAI', 'provider.novelai-image-compatible': 'NovelAI-compatible relay', 'provider.openai-images': 'OpenAI Images',
@@ -22,7 +23,7 @@ export const STYLE_PRESETS = [
 
 export async function loadIllustrationConfig(request = runtimeRequest) {
     const [settings, runtime, visual] = await Promise.all([illustrationSettingsClient.read(), request('/configuration'), request('/visual/configuration')]);
-    return { record: settings, settings: settings.value, connections: runtime.connections ?? [], routes: runtime.routes ?? [], targets: visual.targets ?? [], renderings: visual.renderings ?? [], budget: visual.budget };
+    return { record: settings, settings: settings.value, connections: runtime.connections ?? [], routes: runtime.routes ?? [], roleAssignments: runtime.roleAssignments ?? { assignments: {}, fingerprint: undefined }, targets: visual.targets ?? [], renderings: visual.renderings ?? [], budget: visual.budget };
 }
 /** What the reader still has to do; overrides of the current work are honoured. */
 export function illustrationReadiness(config, packageId) {
@@ -30,13 +31,13 @@ export function illustrationReadiness(config, packageId) {
     const targetId = work.imageTargetId || config.settings.imageTargetId;
     const target = config.targets.find(item => item.imageTargetId === targetId);
     const connection = target && config.connections.find(item => item.connectionProfileId === target.connectionProfileId);
-    const writers = config.routes.filter(route => route.role === 'role.illustration_prompt');
-    const routeId = work.promptRouteId || config.settings.promptRouteId;
-    const writer = config.settings.promptMode === 'manual' ? null : routeId ? writers.find(route => route.runtimeRouteId === routeId) ?? null : writers.length === 1 ? writers[0] : null;
+    // Descriptions are the Image descriptions job in Model roles: one answer for every work.
+    const writerId = config.roleAssignments?.assignments?.['role.illustration_prompt'];
+    const writer = config.settings.promptMode === 'manual' ? null : config.routes.find(route => route.runtimeRouteId === writerId) ?? null;
     const renderingId = work.imageRenderingId || config.settings.imageRenderingId;
     return { target, connection, service: Boolean(target && connection && target.model && (!needsWorkflow(connection.providerAdapter) || target.workflow)),
         writer, writes: Boolean(writer), manual: config.settings.promptMode === 'manual', rendering: config.renderings.find(item => item.imageRenderingId === renderingId) ?? null,
-        workOverrides: ['imageTargetId', 'imageRenderingId', 'promptRouteId'].filter(key => work[key]) };
+        workOverrides: ['imageTargetId', 'imageRenderingId'].filter(key => work[key]) };
 }
 export async function updateIllustrationSettings(mutate) {
     for (let attempt = 0; ; attempt++) {
@@ -110,14 +111,10 @@ export function mountIllustrationSetup({ document: doc, parent, packageId = '', 
     }
     async function chooseWriter(routeId) {
         if (routeId === 'manual') { await updateIllustrationSettings(settings => { settings.promptMode = 'manual'; }); return saved(t('You will write image descriptions yourself.')); }
-        let route = config.routes.find(item => item.runtimeRouteId === routeId);
-        if (route.role !== 'role.illustration_prompt') {
-            // Reuse the chat model's connection, parameters and context program under the illustration role.
-            const copy = { ...structuredClone(route), runtimeRouteId: 'route_' + hex(doc), displayName: f('${0} · illustrations', [route.displayName]), role: 'role.illustration_prompt', fallbackRouteRefs: [] };
-            await request('/configuration/routes', { method: 'PUT', body: copy });
-            route = copy;
-        }
-        await updateIllustrationSettings(settings => { delete settings.promptMode; settings.promptRouteId = route.runtimeRouteId; });
+        const route = config.routes.find(item => item.runtimeRouteId === routeId);
+        // The same preset can keep doing its other jobs; no copy is needed.
+        await assignModelRoles(config, { 'role.illustration_prompt': route.runtimeRouteId });
+        if (config.settings.promptMode) await updateIllustrationSettings(settings => { delete settings.promptMode; });
         await saved(f('“${0}” will write image descriptions.', [route.displayName]));
     }
     async function saveBudget(patch) {
@@ -231,15 +228,13 @@ export function mountIllustrationSetup({ document: doc, parent, packageId = '', 
         return section(doc, t('Art style'), { step: 2, done: Boolean(current?.style) }, [cards, custom]);
     }
     function writerSection(ready) {
-        const chat = config.routes.filter(route => route.role !== 'role.illustration_prompt' && !['role.embedding', 'role.reranker'].includes(route.role));
-        const writers = config.routes.filter(route => route.role === 'role.illustration_prompt');
         const value = ready.manual ? 'manual' : ready.writer?.runtimeRouteId ?? '';
-        const choices = [...(value ? [] : [['', t('Choose…')]]), ...writers.map(route => [route.runtimeRouteId, route.displayName]),
-            ...chat.filter(route => !writers.some(writer => writer.displayName === f('${0} · illustrations', [route.displayName]))).map(route => [route.runtimeRouteId, f('Use ${0}', [route.displayName])]), ['manual', t('I will write descriptions myself')]];
+        const choices = [...(value ? [] : [['', t('Choose…')]]), ...config.routes.map(route => [route.runtimeRouteId, route.displayName]), ['manual', t('I will write descriptions myself')]];
         return section(doc, t('Image descriptions'), { step: 3, done: ready.writes || ready.manual }, [
             el(doc, 'p', { className: 'atri-ill-muted', text: t('A chat model reads the passage and its surroundings, then writes what to draw. Each description is one extra short request to that model.') }),
             field(doc, t('Written by'), select(doc, value, choices, guard(id => id && chooseWriter(id)))),
-            chat.length || writers.length ? null : el(doc, 'p', { className: 'atri-ill-muted', text: t('Connect a chat model in Runtime first, or write descriptions yourself.') })]);
+            el(doc, 'p', { className: 'atri-ill-muted', text: t('This is the Image descriptions job in Model roles.') }),
+            config.routes.length ? null : el(doc, 'p', { className: 'atri-ill-muted', text: t('Connect a chat model in Runtime first, or write descriptions yourself.') })]);
     }
     function spendingSection(ready) {
         const cost = capability?.capabilities?.cost;

@@ -6,7 +6,7 @@ import { getVersionedModelPromptResourceIdentity } from './resources.js';
 // Read exact resources through their existing owners, including installed, frozen Programs.
 export async function readPromptControls(host, handle, route) {
     const resolver = createHostRouteResolver(host);
-    const resolved = await resolver.resolve({ handle, routeRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId }, role: route.role });
+    const resolved = await resolver.resolve({ handle, routeRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId }, role: 'role.narrator' });
     return flattenPromptProgram(resolved, { validateBindings: false }).parameters;
 }
 

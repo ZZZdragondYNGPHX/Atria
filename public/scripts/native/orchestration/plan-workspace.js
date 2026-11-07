@@ -74,8 +74,9 @@ export function mountPlanLibrary({ document: doc, root, client, onOpen }) {
     async function starterWithModel(title) {
         const body = starterDocument(title);
         try {
-            const routes = (await runtimeRequest('/configuration', { signal: controller.signal })).routes ?? [];
-            const narrator = routes.find(route => route.role === 'role.narrator');
+            // A new Plan starts with the preset that narrates stories today.
+            const config = await runtimeRequest('/configuration', { signal: controller.signal });
+            const narrator = (config.routes ?? []).find(route => route.runtimeRouteId === config.roleAssignments?.assignments?.['role.narrator']);
             if (!narrator) return body;
             const pin = await client.inspectDependency({ pinId: 'model.narrator', port: 'model', resourceRef: { scope: 'player', runtimeRouteId: narrator.runtimeRouteId } }, controller.signal);
             const draft = new PlanDraft(body), agent = draft.definition.nodes.find(node => node.kind === 'agent');
@@ -1020,12 +1021,11 @@ export function mountPlanEditor({ document: doc, root, client, shell, planId, en
             helper.replaceChildren();
             if (port.value === 'model') {
                 const routes = await loadRoutes();
-                const choose = select(doc, [['', routes.length ? tl('Choose a Runtime route') : tl('No Runtime routes found')], ...routes.map(route => [route.runtimeRouteId, fmt('${0} · ${1}', [route.displayName || route.runtimeRouteId, route.role ?? ''])])], { value: '' });
+                const choose = select(doc, [['', routes.length ? tl('Choose a Runtime route') : tl('No Runtime routes found')], ...routes.map(route => [route.runtimeRouteId, route.displayName || route.runtimeRouteId])], { value: '' });
                 choose.addEventListener('change', () => {
                     if (!choose.value) return;
                     ref.value = JSON.stringify({ scope: 'player', runtimeRouteId: choose.value });
-                    const role = routes.find(route => route.runtimeRouteId === choose.value)?.role?.replace(/^role\./, '');
-                    if (!pinId.value.trim() && role) pinId.value = 'model.' + role.replace(/_/g, '-');
+                    if (!pinId.value.trim()) pinId.value = 'model.' + choose.value.slice(-8);
                 });
                 field(doc, tl('Runtime route'), choose, { parent: helper, key: 'pin.route' });
                 let resources;

@@ -147,7 +147,7 @@ export class NativeProjectOrchestrationAuthority {
                 fail('native_orchestration_project_tool_pin_stale');
             names.add(tool.resourceRef.name);
         }
-        const validation = await inspectModelCapabilities({ handle, definition: graph, dependencyPins: plan.dependencyPins, resolver: this.owner.modelResolver });
+        const validation = await inspectModelCapabilities({ handle, definition: graph, dependencyPins: plan.dependencyPins, resolver: this.owner.modelResolver, nodeRole: () => 'role.studio' });
         if (validation.issues.length) fail('native_orchestration_model_authority_unavailable');
         let currentModels = validation.models;
         const inspectedModel = (target, required) => {
@@ -156,7 +156,7 @@ export class NativeProjectOrchestrationAuthority {
                 && required.every(capability => inspected.resolved.requirements.includes(capability)) ? inspected : null;
         };
         const raw = await host.persistence.getRuntimeRoute(handle, routeRef.runtimeRouteId);
-        if (raw?.role !== 'role.studio' || hash(raw) !== pin.integrity)
+        if (!raw || hash(raw) !== pin.integrity)
             fail('native_orchestration_project_route_mismatch');
         // First prove original owned Route pins. Project prompt composition is
         // derived below from the same original Studio revision, never by

@@ -10,7 +10,7 @@ export async function runtimeRequest(path = '/configuration', { method = 'GET', 
     const payload = await response.json();
     if (!response.ok) throw Object.assign(new Error(payload.message || payload.error || 'Runtime request failed'), { code: payload.error, details: payload.details });
     if (method !== 'GET') await onCommitted?.(payload);
-    if (method !== 'GET' && (/^\/(api-presets|presets|configuration)(\/|$)/.test(path) || /^\/resources(?:\/(?:revision|delete|archive))?$/.test(path))) {
+    if (method !== 'GET' && (/^\/(api-presets|presets|configuration|role-assignments)(\/|$)/.test(path) || /^\/resources(?:\/(?:revision|delete|archive))?$/.test(path))) {
         // A successful mutation can repaint its owner while dependent scopes
         // refresh. Still await all observers before resolving to the caller.
         await Promise.all([...configurationListeners].map(listener => Promise.resolve().then(listener)));
@@ -61,7 +61,6 @@ export function runtimeRemediation(code) {
         native_retrieval_execution_failed: ['Retrieval failed. Check the selected provider endpoint and model, then retry.', 'retrieval'],
         native_retrieval_browser_unavailable: ['This browser does not support WebGPU. Select another Native Retrieval provider.', 'retrieval'],
         native_retrieval_browser_model_invalid: ['Select a supported WebLLM embedding model in Runtime Retrieval.', 'retrieval'],
-        native_runtime_fallback_role: ['This role conflicts with a fallback relationship. Remove the incompatible fallback reference before changing the role.', null],
         native_runtime_referenced: ['This item is still in use. Update its references before deleting it.', null],
         native_runtime_delete_failed: ['Could not delete this item. Reload and try again.', null],
         native_resource_archive_failed: ['Could not change the archive state. Reload and try again.', null],
@@ -78,8 +77,8 @@ export function runtimeRemediation(code) {
         native_secret_selection_required: ['Finish creating or select a stored Secret before saving the connection.', null],
         native_generation_context_ambiguous: ['Choose either a Session or a Project context, not both.', 'diagnostics'],
         native_generation_route_ref_invalid: ['Choose an exact player Runtime route. Session-scoped routes are not provisioned by this host.', 'routes'],
-        native_generation_route_missing: ['No route is configured for this role. Create a route with an exact Model, Generation and Prompt.', 'routes'],
-        native_generation_route_ambiguous: ['Several primary routes match this role. Assign distinct roles or link alternatives as fallbacks.', 'routes'],
+        native_generation_route_missing: ['The API preset chosen for this job no longer exists. Choose another in Model roles.', 'routes'],
+        native_generation_role_unassigned: ['No model is assigned to this job yet. Choose one in Model roles.', 'routes'],
         native_generation_configuration_invalid: ['Save failed. Check required fields, references and revision uniqueness. Your edits are still here.', null],
         native_generation_context_required: ['Open a Native game, or select a Build Project and its exact revision, then preview again.', null],
         native_generation_revision_conflict: ['The context changed. Reopen the current Session or Project and preview again.', null],

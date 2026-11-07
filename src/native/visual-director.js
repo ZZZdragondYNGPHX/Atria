@@ -103,7 +103,8 @@ export class VisualDirector {
         const { view } = await resolveVisualSource(this.host.sessionCore, handle, shot.source); assertVisualDisclosure(view, shot.source);
         const settings = (await this.host.extensions.illustrationSettings(handle)).value;
         if (!settings.director.routeId) visualError('director_route_missing');
-        const route = (await this.host.persistence.listRuntimeRoutes(handle)).find(r => r.runtimeRouteId === settings.director.routeId && r.role === 'role.illustration_prompt');
+        const assigned = (await this.host.persistence.getRoleAssignments(handle)).assignments['role.illustration_prompt'];
+        const route = (await this.host.persistence.listRuntimeRoutes(handle)).find(r => r.runtimeRouteId === assigned);
         if (!route) visualError('director_route_missing');
         await this.host.sessionCore.runs.assert(handle, shot.source.sessionId, 'generate');
         const executionSnapshot = await this.host.sessionCore.load(handle, shot.source.sessionId);

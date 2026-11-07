@@ -14,6 +14,7 @@ import { EVOLUTION_RULE, evolutionFields as fields, evolutionHash as hash, evolu
 import { createNativeId } from '../identity.js';
 import { qualityEnvelope, validateQualityReport, qualityProfile, requirePilotSources } from './evaluation/quality.js';
 import { immutable } from '../model-prompt-runtime/execution-utils.js';
+import { presetIdentity } from '../model-prompt-runtime/role-assignments.js';
 
 export const EVOLUTION_EVALUATOR_VERSION = 1;
 
@@ -90,8 +91,10 @@ export class EvolutionEvaluator {
     #sourceProbeConfigurations = new WeakSet();
     #sourceProbeJobs = new WeakMap();
     constructor({ host, repository }) { this.host = host; this.repository = repository; }
-    async configuration(handle, routeId, projectPromptRef = null, nativePlan = null) {
-        const primary = await this.#configuration(handle, routeId, projectPromptRef, false);
+    // The entrance decides the job: Project evaluation is Studio work, Chat is narration.
+    async configuration(handle, routeId, projectPromptRef = null, nativePlan = null, entrance = null) {
+        const role = (entrance ?? nativePlan?.sourceSelector.domain) === 'project' ? 'role.studio' : 'role.narrator';
+        const primary = await this.#configuration(handle, routeId, projectPromptRef, false, role);
         if (!nativePlan) return primary;
         // These are the existing isolated Native consumers, not arbitrary
         // Graph execution or a second approval/publication authority.
@@ -104,12 +107,12 @@ export class EvolutionEvaluator {
             const pin = pins.find(item => item.pinId === node.policy.agentPinId && node.dependencyPinIds.includes(item.pinId));
             if (pin?.port !== 'model' || pin.resourceRef.scope !== 'player') throw new TypeError('native_orchestration_evaluation_unavailable');
             const id = pin.resourceRef.runtimeRouteId, override = nativePlan.routeOverride?.runtimeRouteId === id ? nativePlan.routeOverride : null;
-            const config = id === routeId ? primary : routes.get(id) ?? await this.#configuration(handle, id, override?.promptProgramRef ?? null, false);
+            const config = id === routeId ? primary : routes.get(id) ?? await this.#configuration(handle, id, override?.promptProgramRef ?? null, false, role);
             // The current worker bridge sends each trial request exactly once.
             // It cannot certify a failure graph or a retried remote operation.
             if (config.route.fallbackRouteRefs.length || config.route.policy.maxRetries !== 0)
                 throw new TypeError('native_orchestration_evaluation_unavailable');
-            if (hash(config.route) !== pin.integrity || override && hash(config.route) !== hash(override)) throw new TypeError('native_orchestration_evaluation_unavailable');
+            if (hash(presetIdentity(config.route)) !== pin.integrity || override && hash(presetIdentity(config.route)) !== hash(presetIdentity(override))) throw new TypeError('native_orchestration_evaluation_unavailable');
             // The existing confirmed price names one paired configuration.
             // Distinct model/provider/generation prices need their own evidence.
             if (!same(config.model, primary.model) || !same(config.connection, primary.connection) || !same(config.generation, primary.generation))
@@ -122,17 +125,17 @@ export class EvolutionEvaluator {
     }
     /** Exact user Route ceiling for engineering observations only. No promotion. */
     async sourceProbeConfiguration(handle, routeId) {
-        const config = immutable(await this.#configuration(handle, routeId, null, true));
+        const config = immutable(await this.#configuration(handle, routeId, null, true, 'role.narrator'));
         this.#sourceProbeConfigurations.add(config);
         return config;
     }
-    async #configuration(handle, routeId, projectPromptRef, sourceProbe) {
+    async #configuration(handle, routeId, projectPromptRef, sourceProbe, role) {
         const original = await this.host.persistence.getRuntimeRoute(handle, routeId);
         const route = projectPromptRef ? { ...original, promptProgramRef: projectPromptRef } : original;
         const persistence = Object.create(this.host.persistence);
         persistence.getRuntimeRoute = async (owner, id) => id === routeId ? route : this.host.persistence.getRuntimeRoute(owner, id);
         const resolver = createHostRouteResolver({ ...this.host, persistence });
-        const resolved = await resolver.resolve({ handle, routeRef: { scope: 'player', runtimeRouteId: routeId }, role: route.role, requirements: ['generation.tools'] });
+        const resolved = await resolver.resolve({ handle, routeRef: { scope: 'player', runtimeRouteId: routeId }, role, requirements: ['generation.tools'] });
         const output = resolved.generation.output.maxTokens;
         if (resolved.connection.providerAdapter !== 'provider.openai-compatible' || resolved.resources.some(r => r.ref.scope !== 'library')
             || (sourceProbe ? !Number.isSafeInteger(output) || output < 1 || output > resolved.model.limits.outputTokens
@@ -257,7 +260,7 @@ export class EvolutionEvaluator {
         if (settings.baseline.nativePlan || settings.candidate?.nativePlan) {
             for (const arm of settings.candidate ? ['baseline', 'candidate'] : ['baseline']) {
                 const plan = settings[arm].nativePlan;
-                if (!plan || plan.sourceSelector.domain !== (job.domain === 'project' ? 'project' : 'rp_chat') || configs[arm].route.role !== (job.domain === 'project' ? 'role.studio' : 'role.narrator')
+                if (!plan || plan.sourceSelector.domain !== (job.domain === 'project' ? 'project' : 'rp_chat')
                     || plan.revision.authorRef.handle !== handle || settings[arm].runtimeRouteId !== configs[arm].route.runtimeRouteId)
                     throw Object.assign(new TypeError('native_orchestration_evaluation_unavailable'), { code: 'native_orchestration_evaluation_unavailable' });
                 const retrieval = await frozenEvaluationRetrieval(this.host, handle, plan);

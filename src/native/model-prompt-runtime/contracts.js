@@ -820,7 +820,7 @@ export function assertRuntimeRoute(value) {
     }
     let projectPromptBindings;
     if (value.projectPromptBindings !== undefined) {
-        if (value.scope !== 'player' || value.role !== 'role.studio' || !Array.isArray(value.projectPromptBindings) || value.projectPromptBindings.length > 32) throw new TypeError('Invalid Project Prompt bindings');
+        if (value.scope !== 'player' || !Array.isArray(value.projectPromptBindings) || value.projectPromptBindings.length > 32) throw new TypeError('Invalid Project Prompt bindings');
         const projects = new Set();
         projectPromptBindings = freezeArray(value.projectPromptBindings.map(binding => {
             object(binding, 'Project Prompt binding'); only(binding, ['projectId', 'promptProgramRef', 'candidateId'], 'Project Prompt binding');
@@ -837,7 +837,8 @@ export function assertRuntimeRoute(value) {
         scope: value.scope,
         ...(sessionId ? { sessionId } : {}),
         displayName: text(value.displayName, 'RuntimeRoute.displayName', 256),
-        role: namespaced(value.role, 'RuntimeRoute.role'),
+        // A stored API preset has no role. Execution stamps the role it is serving.
+        ...(value.role === undefined ? {} : { role: namespaced(value.role, 'RuntimeRoute.role') }),
         modelProfileRef: assertPlayerProfileRef(
             value.modelProfileRef,
             'modelProfile',

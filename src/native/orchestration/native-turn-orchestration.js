@@ -373,13 +373,15 @@ export class NativeNarratorOrchestrationAuthority {
             || !['result', 'rp_narration'].includes(graph.outputContract.kind) || graph.outputContract.allowPartial
             || graph.edges.some(edge => edge.condition !== 'always' || edge.loopBack || edge.maxVisits !== 1)
             || graph.graphChangePolicy.allowedOperations.length) fail('native_orchestration_turn_plan_unavailable');
-        const validation = await validateModelCapability({ handle, definition: graph, dependencyPins: plan.dependencyPins, resolver: this.modelResolver });
+        // With an action resolver, the entry node resolves and the next one narrates.
+        const nodeRole = node => needsResolver && graph.entryNodeIds[0] === node.nodeId ? 'role.intent_resolver' : 'role.narrator';
+        const validation = await validateModelCapability({ handle, definition: graph, dependencyPins: plan.dependencyPins, resolver: this.modelResolver, nodeRole });
         if (validation.issues.length) fail('native_orchestration_model_authority_unavailable');
         const profiles = {}, routes = await host.persistence.listRuntimeRoutes(handle);
         for (const node of agents) {
             const pin = plan.dependencyPins.find(pin => pin.pinId === node.policy.agentPinId && node.dependencyPinIds.includes(pin.pinId));
             if (pin?.port !== 'model' || pin.resourceRef.scope !== 'player') fail('native_orchestration_model_authority_unavailable');
-            const pinned = routes.find(route => route.runtimeRouteId === pin.resourceRef.runtimeRouteId), role = pinned?.role;
+            const role = nodeRole(node);
             if (role !== 'role.narrator' && ownedRetrieval(node).length) fail('native_orchestration_turn_plan_unavailable');
             if (!['role.narrator', ...(needsResolver ? ['role.intent_resolver'] : [])].includes(role) || profiles[role]) fail('native_orchestration_turn_route_mismatch');
             const explicit = role === 'role.narrator' ? input.routeRef : undefined;

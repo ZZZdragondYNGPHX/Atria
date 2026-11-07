@@ -21,7 +21,7 @@ const families = {
     media: ['assetRef'],
     personas: ['persona', 'personaRevision', 'personaDefault', 'personaMigration'],
     agents: ['agentExperience', 'agentEvidence', 'agentGoal', 'agentEvolution', 'agentEvolutionOwner', 'orchestrationPlan', 'orchestrationBinding', 'orchestrationRevision', 'orchestrationRun', 'orchestrationRecord', 'orchestrationCommand'],
-    settings: ['connectionProfile', 'credentialTargetPermit', 'modelProfile', 'runtimeRoute', 'retrievalProfile'],
+    settings: ['connectionProfile', 'credentialTargetPermit', 'modelProfile', 'runtimeRoute', 'runtimeRoleAssignments', 'retrievalProfile'],
     cache: ['runtimeCheckpoint'],
     other: ['hostFence', 'maintenance', 'versionedJsonResource', 'versionedJsonResourceRevision'],
 };

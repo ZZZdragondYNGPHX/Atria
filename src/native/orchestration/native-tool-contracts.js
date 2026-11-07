@@ -48,7 +48,7 @@ export async function captureNativeTool(handle, raw, host) {
         const selected = resolveSkillInvocation(await repository.list({ scope: 'all' }), { context, settings, path: 'narrative' });
         const entry = selected.find(item => item.name === ref.input.name && equal(item.scope, ref.input.scope));
         if (!entry || entry.installedHash !== ref.input.version) nativeToolFailure();
-        route = selectNativeRuntimeRoute(await host.persistence.listRuntimeRoutes(handle), 'role.narrator');
+        route = selectNativeRuntimeRoute(await host.persistence.listRuntimeRoutes(handle), 'role.narrator', undefined, (await host.persistence.getRoleAssignments(handle)).assignments);
         // Verify that the exact original version already exists. Authoring is
         // never allowed to create a pin/version or enable a Skill.
         const value = ref.operation === 'read' ? await repository.readFile(ref.input)
