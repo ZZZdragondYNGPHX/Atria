@@ -30,6 +30,7 @@ export function createExtensionSdk({ plugin, context, document: doc, root, isCur
         if (!node || node.ownerDocument !== doc || node.parentNode) throw new TypeError('Mount requires a new, unattached node');
         if (!['extension', 'overlay'].includes(surface)) throw new TypeError('Unknown extension UI surface');
         const parent = surface === 'overlay' ? globalThis.Atria?.shell?.getRoot?.() ?? root : root;
+        if (surface === 'overlay') node.dataset.atriaExtensionOverlay = 'true';
         parent.append(node);
         return own(() => node.remove());
     };

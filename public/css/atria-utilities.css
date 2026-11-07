@@ -604,3 +604,5 @@ html[data-atria-appearance] .backupSyncCenter .menu_button_note {
 .atri-extension-choice { display: flex; align-items: center; gap: 10px; }
 .atri-extension-choices { display: grid; gap: 8px; }
 .atri-extension-choices[hidden] { display: none; }
+/* Host panels win: extension overlays step aside while the Inspector dock is open. */
+#atria-app-shell:has(> #atria-context-dock[data-atria-open="true"]) > [data-atria-extension-overlay] { visibility: hidden; }
