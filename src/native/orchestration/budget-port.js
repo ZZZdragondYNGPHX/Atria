@@ -1,7 +1,7 @@
 import { ConflictError } from '../../storage/errors.js';
 import { equalNativeDocuments, hashNativeDocument } from '../repositories/common.js';
 import { assertNativeId } from '../identity.js';
-import { readRunControl } from '../run-control.js';
+import { readRunControl, replyComputeCapacity } from '../run-control.js';
 import { fields } from '../../../public/shared/native-values.js';
 import { assertNativeTurnQuota } from './native-turn-quota.js';
 import { orchestrationComputeAttemptId, inspectComputeChildClosure, inspectComputeEffectClosure, inspectComputeReservation, assertComputeBudget } from '../../../public/shared/native-compute-budget.js';
@@ -289,7 +289,9 @@ export class BudgetPort {
             if (active !== tx) fail('native_orchestration_budget_transaction_required');
             const ledger = await this.#ledger(handle, tx, authorityRef);
             if (!ledger) return null;
-            const counters = inspectComputeReservation({ compute: ledger }, reservationId);
+            const counters = authorityRef.domain === 'session' && reservationId === null
+                ? replyComputeCapacity(await readRunControl(tx, handle, authorityRef.sessionId), authorityRef.operationId)
+                : inspectComputeReservation({ compute: ledger }, reservationId);
             return { scope: reservationId === null ? 'original_bank' : 'child_reservation',
                 allocationStatus: reservationId === null ? 'bank' : ledger.reservations.find(row => row.reservationId === reservationId).status, ...counters };
         });
@@ -500,6 +502,13 @@ export class BudgetPort {
                 const ref = admitted.get(attemptId);
                 if (!ref) fail('native_generation_attempt_conflict');
                 return this.settleAttempt(handle, ref, usage);
+            },
+            void: attemptId => {
+                const ref = admitted.get(attemptId);
+                if (!ref) fail('native_generation_attempt_conflict');
+                if (authorityRef.domain === 'session') return this.sessionCore.runs.voidCompute(handle, authorityRef.sessionId, authorityRef.operationId, attemptId);
+                if (authorityRef.authority === 'project_task') return this.projectAgent.voidGeneration(handle, authorityRef.projectId, authorityRef.taskId, attemptId);
+                return this.rpControl.voidCompute(handle, authorityRef.controlId, authorityRef.operationId, attemptId);
             },
             nextLocalWorkAttemptId: () => {
                 const current = localOrdinal++, attemptId = localWorkAttemptId(effectId, current);

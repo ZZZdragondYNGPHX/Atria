@@ -9,10 +9,12 @@ const DEFAULT_JINA_URL = 'https://api.jina.ai/v1';
 async function sendRerank(url, headers, body, request) {
     const compute = request?.nativeRetrieval?.compute;
     const serializedBody = JSON.stringify(body);
-    let usage = null, ticket;
+    let usage = null, ticket, dispatched = false;
     try {
         request?.nativeRetrieval?.signal?.throwIfAborted();
         ticket = await compute?.beforeSend(JSON.parse(serializedBody), { endpoint: new URL(url).href, method: 'POST' });
+        request?.nativeRetrieval?.signal?.throwIfAborted();
+        dispatched = true;
         const response = await (request?.nativeRetrieval?.fetch ?? fetch)(url, { method: 'POST', headers: { ...headers, ...nativeRetrievalHeaders(request) }, body: serializedBody,
             ...(request?.nativeRetrieval ? { redirect: 'error', signal: request.nativeRetrieval.signal } : {}) });
         if (!response.ok) throw new Error(`Rerank provider failed: ${response.status}`);
@@ -24,7 +26,7 @@ async function sendRerank(url, headers, body, request) {
             throw new Error('Invalid rerank results');
         }
         return data;
-    } finally { await compute?.settle(usage, ticket); }
+    } finally { await compute?.settle(usage, ticket, { dispatched }); }
 }
 
 /**

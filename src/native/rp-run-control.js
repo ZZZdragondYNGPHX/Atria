@@ -8,7 +8,7 @@ import { assertWritable } from '../storage/read-only-mode.js';
 import { withChatWrite } from '../storage/repositories/chat-write-boundary.js';
 import { ChatRepo } from '../storage/repositories/chat-repo.js';
 import { bindComputeBudget as bindOriginalComputeBudget, admitComputeAttempt, chargeLocalWork, hasOpenComputeReservations, hasRetainedOrchestrationCompute, releaseComputeChild, reserveComputeChild,
-    retireComputeLedger, settleComputeAttempt, settleLocalWork } from '../../public/shared/native-compute-budget.js';
+    retireComputeLedger, settleComputeAttempt, settleLocalWork, voidComputeAttempt } from '../../public/shared/native-compute-budget.js';
 import { fields } from '../../public/shared/native-values.js';
 import { sourceContent, sourceMessageId } from '../../public/scripts/agents/memory/source-provenance.js';
 import { PROVENANCE_NAMESPACE } from '../../public/scripts/agents/memory/source-lifecycle.js';
@@ -270,6 +270,9 @@ export class RpRunControl {
 
     settleCompute(handle, controlId, operation, attemptId, usage) {
         return this._settle(handle, controlId, operation, op => settleComputeAttempt(op, attemptId, usage));
+    }
+    voidCompute(handle, controlId, operation, attemptId) {
+        return this._settle(handle, controlId, operation, op => voidComputeAttempt(op, attemptId));
     }
 
     settleLocalWork(handle, controlId, operation, attemptId, usage) {

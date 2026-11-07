@@ -87,7 +87,10 @@ export class ContextRetrievalPort {
         if (parent.budgetEnvelopeDigest !== hash(limits)) fail();
         const route = await this.persistence.getRuntimeRoute(handle, parent.actionRef.runtimeRouteId);
         if (!route?.executionPolicy || !equal(route.executionPolicy.computeBudget, limits)) fail();
-        scope.computeOptions = cloneNativeDocument(optionalComputeOptions(route.executionPolicy, 'rerank'));
+        const model = await this.persistence.getModelProfile(handle, route.modelProfileRef.modelProfileId);
+        scope.computeOptions = cloneNativeDocument(optionalComputeOptions(route.executionPolicy, 'rerank', {
+            maxRequests: 1, maxTokens: model.limits.contextTokens,
+        }));
         const node = root.graph.nodes.find(node => node.nodeId === request.inputRefs[0]?.nodeId);
         const attempt = (await this.runs.engine.withTransaction(handle, tx => readAttempt(tx, handle, root, parent.nodeAttemptId))).doc;
         if (!node?.capabilities.includes('memory.retrieve') || node.nodeId !== attempt.nodeId || !equal(attempt.effectRefs, [modelEffectId])) fail();
@@ -254,14 +257,16 @@ export class ContextRetrievalPort {
         const handle = scope.handle, effectId = createNativeId('orchestrationEffect');
         if (this.runs.engine.hasActiveTransaction(handle)) fail('native_orchestration_context_retrieval_ambient_transaction');
         const upperBound = Math.max(1, Buffer.byteLength(JSON.stringify(body), 'utf8'));
-        const computeOptions = profile.mode === 'rerank' ? scope.computeOptions : {};
+        const computeOptions = scope.computeOptions;
         const reserve = computeOptions.reserve;
         if (reserve !== undefined) {
             const root = await this.runs.get(handle, scope.runId);
             const capacity = reserve === null ? null : await this.runs.engine.withTransaction(handle, tx => this.budgetPort.observeCapacity(handle,
                 { authorityRef: root.budgetAuthorityRef, reservationId: null }, { tx }));
-            const code = reserve === null || !capacity ? 'native_generation_required_budget_unknown'
-                : capacity.overrun || capacity.remaining.requests < reserve.maxRequests + 1 || capacity.remaining.tokens < reserve.maxTokens + upperBound
+            // No ledger yet means nothing has been spent: the reserve is intact.
+            const remaining = capacity?.remaining ?? { requests: scope.limits.maxRequests, tokens: scope.limits.maxTokens };
+            const code = reserve === null ? 'native_generation_required_budget_unknown'
+                : capacity?.overrun || remaining.requests < reserve.maxRequests + 1 || remaining.tokens < reserve.maxTokens + upperBound
                     ? 'native_generation_required_budget_reserved' : null;
             if (code) { const error = new ConflictError(code); this.#skips.add(error); throw error; }
         }
@@ -285,7 +290,11 @@ export class ContextRetrievalPort {
             const claim = await this.effects.claim(handle, { ...runGuard(await this.runs.get(handle, scope.runId)), effectId });
             if (!claim.claimed || !claim.dispatchToken) fail('native_orchestration_context_retrieval_unresolved');
             dispatchToken = claim.dispatchToken; await current(); return ticket;
-        }, settle: async (usage, actualTicket) => {
+        }, settle: async (usage, actualTicket, { dispatched = true } = {}) => {
+            if (!dispatched && state.budgetAttemptRef) {
+                await bank.void(state.budgetAttemptRef.attemptId);
+                return;
+            }
             if (actualTicket === undefined) return;
             if (actualTicket !== ticket || !state.budgetAttemptRef) fail();
             await bank.settle(state.budgetAttemptRef.attemptId, usage);

@@ -28,6 +28,7 @@ import { testRetrievalProfile, listRetrievalModels } from '../native/retrieval-e
 import { admitMemoryCorpusWork, prepareRetrievalCompute } from '../native/retrieval-compute.js';
 import { executeProjectSkillWork } from '../native/skill-invocation.js';
 import { fields } from '../../public/shared/native-values.js';
+import { replyExecutionMiddleware } from '../native/reply-execution.js';
 import { NATIVE_RETRIEVAL_SCOPE_ERRORS } from '../../public/scripts/native/retrieval-contracts.js';
 import { getStorageEngine, getSettingsRepo } from '../storage/index.js';
 import { NativeMemoryAuthority } from '../native/memory-authority.js';
@@ -152,6 +153,7 @@ async function rebindDeclaredCapabilities(host, handle, connection) {
 
 export function createNativeGenerationRouter(getHost = services, getChats = getChatRepo) {
     const router = express.Router();
+    router.use(replyExecutionMiddleware(() => getHost().sessionCore.runs));
     router.get('/quality-profiles', (req, res) => {
         if (!req.user?.profile?.handle) return res.sendStatus(401);
         res.set('Cache-Control', 'private, no-store');
@@ -694,6 +696,30 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             res.status(400).json({ error: error.code || 'native_task_binding_preflight_failed' });
         }
     });
+    // A user-initiated generation starts with a fresh request/token allowance.
+    // Internal retries and resumed operations never call this.
+    router.post('/play/budget', async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle) return res.sendStatus(401);
+        try {
+            fields(req.body, ['sessionId', 'revisionId'], 'Reply budget source');
+            const control = await getHost().sessionCore.runs.observe(handle, req.body.sessionId);
+            const op = Object.values(control?.operations ?? {}).find(op => op.lane === 'turn' && op.anchor.revisionId === req.body.revisionId);
+            res.set('Cache-Control', 'private, no-store').json({ generationId: control?.replyExecution?.generationId ?? op?.generationId ?? null });
+        } catch (error) { res.status(400).json({ error: error.code || 'native_generation_begin_failed' }); }
+    });
+    router.post('/play/begin', async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle) return res.sendStatus(401);
+        try {
+            fields(req.body, ['sessionId', 'revisionId', 'generationId', 'expectedGenerationId'], 'Generation start');
+            const host = getHost(), snapshot = await host.sessionCore.load(handle, req.body.sessionId);
+            if (snapshot.revision.revisionId !== req.body.revisionId) throw Object.assign(new Error('revision'), { code: 'native_generation_revision_conflict' });
+            res.json(await host.sessionCore.runs.beginGeneration(handle, snapshot, req.body));
+        } catch (error) {
+            res.status(error.name === 'ConflictError' || error.code?.includes('conflict') ? 409 : 400).json({ error: error.code || 'native_generation_begin_failed' });
+        }
+    });
     router.post('/play/prepare', async (req, res) => {
         const handle = req.user?.profile?.handle;
         if (!handle) return res.sendStatus(401);
@@ -757,7 +783,9 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
         const handle = req.user?.profile?.handle;
         if (!handle) return res.sendStatus(401);
         res.set('Cache-Control', 'private, no-store');
-        try { res.json(await presets(getHost()).presentation(handle, req.body)); } catch { res.status(400).json({ error: 'native_preset_presentation_unavailable' }); }
+        try { res.json(await presets(getHost()).presentation(handle, req.body)); } catch (error) {
+            res.status(400).json(error.code === 'native_preset_presentation_unsupported' ? { error: error.code, message: error.message } : { error: 'native_preset_presentation_unavailable' });
+        }
     });
     for (const action of ['inspect', 'declare', 'prepare', 'check', 'checkRollback', 'apply', 'rollback', 'discard']) router.post('/presets/:id/prompt-candidates/' + action, async (req, res) => {
         const handle = req.user?.profile?.handle;
@@ -894,7 +922,7 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             res.json(await admitMemoryCorpusWork({ handle, context: req.body.computeContext, input: req.body.input, phase: req.body.phase,
                 persistence: host.persistence, core: host.sessionCore, agent: host.agent, studio: host.studio }));
         } catch (error) {
-            const code = ['native_generation_budget_exhausted', ...NATIVE_RETRIEVAL_SCOPE_ERRORS].includes(error.code) ? error.code : 'native_retrieval_compute_invalid';
+            const code = ['native_generation_budget_exhausted', 'native_generation_local_work_exhausted', ...NATIVE_RETRIEVAL_SCOPE_ERRORS].includes(error.code) ? error.code : 'native_retrieval_compute_invalid';
             res.status(code === 'storage_read_only' ? 503 : 400).json({ error: code });
         }
     });
@@ -915,7 +943,7 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
                 signal: controller.signal });
             if (!res.destroyed) res.json(result);
         } catch (error) {
-            const code = ['native_generation_budget_exhausted', 'generation_cancelled', ...NATIVE_RETRIEVAL_SCOPE_ERRORS].includes(error.code) ? error.code : 'native_skill_execution_failed';
+            const code = ['native_generation_budget_exhausted', 'native_generation_local_work_exhausted', 'generation_cancelled', ...NATIVE_RETRIEVAL_SCOPE_ERRORS].includes(error.code) ? error.code : 'native_skill_execution_failed';
             if (!res.destroyed) res.status(code === 'storage_read_only' ? 503 : 400).json({ error: code });
         }
     });

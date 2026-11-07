@@ -141,10 +141,12 @@ export async function getOpenAIBatchVector(texts, source, directories, model = '
 
     const compute = request?.nativeRetrieval?.compute;
     const serializedBody = JSON.stringify(body);
-    let usage = null, ticket;
+    let usage = null, ticket, dispatched = false;
     try {
         request?.nativeRetrieval?.signal?.throwIfAborted();
         ticket = await compute?.beforeSend(JSON.parse(serializedBody), { endpoint: new URL(embeddingsUrl).href, method: 'POST' });
+        request?.nativeRetrieval?.signal?.throwIfAborted();
+        dispatched = true;
         const response = await (request?.nativeRetrieval?.fetch ?? fetch)(embeddingsUrl, {
             method: 'POST',
             headers: {
@@ -177,7 +179,7 @@ export async function getOpenAIBatchVector(texts, source, directories, model = '
 
         const vectors = data.data.map(x => x.embedding);
         return vectors;
-    } finally { await compute?.settle(usage, ticket); }
+    } finally { await compute?.settle(usage, ticket, { dispatched }); }
 }
 
 /**

@@ -37,6 +37,8 @@ export async function recallHybridMemory(context, query, options = {}) {
         rebuildVectors: options.rebuildVectors === true,
         computeContext: ['information', 'timeline'].includes(eligibility.identity.kind) ? {
             kind: 'session', sessionId: eligibility.identity.anchor.sessionId, revisionId: eligibility.identity.anchor.revisionId,
+            ...(nativeSessionRuntime.replyExecution?.sessionId === eligibility.identity.anchor.sessionId
+                ? { generationId: nativeSessionRuntime.replyExecution.generationId } : {}),
         } : null });
     if (result.coreOverBudget) result.diagnostics.push('existing_state_exceeds_memory_budget');
     return { ...result, tokenCounting: context.getTokenCountAsync ? 'tokenizer' : 'utf8_bytes_estimate' };

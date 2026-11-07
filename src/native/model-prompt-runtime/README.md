@@ -107,6 +107,11 @@ committed source, preserving legitimate pending World projections. Full V3
 Audience/Disclosure/Join invalidation and long-form quality still require their
 original production consumers and evidence.
 
+Provider adapters invoke the optional `onDispatch` callback immediately before
+their HTTP call, after checkpoint validation and cancellation checks. The Host
+uses this boundary to refund admissions that failed before any send; an attempted
+send with no response remains charged with unknown usage.
+
 ### Unpublished Draft Preview / Diff
 
 Authenticated `POST /api/native/generation/preview/draft` accepts:

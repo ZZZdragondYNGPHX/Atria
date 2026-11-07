@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { equalNativeDocuments } from './repositories/common.js';
 import { assertNativeId } from './identity.js';
 import { randomUUID } from 'node:crypto';
@@ -278,7 +279,7 @@ export class NativeTaskScheduler {
         // Cancellation can precede the caller attaching a handler.
         result.catch(() => {});
         const operation = { owner, key, fingerprint, retry, resources: [...new Set(resources)], controller, run, finalize, fresh, onChunk, projectResult, retainResult,
-            resolve, reject, sequence: this.serial++, queuedAt: Date.now(),
+            resolve, reject, context: AsyncLocalStorage.snapshot(), sequence: this.serial++, queuedAt: Date.now(),
             view: { operationId, kind, anchor, executionClass, status: 'queued', attempt: 0, provisionalPresentation: '', deliveryReceipt: null } };
         let settled;
         operationCompletions.set(operation, { promise: new Promise(resolve => { settled = resolve; }), resolve: () => settled() });
@@ -307,7 +308,7 @@ export class NativeTaskScheduler {
             const operation = this.queue.splice(index, 1)[0];
             this.running.add(operation);
             if (operation.resume) { operation.view.status = 'running'; operation.resume(); continue; }
-            void this.execute(operation);
+            void operation.context(() => this.execute(operation));
         }
     }
     async execute(operation) {

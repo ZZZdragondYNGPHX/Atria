@@ -21,7 +21,7 @@ export function mountPromptSamplePreview({ document: doc, parent, entry, entries
     const persona = field('Sample player persona', state.persona ?? '', true);
     const history = field('Sample history (JSON)', state.history ?? '[]', true);
     const parameters = field('Sample parameters (JSON)', state.parameters ?? '{}', true);
-    const requests = field('Trial request budget', state.maxRequests ?? 1); requests.type = 'number'; requests.min = '1'; requests.max = '32';
+    const requests = field('Trial request budget', state.maxRequests ?? 1); requests.type = 'number'; requests.min = '1';
     const tokens = field('Trial token budget', state.maxTokens ?? ''); tokens.type = 'number'; tokens.min = '1';
     const remember = () => Object.assign(state, { input: input.value, materials: materials.value, persona: persona.value, history: history.value,
         parameters: parameters.value, maxRequests: requests.value, maxTokens: tokens.value, routeId: route.value, baseline: baseline.value, baselineResource: baselineResource.value });

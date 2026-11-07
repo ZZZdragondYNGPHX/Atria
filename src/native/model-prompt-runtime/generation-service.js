@@ -189,6 +189,8 @@ export class GenerationService {
             if (error instanceof GenerationError || COMPUTE_ADMISSION_CODES.includes(error.code)) throw new GenerationError(error.code);
             if (['native_generation_draft_conflict', 'native_generation_resource_owner'].includes(error.code)) throw new GenerationError(error.code);
             if (['prompt_parameter_option', 'prompt_parameter_unknown', 'prompt_parameter_type', 'prompt_parameter_required'].includes(error.code)) throw new GenerationError(error.code);
+            // The client only sees the generic code; keep the cause in the server log (no stack/payload).
+            console.warn('[generation] execution failed:', error?.code ?? error?.name, String(error?.message ?? '').slice(0, 300));
             throw new GenerationError('generation_execution_failed');
         }
     }

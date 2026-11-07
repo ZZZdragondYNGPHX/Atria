@@ -121,7 +121,9 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
             while (taken.has(name)) name = base + ' (' + n++ + ')';
             for (const entry of mains) entry.resource.displayName = name;
         }
-        const result = await runtimeRequest('/presets', { method: 'POST', body: { preset: value, importing } }); await open(result.presetId); await renderPresetList(); };
+        const result = await runtimeRequest('/presets', { method: 'POST', body: { preset: value, importing } }); await open(result.presetId);
+        if (result.unsupportedTemplates?.length && preset?.presetId === result.presetId) { lastReceipt = { ...result, imported: true }; renderDetail(); }
+        await renderPresetList(); };
     const exportPreset = value => {
         const data = { format: value.format, schemaVersion: 1, programId: value.programId, ...(value.programRevision ? { programRevision: value.programRevision } : {}), categories: value.categories, moduleCategories: value.moduleCategories, entries: value.entries, regexScripts: value.regexScripts || [] };
         const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
@@ -280,6 +282,14 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
             const followed = (lastReceipt.followedBy || []).map(item => item.displayName);
             const receipt = literal('p', followed.length ? formatProductText('Saved. ${0} use this version from the next request.', [followed.join(', ')]) : tl('Saved.'), root);
             receipt.className = 'atri-library-feedback'; receipt.setAttribute('role', 'status');
+            if (lastReceipt.imported) receipt.textContent = tl('Imported. The prompt text is ready to use.');
+            // Optional templates this Atria version cannot run stay in the preset unchanged; say which.
+            if (lastReceipt.unsupportedTemplates?.length) {
+                const box = node('div', undefined, root); box.className = 'atri-library-feedback'; box.setAttribute('role', 'status');
+                literal('p', formatProductText('${0} display templates need features this version of Atria does not have. They are kept in the preset but not used; their items show as plain data.', [lastReceipt.unsupportedTemplates.length]), box);
+                const list = node('ul', undefined, box);
+                for (const item of lastReceipt.unsupportedTemplates) literal('li', item.type + ' · ' + item.reason, list);
+            }
         }
         if (!section) { renderOverview(root); return; }
         if (section === 'regex') {

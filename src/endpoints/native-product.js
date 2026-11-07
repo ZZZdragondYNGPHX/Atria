@@ -113,6 +113,8 @@ export function createNativeProductRouter(getServices = services, artifacts = na
             );
         } catch (error) {
             if (response.headersSent) { response.destroy(error); return; }
+            // An uncoded failure reaches the client only as a generic code; keep its cause in the log.
+            if (!error?.code) console.warn('[native-product]', request.method, request.path, error?.message ?? error);
             const status = error?.code === 'storage_quota_exceeded' ? 413 : error?.code === 'storage_usage_unavailable' ? 503 : error?.code === 'native_persona_scope_denied' ? 403 : error?.code === 'native_persona_unavailable' ? 404 : error?.code === 'storage_read_only' ? 503 : error?.name === 'ConflictError' || String(error?.code || '').includes('conflict')
                 || String(error?.code || '').includes('referenced')
                 ? 409

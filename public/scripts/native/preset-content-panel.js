@@ -6,6 +6,21 @@ import { validateSchemaValue } from './experience/world/schema.js';
 import { createPresetPresentationBridge } from './preset-presentation-bridge.js';
 import { translateShellText as tl, formatShellText } from '../atria-shell/localization.js';
 
+const DIAGNOSTIC_REASONS = {
+    content_type_unknown: 'The model used an item type this preset does not declare.',
+    content_block_invalid: 'This item does not match the fields its type declares.',
+    content_block_capacity: 'This item is too large to keep.',
+    content_draft_block: 'A player draft can only contain story text.',
+};
+// The raw reply is the model's JSON (possibly fenced); return just the failed flow item.
+function failedItem(raw, index) {
+    if (typeof raw !== 'string' || !Number.isInteger(index)) return null;
+    try {
+        const item = JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1)).flow?.[index];
+        return item === undefined ? null : JSON.stringify(item, null, 2);
+    } catch { return null; }
+}
+
 export function createPresetContentPanel({ document: doc, runtime, composer }) {
     const panel = doc.createElement('section'); panel.className = 'atria-native-play-drawer atria-preset-content'; panel.hidden = true;
     panel.setAttribute('aria-label', tl('Extras')); panel.tabIndex = -1;
@@ -64,17 +79,21 @@ export function createPresetContentPanel({ document: doc, runtime, composer }) {
                 const current = ++version; for (const mount of active) { mount.dispose(); mounts.delete(mount); } active = []; body.replaceChildren();
                 request?.abort(); pending.delete(request);
                 if (!details.open) return;
-                const selectedSkins = [...slots.values()].flat();
-                if (block.type === 'preset.diagnostic' || !type || !selectedSkins.length) {
-                    textView(body, block.type === 'preset.diagnostic' ? metadata?.raw ?? JSON.stringify(block.data, null, 2) : JSON.stringify(block.data.value ?? block.data, null, 2)); return;
+                const chosenSkins = [...slots.values()].flat(), selectedSkins = chosenSkins.filter(skin => !skin.unsupported);
+                // A template this Atria version cannot run is named, never attempted.
+                for (const skin of chosenSkins.filter(item => item.unsupported)) note(body, formatShellText('This template needs a feature this version of Atria does not have: ${0}. Showing its data instead.', [skin.unsupported]));
+                if (block.type === 'preset.diagnostic') {
+                    // Show why and the one item that failed; the whole reply stays under "Original reply".
+                    note(body, tl(DIAGNOSTIC_REASONS[block.data.code] ?? 'This item could not be read.'));
+                    textView(body, failedItem(metadata?.raw, block.data.index) ?? metadata?.raw ?? JSON.stringify(block.data, null, 2)); return;
                 }
+                if (!type || !selectedSkins.length) { textView(body, JSON.stringify(block.data.value ?? block.data, null, 2)); return; }
                 if ([...slots.values()].some(items => items.length > 1)) { note(body, tl('More than one template is turned on for this item. Keep one on in the preset.')); textView(body, JSON.stringify(block.data.value, null, 2)); return; }
                 const status = note(body, tl('Loading…')); status.setAttribute('role', 'status');
                 try {
                     request = new AbortController(); pending.add(request);
                     const display = await processNativeDisplayRegex(block.data.value, getRegexScripts({ allowedOnly: true }), { region: 'supplement', blockType: block.data.type,
                         depth: Math.max(0, (runtime()?.snapshot?.timeline.at(-1)?.sequence ?? entry.sequence) - entry.sequence) }, { signal: request.signal });
-                    pending.delete(request);
                     if (disposed || token !== generation || current !== version || !details.open) return;
                     const displayValue = validateSchemaValue(display.value, type.schema).ok ? display.value : block.data.value;
                     if (display.diagnostics.length) note(body, tl('A display rule could not finish; showing the original text.') + ' ' + display.diagnostics.map(item => item.ruleId + ' · ' + item.code).join('; '));
@@ -85,9 +104,17 @@ export function createPresetContentPanel({ document: doc, runtime, composer }) {
                         if (disposed || token !== generation || current !== version || !details.open) return;
                         const bridgeTransport = await createPresetPresentationBridge(bundle, () => !disposed && token === generation && current === version && details.open && selected?.sessionId === runtime()?.snapshot?.session.sessionId);
                         const mounted = await mountNativeFrontend({ document: doc, window: doc.defaultView, mode: 'text', entry: bundle.entry,
-                            bridgeTransport,
+                            bridgeTransport, signal: request.signal, remoteAssetsEnabled: true, fontText: JSON.stringify(displayValue),
                             onDiagnostic: diagnostic => {
                                 if (token === generation && current === version && details.open) {
+                                    // A missing online font/image falls back; say so once, keep the address as a tooltip.
+                                    if (diagnostic.reasonCode === 'frontend_remote_asset_failed') {
+                                        if (!body.querySelector('[data-remote-asset-note]')) {
+                                            const item = note(body, tl('An online font or image could not load; a fallback is shown.'));
+                                            item.dataset.remoteAssetNote = 'true'; item.title = diagnostic.message;
+                                        }
+                                        return;
+                                    }
                                     textView(body, diagnostic.message);
                                     if (diagnostic.reasonCode === 'frontend_view_failed') textView(body, JSON.stringify(block.data.value, null, 2));
                                 }
@@ -105,7 +132,8 @@ export function createPresetContentPanel({ document: doc, runtime, composer }) {
                         status.remove();
                         if (disposed || token !== generation || current !== version || !details.open) mounted.dispose(); else { active.push(mounted); mounts.add(mounted); }
                     }
-                } catch { if (disposed || token !== generation || current !== version || !details.open) return; status.textContent = tl('Could not display this item. Showing its data instead.'); textView(body, JSON.stringify(block.data.value, null, 2)); }
+                    pending.delete(request);
+                } catch { pending.delete(request); if (disposed || token !== generation || current !== version || !details.open) return; status.textContent = tl('Could not display this item. Showing its data instead.'); textView(body, JSON.stringify(block.data.value, null, 2)); }
             });
         }
         if (metadata?.raw) {

@@ -16,7 +16,7 @@ import { nativeStudioClient } from './studio-client.js';
 import { mountRuntimeSetup, normalizeChatEndpoint } from './runtime-setup.js';
 import { mountPromptRuntimeControls } from './prompt-runtime-controls.js';
 import { NOVELAI_IMAGE_ENDPOINT, NOVELAI_IMAGE_ADAPTERS, officialNovelaiCapabilities, novelaiConnectionCapabilities } from '../../shared/novelai-illustration.js';
-import { assertComputeBudget, DEFAULT_COMPUTE_BUDGET } from '../../shared/native-compute-budget.js';
+import { assertComputeBudget, DEFAULT_COMPUTE_BUDGET, LOCAL_WORK_LIMIT_BOUNDS } from '../../shared/native-compute-budget.js';
 import { connectionRequiresSecret } from '../../shared/native-connection-auth.js';
 import { INSECURE_HTTP_ADAPTERS } from '../../shared/image-service-catalog.js';
 import { mountApiPresetFields } from './api-preset-fields.js';
@@ -414,7 +414,8 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                     return false;
                 } finally { creating = false; create.disabled = cancel.disabled = false; create.removeAttribute('aria-busy'); }
             };
-            const create = button('Save key', () => void storeKey().then(ok => ok && secret.focus()), createBox);
+            // A saved key is meant to be used: save the service too when it is complete.
+            const create = button('Save key', () => void storeKey().then(ok => { if (!ok) return; if (form.checkValidity()) form.requestSubmit(); else secret.focus(); }), createBox);
             const closeCreate = () => { secretValue.value = ''; secretLabel.value = ''; secretValue.disabled = secretLabel.disabled = true; createBox.hidden = true; openCreate.hidden = false; syncAuthentication(); };
             const cancel = button('Cancel', () => { closeCreate(); openCreate.focus(); }, createBox);
             const openCreate = button('Add a new key', () => { createBox.hidden = false; openCreate.hidden = true; secretValue.disabled = secretLabel.disabled = false; createFeedback.replaceChildren(); syncAuthentication(); secretValue.focus(); }, fields);
@@ -527,16 +528,20 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             const requirements = field(fields, 'Required capabilities (comma separated)', value.requirements?.join(', ') || '');
             // Every preset has limits; the defaults suit most stories, so these stay optional to change.
             const budget = { ...DEFAULT_COMPUTE_BUDGET, ...value.executionPolicy?.computeBudget, localWork: { ...DEFAULT_COMPUTE_BUDGET.localWork, ...value.executionPolicy?.computeBudget?.localWork } };
-            fields = group(advanced, 'Limits per turn', 'One turn, including its agents, retries and tools, stops at these limits. The defaults suit most stories.');
-            const requests = number(fields, 'Maximum requests', budget.maxRequests, 1, 32); requests.step = '1'; requests.required = true;
+            fields = group(advanced, 'Limits per reply', 'Each reply you start gets these limits fresh; its agents, retries and tools share them. Requests that reach the model service count even if they fail; requests stopped before sending do not.');
+            const requests = number(fields, 'Maximum requests', budget.maxRequests, 1); requests.step = '1'; requests.required = true;
             const tokens = number(fields, 'Maximum tokens', budget.maxTokens, 1); tokens.step = '1'; tokens.required = true;
-            const localJobs = number(fields, 'Local work count', budget.localWork.maxJobs, 1, 32);
-            const localItems = number(fields, 'Local work items', budget.localWork.maxItems, 1, 10000);
-            const localBytes = number(fields, 'Local work input bytes', budget.localWork.maxInputBytes, 1, 16777216);
-            for (const input of [localJobs, localItems, localBytes]) input.required = true;
-            const optionalFields = group(advanced, 'Required work reserve');
+            const localFields = group(advanced, 'Local processing', 'Work done on this computer (building context, memory, indexes). It is not an API call and is unlimited by default.');
+            const localJobs = number(localFields, 'Local work count', budget.localWork.maxJobs, 1, LOCAL_WORK_LIMIT_BOUNDS.maxJobs);
+            const localItems = number(localFields, 'Local work items', budget.localWork.maxItems, 1, LOCAL_WORK_LIMIT_BOUNDS.maxItems);
+            const localBytes = number(localFields, 'Local work input bytes', budget.localWork.maxInputBytes, 1, LOCAL_WORK_LIMIT_BOUNDS.maxInputBytes);
+            for (const input of [localJobs, localItems, localBytes]) {
+                if (Number(input.value) === Number.MAX_SAFE_INTEGER) input.value = '';
+                input.placeholder = translateShellText('Unlimited');
+            }
+            const optionalFields = group(advanced, 'Required work reserve', 'Optional work (such as memory rerank) always leaves at least one request for the reply. Reserve more here.');
             const reserveEnabled = field(optionalFields, 'Reserve required work'); reserveEnabled.type = 'checkbox'; reserveEnabled.checked = Boolean(value.executionPolicy?.optionalWork);
-            const reserveRequests = number(optionalFields, 'Required work requests', value.executionPolicy?.optionalWork?.requiredCompute?.maxRequests ?? '', 1, 32);
+            const reserveRequests = number(optionalFields, 'Required work requests', value.executionPolicy?.optionalWork?.requiredCompute?.maxRequests ?? '', 1);
             const reserveTokens = number(optionalFields, 'Required work token upper bound', value.executionPolicy?.optionalWork?.requiredCompute?.maxTokens ?? '', 1);
             const optionalRoles = [['rerank', 'Optional rerank'], ['model_task', 'Optional model tasks'], ['background', 'Optional Native background tasks']].map(([id, label]) => {
                 const input = field(optionalFields, label); input.type = 'checkbox'; input.checked = (value.executionPolicy?.optionalWork?.roles ?? ['rerank']).includes(id); return { id, input };
@@ -554,7 +559,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             serialize = () => {
                 let executionPolicy = value.executionPolicy ? clone(value.executionPolicy) : undefined;
                 const limits = assertComputeBudget({ maxRequests: Number(requests.value), maxTokens: Number(tokens.value),
-                    localWork: { maxJobs: Number(localJobs.value), maxItems: Number(localItems.value), maxInputBytes: Number(localBytes.value) } });
+                    localWork: { maxJobs: Number(localJobs.value || Number.MAX_SAFE_INTEGER), maxItems: Number(localItems.value || Number.MAX_SAFE_INTEGER), maxInputBytes: Number(localBytes.value || Number.MAX_SAFE_INTEGER) } });
                 // Unchanged defaults stay implicit, so a later default change still reaches this preset.
                 const customLimits = JSON.stringify(limits) !== JSON.stringify(DEFAULT_COMPUTE_BUDGET);
                 if (customLimits || reserveEnabled.checked || mcpConnection.value || a2aConnection.value) executionPolicy ??= { schemaVersion: 1, allowedModelProfileIds: [readApi().model.modelProfileId] };

@@ -1,5 +1,10 @@
 // Incremental JSON tokenizer/parser. No content repairs, tag fallback or evaluation; one surrounding code fence is accepted.
 // Values are retained once; streaming prose is released only after kind is known.
+/** Paragraph break placed between two prose nodes that do not already break. */
+export function proseSeparator(before, next) {
+    return before && !/\n$/.test(before) && !/^\n/.test(next) ? '\n\n' : '';
+}
+
 export class NativeContentStream {
     constructor({ maxCharacters = 4 * 1024 * 1024, maxDepth = 20, maxNodes = 8192 } = {}) {
         Object.assign(this, { maxCharacters, maxDepth, maxNodes, raw: '', stack: [], token: null,
@@ -26,6 +31,9 @@ export class NativeContentStream {
         if (typeof text !== 'string') return;
         const count = this.released.get(frame.path[1]) ?? 0;
         const end = /[\uD800-\uDBFF]$/.test(text) && this.token?.string ? text.length - 1 : text.length;
+        if (end <= count) return;
+        // Separate prose nodes are separate paragraphs (same rule as decodePresetContent).
+        if (count === 0) this.narrative += proseSeparator(this.narrative, text);
         this.narrative += text.slice(count, end);
         this.released.set(frame.path[1], end);
     }

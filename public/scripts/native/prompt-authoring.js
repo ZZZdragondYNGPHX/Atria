@@ -466,6 +466,14 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                     check.title = skin.type + ' · ' + skin.slot + ' · ' + skin.id;
                     return { skin, check };
                 });
+                // Saved templates this Atria version cannot run are marked; their switch still round-trips.
+                if (entry.ref?.scope === 'library' && skinChecks.length) void runtimeRequest('/preset-presentation', { method: 'POST', body: { programRef: entry.ref } }).then(manifest => {
+                    for (const { skin, check } of skinChecks) {
+                        const problem = manifest?.presentations?.find(item => item.id === skin.id)?.unsupported;
+                        if (!problem || !check.isConnected) continue;
+                        const mark = element(doc, 'small', 'Can’t run in this version', check.parentElement); mark.title = problem; mark.className = 'atri-runtime-field-hint';
+                    }
+                }).catch(() => {});
                 const advancedContent = element(doc, 'details', undefined, contentBox); element(doc, 'summary', 'Extra types (advanced JSON)', advancedContent);
                 const contentTypes = input(doc, advancedContent, 'Extra types (JSON)', JSON.stringify(draft.content?.types ?? [], null, 2), true);
                 const syncContent = () => { contentTypes.disabled = !contentEnabled.checked; for (const { check } of skinChecks) check.disabled = !contentEnabled.checked; };

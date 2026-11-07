@@ -7203,7 +7203,7 @@ async function safeInjectMemoryPrompts(context, payload, trigger = 'after_world_
     if (shouldShowRuntimeToast) {
         showRuntimeInfoToast(i18n('Recalling story memory…'), {
             kind: 'recall',
-            stopLabel: i18n('Stop'),
+            stopLabel: i18n('Stop memory update'),
             onStop: () => {
                 resolveStopRequest?.();
             },
@@ -7383,7 +7383,7 @@ async function runScheduledExtractionPass(chatKey) {
             Number(preview.beginSeq || 1) + extractBatchTurns - 1,
         );
         showRuntimeInfoToast(formatExtractionRangeToast(preview.beginSeq, initialEndSeq, preview.latestSeq), {
-            stopLabel: i18n('Stop'),
+            stopLabel: i18n('Stop memory update'),
             onStop: () => {
                 if (!extractionAbortController.signal.aborted) {
                     extractionAbortController.abort();
@@ -12734,7 +12734,7 @@ async function openManualCompressionPopup(context, settings) {
     const compressionAbortController = new AbortController();
     activeExtractionAbortController = compressionAbortController;
     showRuntimeInfoToast(i18n('Updating story memory…'), {
-        stopLabel: i18n('Stop'),
+        stopLabel: i18n('Stop memory update'),
         onStop: () => {
             if (!compressionAbortController.signal.aborted) {
                 compressionAbortController.abort();
@@ -13166,7 +13166,7 @@ function bindUi() {
                 Number(preview.beginSeq || 1) + extractBatchTurns - 1,
             );
             showRuntimeInfoToast(formatExtractionRangeToast(preview.beginSeq, initialEndSeq, preview.latestSeq), {
-                stopLabel: i18n('Stop'),
+                stopLabel: i18n('Stop memory update'),
                 onStop: () => {
                     if (!fillAbortController.signal.aborted) {
                         fillAbortController.abort();
@@ -13281,7 +13281,7 @@ function bindUi() {
         const rebuildAbortController = new AbortController();
         activeExtractionAbortController = rebuildAbortController;
         showRuntimeInfoToast(formatExtractionRangeToast(1, Math.min(1, rebuildLatestSeq || 1), Math.max(1, rebuildLatestSeq)), {
-            stopLabel: i18n('Stop'),
+            stopLabel: i18n('Stop memory update'),
             onStop: () => {
                 if (!rebuildAbortController.signal.aborted) {
                     rebuildAbortController.abort();
@@ -13372,7 +13372,7 @@ function bindUi() {
             startSeq + extractBatchTurns - 1,
         );
         showRuntimeInfoToast(formatExtractionRangeToast(startSeq, initialEndSeq, latestSeq), {
-            stopLabel: i18n('Stop'),
+            stopLabel: i18n('Stop memory update'),
             onStop: () => {
                 if (!rebuildAbortController.signal.aborted) {
                     rebuildAbortController.abort();

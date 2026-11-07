@@ -404,7 +404,7 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
         } catch (error) {
             // Only optional budget exhaustion can fall back. Server scope/Task
             // refusal remains decisive even if the local source guard is fresh.
-            if (error.code !== 'native_generation_budget_exhausted') throw error;
+            if (!['native_generation_budget_exhausted', 'native_generation_local_work_exhausted', 'native_generation_required_budget_reserved'].includes(error.code)) throw error;
             vectorAdmitted = false; diagnostics.push('vector_unavailable');
         }
     }

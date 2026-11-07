@@ -1,6 +1,6 @@
 import { compileDataSchema } from './native-data-schema.js';
 import { validateSchemaValue } from '../scripts/native/experience/world/schema.js';
-import { NativeContentStream } from './native-content-stream.js';
+import { NativeContentStream, proseSeparator } from './native-content-stream.js';
 import { assertMessageProjection } from './native-message-contract.js';
 
 export function assertPresetContent(value) {
@@ -64,13 +64,18 @@ export function decodePresetContent(raw, declaration, { stream, proseOnly = fals
     let narrative = '';
     for (const [index, node] of root.flow.entries()) {
         if (node?.kind === 'prose' && typeof node.text === 'string' && Object.keys(node).every(key => ['kind', 'text'].includes(key))) {
-            flow.push({ kind: 'prose', text: node.text }); narrative += node.text; continue;
+            const text = proseSeparator(narrative, node.text) + node.text;
+            flow.push({ kind: 'prose', text }); narrative += text; continue;
         }
         const type = types.get(node?.type);
         let error = proseOnly ? 'content_draft_block' : !type ? 'content_type_unknown' : 'content_block_invalid';
-        if (!proseOnly && node?.kind === 'block' && type && Object.keys(node).every(key => ['kind', 'type', 'data'].includes(key))
-            && validateSchemaValue(node.data, type.schema).ok) {
-            const block = { kind: 'block', id: 'preset-' + index, type: 'preset.content', version: 1, data: { type: node.type, value: node.data } };
+        // Models sometimes write a block's fields beside kind/type instead of
+        // inside data. The same declared schema still decides validity.
+        const data = node && typeof node === 'object' && !Object.hasOwn(node, 'data')
+            ? Object.fromEntries(Object.entries(node).filter(([key]) => key !== 'kind' && key !== 'type')) : node?.data;
+        if (!proseOnly && node?.kind === 'block' && type && Object.keys(node).every(key => ['kind', 'type', 'data'].includes(key) || !Object.hasOwn(node, 'data'))
+            && validateSchemaValue(data, type.schema).ok) {
+            const block = { kind: 'block', id: 'preset-' + index, type: 'preset.content', version: 1, data: { type: node.type, value: data } };
             try { assertMessageProjection({ schemaVersion: 1, flow: [block] }, ''); flow.push(block); continue; } catch { error = 'content_block_capacity'; }
         }
         diagnostics.push({ code: error, message: 'Flow item ' + index + ' retained in original response.' });

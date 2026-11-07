@@ -22,3 +22,18 @@ export function compilePresetPresentation(presentation) {
     const optionKeys = Object.keys(root.presentation.props.options?.schema.properties ?? {});
     return { entry: compiled.entry, optionKeys, files: Object.fromEntries([...compiled.files].map(([path, bytes]) => [path, bytes.toString('base64')])) };
 }
+
+// A template is optional presentation. One this Atria version cannot compile
+// (for example a newer template feature) is kept exactly as authored and never
+// run; callers report it by name instead of rejecting the preset's prompt content.
+const problems = new Map();
+export function presetPresentationProblem(presentation) {
+    const cacheKey = JSON.stringify([presentation.source, presentation.files]);
+    if (!problems.has(cacheKey)) {
+        let problem = null;
+        try { compilePresetPresentation(presentation); } catch (error) { problem = String(error?.message || error).slice(0, 300); }
+        if (problems.size >= 512) problems.delete(problems.keys().next().value);
+        problems.set(cacheKey, problem);
+    }
+    return problems.get(cacheKey);
+}

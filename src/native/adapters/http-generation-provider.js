@@ -148,9 +148,11 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
             return immutable({ endpoint: resolved.connection.endpoint,
                 body: render({ resolved, promptIr: snapshot.promptIr, reserve: snapshot.contextPlan.budget.reservedOutputTokens }) });
         },
-        async send(rendered, { secret, signal }) {
+        async send(rendered, { secret, signal, onDispatch }) {
             let response;
             try {
+                signal?.throwIfAborted();
+                onDispatch?.();
                 response = await fetchImpl(rendered.endpoint, { method: 'POST', signal, redirect: 'error',
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${secret}` }, body: serializeNativeDocument(rendered.body) });
             } catch {

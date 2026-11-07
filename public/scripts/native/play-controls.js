@@ -516,9 +516,11 @@ export function mountNativePlayControls({
         if (!sessionId || !writable()) return;
         const displayName = await ask('Save name');
         if (displayName === false || displayName === null || activeRuntime()?.snapshot !== base || !writable()) return;
+        // The name is optional: a blank one lists the save by kind and time.
+        const name = String(displayName ?? '').trim();
         void run('Saving', () => nativeProductClient.createSave(sessionId, {
             kind: 'manual',
-            displayName, expectedRevisionId: base.revision.revisionId,
+            ...(name ? { displayName: name } : {}), expectedRevisionId: base.revision.revisionId,
         }));
     }, 'save');
     save.classList.add('atria-native-play-actions__button--save');

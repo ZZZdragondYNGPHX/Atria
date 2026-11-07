@@ -11096,7 +11096,9 @@ export async function saveReply({ type, getMessage, presetContent, fromStreaming
         const message = { name: name2, is_user: false, is_system: false,
             mes: presetContent ? getMessage : power_user.trim_spaces ? getMessage.trim() : getMessage,
             send_date: getMessageTimeStamp(), gen_started: generation_started, gen_finished: new Date(),
-            extra: { api: getGeneratingApi(), model: getGeneratingModel(), reasoning: reasoning || '', reasoning_duration: null, reasoning_signature: reasoningSignature } };
+            // The API preset that answered is recorded in Native evidence; the legacy chat
+            // connection's api/model would misattribute the reply.
+            extra: { reasoning: reasoning || '', reasoning_duration: null, reasoning_signature: reasoningSignature } };
         if (reasoningBlocks?.length) message.extra.reasoning_blocks = reasoningBlocks;
         if (presetContent) {
             message.atri_native = { projection: presetContent.projection };

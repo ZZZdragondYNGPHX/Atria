@@ -119,7 +119,8 @@ export function assertRunContinuation(value) {
         || !value.background || Array.isArray(value.background) || Object.keys(value.background).length > 1000) throw new TypeError('Invalid continuation ledger');
     for (const [id, op] of Object.entries(value.operations)) {
         if (!/^[a-f0-9]{64}$/.test(id)) throw new TypeError('Invalid operation identity');
-        fields(op, ['lane', 'anchor', 'fingerprint', 'selection', 'attempts', 'total', 'compute', 'taskHistories', 'externalTasks'], 'Run operation');
+        fields(op, ['lane', 'anchor', 'fingerprint', 'selection', 'attempts', 'total', 'compute', 'taskHistories', 'externalTasks', 'generationId'], 'Run operation');
+        if (op.generationId !== undefined && (typeof op.generationId !== 'string' || !/^[A-Za-z0-9._:-]{1,128}$/.test(op.generationId))) throw new TypeError('Invalid reply identity');
         if (op.externalTasks !== undefined) {
             fields(op.externalTasks, Object.keys(op.externalTasks), 'External tasks');
             if (Object.keys(op.externalTasks).length > 32) throw new TypeError('External task capacity');

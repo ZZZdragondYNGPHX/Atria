@@ -100,7 +100,7 @@ export function createResponsesGenerationProvider({ fetchImpl = fetch, checkpoin
             await hydrate(request);
             if (lower(request).wire !== request.wire) throw new GenerationError('generation_continuation_unavailable');
         },
-        async send(rendered, { secret, signal }) {
+        async send(rendered, { secret, signal, onDispatch }) {
             // Recheck private storage after Secret resolution, immediately before HTTP.
             // The single-send lease then checks that this is the same frozen wire.
             const request = consumeNativeRequest(rendered, lower);
@@ -112,6 +112,8 @@ export function createResponsesGenerationProvider({ fetchImpl = fetch, checkpoin
             }
             let response;
             try {
+                signal?.throwIfAborted();
+                onDispatch?.();
                 response = await fetchImpl(request.endpoint, { method: 'POST', signal, redirect: 'error',
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${secret}` }, body: request.wire });
             } catch { if (signal.aborted) throw new GenerationError('generation_cancelled'); throw new ProviderFailure('transport'); }

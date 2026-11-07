@@ -506,6 +506,7 @@ export function registerLocaleData() {
         'Memory recall cancelled by user.': '记忆召回已由用户终止。',
         'Memory graph update cancelled by user.': '记忆图更新已由用户终止。',
         'Stop': '终止',
+        'Stop memory update': '停止更新记忆',
         'Recompute Vector Index': '重算向量索引',
         'Rebuild Vectors': '重算向量',
         'About Rebuild Vectors': '关于重算向量',
