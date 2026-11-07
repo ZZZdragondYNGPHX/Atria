@@ -223,7 +223,7 @@ export class GenerationService {
                 if (preview) { await assertCurrent('preview'); return Object.freeze({ snapshot, rendered, preview: true }); }
                 try {
                     assertExecutionEvidenceCurrent(resolved, this.now(), executionPlan.policy);
-                    const response = await this._send({ provider, resolved, rendered, snapshot, signal, handle, onChunk, assertCurrent, extensions: extensionsActive ? extensions : null });
+                    const response = await this._send({ provider, resolved, rendered, snapshot, signal, handle, onChunk, assertCurrent, extensions: extensionsActive ? extensions : null, formatRetry });
                     return Object.freeze({ snapshot, response: immutable(response) });
                 } catch (error) {
                     // Also covers failure before _send enters its usage/fetch
@@ -252,7 +252,7 @@ export class GenerationService {
         }
     }
 
-    async _send({ provider, resolved, rendered, snapshot, signal, handle, onChunk, assertCurrent, extensions }) {
+    async _send({ provider, resolved, rendered, snapshot, signal, handle, onChunk, assertCurrent, extensions, formatRetry = false }) {
         checkCancellation(signal);
         await extensions?.current();
         await this.beforeSend?.({ snapshot, resolved, handle, signal });
