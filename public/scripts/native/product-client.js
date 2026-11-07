@@ -37,7 +37,8 @@ async function request(path, { method = 'GET', body = undefined, binary = undefi
             const id = payload?.[field] || payload?.world?.[field] || payload?.knowledgeBase?.[field] || payload?.package?.[field] || payload?.session?.[field] || payload?.project?.[field] || payload?.ref?.[field];
             if (id) targets.push({ type: resourceType, id });
         }
-        if (targets.length) await notifyCurrentStorageChange(targets, { destructive: false });
+        // The Persona editor owns its save receipt. Other tabs still receive the change.
+        if (targets.length) await notifyCurrentStorageChange(targets, { destructive: false, refreshWorkspace: !/^personas\/(create|revise)$/.test(path) });
     }
     return payload;
 }

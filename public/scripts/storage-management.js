@@ -121,14 +121,13 @@ export class StorageCenterPanel {
         return new Promise(resolve => dialog.addEventListener('close', event => { if (event.target === dialog) resolve(); }));
     }
     // Storage center as a full utility page (P-02): section nav + main, no Inspector.
-    // The scope switch joins the shell top bar when one is offered.
-    mount(container, { toolbar = null } = {}) {
+    // Scope belongs to this workspace, clear of the shell's floating controls.
+    mount(container) {
         const page = node('section', 'storage-center-dialog storage-center-page'); this.dialog = page;
         page.close = () => {};
         page.setAttribute('aria-labelledby', 'storage-center-title');
         const sidebar = this.assemble(page, { page: true });
-        if (toolbar) toolbar.append(this.scopeControls);
-        else { const header = node('header', 'storage-center-header'); header.append(this.scopeControls); page.append(header); }
+        sidebar.prepend(this.scopeControls);
         page.append(sidebar, this.body); container.replaceChildren(page);
         const stop = this.watch(page);
         this.refresh();

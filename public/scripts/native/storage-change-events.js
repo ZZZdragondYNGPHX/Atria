@@ -1,5 +1,5 @@
 let channel, installed = false, getHandle;
-async function applyChange(detail) {
+async function applyChange(detail, { refreshWorkspace = true } = {}) {
     if (!detail || detail.handle !== getHandle?.() || !Array.isArray(detail.targets)) return;
     const runtime = globalThis.Atria?.nativeSessionRuntime;
     const session = runtime?.snapshot?.session;
@@ -9,7 +9,7 @@ async function applyChange(detail) {
     const child = route?.child?.id || '';
     workspace?.refreshSearch?.()?.catch?.(error => console.warn('Resource search refresh failed:', error));
     const sections = { world: 'worlds', knowledge: 'knowledge', package: 'works', persona: 'personas', connection: 'connections', model: 'models', route: 'routes', project: 'projects' };
-    if (detail.targets.some(target => child.includes(target.id) || child.includes(encodeURIComponent(target.id))
+    if (refreshWorkspace && detail.targets.some(target => child.includes(target.id) || child.includes(encodeURIComponent(target.id))
         || sections[target.type] && (child === sections[target.type] || !child && route?.domain === 'library' && target.type === 'package'))) workspace?.refreshForResourceChange?.();
     document.dispatchEvent(new CustomEvent('atria:resources-changed', { detail }));
 }
@@ -21,9 +21,9 @@ export function installStorageChangeListener(handleReader) {
         channel.onmessage = event => { void applyChange(event.data).catch(error => console.warn('Resource state refresh failed:', error)); };
     }
 }
-export async function notifyStorageChange(handle, targets, { destructive = true } = {}) {
+export async function notifyStorageChange(handle, targets, { destructive = true, refreshWorkspace = true } = {}) {
     const detail = { handle, targets, destructive, at: Date.now() };
-    try { channel?.postMessage(detail); await applyChange(detail); } catch (error) { console.warn('Resource state refresh failed:', error); }
+    try { channel?.postMessage(detail); await applyChange(detail, { refreshWorkspace }); } catch (error) { console.warn('Resource state refresh failed:', error); }
 }
 export async function notifyCurrentStorageChange(targets, options) {
     const handle = getHandle?.();

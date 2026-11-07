@@ -809,7 +809,9 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             const preset = await presets(host).resolveRegex(handle, route.promptProgramRef);
             res.json({ preset: req.path === '/prompt-scope' && preset ? { presetId: preset.presetId, revision: preset.revision } : preset });
         } catch (error) {
-            if (!req.query.routeId && error.code === 'native_generation_route_missing') return res.json({ preset: null });
+            // Reading the optional plugin scope must not require a unique generation route.
+            if (!req.query.routeId && (error.code === 'native_generation_route_missing'
+                || req.path === '/prompt-scope' && error.code === 'native_generation_route_ambiguous')) return res.json({ preset: null });
             res.status(400).json({ error: error.code || 'native_regex_scopes_unavailable' });
         }
     });

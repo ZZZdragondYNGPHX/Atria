@@ -606,4 +606,4 @@ html[data-atria-appearance] .backupSyncCenter .menu_button_note {
 .atri-extension-choices[hidden] { display: none; }
 /* Host panels win: extension overlays step aside while the Inspector dock is open. */
 #atria-app-shell:has(> #atria-context-dock[data-atria-open="true"]) > [data-atria-extension-overlay] { visibility: hidden; }
-#atria-app-shell:not([data-atria-domain="play"]) > [data-atria-extension-overlay] { visibility: hidden; }
+#atria-app-shell:is(:not([data-atria-domain="play"]), [data-atria-route-kind="utility"]) > [data-atria-extension-overlay] { visibility: hidden; }

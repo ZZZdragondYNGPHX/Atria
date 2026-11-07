@@ -260,15 +260,15 @@ async function mountBuildWorkspace(args) {
     return studio.mountNativeStudioWorkspace(args);
 }
 
-// Storage center (P-02): a full utility page; the scope switch joins the top bar.
-async function mountStorageUtility({ document: documentRef, slot, shell, route, isCurrent = () => true }) {
+// Storage center (P-02): a full utility page with its own scope controls.
+async function mountStorageUtility({ document: documentRef, slot, route, isCurrent = () => true }) {
     const { mountStorageCenterPage } = await import('../storage-management.js');
     if (!isCurrent()) return {};
     const holder = documentRef.createElement('section');
     holder.className = 'atria-utility-workspace atria-storage-utility';
     slot.replaceChildren(holder);
     const initialScope = String(route?.child?.id || '').endsWith(':browser') ? 'browser' : 'server';
-    return mountStorageCenterPage(holder, { initialScope, toolbar: shell?.slots?.toolbarLeading || null });
+    return mountStorageCenterPage(holder, { initialScope });
 }
 
 async function mountDiagnosticsWorkspace({ slot, isCurrent = () => true }) {

@@ -170,8 +170,8 @@
 .atri-library-resource-empty { display: grid; place-items: center; align-content: center; gap: 10px; min-height: 320px; color: var(--text-3); font-size: var(--fs-sm); text-align: center; }
 .atria-app-shell[data-atria-viewport="compact"] .atria-domain-workspace__body > .atria-native-library.atri-library-resource-split { grid-template-columns: minmax(0, 1fr); height: auto; }
 .atria-app-shell[data-atria-viewport="compact"] [data-atria-domain-workspace="library"] .atria-domain-workspace__body:has(> .atri-library-resource-split) { overflow: auto; }
-.atria-app-shell[data-atria-viewport="compact"] .atri-library-resource-split:has(.atri-library-resource-main > :is(.atri-library-heading, .atri-library-revision-editor, .atri-prompt-preset)) > .atri-library-resource-pane,
-.atria-app-shell[data-atria-viewport="compact"] .atri-library-resource-split:not(:has(.atri-library-resource-main > :is(.atri-library-heading, .atri-library-revision-editor, .atri-prompt-preset))) > .atri-library-resource-main { display: none; }
+.atria-app-shell[data-atria-viewport="compact"] .atri-library-resource-split:is([data-atria-library-detail="true"], :has(.atri-library-resource-main > :is(.atri-library-heading, .atri-library-revision-editor, .atri-prompt-preset))) > .atri-library-resource-pane,
+.atria-app-shell[data-atria-viewport="compact"] .atri-library-resource-split:not(:is([data-atria-library-detail="true"], :has(.atri-library-resource-main > :is(.atri-library-heading, .atri-library-revision-editor, .atri-prompt-preset)))) > .atri-library-resource-main { display: none; }
 .atria-app-shell[data-atria-viewport="compact"] .atri-library-resource-pane { border-right: 0; background: transparent; padding: 14px 16px 96px; }
 .atria-app-shell[data-atria-viewport="compact"] .atri-library-resource-main { padding: 14px 16px 96px; }
 .atria-app-shell[data-atria-viewport="compact"] .atri-library-resource-pane .atri-library-row > button { opacity: 1; }

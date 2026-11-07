@@ -21,6 +21,7 @@ export function mountPersonaWorkspace({ document: doc, body, route, host, browse
         const id = next?.child?.id ?? 'personas';
         const parts = id.startsWith('persona:') ? id.slice(8).split(':') : [];
         const detail = parts[0];
+        root.dataset.atriaLibraryDetail = String(Boolean(detail));
         const revision = parts.length === 3 ? { personaId: parts[0], revisionId: parts[1], contentIdentity: parts[2] } : null;
         root.replaceChildren();
         pane = el(doc, 'aside', 'atri-library-resource-pane', undefined, root); pane.setAttribute('aria-label', tl('Personas'));
