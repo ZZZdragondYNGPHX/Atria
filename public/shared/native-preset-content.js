@@ -39,7 +39,11 @@ export function presetContentInstruction(declaration, { proseOnly = false } = {}
         + 'Put kind first for streaming. Preserve prose/block order; never duplicate prose. '
         + 'No markdown fences, wrapper tags, HTML, host IDs, tools or World changes. '
         + (proseOnly ? 'This operation produces only a player draft: use prose nodes only. ' : 'Allowed supplemental data schemas: ' + JSON.stringify(declaration.types) + '. ')
-        + 'Minimal example: {"flow":[{"kind":"prose","text":"A quiet evening."}]}';
+        + (proseOnly || !declaration.types.length ? 'Minimal example: {"flow":[{"kind":"prose","text":"A quiet evening."}]}'
+            // Replies most often broke JSON where prose turns into a block; show that transition.
+            : 'Each prose node closes with exactly one } after its text; a block node closes its data and itself with }}. '
+                + 'Syntax example (data abbreviated): {"flow":[{"kind":"block","type":"' + declaration.types[0].type + '","data":{…}},'
+                + '{"kind":"prose","text":"A quiet evening."},{"kind":"block","type":"' + declaration.types.at(-1).type + '","data":{…}}]}');
 }
 
 export function presetContentJsonSchema(declaration, { proseOnly = false } = {}) {

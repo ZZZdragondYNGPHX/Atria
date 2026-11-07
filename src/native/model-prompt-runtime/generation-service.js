@@ -49,12 +49,13 @@ export class GenerationService {
                     continue;
                 }
                 if (!formatRetry || error?.code !== 'generation_content_format_invalid') throw error;
-                result = { response: { presetContent: { status: 'invalid', raw: error.raw, diagnostics: error.diagnostics }, earlyStop: true } };
+                result = { response: { presetContent: { status: 'invalid', raw: error.raw ?? error.originalResponse ?? '', diagnostics: error.diagnostics }, earlyStop: true } };
             }
             const content = result.response?.presetContent;
             if (formatRetry && content?.status === 'invalid' && !result.response.truncated && !result.response.extensionDecision) {
                 formatFailures.push({ raw: content.raw, diagnostics: content.diagnostics ?? [], stoppedEarly: Boolean(result.response.earlyStop) });
-                console.warn('[native-generation] Reply broke the declared content format; trying once more.', content.diagnostics?.[0]?.code ?? '', String(content.diagnostics?.[0]?.message ?? '').slice(0, 200));
+                console.warn('[native-generation] Reply broke the declared content format; trying once more.', content.diagnostics?.[0]?.code ?? '',
+                    String(content.diagnostics?.[0]?.message ?? '').slice(0, 200), 'raw chars:', String(content.raw ?? '').length, result.response.earlyStop ? '(stopped early)' : '');
                 input.onChunk?.({ text: '', delta: '', replace: true, provisional: true, formatRetry: formatFailures.length });
                 continue;
             }
