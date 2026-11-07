@@ -63,13 +63,18 @@ async function probe(url) {
 async function main() {
     switch (command) {
         case 'node': {
-            const expected = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).engines.node;
+            const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+            const expected = manifest.engines.node;
             const match = /^>=\s*(\d+)\.(\d+)\.(\d+)$/.exec(expected);
             if (!match) throw new Error('工具箱无法解析当前 Node 要求：' + expected);
             const minimum = match.slice(1).map(Number), current = process.versions.node.split('.').map(Number);
             const difference = current.map((value, i) => value - minimum[i]).find(value => value !== 0) || 0;
             if (difference < 0) throw new Error(`当前 Node ${process.version}，主程序要求 ${expected}；请升级当前 Node 软件包`);
-            console.log(`Node ${process.version}，符合主程序要求 ${expected}`);
+            // isolated-vm 6.2.0 builds against Node 22/24; Node 26 removes V8 APIs it uses.
+            if (![22, 24].includes(current[0])) {
+                throw new Error(`当前 Node ${process.version} 与 isolated-vm ${manifest.dependencies['isolated-vm']} 不兼容；Termux 请使用 Node 22/24，并满足 ${expected}。执行 atria-termux update 或 repair 可切换到 Node LTS 并重建依赖`);
+            }
+            console.log(`Node ${process.version}，符合主程序及 Termux 原生依赖要求`);
             return;
         }
         case 'init': {

@@ -20,6 +20,11 @@ if ! command -v pkg >/dev/null 2>&1 || [[ "${PREFIX:-}" != *com.termux* ]]; then
   fail "This native dependency repair must run inside Termux on Android."
 fi
 
+# Fail before compiling SQLite when the full runtime cannot support isolated-vm.
+if [[ "$MODE" != *sqlite ]]; then
+  node "$SCRIPT_DIR/runtime-tools.js" node "$REPO_ROOT"
+fi
+
 verify_sqlite() {
   (cd "${REPO_ROOT}" && node --input-type=module -e "const {default: Database}=await import('better-sqlite3'); const db=new Database(':memory:'); const row=db.prepare('select 1 as ok').get(); db.close(); if (row.ok !== 1) process.exit(1);") >/dev/null 2>&1
 }

@@ -2,7 +2,7 @@
 # One readable implementation for the Termux menu and CLI.
 set -o pipefail
 umask 077
-SCRIPT_VERSION="v0.4.0"
+SCRIPT_VERSION="v0.4.1"
 REPO_URL="https://github.com/ZZZdragondYNGPHX/Atria.git"
 SCRIPT_URL="${ATRIA_TOOLBOX_URL:-https://raw.githubusercontent.com/ZZZdragondYNGPHX/Atria/main/scripts/termux/atria_toolbox.sh}"
 SELF="${BASH_SOURCE[0]:-}"
@@ -52,11 +52,21 @@ ensure_tools() {
         executable="${package%%:*}"
         command -v "$executable" >/dev/null || packages+=("${package#*:}")
     done
-    command -v node >/dev/null || packages+=(nodejs-lts)
-    command -v npm >/dev/null || packages+=(npm)
     if (( ${#packages[@]} )); then
         info "安装缺少的环境：${packages[*]}"
         pkg install -y "${packages[@]}" || return 1
+    fi
+}
+
+ensure_node() {
+    # Called after shutdown, under the operation lock, before npm or native builds.
+    if ! command -v node >/dev/null || ! runtime node; then
+        info '切换到兼容的 Termux Node LTS，并安装 npm…'
+        pkg install -y nodejs-lts npm || return 1
+        hash -r
+        runtime node || { error '软件源提供的 Node LTS 仍不满足上述要求，未继续安装依赖。'; return 1; }
+    elif ! command -v npm >/dev/null; then
+        pkg install -y npm || return 1
     fi
 }
 
@@ -188,7 +198,6 @@ start_server() {
     read_settings || return 1
     if [[ -n "$(owned_pids)" ]]; then info '当前实例已有进程；请使用 status、logs 或 restart。'; return 0; fi
     http_ready && { error "端口 $PORT 已有其他 HTTP 服务，未启动新进程。"; return 1; }
-    runtime node || return 1
     bash "$APP/scripts/termux/fix-native.sh" check || return 1
     [[ "$mode" == normal || "$mode" == foreground ]] && wake=0
     mkdir -p "$CACHE" || return 1
@@ -232,7 +241,7 @@ restart_server() {
 
 prepare_runtime() {
     require_repo || return 1
-    runtime node || return 1
+    ensure_node || return 1
     local stamp installed=''
     stamp=$(runtime fingerprint) || return 1
     [[ -f "$STATE/prepared" ]] && installed=$(cat "$STATE/prepared")
@@ -351,7 +360,6 @@ show_logs() {
 doctor() {
     local failed=0
     read_settings || return 1
-    runtime node || failed=1
     bash "$APP/scripts/termux/fix-native.sh" check || failed=1
     printf '数据目录：%s\n前端缓存：%s\n日志：%s\n' "$DATA_ROOT" "$CACHE" "$LOG_FILE"
     [[ -d "$DATA_ROOT" && -w "$DATA_ROOT" ]] || { error '数据目录不存在或不可写。'; failed=1; }

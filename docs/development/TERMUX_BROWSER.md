@@ -21,9 +21,30 @@ no longer managed; existing secondary directories are not deleted.
 
 Installation clones only the latest `main` revision without tags or full history.
 Updates fetch `main` and require a clean, fast-forwardable main branch; local
-changes are never reset. Production dependencies follow the lock file. Node
-requirements come from the current `package.json` (currently `>=22.2.0`). A suitable
-installed Node is retained; Node LTS is installed when Node is absent.
+changes are never reset. Production dependencies follow the lock file. Node must
+meet `package.json`'s minimum (currently `>=22.2.0`) and the native dependencies'
+compatibility requirements. With `isolated-vm 6.2.0`, the toolbox supports Node
+22/24; Node 26 fails to compile this module because of V8 API changes.
+
+The v0.4.1 toolbox retains a compatible installed Node. Install, setup, update and
+repair install Termux's `nodejs-lts` and `npm` when Node is absent or incompatible,
+after stopping Atria and before installing dependencies. This replaces a
+conflicting Termux `nodejs` package and changes the Node version used by other
+Termux programs as well. The new runtime is checked again before proceeding;
+native dependencies and caches are prepared for that runtime. Ordinary startup
+and diagnostics only check compatibility and never switch packages.
+
+If an earlier setup failed under Node 26, update the checkout and prepare it again:
+
+```bash
+cd ~/Atria
+git pull --ff-only
+bash scripts/termux/setup.sh
+```
+
+The existing toolbox's **6 → 2** (update Atria) performs the same preparation using
+the updated script. Updating only the toolbox or repeatedly repairing an old
+checkout does not update its native dependency scripts.
 
 Setup verifies SQLite and the native computation module (`isolated-vm`), builds
 missing bindings with Termux's local Node headers, and prepares the frontend cache.
