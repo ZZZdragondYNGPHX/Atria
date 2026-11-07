@@ -95,6 +95,7 @@ async function main() {
         case 'port': {
             const port = Number(args[0]);
             if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('端口必须在 1–65535 之间');
+            if (args[1] === '--check') { console.log(port); return; }
             const doc = await configDocument(); doc.set('port', port); writeConfig(doc); return;
         }
         case 'restore-config': {
