@@ -274,6 +274,8 @@ export function createNativeSessionRouter(getServices = services) {
             res.json(await core.restoreSavePoint(handle, sessionId, command.saveId, { expectedRevisionId }));
         } else if (command?.type === 'switch') {
             res.json(await core.switchBranch(handle, sessionId, command.branchId, { expectedRevisionId }));
+        } else if (command?.type === 'reply.fork') {
+            res.json(await core.forkReply(handle, sessionId, command.messageId, { expectedRevisionId }));
         } else throw new TypeError('Unsupported Native runtime command');
     }));
     router.post('/continuity/projection', route(async (req, res, { core }, handle) => {

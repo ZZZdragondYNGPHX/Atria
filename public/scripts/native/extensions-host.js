@@ -65,7 +65,11 @@ export function createNativeExtensionsHost({ document: doc = globalThis.document
         for (const callback of events.get(type)) callback(Object.freeze({ type, context: Object.freeze(context()) }));
     }));
     const changed = () => { suspend(); void refresh(); };
-    unsubscribers.push(onConfiguration(changed), onChanged(event => { if (event.path === '/official/illustration' && plugins.find(item => item.id === OFFICIAL_ILLUSTRATION_ID)?.enabled === event.enabled) return; if (event.path !== '/settings') changed(); }));
+    unsubscribers.push(onConfiguration(changed), onChanged(event => {
+        if (event.path.endsWith('/preferences')) return;
+        if (event.path === '/official/illustration' && plugins.find(item => item.id === OFFICIAL_ILLUSTRATION_ID)?.enabled === event.enabled) return;
+        if (event.path !== '/settings') changed();
+    }));
     return Object.freeze({
         refresh, suspend,
         getStatus: () => ({ error, plugins: host.getStatus() }),

@@ -5,6 +5,8 @@ import { getNativeDocument, hashNativeDocument, listNativeDocuments, putMutable,
 import { assertWritable } from '../storage/read-only-mode.js';
 import { ConflictError, NotFoundError } from '../storage/errors.js';
 import { assertExtensionSettings, assertScriptTargets } from '../../public/shared/extension-contract.js';
+import { extensionManifest } from '../../public/shared/generation-extension-contract.js';
+import { assertJsonDeclaration } from '../../public/shared/native-values.js';
 
 const key = (handle, type, id) => ({ kind: K.versionedJsonResource, handle, resourceType: 'atri.extensions.' + type, resourceId: id });
 const defaults = () => ({ schemaVersion: 1, folders: [], skills: {} });
@@ -26,6 +28,7 @@ export function assertExtensionFiles(files, entrypoint) {
             || path.split('/').some(part => !part || ['..', '.', '.git'].includes(part)) || typeof content !== 'string' || content.includes('\0')) throw new TypeError('Invalid plugin file');
         total += Buffer.byteLength(content); if (total > 4 * 1024 * 1024) throw new TypeError('Plugin size limit');
     }
+    extensionManifest(files, entrypoint);
     return files;
 }
 export class ExtensionsStore {
@@ -83,7 +86,7 @@ export class ExtensionsStore {
         const rows = await this.engine.withTransaction(handle, tx => listNativeDocuments(tx, { kind: K.versionedJsonResource, handle, resourceType: 'atri.extensions.plugin' }));
         return rows.filter(row => !row.deleted).map(row => {
             const { files: _files, ...metadata } = row;
-            return { ...metadata, sourceCommit: row.sourceCommit ?? null, contentHash: extensionSourceHash(row), targetsHash: hashNativeDocument(row.targets) };
+            return { ...metadata, manifest: extensionManifest(row.files, row.entrypoint), sourceCommit: row.sourceCommit ?? null, contentHash: extensionSourceHash(row), targetsHash: hashNativeDocument(row.targets) };
         });
     }
     async get(handle, id) {
@@ -99,7 +102,8 @@ export class ExtensionsStore {
         if (!input || Object.keys(input).some(k => !['id', 'name', 'kind', 'enabled', 'targets', 'files', 'entrypoint', 'sourceUrl', 'sourceCommit', 'contentHash', 'targetsHash'].includes(k))
             || typeof input.name !== 'string' || !input.name.trim() || input.name.length > 100 || !['local', 'external'].includes(input.kind) || typeof input.enabled !== 'boolean') throw new TypeError('Invalid extension');
         const targets = assertScriptTargets(input.targets); assertExtensionFiles(input.files, input.entrypoint);
-        if (input.kind === 'local' && (input.entrypoint !== 'index.js' || Object.keys(input.files).length !== 1)) throw new TypeError('Local script requires index.js');
+        if (input.kind === 'local' && !extensionManifest(input.files, input.entrypoint)
+            && (input.entrypoint !== 'index.js' || Object.keys(input.files).length !== 1)) throw new TypeError('Local script requires index.js or an extension manifest');
         if (input.kind === 'external') {
             const url = new URL(input.sourceUrl);
             if (url.protocol !== 'https:' || url.username || url.password || url.hash || url.search) throw new TypeError('Use an HTTPS Git repository URL without credentials');
@@ -133,6 +137,20 @@ export class ExtensionsStore {
         });
     }
     async inspect(handle, id) { return extensionMetadata(await this.get(handle, id)); }
+    async preferences(handle, id) {
+        await this.get(handle, id);
+        const value = await this.engine.withTransaction(handle, tx => getNativeDocument(tx, key(handle, 'preferences', id))) ?? {};
+        return { value, revision: hashNativeDocument(value) };
+    }
+    async savePreferences(handle, id, input, expectedRevision) {
+        const value = assertJsonDeclaration(input, 'Extension settings', 1024 * 1024);
+        assertWritable();
+        return withNativeResourceWrite(handle, 'extensions', async () => {
+            if ((await this.preferences(handle, id)).revision !== expectedRevision) throw new ConflictError('atri_extensions_preferences_conflict');
+            await this.engine.withTransaction(handle, tx => putMutable(tx, key(handle, 'preferences', id), value));
+            return { value, revision: hashNativeDocument(value) };
+        });
+    }
     async source(handle, id, { path, expectedRevision, offset = 0, limit = 12000 }) {
         const row = await this.get(handle, id);
         if (row.revision !== expectedRevision) throw new ConflictError('atri_extensions_conflict');

@@ -176,8 +176,9 @@ export async function tryAuthoringSample(host, handle, value, signal, onQueued) 
             if (chunk.operationId) { operationId = chunk.operationId; onQueued?.({ operationId }); }
         },
         { authoringRun, draftOverrides, retainResult: true });
-        return immutable({ operationId, response: { text: result.response.text, toolCalls: result.response.toolCalls ?? [], usage: result.response.usage ?? null },
-            routing: result.routing, sent: true, publication: 'unpublished', trial: { status: 'completed' } });
+        return immutable({ operationId, snapshot: result.snapshot, response: { text: result.response.text, toolCalls: result.response.toolCalls ?? [], usage: result.response.usage ?? null,
+            observation: result.response.observation ?? null, truncated: result.response.truncated ?? false },
+        routing: result.routing, sent: true, publication: 'unpublished', trial: { status: 'completed' } });
     } catch (error) {
         if (!authoringRun.compute.attempts.length) throw error;
         return immutable({ sent: true, publication: 'unpublished', trial: { status: 'failed', errorCode: error.code ?? 'generation_execution_failed' },

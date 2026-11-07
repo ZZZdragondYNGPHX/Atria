@@ -50,6 +50,8 @@ export function createNativeExtensionsRouter({ store = () => new ExtensionsStore
     }));
     router.post('/plugins', route(async (req, res, api, handle) => res.json(await api.save(handle, req.body.value, req.body.expectedRevision))));
     router.get('/plugins/:id', route(async (req, res, api, handle) => res.json(await api.get(handle, req.params.id))));
+    router.get('/plugins/:id/preferences', route(async (req, res, api, handle) => res.json(await api.preferences(handle, req.params.id))));
+    router.put('/plugins/:id/preferences', route(async (req, res, api, handle) => res.json(await api.savePreferences(handle, req.params.id, req.body.value, req.body.expectedRevision))));
     router.get('/plugins/:id/inspect', route(async (req, res, api, handle) => res.json(await api.inspect(handle, req.params.id))));
     router.get('/plugins/:id/source', route(async (req, res, api, handle) => res.json(await api.source(handle, req.params.id,
         { path: req.query.path, expectedRevision: req.query.expectedRevision, offset: Number(req.query.offset ?? 0), limit: Number(req.query.limit ?? 12000) }))));

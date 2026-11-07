@@ -22,6 +22,17 @@ import { isNativeId } from '../identity.js';
 import { prepareNarrativeSkills, runNarrativeSkillLoop, completeNarrativeSkillTools, isNarrativeSkillInvocation } from '../skill-invocation.js';
 import { publicSessionTaskMessages, sessionTaskRoundCount, completeSessionTaskHistory } from '../../../public/shared/native-session-task-history.js';
 import { GenerationService } from '../model-prompt-runtime/generation-service.js';
+import { GenerationExtensions } from '../generation-extensions.js';
+import { assertNarrativeRevision, narrativeRevisionMessages } from '../narrative-revision.js';
+import { decodePresetContent } from '../../../public/shared/native-preset-content.js';
+
+function generationObservation({ snapshot, response }) {
+    return JSON.parse(JSON.stringify({ requestId: snapshot.requestId, connectionId: snapshot.connectionProfileId,
+        modelId: snapshot.diagnostics?.effectiveConfig?.model?.remoteModelId,
+        parameters: snapshot.extensionRequest?.parameters, plugins: snapshot.extensionRequest?.plugins,
+        inputTokens: snapshot.diagnostics?.inputTokens, usage: response.usage, observation: response.observation,
+        responseCharacters: response.text?.length, truncated: response.truncated }));
+}
 import { compiledRequestBinding, compiledSendIdentity } from '../model-prompt-runtime/compiled-binding.js';
 import { mintNativeNarratorQuota, mintNativeResolverQuota, assertNativeTurnQuota } from '../orchestration/native-turn-quota.js';
 import { captureNativeAuthorityResolver } from '../orchestration/authority-resolver-context.js';
@@ -431,12 +442,13 @@ export class NativeGenerationHost {
         input = immutable(input);
         transaction = transaction ? immutable(authorityValue(transaction)) : null;
         if (typeof input.invocationId !== 'string' || !/^[a-zA-Z0-9._:-]{1,96}$/.test(input.invocationId)
-            || Object.keys(input).some(key => !['sessionId', 'revisionId', 'invocationId', 'requestId', 'userInput', 'stageInputs', 'variants', 'slotBindings', 'routeRef', 'hostMemoryEvidence'].includes(key))) fail('native_turn_request_invalid');
+            || Object.keys(input).some(key => !['sessionId', 'revisionId', 'invocationId', 'requestId', 'userInput', 'stageInputs', 'variants', 'slotBindings', 'routeRef', 'hostMemoryEvidence', 'narrativeRevision'].includes(key))) fail('native_turn_request_invalid');
+        const narrativeRevision = assertNarrativeRevision(input.narrativeRevision);
         const base = await this.sessionCore[controlledReview ? 'observe' : 'load'](handle, input.sessionId);
         // A bound Plan owns the turn's models and context (its own model and memory
         // retrieval pins), so the player's purpose picks and host-recalled memory
         // do not apply to orchestrated turns.
-        if ((input.hostMemoryEvidence !== undefined || input.slotBindings !== undefined)
+        if (narrativeRevision?.mode !== 'replace' && (input.hostMemoryEvidence !== undefined || input.slotBindings !== undefined)
             && this.turnOrchestration && await this.turnOrchestration.inspectBinding({ handle, base })) {
             const { hostMemoryEvidence: _hostMemoryEvidence, slotBindings: _slotBindings, ...orchestrated } = input;
             input = immutable(orchestrated);
@@ -458,10 +470,10 @@ export class NativeGenerationHost {
         if (transaction && !authority) fail('native_authority_capability_required');
         if (authority && runtime.turn.policy !== 'authority-first') fail('native_authority_turn_policy_required');
         if (controlledReview) await this._assertControlledTurn(handle, base, controlledReview);
-        const orchestrationSelection = this.turnOrchestration ? await this.turnOrchestration.preflightBinding({ host: this, handle, base, input, transaction }) : null;
+        const orchestrationSelection = this.turnOrchestration && narrativeRevision?.mode !== 'replace' ? await this.turnOrchestration.preflightBinding({ host: this, handle, base, input, transaction }) : null;
         const lanes = orchestrationSelection ? await this.turnOrchestration.selectedTurnLanes({ host: this, handle, base, input, transaction, selection: orchestrationSelection })
             : await this._turnLanes(handle, base, input, transaction);
-        const lanePlan = { budgetContext: { snapshot: base, anchor: { branchId: base.revision.branchId, revisionId: base.revision.revisionId } }, memoryEvidence: normalizeHostMemoryEvidence(input.hostMemoryEvidence, base), transaction, evidenceCapture,
+        const lanePlan = { narrativeRevision, budgetContext: { snapshot: base, anchor: { branchId: base.revision.branchId, revisionId: base.revision.revisionId } }, memoryEvidence: normalizeHostMemoryEvidence(input.hostMemoryEvidence, base), transaction, evidenceCapture,
             ...(controlledReview ? { effectPolicy: 'no-background-model', controlledTurn: { check: async () => this._assertControlledTurn(handle, await this.sessionCore.observe(handle, input.sessionId), controlledReview) } } : {}) };
         turnProducerLanes.set(lanePlan, { host: this, handle, sessionId: base.session.sessionId, invocationId: input.invocationId, requestHash,
             anchor: { branchId: base.revision.branchId, revisionId: base.revision.revisionId }, selection: orchestrationSelection });
@@ -616,8 +628,24 @@ export class NativeGenerationHost {
             (id, index, preparationSignal) => invoke(id, input.stageInputs?.[id] ?? {}, 'stage' + index, preparationSignal), { signal });
         for (const stage of preparedStages) { stages.push(stage.record.payload); provenance.push(stage.turnProvenance); }
         checkCancellation(signal);
-        let draft, knowledgeProof, nativeNarration;
-        if (runtime.turn.narratorTaskId) {
+        let draft, knowledgeProof, nativeNarration, presetContent;
+        if (input.narrativeRevision?.mode === 'replace') {
+            draft = { schemaVersion: 1, narrative: input.narrativeRevision.text, outcomes: [], diagnostics: [] };
+            if (!runtime.turn.narratorTaskId) {
+                const preview = await this.execute(handle, { sessionId: input.sessionId, revisionId: input.revisionId,
+                    requestId: input.invocationId, role: 'narrator', routeRef: packageTurnBinding(input, 'narrator') ?? input.routeRef },
+                signal, undefined, { scheduled: true, lanePlan, preview: true });
+                const content = preview.snapshot.promptIr.compilation?.presetContent;
+                if (content) {
+                    const decoded = decodePresetContent(draft.narrative, content.declaration, content);
+                    if (decoded.status === 'invalid') throw Object.assign(new Error('Invalid revised content'), { code: 'generation_content_format_invalid', originalResponse: decoded.raw });
+                    presetContent = { ...decoded, programRef: content.programRef,
+                        contextPolicies: Object.fromEntries(content.declaration.types.map(type => [type.type, type.context])) };
+                    draft = { ...draft, narrative: decoded.narrative, projection: decoded.projection };
+                }
+            }
+            provenance.push({ source: 'user.narrative-revision', contentHash: hashNativeDocument(draft.narrative) });
+        } else if (runtime.turn.narratorTaskId) {
             const result = await invoke(runtime.turn.narratorTaskId, { stages }, 'narrator');
             provenance.push(result.turnProvenance);
             knowledgeProof = result.knowledgeProof;
@@ -644,10 +672,15 @@ export class NativeGenerationHost {
                 if (!narration) fail('native_orchestration_turn_producer_unavailable');
                 nativeNarration = narration;
             } else narration = await this.execute(handle, request, signal, onChunk, { scheduled: true, lanePlan });
+            presetContent = narration.response.presetContent;
+            if (presetContent?.status === 'invalid') throw Object.assign(new Error('Invalid generated content'),
+                { code: 'generation_content_format_invalid', originalResponse: presetContent.raw });
             provenance.push({ taskId: 'narrator', requestSnapshotHash: hashNativeDocument(narration.snapshot),
+                generationObservation: generationObservation(narration),
                 deliveryReceipt: { kind: 'model_delivery', invocationId: input.invocationId, delivered: true } });
             knowledgeProof = prepareKnowledgeAdoption(this.sessionCore, handle, base, narration.snapshot.contextPlan?.nativeSelection);
-            draft = { schemaVersion: 1, narrative: narration.response.text, outcomes: [], diagnostics: [] };
+            draft = { schemaVersion: 1, narrative: narration.response.text,
+                ...(presetContent?.projection ? { projection: presetContent.projection } : {}), outcomes: [], diagnostics: [] };
         }
         const processing = base.manifest.runtime.experienceContract.processingRuntime;
         if (processing?.processors.some(item => item.stage === 'output')) {
@@ -668,7 +701,7 @@ export class NativeGenerationHost {
             outcomes.push({ requestId: task.interpretation.id, interpretation: interpreted.record.payload });
         }
         checkCancellation(signal);
-        const prepared = { invocationId: input.invocationId, provenance, knowledgeProof, envelope: { ...draft, outcomes }, ...(authorityTurn ? { authorityProof: authorityTurn.proof } : {}) };
+        const prepared = { invocationId: input.invocationId, provenance, knowledgeProof, ...(presetContent ? { presetContent } : {}), envelope: { ...draft, outcomes }, ...(authorityTurn ? { authorityProof: authorityTurn.proof } : {}) };
         if (nativeNarration) this.turnOrchestration.bindNarratorOutput({ host: this, handle, narration: nativeNarration, prepared });
         return prepared;
     }
@@ -1022,6 +1055,7 @@ export class NativeGenerationHost {
                     definitionHash: hashNativeDocument(task), contextHash: hashNativeDocument(result.snapshot.contextPlan),
                     requestSnapshotHash: hashNativeDocument(result.snapshot), rawResultHash: hashNativeDocument(result.response),
                     execution: result.snapshot.diagnostics?.effectiveConfig ?? null,
+                    generationObservation: generationObservation(result),
                     normalizedResultHash: hashNativeDocument(payload), promptProgramRef: result.snapshot.promptProgramRef,
                     generationProfileRef: result.snapshot.generationProfileRef, runtimeRouteId: result.snapshot.runtimeRouteId, deliveryReceipt };
                 const knowledgeProof = prepareKnowledgeAdoption(this.sessionCore, handle, snapshot, result.snapshot.contextPlan?.nativeSelection);
@@ -1516,7 +1550,12 @@ export class NativeGenerationHost {
         let completedSendSnapshot;
         const budgetedResolver = { resolve: request => localWork('route_resolve', { resolved: { effectiveExecutionPolicy: route.executionPolicy,
             pathFingerprint: hashNativeDocument(route) } }, () => resolver.resolve(request), { route, request }), provider: id => resolver.provider(id) };
+        const revision = input.narrativeRevision ?? (input.role === 'narrator' || taskPlan?.task.id === runtime?.turn?.narratorTaskId ? lanePlan?.narrativeRevision : null);
         const service = new GenerationService({ resolver: budgetedResolver, contextProvider, preparePrompt: args => promptCompileWork(args), secretPort: this.secretPort,
+            narrativeRevision: revision, additionalMessages: narrativeRevisionMessages(revision),
+            createExtensions: this.extensions ? () => new GenerationExtensions({ store: this.extensions, handle, signal,
+                context: { sessionId: input.sessionId ?? null, packageId: snapshot?.session?.packageId ?? null },
+                resolveContext: async resolved => ({ presetId: (await new PromptPresetStore({ engine: this.library._engine }).resolveRegex(handle, resolved.route.promptProgramRef))?.presetId ?? null }) }) : null,
             beforeSend: authoringRun || sendBank || approvedReview || lanePlan?.controlledTurn ? async ({ snapshot, resolved }) => {
                 if (authoringRun) draftOverrides?.assertConsumed();
                 if (sendBank) capturedSend = { snapshot, resolved };
@@ -1725,8 +1764,7 @@ export class NativeGenerationHost {
                                 if (!dispatched) {
                                     await voidAttempt();
                                     if (modelSendFact) modelSendFacts.splice(modelSendFacts.indexOf(modelSendFact), 1);
-                                }
-                                else await settleAttempt(http?.usage ?? null);
+                                } else await settleAttempt(http?.usage ?? null);
                                 attempt.status = 'failed';
                                 capture?.append({ type: 'request.attempt.failed', eventId: attemptId + '/failed', requestId: input.requestId, attemptId });
                                 if (['native_generation_budget_exhausted', 'native_generation_turn_budget_exhausted', 'native_generation_local_work_exhausted', 'native_generation_task_stopped', 'native_generation_revision_conflict'].includes(error.code)) throw new GenerationError(error.code);

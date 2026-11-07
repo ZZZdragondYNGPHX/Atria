@@ -10,6 +10,7 @@ import { credentialNetworkTarget } from './model-prompt-runtime/credential-targe
 import { hashNativeDocument } from './repositories/common.js';
 import { ConflictError, NotFoundError } from '../storage/errors.js';
 import { assertScriptTargets } from '../../public/shared/extension-contract.js';
+import { extensionManifest } from '../../public/shared/generation-extension-contract.js';
 
 export function extensionRemote(value) {
     const remote = new URL(value);
@@ -108,8 +109,7 @@ export async function readExternalExtension(url, { clone, resolveCommit = root =
         onStage('manifest');
         if (typeof files['atria.extension.json'] !== 'string' || Buffer.byteLength(files['atria.extension.json']) > 16384) throw new TypeError('Invalid Atria browser extension manifest file');
         const manifest = JSON.parse(files['atria.extension.json']);
-        if (manifest.schemaVersion !== 1 || manifest.apiVersion !== 1 || typeof manifest.name !== 'string' || !manifest.name.trim() || manifest.name.length > 100 || typeof manifest.entrypoint !== 'string'
-            || Object.keys(manifest).some(key => !['schemaVersion', 'apiVersion', 'name', 'entrypoint'].includes(key))) throw new TypeError('Invalid Atria browser extension manifest');
+        extensionManifest(files, manifest.entrypoint);
         assertExtensionFiles(files, manifest.entrypoint);
         const candidate = { name: manifest.name, kind: 'external', entrypoint: manifest.entrypoint, files, sourceUrl: remote.href, sourceCommit,
             enabled: false, targets: { global: true, presets: [], works: [] } };
@@ -127,7 +127,8 @@ export class ExtensionPreparationCache {
     put(owner, clientInstanceId, candidate, { previous = null, targets = candidate.targets } = {}) {
         this.cleanup(); assertExtensionFiles(candidate.files, candidate.entrypoint);
         if (candidate.kind === 'external') extensionRemote(candidate.sourceUrl);
-        else if (candidate.kind !== 'local' || candidate.sourceUrl != null || candidate.sourceCommit != null || candidate.entrypoint !== 'index.js' || Object.keys(candidate.files).length !== 1) throw new TypeError('Invalid local Extension source');
+        else if (candidate.kind !== 'local' || candidate.sourceUrl != null || candidate.sourceCommit != null
+            || !extensionManifest(candidate.files, candidate.entrypoint) && (candidate.entrypoint !== 'index.js' || Object.keys(candidate.files).length !== 1)) throw new TypeError('Invalid local Extension source');
         if (typeof owner !== 'string' || !owner || typeof clientInstanceId !== 'string' || !/^[A-Za-z0-9._:-]{1,256}$/.test(clientInstanceId)
             || typeof candidate.name !== 'string' || !candidate.name.trim() || candidate.name.length > 100
             || candidate.kind === 'external' && !/^[a-f0-9]{40}$/.test(candidate.sourceCommit) || candidate.contentHash !== extensionSourceHash(candidate)) throw new TypeError('Invalid Extension preparation provenance');

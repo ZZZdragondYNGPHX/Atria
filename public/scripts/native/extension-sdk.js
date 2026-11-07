@@ -1,4 +1,6 @@
-import { extensionFileUrl } from './extensions-client.js';
+import { extensionFileUrl, nativeExtensionsClient, onExtensionsChanged } from './extensions-client.js';
+import { createExtensionComposer } from './extension-composer.js';
+import { createExtensionGeneration } from './extension-generation.js';
 
 // User-enabled page code, not a sandbox. Ownership covers SDK resources and
 // registered cleanup; direct DOM/network/global side effects remain the author's responsibility.
@@ -23,10 +25,12 @@ export function createExtensionSdk({ plugin, context, document: doc, root, isCur
         resources.add(release);
         return release;
     };
-    const mount = node => {
+    const mount = (node, { surface = 'extension' } = {}) => {
         assertCurrent();
         if (!node || node.ownerDocument !== doc || node.parentNode) throw new TypeError('Mount requires a new, unattached node');
-        root.append(node);
+        if (!['extension', 'overlay'].includes(surface)) throw new TypeError('Unknown extension UI surface');
+        const parent = surface === 'overlay' ? globalThis.Atria?.shell?.getRoot?.() ?? root : root;
+        parent.append(node);
         return own(() => node.remove());
     };
     const native = {};
@@ -78,7 +82,17 @@ export function createExtensionSdk({ plugin, context, document: doc, root, isCur
     if (illustrationApi) own(() => illustrationApi.selectionMode({ ...context, selectionOwner: plugin.id }, false));
     return {
         sdk: Object.freeze({
-            apiVersion: 1, context: Object.freeze({ ...context }), signal: controller.signal,
+            apiVersion: 2, context: Object.freeze({ ...context }), signal: controller.signal,
+            settings: Object.freeze({
+                async read() { assertCurrent(); const result = await nativeExtensionsClient.preferences(plugin.id); assertCurrent(); return result; },
+                async save(value, expectedRevision) { assertCurrent(); return nativeExtensionsClient.savePreferences(plugin.id, value, expectedRevision); },
+                subscribe(callback) {
+                    assertCurrent();
+                    return own(onExtensionsChanged(event => { if (event.path === '/plugins/' + plugin.id + '/preferences') invoke(callback); }));
+                },
+            }),
+            composer: createExtensionComposer({ context, assertCurrent, own, document: doc }),
+            generation: createExtensionGeneration({ context, assertCurrent, own, signal: controller.signal }),
             onDispose: own,
             assetUrl: path => { assertCurrent(); return extensionFileUrl(plugin, path); },
             ui: Object.freeze({ mount, style(css) {

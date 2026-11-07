@@ -827,6 +827,30 @@ export class NativeSessionRuntime {
         return next;
     }
 
+    async forkReply(messageId, expectedRevisionId, { prepareGeneration = false } = {}) {
+        this.assertWritable();
+        if (this.host.isGenerating() || this.generation) throw new Error('Stop generation before revising a reply');
+        await this.persist();
+        const { next, previous } = await this._queue(async () => {
+            this.assertWritable();
+            const previous = this.snapshot, epoch = this.projectionEpoch;
+            if (previous.revision.revisionId !== expectedRevisionId) throw new Error('Reply revision changed');
+            const next = await this.request('command', { sessionId: previous.session.sessionId, expectedRevisionId,
+                command: { type: 'reply.fork', messageId } });
+            this._acceptCommittedProjection(next, previous, epoch);
+            this.projectionEpoch++;
+            this._clearStagedStates();
+            // A revision operation owns its draft before installing the new
+            // projection; lifecycle observers cannot publish initialization
+            // state between the fork and its immediately following reply.
+            if (prepareGeneration) this.generation = { kind: 'append', originalType: 'normal' };
+            return { next, previous };
+        });
+        await this.host.install(projectNativeSession(next));
+        await this._emit(NATIVE_SESSION_LIFECYCLE.BRANCH_ACTIVATED, next, previous, { reason: 'reply_revision' });
+        return next;
+    }
+
     knowledgePlan(options = {}) {
         return this.active ? compileNativeKnowledgePlan(this.snapshot, options) : null;
     }

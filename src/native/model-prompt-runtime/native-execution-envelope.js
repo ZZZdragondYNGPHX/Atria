@@ -58,6 +58,11 @@ export function captureNativeEnvelope({ binding, sequence, content, text, calls 
         expiresAt: Date.now() + ttlMs }));
     return immutable({ schemaVersion: 1, checkpointId, bindingFingerprint, text, calls });
 }
+export function releaseNativeEnvelope(state) {
+    const entry = checkpoints.get(state?.checkpointId);
+    if (entry && state.bindingFingerprint === entry.bindingFingerprint && state.text === entry.text
+        && equalNativeDocuments(state.calls, entry.calls)) checkpoints.delete(state.checkpointId);
+}
 export function readNativeEnvelope(state, binding, sequence, index) {
     prune();
     const entry = checkpoints.get(state?.checkpointId);

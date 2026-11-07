@@ -12,6 +12,7 @@ import { createFrontendBridge } from './bridge.js';
 import { assertPresentationContract, assertPresentationNode, assertValue, evaluate, valuePath, styleValue } from '../../../shared/native-frontend-presentation.js';
 import { createFrontendResources } from './resources.js';
 import { createFrameScheduler, createPresentationEnvironment, createNodeHandle, focusable } from './platform.js';
+import { registerExtensionInput } from '../extension-inputs.js';
 
 const SVG = new Set('svg g path rect circle ellipse line polyline polygon text tspan defs linearGradient radialGradient stop clipPath mask title desc use'.split(' '));
 const clone = value => structuredClone(value);
@@ -390,6 +391,10 @@ export async function mountNativeFrontend(options) {
             });
         }
         const input = definition.tag === 'option' ? null : definition.bindings?.value ?? definition.bindings?.checked;
+        if (definition.tag === 'textarea' || definition.tag === 'input' && ['text', 'search'].includes(node.type)) {
+            disposers.push(registerExtensionInput(node, { current: () => !gone && !instance.disposed && !disposed && !imageHidden(node) && !instance.view.content.inert && node.getClientRects().length > 0,
+                submit: node.form ? () => node.form.requestSubmit() : undefined }));
+        }
         if (input) {
             const change = () => {
                 if (composing.has(node)) return;

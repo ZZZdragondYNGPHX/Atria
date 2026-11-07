@@ -52,7 +52,8 @@ export async function executeNativeOperation(kind, options, { abortSignal, sourc
             for (const line of lines) {
                 if (!line.startsWith('data:')) continue;
                 const event = JSON.parse(line.slice(5));
-                if (event.error) throw runtimeGenerationError(event.error, undefined, { notify });
+                if (event.error) throw Object.assign(runtimeGenerationError(event.error, undefined, { notify }),
+                    event.originalResponse ? { originalResponse: event.originalResponse } : {});
                 if (event.chunk) { try { onChunk?.(event.chunk); } catch { /* Presentation observers do not own the request. */ } }
                 if (event.result) payload = event.result;
             }
@@ -61,6 +62,7 @@ export async function executeNativeOperation(kind, options, { abortSignal, sourc
         if (!payload) throw new Error('Native generation stream ended without a result');
     } else payload = await response.json();
     if (!response.ok) throw runtimeGenerationError(payload.error || 'Native generation failed', response.status, { notify });
+    rememberRuntimeEvidence(payload);
     return payload;
 }
 

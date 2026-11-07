@@ -2,6 +2,8 @@ import { rememberEvidenceReceipt } from './evidence-receipts.js';
 import { beginNativeGeneration, executeNativeGeneration, executeNativeOperation } from './generation-client.js';
 import { recallNativePackageTurnMemory } from './experience/llm/memory-bridge.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
+import { runtimeRequest } from './runtime-client.js';
+import { decodePresetContent } from '../../shared/native-preset-content.js';
 
 export function nativePlayGenerationBusy(runtime) {
     return Boolean(runtime?.host?.isGenerating?.())
@@ -9,7 +11,7 @@ export function nativePlayGenerationBusy(runtime) {
 }
 
 // Keep publication on NativeSessionRuntime's existing Draft/Revision boundary.
-export async function runNativePlayGeneration({ runtime, type, signal, input = '', quietPrompt = '', operation, actorId, host, execute = executeNativeGeneration, executeOperation = executeNativeOperation, begin = beginNativeGeneration }) {
+export async function runNativePlayGeneration({ runtime, type, signal, input = '', quietPrompt = '', operation, actorId, narrativeRevision, host, execute = executeNativeGeneration, executeOperation = executeNativeOperation, begin = beginNativeGeneration }) {
     if (signal?.aborted) throw Object.assign(new Error('Native generation cancelled'), { code: 'generation_cancelled' });
     runtime.generationProjection = { state: 'preparing', text: '', error: '' };
     let observing = true;
@@ -41,10 +43,15 @@ export async function runNativePlayGeneration({ runtime, type, signal, input = '
         }
         // Recursive work in the same Draft and quiet child calls share its reply.
         if (originalType !== 'quiet' && !runtime.generation?.replyExecution && runtime.snapshot?.session?.sessionId) {
-            const source = { sessionId: runtime.snapshot.session.sessionId, revisionId: runtime.snapshot.revision.revisionId };
-            const reply = await begin({ ...source, abortSignal: signal });
-            runtime.replyExecution = { ...source, generationId: reply.generationId };
-            if (runtime.generation) runtime.generation.replyExecution = runtime.replyExecution;
+            const startReply = async () => {
+                const source = { sessionId: runtime.snapshot.session.sessionId, revisionId: runtime.snapshot.revision.revisionId };
+                const reply = await begin({ ...source, abortSignal: signal });
+                runtime.replyExecution = { ...source, generationId: reply.generationId };
+                if (runtime.generation) runtime.generation.replyExecution = runtime.replyExecution;
+            };
+            // Branch initialization can enqueue derived state writes. Drain
+            // those writes and pin the budget lookup/begin to one revision.
+            if (runtime._queue) await runtime._queue(startReply); else await startReply();
         }
         if (signal?.aborted) throw Object.assign(new Error('Native generation cancelled'), { code: 'generation_cancelled' });
         const game = host.gameApi?.();
@@ -68,7 +75,8 @@ export async function runNativePlayGeneration({ runtime, type, signal, input = '
             memory.assertCurrent?.();
             runtime.markProvisionalTurn();
             const slotBindings = context?.capabilitySettings?.atri_task_bindings?.[runtime.snapshot.session.packageId] ?? {};
-            const result = await executeOperation('turn', { slotBindings, userInput: input,
+            const result = await executeOperation('turn', { slotBindings, userInput: input || runtime.snapshot.timeline.at(-1)?.content,
+                ...(narrativeRevision ? { narrativeRevision } : {}),
                 invocationId: 'turn-' + crypto.randomUUID(), hostMemoryEvidence: memory.evidence }, { abortSignal: signal, onChunk: host.onChunk,
                 source: { sessionId: runtime.snapshot.session.sessionId, revisionId: runtime.snapshot.revision.revisionId } });
             runtime.generationProjection.state = 'finalizing'; notifyState();
@@ -79,6 +87,24 @@ export async function runNativePlayGeneration({ runtime, type, signal, input = '
             && game.getPackageState?.()?.descriptor?.experience?.mode === 'text'
             && game.getPackageState?.()?.runtime?.game?.logic) {
             return await game.submitFreeText({ userInput: input, abortSignal: signal });
+        }
+        if (narrativeRevision?.mode === 'replace') {
+            if (!narrativeRevision.text?.trim()) throw new TypeError('Replacement reply must not be empty');
+            const preview = await runtimeRequest('/preview', { method: 'POST', signal, body: {
+                sessionId: runtime.snapshot.session.sessionId, revisionId: runtime.snapshot.revision.revisionId,
+                role: 'narrator', requestId: 'revision-' + crypto.randomUUID() } });
+            const content = preview.snapshot.promptIr.compilation?.presetContent;
+            let text = narrativeRevision.text, presetContent;
+            if (content) {
+                const decoded = decodePresetContent(text, content.declaration, content);
+                if (decoded.status === 'invalid') throw Object.assign(new Error('Replacement reply must preserve the required content format'), { code: 'content_format_invalid' });
+                text = decoded.narrative;
+                presetContent = { ...decoded, programRef: content.programRef,
+                    contextPolicies: Object.fromEntries(content.declaration.types.map(type => [type.type, type.context])) };
+            }
+            await host.commitAssistant(generationType, text, presetContent);
+            await runtime.persist();
+            return text;
         }
         const messages = quietPrompt ? [{ role: 'user', content: quietPrompt }]
             : originalType === 'continue' ? [{ role: 'user', content: 'Continue the previous assistant response without repeating its existing text.' }] : [];
@@ -95,7 +121,7 @@ export async function runNativePlayGeneration({ runtime, type, signal, input = '
             }
         }
         const result = await execute({ role: 'narrator', operation: originalType === 'impersonate' ? 'impersonate' : operation ?? 'narrative',
-            ...(actorId ? { actorId } : {}), messages, abortSignal: signal, onChunk: host.onChunk, ...(hostMemoryEvidence ? { hostMemoryEvidence } : {}) });
+            ...(actorId ? { actorId } : {}), ...(narrativeRevision ? { narrativeRevision } : {}), messages, abortSignal: signal, onChunk: host.onChunk, ...(hostMemoryEvidence ? { hostMemoryEvidence } : {}) });
         // The Context inspector shows what this reply was actually built from.
         if (result.snapshot?.contextPlan && !['quiet', 'impersonate'].includes(originalType)) {
             runtime.lastReplyContext = { sessionId: runtime.snapshot?.session?.sessionId, plan: result.snapshot.contextPlan };

@@ -7,10 +7,13 @@ import { compiledRequestBinding } from './compiled-binding.js';
 import { hashNativeDocument, equalNativeDocuments } from '../repositories/common.js';
 import { NativeContentStream } from '../../../public/shared/native-content-stream.js';
 import { decodePresetContent } from '../../../public/shared/native-preset-content.js';
+import { setTimeout as wait } from 'node:timers/promises';
+import { renderPromptMessages } from './prompt-renderers.js';
+import { preserveNarrativeContinuation } from '../narrative-revision.js';
 
 // Prompt preparation is an injected port, implemented by PromptCompiler in P3.
 export class GenerationService {
-    constructor({ resolver, contextProvider, preparePrompt, secretPort, providerFor, now = Date.now, beforeSend = null }) {
+    constructor({ resolver, contextProvider, preparePrompt, secretPort, providerFor, now = Date.now, beforeSend = null, createExtensions = null, additionalMessages = [], narrativeRevision = null }) {
         this.resolver = assertRouteResolverPort(resolver);
         this.contextProvider = assertContextProviderPort(contextProvider);
         this.preparePrompt = preparePrompt;
@@ -18,9 +21,25 @@ export class GenerationService {
         this.providerFor = providerFor ?? (id => resolver.provider(id));
         this.now = now;
         this.beforeSend = beforeSend;
+        this.createExtensions = createExtensions;
+        this.additionalMessages = immutable(additionalMessages);
+        this.narrativeRevision = narrativeRevision;
     }
 
-    async execute({ signal, handle, onChunk, ...value }, { preview = false, programSelection = null, draftOverrides = null } = {}) {
+    async execute(input, options = {}) {
+        const extensions = this.createExtensions?.(input);
+        for (;;) {
+            const result = await this._execute(input, { ...options, extensions });
+            if (!result.response?.extensionDecision) return result;
+            const decision = result.response.extensionDecision;
+            input.onChunk?.({ text: result.response.text, delta: '', replace: true, provisional: true,
+                extensionAction: decision.action, extensionRound: extensions.round });
+            await extensions.current();
+            if (decision.delayMs) await wait(decision.delayMs, undefined, { signal: input.signal });
+        }
+    }
+
+    async _execute({ signal, handle, onChunk, ...value }, { preview = false, programSelection = null, draftOverrides = null, extensions = null } = {}) {
         try {
             if (draftOverrides && (!preview || typeof draftOverrides.resourceOverrides !== 'function')) {
                 throw new GenerationError('generation_draft_preview_only');
@@ -117,7 +136,13 @@ export class GenerationService {
                 if (implied.some(capability => !resolved.requirements.includes(capability))) {
                     throw new GenerationError('generation_missing_output_requirement');
                 }
-                const tokens = await cancellable(() => provider.countTokens({ resolved, contextPlan, promptIr }), signal);
+                let extensionRequest = await extensions?.prepare({ resolved, contextPlan, promptIr });
+                const extensionsActive = Boolean(extensionRequest);
+                if (this.additionalMessages.length) {
+                    extensionRequest = immutable({ ...(extensionRequest ?? { messages: renderPromptMessages(promptIr), parameters: {}, extras: {}, carrier: null }),
+                        followup: [...(extensionRequest?.followup ?? []), ...this.additionalMessages] });
+                }
+                const tokens = await cancellable(() => provider.countTokens({ resolved, contextPlan, promptIr, extensionRequest }), signal);
                 if (!Number.isSafeInteger(tokens) || tokens < 0) throw new GenerationError('generation_invalid_token_count');
                 if (tokens > contextPlan.budget.maxTokens
                     || contextPlan.budget.reservedOutputTokens > resolved.model.limits.outputTokens
@@ -132,6 +157,7 @@ export class GenerationService {
                     generationProfileRef: resolved.route.generationProfileRef,
                     promptProgramRef: resolved.route.promptProgramRef,
                     capabilities: resolved.capabilities, contextPlan, promptIr,
+                    ...(extensionRequest ? { extensionRequest } : {}),
                     createdAt: this.now(), diagnostics: immutable({
                         inputTokens: tokens,
                         executionPlan,
@@ -166,7 +192,7 @@ export class GenerationService {
                 if (preview) { await assertCurrent('preview'); return Object.freeze({ snapshot, rendered, preview: true }); }
                 try {
                     assertExecutionEvidenceCurrent(resolved, this.now(), executionPlan.policy);
-                    const response = await this._send({ provider, resolved, rendered, snapshot, signal, handle, onChunk, assertCurrent });
+                    const response = await this._send({ provider, resolved, rendered, snapshot, signal, handle, onChunk, assertCurrent, extensions: extensionsActive ? extensions : null });
                     return Object.freeze({ snapshot, response: immutable(response) });
                 } catch (error) {
                     // Also covers failure before _send enters its usage/fetch
@@ -195,8 +221,9 @@ export class GenerationService {
         }
     }
 
-    async _send({ provider, resolved, rendered, snapshot, signal, handle, onChunk, assertCurrent }) {
+    async _send({ provider, resolved, rendered, snapshot, signal, handle, onChunk, assertCurrent, extensions }) {
         checkCancellation(signal);
+        await extensions?.current();
         await this.beforeSend?.({ snapshot, resolved, handle, signal });
         checkCancellation(signal);
         // Secret exists only in this send-boundary frame, never in config/render/snapshot.
@@ -220,6 +247,8 @@ export class GenerationService {
         const timer = setTimeout(abort, resolved.route.policy.timeoutMs);
         let settled = false;
         let observedUsage;
+        const startedAt = Date.now();
+        let firstTextAt = null;
         try {
             let raw;
             try {
@@ -229,6 +258,10 @@ export class GenerationService {
                 if (controller.signal.aborted) throw new ProviderFailure('timeout');
                 throw error;
             }
+            const headersAt = Date.now(), wireResponse = raw?.response ?? raw;
+            const transport = { httpStatus: wireResponse?.status ?? null, ttfbMs: headersAt - startedAt,
+                headers: Object.fromEntries(['x-model', 'x-upstream', 'x-backend', 'x-provider', 'x-route', 'server']
+                    .flatMap(name => { const value = wireResponse?.headers?.get?.(name); return value ? [[name, value.slice(0, 256)]] : []; })) };
             // Stream/parser/normalizer failures are application errors, never send failures.
             let response;
             let streamed = '';
@@ -242,17 +275,19 @@ export class GenerationService {
                     published = text;
                     if (decoder) {
                         const previous = decoder.narrative, decoded = decoder.push(delta);
-                        onChunk(immutable({ text: decoded.narrative, delta: decoded.narrative.slice(previous.length), originalResponse: text,
+                        onChunk?.(immutable({ text: decoded.narrative, delta: decoded.narrative.slice(previous.length), originalResponse: text,
                             contentStatus: decoded.error ? 'invalid' : 'streaming' }));
-                    } else onChunk(immutable({ text, delta }));
+                    } else onChunk?.(immutable({ text, delta }));
                 }
             };
             try {
                 const parsed = await cancellable(() => provider.parseStream(raw, {
                     signal: controller.signal,
+                    ...(extensions ? { transformFrame: (frame, format) => extensions.frame(frame, format) } : {}),
                     onUsage: usage => { observedUsage = usage; },
-                    onChunk: onChunk && (chunk => {
+                    onChunk: chunk => {
                         checkCancellation(controller.signal);
+                        if (firstTextAt === null && chunk.text) firstTextAt = Date.now();
                         if (typeof chunk.text !== 'string' || !chunk.text.startsWith(streamed)) throw new GenerationError('generation_response_invalid');
                         const added = chunk.text.slice(Math.max(0, streamed.length - secretOverlap));
                         if (containsSecret(added)) throw new GenerationError('generation_response_contains_secret');
@@ -263,7 +298,7 @@ export class GenerationService {
                             if (streamed.endsWith(secret.slice(0, length))) held = length;
                         }
                         publish(streamed.slice(0, streamed.length - held));
-                    }),
+                    },
                 }), controller.signal);
                 observedUsage = provider.readUsage?.(parsed);
                 response = await cancellable(() => provider.normalizeResponse(parsed), controller.signal);
@@ -271,18 +306,34 @@ export class GenerationService {
             } catch (error) {
                 checkCancellation(signal);
                 if (controller.signal.aborted) throw new GenerationError('generation_provider_timeout');
-                if (error instanceof GenerationError && error.code === 'generation_provider_content_blocked') throw error;
+                if (error instanceof GenerationError && (error.code === 'generation_provider_content_blocked' || error.code.startsWith('generation_extension_'))) throw error;
                 throw new GenerationError('generation_response_invalid');
             }
             checkCancellation(signal);
             await provider.assertResponseSafe?.(response, secret);
+            response = { ...response, observation: { ...response.observation, transport: {
+                ...transport, ttftMs: firstTextAt === null ? null : firstTextAt - startedAt, durationMs: Date.now() - startedAt } } };
+            if (extensions) {
+                const nativeState = response.providerState;
+                const processed = await cancellable(() => extensions.response(response), controller.signal);
+                await extensions.current();
+                response = { ...processed.response, ...(processed.decision ? { extensionDecision: processed.decision } : {}),
+                    observation: { ...response.observation, extensions: processed.observations } };
+                if (nativeState && !response.providerState) provider.releaseResponseState?.(nativeState);
+            }
+            if (this.narrativeRevision?.mode === 'continue' && !response.toolCalls?.length && !response.extensionDecision) {
+                const text = preserveNarrativeContinuation(this.narrativeRevision, response.text,
+                    { content: Boolean(content), envelope: Boolean(snapshot.promptIr.outputContract) });
+                if (response.providerState && text !== response.text) throw new GenerationError('generation_continuation_unavailable');
+                response = { ...response, text, assistantText: text };
+            }
             // Adapters are untrusted with respect to accidental credential echoes.
             const encoded = JSON.stringify(response);
             if (encoded === undefined) throw new GenerationError('generation_response_invalid');
             if (encoded.includes(secret) || encoded.includes(JSON.stringify(secret).slice(1, -1))) {
                 throw new GenerationError('generation_response_contains_secret');
             }
-            if (response.truncated && (!content || response.toolCalls?.length)) throw new GenerationError('generation_response_invalid');
+            if (response.truncated && !extensions && (!content || response.toolCalls?.length)) throw new GenerationError('generation_response_invalid');
             // Only the frozen request's tool declarations authorize a response
             // call. A name mentioned in dialogue is not a tool declaration.
             const allowedTools = new Set(snapshot.promptIr.tools.map(tool => tool.function?.name ?? tool.name));
@@ -290,11 +341,14 @@ export class GenerationService {
             await provider.commitResponse?.(response);
             checkCancellation(signal);
             if (controller.signal.aborted) throw new GenerationError('generation_provider_timeout');
-            if (onChunk && typeof response.text === 'string') publish(response.text);
-            if (content && !response.toolCalls?.length) {
+            if (onChunk && typeof response.text === 'string' && !content) {
+                if (extensions) onChunk(immutable({ text: response.text, delta: '', replace: true, provisional: true }));
+                else publish(response.text);
+            }
+            if (content && !response.toolCalls?.length && !response.extensionDecision) {
                 const decoded = response.truncated
                     ? { status: 'invalid', narrative: '', raw: response.text, diagnostics: [{ code: 'content_truncated', message: 'Provider output limit reached; original response retained.' }] }
-                    : decodePresetContent(response.text, content.declaration, { ...content, ...(onChunk ? { stream: decoder } : {}) });
+                    : decodePresetContent(response.text, content.declaration, { ...content, ...(onChunk && !extensions && !this.narrativeRevision ? { stream: decoder } : {}) });
                 response = { ...response, text: decoded.narrative, assistantText: decoded.narrative,
                     presetContent: { ...decoded, programRef: content.programRef,
                         contextPolicies: Object.fromEntries(content.declaration.types.map(type => [type.type, type.context])) } };

@@ -1,8 +1,9 @@
-import { renderPromptMessages } from '../model-prompt-runtime/prompt-renderers.js';
 import { GenerationError, ProviderFailure, providerHttpFailure, observeProviderHttpUsage } from '../model-prompt-runtime/execution-utils.js';
 import { serializeNativeDocument } from '../repositories/common.js';
 import { captureNativeEnvelope, nativeEnvelopeBinding, readNativeEnvelope, discardNativeEnvelopes, assertNativeEnvelopeSafe, leaseNativeRequest, consumeNativeRequest, inspectNativeRequest, nativeExecutionObservation, hydrateNativeEnvelopes, publishNativeEnvelope, discardStoredNativeEnvelopes, resetStoredNativeEnvelopes, isDurableNativeContinuity } from '../model-prompt-runtime/native-execution-envelope.js';
 import { observedGenerationUsage } from './generation-usage.js';
+import { extensionRequestView, extensionRequestExtras } from '../generation-extensions.js';
+import { releaseNativeEnvelope } from '../model-prompt-runtime/native-execution-envelope.js';
 
 const fail = () => { throw new GenerationError('generation_adapter_control_unsupported'); };
 const keys = (value, allowed) => { if (Object.keys(value || {}).some(key => !allowed.includes(key))) fail(); };
@@ -10,7 +11,7 @@ export function createResponsesGenerationProvider({ fetchImpl = fetch, checkpoin
     const hydrate = async request => {
         const binding = nativeEnvelopeBinding(request.resolved, request.snapshot, 'openai.responses.v1');
         if (isDurableNativeContinuity(binding) && checkpointStore) await checkpointStore.prepare(binding);
-        let sequence = request.sequence ?? renderPromptMessages(request.snapshot.promptIr);
+        let sequence = request.sequence ?? extensionRequestView(request.resolved, request.snapshot.promptIr, request.snapshot.extensionRequest).messages;
         let continuityDecision = request.continuityDecision;
         if (isDurableNativeContinuity(binding) && checkpointStore && !request.sequence) {
             const restored = await checkpointStore.restore(binding, sequence);
@@ -20,6 +21,8 @@ export function createResponsesGenerationProvider({ fetchImpl = fetch, checkpoin
         return { ...request, sequence, continuityDecision };
     };
     const lower = ({ resolved, snapshot, sequence: preparedSequence, continuityDecision }) => {
+        const view = extensionRequestView(resolved, snapshot.promptIr, snapshot.extensionRequest);
+        resolved = view.resolved;
         const { generation: g, connection, model } = resolved;
         const ir = snapshot.promptIr;
         for (const [section, allowed] of Object.entries({ sampling: ['temperature', 'topP'], output: ['maxTokens'],
@@ -28,7 +31,7 @@ export function createResponsesGenerationProvider({ fetchImpl = fetch, checkpoin
         if (ir.prefill !== undefined) fail();
         const max = g.output.maxTokens ?? snapshot.contextPlan.budget.reservedOutputTokens;
         if (!Number.isSafeInteger(max) || max < 1 || max > snapshot.contextPlan.budget.reservedOutputTokens) throw new GenerationError('generation_adapter_output_budget');
-        const sequence = preparedSequence ?? renderPromptMessages(ir);
+        const sequence = preparedSequence ?? view.messages;
         const binding = nativeEnvelopeBinding(resolved, snapshot, 'openai.responses.v1');
         const input = [];
         const publicInput = [];
@@ -63,13 +66,13 @@ export function createResponsesGenerationProvider({ fetchImpl = fetch, checkpoin
         }
         if (g.cache.key !== undefined) { if (typeof g.cache.key !== 'string' || !g.cache.key || g.cache.key.length > 512) fail(); body.prompt_cache_key = g.cache.key; }
         if (g.cache.retention !== undefined) { if (!['in_memory', '24h'].includes(g.cache.retention)) fail(); body.prompt_cache_retention = g.cache.retention; }
-        if (ir.tools.length) body.tools = ir.tools.map(tool => {
+        if (view.tools.length) body.tools = view.tools.map(tool => {
             keys(tool, ['type', 'function']); keys(tool.function, ['name', 'description', 'parameters', 'strict']);
             if (tool.type !== 'function' || !tool.function?.name || !tool.function.parameters) fail();
             return { type: 'function', ...JSON.parse(serializeNativeDocument(tool.function)) };
         });
         if (Object.keys(g.toolChoice).length) {
-            if (!['auto', 'none', 'required'].includes(g.toolChoice.value) || !ir.tools.length) fail();
+            if (!['auto', 'none', 'required'].includes(g.toolChoice.value) || !view.tools.length) fail();
             body.tool_choice = g.toolChoice.value;
         }
         if (ir.outputContract) {
@@ -79,6 +82,7 @@ export function createResponsesGenerationProvider({ fetchImpl = fetch, checkpoin
             if (!body.text.format.name || !body.text.format.schema) fail();
         }
         // Native items stay in their original key/array order, including opaque fields.
+        Object.assign(body, extensionRequestExtras(body, snapshot.extensionRequest));
         const wire = JSON.stringify(body);
         return { endpoint: connection.endpoint, body, publicBody: { ...body, input: publicInput }, wire, binding, sequence, resolved, snapshot, continuityDecision };
     };
@@ -88,8 +92,8 @@ export function createResponsesGenerationProvider({ fetchImpl = fetch, checkpoin
         contextTokenizer() { return text => Buffer.byteLength(String(text), 'utf8'); },
         resolveCapabilities: async () => ['generation.streaming', 'generation.tools', 'generation.structured-output', 'generation.reasoning', 'generation.cache', 'generation.continuation.active-execution']
             .map(capability => ({ capability, state: 'supported', provenance: [{ kind: 'adapter-metadata', source: 'native.openai.responses.v1' }] })),
-        async countTokens({ resolved, promptIr, contextPlan }) {
-            const request = { resolved, snapshot: { requestId: contextPlan.requestId, promptIr, contextPlan } };
+        async countTokens({ resolved, promptIr, contextPlan, extensionRequest }) {
+            const request = { resolved, snapshot: { requestId: contextPlan.requestId, promptIr, contextPlan, extensionRequest } };
             return Buffer.byteLength(lower(await hydrate(request)).wire, 'utf8') + 256;
         },
         async renderRequest({ resolved, snapshot }) {
@@ -127,32 +131,34 @@ export function createResponsesGenerationProvider({ fetchImpl = fetch, checkpoin
             }
             return { response, binding: request.binding, sequence: request.sequence, continuityDecision: request.continuityDecision };
         },
-        async parseStream({ response, binding, sequence, continuityDecision }, { onChunk, onUsage } = {}) {
-            if (!response.headers.get('content-type')?.includes('text/event-stream')) return { value: await response.json(), binding, sequence, continuityDecision };
+        async parseStream({ response, binding, sequence, continuityDecision }, { onChunk, onUsage, transformFrame } = {}) {
+            const transform = value => transformFrame ? transformFrame(value, 'responses') : value;
+            if (!response.headers.get('content-type')?.includes('text/event-stream')) return { value: await transform(await response.json()), binding, sequence, continuityDecision };
             let pending = ''; let bytesRead = 0; let text = ''; let completed; let contentBlocked = false; const done = new Map();
             const decoder = new TextDecoder();
-            const consume = line => {
+            const consume = async line => {
                 if (!line.startsWith('data:')) return;
-                const value = JSON.parse(line.slice(5));
+                const value = await transform(JSON.parse(line.slice(5)));
                 if (value.response?.usage) onUsage?.(observedGenerationUsage(value.response.usage, { inputTokens: 'input_tokens', outputTokens: 'output_tokens', totalTokens: 'total_tokens' }));
-                if (completed || ['error', 'response.failed', 'response.incomplete'].includes(value.type)) throw new GenerationError('generation_response_invalid');
+                if (completed || ['error', 'response.failed'].includes(value.type)) throw new GenerationError('generation_response_invalid');
                 if (['response.refusal.delta', 'response.refusal.done'].includes(value.type)) contentBlocked = true;
                 if (value.type === 'response.output_text.delta') { text += value.delta; onChunk?.({ text, delta: value.delta }); }
                 if (value.type === 'response.output_item.done') { if (done.has(value.output_index)) throw new GenerationError('generation_response_invalid'); done.set(value.output_index, value.item); }
-                if (value.type === 'response.completed') completed = value.response;
+                if (['response.completed', 'response.incomplete'].includes(value.type)) completed = value.response;
             };
             for await (const bytes of response.body) {
                 bytesRead += bytes.length; if (bytesRead > 8 * 1024 * 1024) throw new GenerationError('generation_response_invalid');
-                pending += decoder.decode(bytes, { stream: true }); const lines = pending.split('\n'); pending = lines.pop(); lines.forEach(consume);
+                pending += decoder.decode(bytes, { stream: true }); const lines = pending.split('\n'); pending = lines.pop(); for (const line of lines) await consume(line);
             }
-            consume(pending + decoder.decode());
-            if (!completed || completed.status !== 'completed' || !Array.isArray(completed.output)
+            await consume(pending + decoder.decode());
+            if (!completed || !['completed', 'incomplete'].includes(completed.status) || !Array.isArray(completed.output)
                 || completed.output.length !== done.size || completed.output.some((item, index) => serializeNativeDocument(item) !== serializeNativeDocument(done.get(index)))) throw new GenerationError('generation_response_invalid');
             return { value: completed, binding, sequence, continuityDecision, contentBlocked };
         },
         readUsage({ value }) { return observedGenerationUsage(value?.usage, { inputTokens: 'input_tokens', outputTokens: 'output_tokens', totalTokens: 'total_tokens' }); },
         normalizeResponse({ value, binding, sequence, continuityDecision, contentBlocked }) {
-            if (value?.status !== 'completed' || !Array.isArray(value.output) || value.error) throw new GenerationError('generation_response_invalid');
+            const truncated = value?.status === 'incomplete' && value.incomplete_details?.reason === 'max_output_tokens';
+            if (value?.status !== 'completed' && !truncated || !Array.isArray(value.output) || value.error) throw new GenerationError('generation_response_invalid');
             if (contentBlocked || value.output.some(item => item?.type === 'message' && item.role === 'assistant'
                 && Array.isArray(item.content) && item.content.some(part => part?.type === 'refusal' && typeof part.refusal === 'string'))) {
                 throw new GenerationError('generation_provider_content_blocked');
@@ -177,13 +183,14 @@ export function createResponsesGenerationProvider({ fetchImpl = fetch, checkpoin
             const usage = observedGenerationUsage(value.usage, { inputTokens: 'input_tokens', outputTokens: 'output_tokens', totalTokens: 'total_tokens' });
             const providerState = toolCalls.length || isDurableNativeContinuity(binding) ? captureNativeEnvelope({ binding, sequence, content: value.output, text, calls: toolCalls.map(call => call.raw) }) : null;
             if (!providerState) discardNativeEnvelopes(binding);
-            return { text, assistantText: text, toolCalls, ...(usage ? { usage } : {}), ...(providerState ? { providerState } : {}),
+            return { text, assistantText: text, toolCalls, truncated, ...(usage ? { usage } : {}), ...(providerState ? { providerState } : {}),
                 observation: { reportedModel: typeof value.model === 'string' ? value.model : null, upstreamIdentity: 'unknown',
                     nativeExecution: nativeExecutionObservation(binding, sequence, providerState, continuityDecision),
                     cachedInputTokens: Number.isSafeInteger(value.usage?.input_tokens_details?.cached_tokens) && value.usage.input_tokens_details.cached_tokens >= 0 ? value.usage.input_tokens_details.cached_tokens : null,
                     nativeEnvelope: providerState ? (isDurableNativeContinuity(binding) ? 'captured_task' : 'captured_active_execution') : 'completed', hiddenAttempts: 'unknown' } };
         },
         assertResponseSafe(response, secret) { assertNativeEnvelopeSafe(response.providerState, secret); },
+        releaseResponseState: releaseNativeEnvelope,
         commitResponse(response) { return publishNativeEnvelope(response.providerState, checkpointStore); },
         discardExecution(rendered) { return discardStoredNativeEnvelopes(rendered.binding, checkpointStore); },
         resetExecution({ resolved, contextPlan, promptIr }, publish) {

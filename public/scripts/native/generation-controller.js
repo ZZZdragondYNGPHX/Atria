@@ -17,7 +17,7 @@ export function createNativeGenerationController({ runtime, host, run = runNativ
             operation.controller.abort(reason);
             return true;
         },
-        async generate(type, { input = '', scope, signal, quietPrompt = '', onInputAccepted, operation: promptOperation, actorId } = {}) {
+        async generate(type, { input = '', scope, signal, quietPrompt = '', onInputAccepted, operation: promptOperation, actorId, narrativeRevision } = {}) {
             if (operation) throw Object.assign(new Error('Generation is already running.'), { code: 'native_generation_busy' });
             if (!runtime.active || !scope || Object.keys(currentScope()).some(key => scope[key] !== currentScope()[key])) throw stale();
             if (typeof input !== 'string' || input.length > 65536) throw new TypeError('Invalid Native input');
@@ -44,7 +44,7 @@ export function createNativeGenerationController({ runtime, host, run = runNativ
                 for (const key of ['started', 'submitUser', 'commitAssistant', 'impersonate', 'gameApi', 'context', 'onChunk', 'onState']) {
                     if (typeof adapter[key] === 'function') guardedHost[key] = (...args) => { guard({ allowAbort: key === 'onState' }); return adapter[key](...args); };
                 }
-                return await run({ runtime, type, input, signal: requestSignal, quietPrompt, operation: promptOperation, actorId, host: guardedHost,
+                return await run({ runtime, type, input, signal: requestSignal, quietPrompt, operation: promptOperation, actorId, narrativeRevision, host: guardedHost,
                     execute: async args => {
                         guard();
                         const revision = runtime.snapshot.revision.revisionId;

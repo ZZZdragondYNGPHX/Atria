@@ -1039,7 +1039,8 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
         try {
             const ref = assertExactResourceRef(request.body);
             if (ref.scope !== 'library' || !VERSIONED_MODEL_PROMPT_RESOURCE_TYPES.includes(ref.resourceType)) throw new TypeError('Exact Library resource required');
-            response.json(await getHost().library.getExact(handle, ref));
+            const envelope = await getHost().library.getExact(handle, ref);
+            response.json({ ...envelope, fingerprint: hashNativeDocument(envelope.snapshot) });
         } catch { response.status(404).json({ error: 'native_resource_exact_unavailable' }); }
     });
     router.post('/resources/current', async (request, response) => {
@@ -1072,6 +1073,7 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             const profiles = await Promise.all(resources.filter(item => item.resourceType === 'core.generation-profile')
                 .map(item => host.library.getCurrent(handle, item.resourceType, item.resourceId)));
             response.json({ connections, models, routes, resources, profiles: profiles.map(item => item.snapshot),
+                connectionFingerprints: Object.fromEntries(connections.map(connection => [connection.connectionProfileId, hashNativeDocument(connection)])),
                 emptyFingerprint: hashNativeDocument(null), modelFingerprints: Object.fromEntries(models.map(model => [model.modelProfileId, hashNativeDocument(model)])),
                 routeFingerprints: Object.fromEntries(routes.map(route => [route.runtimeRouteId, hashNativeDocument(route)])) });
         } catch { response.status(500).json({ error: 'native_generation_configuration_unavailable' }); }
@@ -1220,7 +1222,8 @@ export function createNativeGenerationRouter(getHost = services, getChats = getC
             const { code, status } = generationFailure(error);
             const details = code === 'native_processing_failed' ? { resourceId: error.processorId, field: error.stage } : undefined;
             if (!controller.signal.aborted) {
-                if (response.headersSent) { emit({ error: code, ...(details ? { details } : {}) }); response.end(); } else response.status(status).json({ error: code, ...(details ? { details } : {}) });
+                const content = code === 'generation_content_format_invalid' ? { originalResponse: error.originalResponse } : {};
+                if (response.headersSent) { emit({ error: code, ...content, ...(details ? { details } : {}) }); response.end(); } else response.status(status).json({ error: code, ...content, ...(details ? { details } : {}) });
             }
         } finally { response.off('close', abort); }
     });

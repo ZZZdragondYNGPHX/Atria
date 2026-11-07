@@ -17,7 +17,9 @@ function inspectJavaScript(code, file, compiled, synchronous) {
     const visit = (node, parent) => {
         if (synchronous && (node.async || node.type === 'AwaitExpression' || node.type === 'ForOfStatement' && node.await
             || node.type === 'Identifier' && node.name === 'Promise')) fail(node, 'World computation must be synchronous');
-        if (node.type === 'Identifier' && forbidden.has(node.name)) fail(node, 'Forbidden Script global: ' + node.name);
+        const propertyName = parent?.type === 'MemberExpression' && parent.property === node && !parent.computed
+            || parent?.type === 'Property' && parent.key === node && !parent.computed && !parent.shorthand;
+        if (node.type === 'Identifier' && forbidden.has(node.name) && !propertyName) fail(node, 'Forbidden Script global: ' + node.name);
         if (node.type === 'ImportExpression') fail(node, 'Dynamic import denied');
         if (['ImportDeclaration', 'ExportNamedDeclaration', 'ExportAllDeclaration'].includes(node.type) && node.source) imports.push(node.source.value);
         if (node.type === 'Identifier' && node.name === 'require') {
@@ -49,7 +51,9 @@ function inspect(code, file, compiled = false, synchronous = false, capture = fa
         }
         if (synchronous && (node.kind === ts.SyntaxKind.AsyncKeyword || node.kind === ts.SyntaxKind.AwaitKeyword
             || ts.isIdentifier(node) && node.text === 'Promise')) fail(node, 'World computation must be synchronous');
-        if (ts.isIdentifier(node) && forbidden.has(node.text)) fail(node, 'Forbidden Script global: ' + node.text);
+        const propertyName = node.parent && (ts.isPropertyAccessExpression(node.parent) && node.parent.name === node
+            || ts.isPropertyAssignment(node.parent) && node.parent.name === node);
+        if (ts.isIdentifier(node) && forbidden.has(node.text) && !propertyName) fail(node, 'Forbidden Script global: ' + node.text);
         if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) fail(node, 'Dynamic import denied');
         if (ts.isImportEqualsDeclaration(node)) fail(node, 'Use static ES imports');
         if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {

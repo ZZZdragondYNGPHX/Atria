@@ -45,6 +45,9 @@ const ERROR_CODES = new Set([...COMPUTE_ADMISSION_CODES, 'native_generation_budg
     'generation_adapter_sampling_invalid', 'generation_adapter_stop_invalid', 'generation_adapter_stream_invalid',
     'generation_adapter_message_invalid',
     'generation_output_authority_changed', 'generation_illustration_budget_exceeded',
+    ...['changed', 'result_invalid', 'messages_invalid', 'message_authority', 'capability_denied', 'carrier_conflict',
+        'limits_invalid', 'response_invalid', 'tool_authority', 'decision_conflict', 'decision_invalid', 'followup_invalid',
+        'delay_invalid', 'parameters_invalid', 'carrier_invalid', 'extras_invalid', 'execution_failed', 'native_continuity_conflict'].map(code => 'generation_extension_' + code),
 ]);
 
 export class GenerationError extends Error {

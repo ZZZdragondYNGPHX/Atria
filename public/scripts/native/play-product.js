@@ -674,6 +674,7 @@ export function mountAtriaPlayProduct({
             try { return await generate(operation === 'impersonate' ? 'impersonate' : 'normal', { input: '', scope, operation, actorId }); } finally { submitting = false; render(); }
         },
         getDraft: () => textarea.value,
+        isComposing: () => composingDraft,
         captureDraft: () => ({ revision: draftRevision, value: textarea.value, sessionId: activeRuntime()?.snapshot?.session?.sessionId }),
         offerDraft(value, captured) {
             if (this.applyDraft(value, captured)) return true;

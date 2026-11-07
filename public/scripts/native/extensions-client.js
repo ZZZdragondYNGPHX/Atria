@@ -17,6 +17,8 @@ export async function extensionsRequest(path, { method = 'GET', body, signal } =
 export const nativeExtensionsClient = Object.freeze({
     list: () => extensionsRequest('/plugins'),
     get: id => extensionsRequest('/plugins/' + encodeURIComponent(id)),
+    preferences: id => extensionsRequest('/plugins/' + encodeURIComponent(id) + '/preferences'),
+    savePreferences: (id, value, expectedRevision) => extensionsRequest('/plugins/' + encodeURIComponent(id) + '/preferences', { method: 'PUT', body: { value, expectedRevision } }),
     save: (value, expectedRevision = null) => extensionsRequest('/plugins', { method: 'POST', body: { value, expectedRevision } }),
     remove: (id, expectedRevision) => extensionsRequest('/plugins/' + encodeURIComponent(id), { method: 'DELETE', body: { expectedRevision } }),
     install: (url, { id, expectedRevision } = {}) => extensionsRequest('/install', { method: 'POST', body: { url, id, expectedRevision } }),

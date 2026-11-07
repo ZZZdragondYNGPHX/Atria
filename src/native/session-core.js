@@ -899,10 +899,12 @@ export class SessionCore {
         return { snapshot, installed, more: prepared.more, replayed: false };
     }
 
-    async finalizeTurn(handle, sessionId, { envelope: raw, invocationId, requestHash = null, provenance = [], authorityProof = null, knowledgeProof = null }, { expectedRevisionId, effectPolicy } = {}) {
+    async finalizeTurn(handle, sessionId, { envelope: raw, invocationId, requestHash = null, provenance = [], authorityProof = null, knowledgeProof = null, presetContent = null }, { expectedRevisionId, effectPolicy } = {}) {
         if (!expectedRevisionId || typeof invocationId !== 'string' || !/^[a-zA-Z0-9._:-]{1,128}$/.test(invocationId)) throw new TypeError('Turn anchor and invocation required');
         const base = await this[effectPolicy === 'no-background-model' ? 'observe' : 'load'](handle, sessionId);
         let envelope = assertTurnEnvelope(raw);
+        const metadata = presetContent ? { runtime: { extra: { preset_content: { raw: presetContent.raw,
+            programRef: presetContent.programRef, status: presetContent.status, diagnostics: presetContent.diagnostics, contextPolicies: presetContent.contextPolicies } } } } : undefined;
         const fingerprint = hashNativeDocument(envelope);
         const publication = sessionTurnCommitIdentity({ sessionId, branchId: base.revision.branchId, expectedRevisionId, invocationId, requestHash, fingerprint });
         const existing = base.states[TASK_STATE_NAMESPACE]?.records.find(record => record.invocationId === invocationId)
@@ -936,7 +938,7 @@ export class SessionCore {
                 candidate = { ...candidate, states: { ...candidate.states, [RUN_NAMESPACE]: { ...candidate.states[RUN_NAMESPACE], status: 'dead' } } };
             }
             const spoken = (prepared.speeches ?? []).map((draft, index) => this._newEntry(candidate, draft, candidate.timeline.length + index));
-            const { entry, variant } = this._newEntry(candidate, { role: 'assistant', envelope }, candidate.timeline.length + spoken.length, true);
+            const { entry, variant } = this._newEntry(candidate, { role: 'assistant', envelope, ...(metadata ? { metadata } : {}) }, candidate.timeline.length + spoken.length, true);
             return this._publish(handle, base, { states: candidate.states, timeline: [...candidate.timeline, ...spoken.map(item => item.entry), entry],
                 entries: [...(player ? [player.entry] : []), ...spoken.map(item => item.entry), entry], variants: [...(player ? [player.variant] : []), ...spoken.map(item => item.variant), variant],
                 authorityPrepared: true, effectPolicy, ...publication, actionRequest: { ...request, assistantMessageId: entry.messageId },
@@ -946,7 +948,7 @@ export class SessionCore {
         if (authorityProof) throw authorityFailure('native_authority_capability_required');
         const patch = envelope.outcomes.some(item => item.interpretation.decision !== 'no_change')
             ? await prepareTaskAuthority(base, installed, { outcomes: envelope.outcomes }) : {};
-        const { entry, variant } = this._newEntry(base, { role: 'assistant', envelope }, base.timeline.length, true);
+        const { entry, variant } = this._newEntry(base, { role: 'assistant', envelope, ...(metadata ? { metadata } : {}) }, base.timeline.length, true);
         return this._publish(handle, base, { states: adoptKnowledge(this, handle, base, { ...base.states, ...patch }, knowledgeProof), timeline: [...base.timeline, entry], entries: [entry], variants: [variant], effectPolicy, ...publication,
             taskRecord: { kind: 'turn', invocationId, fingerprint, requestHash, provenance, anchorRevisionId: expectedRevisionId, branchId: base.revision.branchId,
                 outcomes: envelope.outcomes, status: 'applied', authorityReceipt: { kind: 'authority', messageId: entry.messageId } } });
@@ -1165,6 +1167,26 @@ export class SessionCore {
     async listSavePoints(handle, sessionId) {
         await this.load(handle, sessionId);
         return this._saves.list(handle, sessionId);
+    }
+
+    // Editing a published reply starts a derived story from its original input.
+    // The previous branch, state and reply remain reachable in History.
+    async forkReply(handle, sessionId, messageId, { expectedRevisionId } = {}) {
+        await this.runs.assert(handle, sessionId, 'rewind');
+        const current = await this._current(handle, sessionId, expectedRevisionId);
+        const reply = current.timeline.at(-1);
+        if (reply?.role !== 'assistant' || reply.messageId !== messageId) throw new TypeError('Latest committed assistant reply required');
+        const boundary = await this._findTimelineBoundary(handle, sessionId, current, messageId);
+        const parent = await this._sessions.getStoryParentRevision(handle, sessionId, boundary.revision.revisionId);
+        if (!parent) throw new TypeError('Reply has no editable story boundary');
+        const source = await this.load(handle, sessionId, { revisionId: parent });
+        const tail = source.timeline.at(-1), branchId = createNativeId('branch');
+        const branch = { branchId, sessionId, parentBranchId: source.revision.branchId,
+            forkPoint: tail ? { messageId: tail.messageId, variantId: tail.activeVariantId } : null,
+            createdAt: Date.now(), routeNumber: current.graph.length + 1, displayName: `Reply revision · Route ${current.graph.length + 1}` };
+        return this._publish(handle, { ...source, session: current.session }, { branchId, timeline: source.timeline,
+            branches: [branch], graph: [...current.graph, { branchId, forkRevisionId: source.revision.revisionId, branch }],
+            runAction: 'rewind', illustrationHead: null });
     }
 
     async createSavePoint(handle, sessionId, { revisionId, expectedRevisionId, kind = 'manual', displayName } = {}) {

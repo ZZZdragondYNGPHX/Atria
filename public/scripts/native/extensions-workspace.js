@@ -1,7 +1,9 @@
 import { confirmAtriaDraftLeave, observeAtriaDrafts } from '../atria-shell/workspace-leave-guard.js';
 import { mountIllustrationSettings } from './illustration-settings-ui.js';
 import { el, action, field, feedback } from './library-ui.js';
-import { nativeExtensionsClient } from './extensions-client.js';
+import { nativeExtensionsClient, extensionFileUrl } from './extensions-client.js';
+import { createExtensionSdk } from './extension-sdk.js';
+import { readExtensionBundle } from '../../shared/generation-extension-contract.js';
 import { nativeProductClient } from './product-client.js';
 import { runtimeRequest } from './runtime-client.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
@@ -59,7 +61,7 @@ export function mountExtensionPlugins({ document: doc = document, body, client =
     kind: initialKind = 'external', ...dependencies } = {}) {
     const root = el(doc, 'section', 'atri-extension-plugins', undefined, body);
     const drafts = observeAtriaDrafts({ document: doc, root });
-    let kind = initialKind, disposed = false, sequence = 0, builtins, saving = false, receipt = null;
+    let kind = initialKind, disposed = false, sequence = 0, builtins, saving = false, receipt = null, settingsOwner;
     const tabs = extensionTabs(doc, root, [['external', 'External plugins'], ['local', 'Local scripts'], ['builtin', 'Built-in tools'], ['official', 'Official plugins']], kind, async next => { if (saving || !confirmAtriaDraftLeave(doc, content)) return; kind = next; await load(); });
     const tools = el(doc, 'div', 'atria-utility-workspace__actions', undefined, root);
     const content = el(doc, 'div', 'atri-extension-list', undefined, root);
@@ -74,7 +76,7 @@ export function mountExtensionPlugins({ document: doc = document, body, client =
     }
     const unsubscribe = runtime?.subscribe(status);
     async function load() {
-        const token = ++sequence; builtins?.dispose(); builtins = null;
+        const token = ++sequence; builtins?.dispose(); builtins = null; await settingsOwner?.dispose(); settingsOwner = null;
         tools.replaceChildren(); content.replaceChildren(); feedback(doc, content, 'Loading…');
         for (const button of tabs.children) { const active = button.dataset.extensionTab === kind; button.classList.toggle('is-selected', active); button.setAttribute('aria-current', active ? 'page' : 'false'); }
         action(doc, tools, 'Refresh', () => { if (!saving && confirmAtriaDraftLeave(doc, content)) return load(); });
@@ -93,13 +95,13 @@ export function mountExtensionPlugins({ document: doc = document, body, client =
             }
             if (kind === 'local') {
                 action(doc, tools, 'New script', () => edit());
-                const upload = field(doc, tools, 'Import JavaScript', '', 'file'); upload.accept = '.js,text/javascript';
+                const upload = field(doc, tools, '导入脚本或插件包', '', 'file'); upload.accept = '.js,.atria-plugin,text/javascript,application/json';
                 upload.addEventListener('change', async () => {
                     const file = upload.files?.[0]; if (!file) return;
                     try {
-                        if (!/\.js$/i.test(file.name) || file.size > 4 * 1024 * 1024) throw new Error(tl('Choose a JavaScript file up to 4 MiB.'));
+                        if (!/\.(js|atria-plugin)$/i.test(file.name) || file.size > 8 * 1024 * 1024) throw new Error('请选择 JavaScript 或 Atria 插件包。');
                         const source = await file.text();
-                        if (!disposed && token === sequence) await edit(null, source, file.name.replace(/\.js$/i, ''));
+                        if (!disposed && token === sequence) await edit(null, source, file.name.replace(/\.(js|atria-plugin)$/i, ''), /\.atria-plugin$/i.test(file.name));
                     } catch (error) { feedback(doc, tools, error.message, true); }
                     upload.value = '';
                 });
@@ -119,6 +121,7 @@ export function mountExtensionPlugins({ document: doc = document, body, client =
                 if (item.sourceUrl) el(doc, 'p', '', item.sourceUrl, card);
                 el(doc, 'p', '', '', card).dataset.extensionStatus = item.id;
                 action(doc, card, 'Edit', () => edit(item.id));
+                if (item.manifest?.settings) action(doc, card, '设置', () => configure(item));
                 if (kind === 'external') action(doc, card, 'Update', async () => {
                     if (!disposed && token === sequence) { receipt = await client.install(item.sourceUrl, { id: item.id, expectedRevision: item.revision }); await load(); }
                 });
@@ -130,12 +133,30 @@ export function mountExtensionPlugins({ document: doc = document, body, client =
             status();
         } catch (error) { if (!disposed && token === sequence) { content.replaceChildren(); feedback(doc, content, receipt ? 'Saved, but the list could not refresh. Reload to see the saved version.' : error.message, true); } }
     }
-    async function edit(id, source = 'export function activate(atria) {\n    // Register resources with atria.onDispose or use the SDK helpers.\n}\n', suggestedName = '') {
+    async function configure(item) {
+        if (!confirmAtriaDraftLeave(doc, content)) return;
+        const token = ++sequence;
+        tools.replaceChildren(); content.replaceChildren();
+        action(doc, tools, '返回插件', load);
+        const mount = el(doc, 'div', 'atri-extension-settings', undefined, content);
+        settingsOwner = createExtensionSdk({ plugin: item, context: { configuration: true, sessionId: null, historical: false, ready: false },
+            document: doc, root: mount, isCurrent: () => !disposed && sequence === token,
+            nativeApi: () => null, subscribe: () => () => {}, report: error => feedback(doc, mount, error.message, true) });
+        try {
+            const module = await import(extensionFileUrl(item));
+            if (disposed || token !== sequence) return;
+            if (typeof module.configure !== 'function') throw new Error('插件未提供设置入口');
+            const cleanup = await module.configure(settingsOwner.sdk);
+            if (cleanup) settingsOwner.sdk.onDispose(cleanup);
+        } catch (error) { if (!disposed && token === sequence) feedback(doc, mount, error.message, true); }
+    }
+    async function edit(id, source = 'export function activate(atria) {\n    // Register resources with atria.onDispose or use the SDK helpers.\n}\n', suggestedName = '', bundle = false) {
         if (saving || !confirmAtriaDraftLeave(doc, content)) return;
         const token = ++sequence;
         const [record, works, promptPresets] = await Promise.all([id ? client.get(id) : null, productClient.listWorks(), presets()]);
         if (disposed || token !== sequence) return;
-        const value = record || { name: suggestedName, kind: 'local', enabled: false, targets: { global: false, presets: [], works: [] }, entrypoint: 'index.js', files: { 'index.js': source }, sourceUrl: null };
+        const imported = bundle ? readExtensionBundle(source) : null;
+        const value = record || { name: imported?.manifest.name ?? suggestedName, kind: 'local', enabled: false, targets: { global: false, presets: [], works: [] }, entrypoint: imported?.manifest.entrypoint ?? 'index.js', files: imported?.files ?? { 'index.js': source }, sourceUrl: null };
         tools.replaceChildren(); content.replaceChildren();
         const form = el(doc, 'fieldset', 'atri-extension-editor', undefined, content);
         el(doc, 'legend', '', tl(id ? 'Edit extension' : 'New script'), form);
@@ -161,11 +182,11 @@ export function mountExtensionPlugins({ document: doc = document, body, client =
             }
         }
         let code;
-        if (value.kind === 'local') {
+        if (value.kind === 'local' && !value.files['atria.extension.json']) {
             const label = el(doc, 'label', 'atri-library-field', tl('JavaScript'), form);
             code = el(doc, 'textarea', 'atri-extension-code', undefined, label); code.value = value.files['index.js']; code.spellcheck = false;
         } else {
-            el(doc, 'p', '', value.sourceUrl, form);
+            if (value.sourceUrl) el(doc, 'p', '', value.sourceUrl, form);
             const files = el(doc, 'details', '', undefined, form); el(doc, 'summary', '', tl('Plugin files'), files);
             for (const [path, text] of Object.entries(value.files)) { const file = el(doc, 'details', '', undefined, files); el(doc, 'summary', '', path, file); el(doc, 'pre', '', text, file); }
         }
@@ -191,5 +212,5 @@ export function mountExtensionPlugins({ document: doc = document, body, client =
         name.focus();
     }
     void load();
-    return { root, dispose() { disposed = true; sequence++; drafts.dispose(); unsubscribe?.(); builtins?.dispose(); root.remove(); } };
+    return { root, dispose() { disposed = true; sequence++; drafts.dispose(); unsubscribe?.(); builtins?.dispose(); void settingsOwner?.dispose(); root.remove(); } };
 }

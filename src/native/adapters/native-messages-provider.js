@@ -1,6 +1,7 @@
 import { GenerationError, ProviderFailure, providerHttpFailure, observeProviderHttpUsage } from '../model-prompt-runtime/execution-utils.js';
-import { renderPromptMessages } from '../model-prompt-runtime/prompt-renderers.js';
 import { observedGenerationUsage } from './generation-usage.js';
+import { extensionRequestView, extensionRequestExtras } from '../generation-extensions.js';
+import { releaseNativeEnvelope } from '../model-prompt-runtime/native-execution-envelope.js';
 import { captureNativeEnvelope, nativeEnvelopeBinding, readNativeEnvelope, discardNativeEnvelopes, assertNativeEnvelopeSafe, leaseNativeRequest, consumeNativeRequest, inspectNativeRequest, nativeExecutionObservation, hydrateNativeEnvelopes, publishNativeEnvelope, discardStoredNativeEnvelopes, isDurableNativeContinuity } from '../model-prompt-runtime/native-execution-envelope.js';
 
 const fail = () => { throw new GenerationError('generation_adapter_control_unsupported'); };
@@ -18,7 +19,7 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch, checkp
     const hydrate = async request => {
         const binding = nativeEnvelopeBinding(request.resolved, request.snapshot, 'native.' + format + '.v1');
         if (isDurableNativeContinuity(binding) && checkpointStore) await checkpointStore.prepare(binding);
-        let sequence = request.sequence ?? renderPromptMessages(request.snapshot.promptIr);
+        let sequence = request.sequence ?? extensionRequestView(request.resolved, request.snapshot.promptIr, request.snapshot.extensionRequest).messages;
         let continuityDecision = request.continuityDecision;
         if (isDurableNativeContinuity(binding) && checkpointStore && !request.sequence) {
             const restored = await checkpointStore.restore(binding, sequence);
@@ -29,6 +30,8 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch, checkp
     };
     const lower = ({ resolved, snapshot, sequence: preparedSequence, continuityDecision }) => {
         const { promptIr } = snapshot;
+        const view = extensionRequestView(resolved, promptIr, snapshot.extensionRequest);
+        resolved = view.resolved;
         const reserve = snapshot.contextPlan.budget.reservedOutputTokens;
         const { generation: g, connection, model } = resolved;
         for (const [section, allowed] of Object.entries({ sampling: ['temperature', 'topP'], output: ['maxTokens'],
@@ -41,7 +44,7 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch, checkp
         if (!Number.isSafeInteger(max) || max < 1 || max > reserve) throw new GenerationError('generation_adapter_output_budget');
         const streaming = g.streaming.enabled ?? false;
         if (typeof streaming !== 'boolean') fail();
-        const sequence = preparedSequence ?? renderPromptMessages(promptIr);
+        const sequence = preparedSequence ?? view.messages;
         const binding = nativeEnvelopeBinding(resolved, snapshot, 'native.' + format + '.v1');
         const first = sequence.findIndex(message => message.role !== 'system');
         if (first < 0 || sequence.slice(first).some(message => message.role === 'system')) fail();
@@ -94,8 +97,8 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch, checkp
             if (!Array.isArray(g.stop.sequences) || g.stop.sequences.some(item => typeof item !== 'string')) fail();
             config[anthropic ? 'stop_sequences' : 'stopSequences'] = g.stop.sequences;
         }
-        if (promptIr.tools.length) {
-            const tools = promptIr.tools.map(tool => {
+        if (view.tools.length) {
+            const tools = view.tools.map(tool => {
                 keys(tool, ['type', 'function']); keys(tool.function, ['name', 'description', 'parameters', 'strict']);
                 if (tool.type !== 'function' || !tool.function?.name || !object(tool.function.parameters)) fail();
                 if (tool.function.strict) fail();
@@ -153,6 +156,7 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch, checkp
             endpoint.pathname = endpoint.pathname.replace(/\/$/, '') + '/models/' + encodeURIComponent(model.remoteModelId.replace(/^models\//, '')) + (streaming ? ':streamGenerateContent' : ':generateContent');
             if (streaming) endpoint.searchParams.set('alt', 'sse');
         }
+        Object.assign(body, extensionRequestExtras(body, snapshot.extensionRequest));
         return { endpoint: endpoint.href, body, publicBody: { ...body, [anthropic ? 'messages' : 'contents']: publicMessages },
             wire: JSON.stringify(body), binding, sequence, resolved, snapshot, continuityDecision };
     };
@@ -161,8 +165,8 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch, checkp
         continuationScopes: Object.freeze(checkpointStore ? ['active_execution', 'task', 'adaptive'] : ['active_execution']),
         contextTokenizer() { return text => Buffer.byteLength(String(text), 'utf8'); },
         resolveCapabilities: async () => ['generation.streaming', 'generation.tools', 'generation.structured-output', 'generation.reasoning', 'generation.cache', 'generation.continuation.active-execution'].map(capability => ({ capability, state: capability === 'generation.cache' && !anthropic ? 'unsupported' : 'supported', provenance: [{ kind: 'adapter-metadata', source: 'native.' + format }] })),
-        countTokens({ resolved, promptIr, contextPlan }) {
-            const request = { resolved, snapshot: { requestId: contextPlan.requestId, promptIr, contextPlan } };
+        countTokens({ resolved, promptIr, contextPlan, extensionRequest }) {
+            const request = { resolved, snapshot: { requestId: contextPlan.requestId, promptIr, contextPlan, extensionRequest } };
             // Provider tokenizers differ. A byte upper bound deliberately avoids
             // treating an OpenAI encoding as an exact Claude/Gemini tokenizer.
             const count = input => Buffer.byteLength(lower(input).wire, 'utf8') + 256;
@@ -207,15 +211,16 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch, checkp
             }
             return { response, binding: request.binding, sequence: request.sequence, continuityDecision: request.continuityDecision };
         },
-        async parseStream({ response, binding, sequence, continuityDecision }, { onChunk, onUsage } = {}) {
-            if (!response.headers.get('content-type')?.includes('text/event-stream')) return { value: await response.json(), binding, sequence, continuityDecision };
+        async parseStream({ response, binding, sequence, continuityDecision }, { onChunk, onUsage, transformFrame } = {}) {
+            const transform = value => transformFrame ? transformFrame(value, format) : value;
+            if (!response.headers.get('content-type')?.includes('text/event-stream')) return { value: await transform(await response.json()), binding, sequence, continuityDecision };
             const blocks = []; let pending = ''; let text = ''; let size = 0; let usage; const decoder = new TextDecoder();
             let started = false; let completed = false; let stopReason; let reportedModel; let promptFeedback;
             const open = new Set();
-            const consume = line => {
+            const consume = async line => {
                 if (!line.startsWith('data:')) return;
                 const payload = line.slice(5).trim(); if (!payload || payload === '[DONE]') return;
-                const value = JSON.parse(payload); if (value.error || value.type === 'error') throw new GenerationError('generation_response_invalid');
+                const value = await transform(JSON.parse(payload)); if (value.error || value.type === 'error') throw new GenerationError('generation_response_invalid');
                 if (completed && (anthropic ? value.type !== 'ping' : value.candidates?.length)) throw new GenerationError('generation_response_invalid');
                 let delta = '';
                 if (anthropic) {
@@ -249,7 +254,7 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch, checkp
                     }
                     if (value.type === 'message_delta' && value.delta?.stop_reason) stopReason = value.delta.stop_reason;
                     if (value.type === 'message_stop') {
-                        if (!started || open.size || !['end_turn', 'tool_use', 'stop_sequence', 'refusal'].includes(stopReason)) throw new GenerationError('generation_response_invalid');
+                        if (!started || open.size || !['end_turn', 'tool_use', 'stop_sequence', 'refusal', 'max_tokens'].includes(stopReason)) throw new GenerationError('generation_response_invalid');
                         completed = true;
                     }
                 } else {
@@ -257,7 +262,7 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch, checkp
                     if (value.usageMetadata) onUsage?.(observedGenerationUsage(usage, { inputTokens: 'promptTokenCount', outputTokens: 'candidatesTokenCount', totalTokens: 'totalTokenCount' }));
                     if (value.modelVersion) reportedModel = value.modelVersion;
                     if (value.promptFeedback) { promptFeedback = value.promptFeedback; if (geminiPromptBlocks.has(promptFeedback.blockReason)) completed = true; }
-                    if (value.candidates?.[0]?.finishReason) { stopReason = value.candidates[0].finishReason; completed = stopReason === 'STOP' || geminiCandidateBlocks.has(stopReason); }
+                    if (value.candidates?.[0]?.finishReason) { stopReason = value.candidates[0].finishReason; completed = ['STOP', 'MAX_TOKENS'].includes(stopReason) || geminiCandidateBlocks.has(stopReason); }
                     const parts = value.candidates?.[0]?.content?.parts || [];
                     blocks.push(...parts); delta = parts.filter(part => !part.thought && typeof part.text === 'string').map(part => part.text).join('');
                 }
@@ -265,9 +270,9 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch, checkp
             };
             for await (const bytes of response.body) {
                 size += bytes.length; if (size > 8 * 1024 * 1024) throw new GenerationError('generation_response_invalid');
-                pending += decoder.decode(bytes, { stream: true }); const lines = pending.split('\n'); pending = lines.pop(); lines.forEach(consume);
+                pending += decoder.decode(bytes, { stream: true }); const lines = pending.split('\n'); pending = lines.pop(); for (const line of lines) await consume(line);
             }
-            consume(pending + decoder.decode());
+            await consume(pending + decoder.decode());
             if (!completed || blocks.filter(Boolean).length !== blocks.length) throw new GenerationError('generation_response_invalid');
             return { value: anthropic ? { content: blocks, stop_reason: stopReason, ...(reportedModel ? { model: reportedModel } : {}), ...(usage ? { usage } : {}) }
                 : { candidates: [{ content: { parts: blocks }, finishReason: stopReason }], ...(promptFeedback ? { promptFeedback } : {}), ...(reportedModel ? { modelVersion: reportedModel } : {}), ...(usage ? { usageMetadata: usage } : {}) }, binding, sequence, continuityDecision };
@@ -284,7 +289,7 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch, checkp
             }
             const content = anthropic ? value?.content : value?.candidates?.[0]?.content?.parts;
             if (!Array.isArray(content) || value.error || (!anthropic && value.promptFeedback?.blockReason)) throw new GenerationError('generation_response_invalid');
-            if (anthropic ? !['end_turn', 'tool_use', 'stop_sequence'].includes(value.stop_reason) : value.candidates[0].finishReason !== 'STOP') throw new GenerationError('generation_response_invalid');
+            if (anthropic ? !['end_turn', 'tool_use', 'stop_sequence', 'max_tokens'].includes(value.stop_reason) : !['STOP', 'MAX_TOKENS'].includes(value.candidates[0].finishReason)) throw new GenerationError('generation_response_invalid');
             if (content.some(part => !object(part) || (anthropic
                 ? !['text', 'tool_use', 'thinking', 'redacted_thinking'].includes(part.type) || (part.type === 'text' && typeof part.text !== 'string')
                 : (typeof part.text !== 'string' && !object(part.functionCall))))) throw new GenerationError('generation_response_invalid');
@@ -304,13 +309,14 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch, checkp
             const providerState = toolCalls.length || isDurableNativeContinuity(binding) ? captureNativeEnvelope({ binding, sequence, content, text, calls: toolCalls.map(call => call.raw) }) : null;
             if (!providerState) discardNativeEnvelopes(binding);
             const cached = anthropic ? value.usage?.cache_read_input_tokens : value.usageMetadata?.cachedContentTokenCount;
-            return { text, assistantText: text, toolCalls, ...(usage ? { usage } : {}), ...(providerState ? { providerState } : {}),
+            return { text, assistantText: text, toolCalls, truncated: anthropic ? value.stop_reason === 'max_tokens' : value.candidates[0].finishReason === 'MAX_TOKENS', ...(usage ? { usage } : {}), ...(providerState ? { providerState } : {}),
                 observation: { reportedModel: (anthropic ? value.model : value.modelVersion) ?? null, upstreamIdentity: 'unknown',
                     nativeExecution: nativeExecutionObservation(binding, sequence, providerState, continuityDecision),
                     cachedInputTokens: Number.isSafeInteger(cached) && cached >= 0 ? cached : null,
                     nativeEnvelope: providerState ? (isDurableNativeContinuity(binding) ? 'captured_task' : 'captured_active_execution') : 'completed', hiddenAttempts: 'unknown' } };
         },
         assertResponseSafe(response, secret) { assertNativeEnvelopeSafe(response.providerState, secret); },
+        releaseResponseState: releaseNativeEnvelope,
         commitResponse(response) { return publishNativeEnvelope(response.providerState, checkpointStore); },
         discardExecution(rendered) { return discardStoredNativeEnvelopes(rendered.binding, checkpointStore); },
     });

@@ -20,8 +20,25 @@ export async function runtimeRequest(path = '/configuration', { method = 'GET', 
 
 // Request evidence is ephemeral presentation state, never a second configuration store.
 let latestEvidence = null;
-export function rememberRuntimeEvidence(value) { latestEvidence = value; }
-export function getRuntimeEvidence() { return latestEvidence; }
+const recentEvidence = [];
+const evidenceListeners = new Set();
+export function rememberRuntimeEvidence(value) {
+    latestEvidence = value;
+    const prior = recentEvidence.indexOf(value);
+    if (prior >= 0) recentEvidence.splice(prior, 1);
+    recentEvidence.push(value);
+    if (recentEvidence.length > 8) recentEvidence.shift();
+    for (const listener of evidenceListeners) { try { listener(value); } catch { /* Observation only. */ } }
+}
+export function runtimeEvidenceMatches(value, { sessionId, role } = {}) {
+    const snapshot = value?.snapshot ?? value?.requestInfo;
+    const source = snapshot?.contextPlan?.source;
+    const observedRole = snapshot?.diagnostics?.effectiveConfig?.role?.replace(/^role\./, '');
+    return (!sessionId || sessionId === (value?.session?.sessionId ?? source?.sessionId))
+        && (!role || observedRole === role || role === 'narrator' && value?.session && value.states?.atri_task_results?.records?.some(record => record.kind === 'turn'));
+}
+export function getRuntimeEvidence(filter) { return filter ? recentEvidence.findLast(value => runtimeEvidenceMatches(value, filter)) ?? null : latestEvidence; }
+export function onRuntimeEvidence(listener) { evidenceListeners.add(listener); return () => evidenceListeners.delete(listener); }
 
 export function runtimeRemediation(code) {
     const actions = {
